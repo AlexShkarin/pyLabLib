@@ -10,7 +10,8 @@ import collections
 def _default_argnames(argtypes):
     return ["arg{}".format(i+1) for i in range(len(argtypes))]
 
-def _get_value(rval):
+def get_value(rval):
+    """Get value of a ctypes variable"""
     if isinstance(rval,(ctypes.c_voidp)):
         return rval
     try:
@@ -51,7 +52,7 @@ def _default_argprep(arg, argtype):
 
 
 
-class CFunctionWrapper(object):
+class CFunctionWrapper:
     """
     Wrapper object for ctypes function.
 
@@ -67,13 +68,14 @@ class CFunctionWrapper(object):
         tuple_single_retval (bool): determines if a single return values gets turned into a single-element tuple
         return_res (bool): determined if the function result gets returned; only used when list of return arguments (``rvals``) to wrapping functions is not explicitly supplied;
             can also be set to ``"auto"`` (default), which means that function returns its return value when no other rvals are found, and omits it otherwise.
+        pointer_byref (bool): if ``True``, use explicit pointer creation instead of byref (in rare cases use of byref crashes the call).
     """
-    def __init__(self, restype=None, errcheck=None, tuple_single_retval=False, return_res="auto"):
-        object.__init__(self)
+    def __init__(self, restype=None, errcheck=None, tuple_single_retval=False, return_res="auto", pointer_byref=False):
         self.restype=restype
         self.errcheck=errcheck
         self.return_res=return_res
         self.tuple_single_retval=tuple_single_retval
+        self.pointer_byref=pointer_byref
     
     @staticmethod
     def _default_name(pfx, n):
@@ -90,6 +92,8 @@ class CFunctionWrapper(object):
     def _default_names_list(pfx, n):
         return [CFunctionWrapper._default_name(pfx,i) for i in range(n)]
 
+    def byref(self, value):
+        return ctypes.pointer(value) if self.pointer_byref else ctypes.byref(value)
     def wrap_bare(self, func, argtypes, argnames=None, restype=None, args="nonrval", rvals="rest", argprep=None, rconv=None, byref="all", errcheck=None):
         """
         Annotate and wrap bare C function in a Python call.
@@ -110,6 +114,7 @@ class CFunctionWrapper(object):
             rconv:  dictionary ``{name: conv}`` of converters of the return values;
                 each ``conv`` is a function which takes 3 arguments: unconverted ctypes value, dictionary of all C function arguments, and dictionary of all Python function arguments
                 if ``conv`` takes less than 3 argument, then the arguments list is trimmed (e.g., if it takes only one argument, it will be an unconverted value)
+                ``conv`` can also be ``"ctypes"`` (return raw ctypes value), or ``"raw"`` (return raw value for buffers).
             byref: list of all argument names which should by passed by reference; by default, it includes all arguments listed in ``rvals``
             errcheck: error-checking function which is automatically called for the return value;
                 if ``None``, use the value supplied to the wrapper constructor (none by default)
@@ -140,7 +145,9 @@ class CFunctionWrapper(object):
                 v=None
             if v is None:
                 cv=t()
-            elif t=="P" or isinstance(v,t): # t=="P" means that it is c_void_p argument supplied with byref
+            elif t=="P" or isinstance(v,t): # t=="P" means that it is c_voidp argument supplied with byref
+                cv=v
+            elif t is ctypes.c_voidp: # these get converted later, immediately before passing
                 cv=v
             else:
                 pv=_default_argprep(v,t)
@@ -153,9 +160,12 @@ class CFunctionWrapper(object):
         for n in rvals:
             v=retval if n is None else cargs[n]
             if n in rconv:
-                v=functions.call_cut_args(rconv[n],v,cargs,kwargs)
+                if rconv[n]=="raw":
+                    v=v.raw
+                elif rconv[n]!="ctypes":
+                    v=functions.call_cut_args(rconv[n],v,cargs,kwargs)
             else:
-                v=_get_value(v)
+                v=get_value(v)
             res.append(v)
         return tuple(res)
     def wrap_annotated(self, func, args="nonrval", rvals="rest", alias=None, argprep=None, rconv=None, byref="all", errcheck=None):
@@ -169,7 +179,7 @@ class CFunctionWrapper(object):
             args: names of Python function arguments; can also be ``"all"`` (all C function arguments in that order), or ``"nonrval"`` (same, but with return value arguments excluded)
                 by default, use ``"nonrval"``
             rvals: names of return value arguments; can include either a C function argument name, or ``None`` (which means the function return value)
-                by default`, it lists all the arguments not included into ``args`` (if ``args=="nonrval"``, assume that there are no rvals)
+                by default, it lists all the arguments not included into ``args`` (if ``args=="nonrval"``, assume that there are no rvals)
             alias: either a list of argument names which replace ``.argnames``, or a dictionary ``{argname: alias}`` which transforms names;
                 all names in all other parameters (``rvals``, ``argprep``, ``rconv``, and ``byref``) take aliased names
             argprep: dictionary ``{name: prep}`` of ways to prepare of C function arguments;
@@ -224,7 +234,14 @@ class CFunctionWrapper(object):
         def wrapped_func(*vargs, **kwargs):
             kwargs.update(dict(zip(args,vargs)))
             func_args=self._prepare_arguments(argnames,prep_argtypes,kwargs,argprep)
-            call_args=[ctypes.byref(a) if n in byref else a for (n,a) in zip(argnames,func_args)]
+            def _to_call_arg(n, t, a):
+                if n in byref:
+                    return self.byref(a)
+                elif t is ctypes.c_voidp:
+                    return ctypes.cast(a,ctypes.c_voidp)
+                else:
+                    return a
+            call_args=[_to_call_arg(n,t,a) if t is ctypes.c_voidp else a for (n,t,a) in zip(argnames,prep_argtypes,func_args)]
             retval=func(*call_args)
             res=self._convert_results(rvals or [None],dict(zip(argnames,func_args)),retval,kwargs,rconv)
             if (not self.tuple_single_retval) and len(res)==0:
@@ -289,7 +306,7 @@ def buffconv(size_arg_pos, dtype):
 
 
 
-class CStructWrapper(object):
+class CStructWrapper:
     """
     Wrapper around a ctypes structure, which allows for easier creation of parsing of these structures.
 
@@ -336,7 +353,7 @@ class CStructWrapper(object):
                 c=self._conv[f]
                 v=c(cv) if hasattr(c,"__call__") else c
             else:
-                v=_get_value(cv)
+                v=get_value(cv)
             setattr(self,f,v)
         self.conv()
     def to_struct(self):

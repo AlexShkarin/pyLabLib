@@ -9,7 +9,6 @@ from ..utils import funcargparse
 
 import numpy as np
 
-_depends_local=[".parse_csv"]
 _module_parameters={"fileio/loadfile/csv/out_type":"pandas"}
 
 

@@ -6,9 +6,6 @@ from PyQt5 import QtCore
 import collections
 
 
-_depends_local=["..core.thread.controller"]
-
-
 
 class ScriptStopException(Exception):
     """Exception for stopping script execution"""

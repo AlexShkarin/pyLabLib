@@ -3,9 +3,6 @@ from ...core.thread import controller
 import threading
 
 
-_depends_local=["...core.thread.controller"]
-
-
 
 class TableAccumulator:
     """

@@ -9,8 +9,6 @@ from . import framestream
 import numpy as np
 import time
 
-_depends_local=["...core.thread.controller"]
-
 ########## Frame processing ##########
 
 class FramePreprocessorThread(controller.QTaskThread):

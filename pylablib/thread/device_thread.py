@@ -4,8 +4,6 @@ from ..core.utils import rpyc_utils, module as module_utils
 import importlib
 
 
-_depends_local=["..core.thread.controller"]
-
 class DeviceThread(controller.QTaskThread):
     """
     Expansion of :class:`.QTaskThread` equipped to deal with a single device.
@@ -118,8 +116,7 @@ class DeviceThread(controller.QTaskThread):
                 module=importlib.import_module(module)
             except ModuleNotFoundError:
                 module=importlib.import_module(module_utils.get_library_name()+".devices."+module)
-            module._rpyc=True
-            return module.__dict__[cls]
+            return getattr(module,cls)
         else:
             self.rpyc_serv=rpyc_utils.connect_device_service(host,port=port)
             if not self.rpyc_serv:
@@ -173,7 +170,7 @@ class DeviceThread(controller.QTaskThread):
 
     def get_settings(self):
         """Get device settings"""
-        return self.rpyc_obtain(self.device.get_settings(variables=self.settings_variables)) if self.device is not None else {}
+        return self.rpyc_obtain(self.device.get_settings(include=self.settings_variables)) if self.device is not None else {}
     
     def setup_full_info_job(self, period=2.):
         """
@@ -193,7 +190,7 @@ class DeviceThread(controller.QTaskThread):
 
         A function for a job which is setup in :meth:`DeviceThread.setup_full_info_job`. Normally doesn't need to be called explicitly.
         """
-        self["full_info"]=self.rpyc_obtain(self.device.get_full_info(variables=self.full_info_variables))
+        self["full_info"]=self.rpyc_obtain(self.device.get_full_info(include=self.full_info_variables))
     def get_full_info(self):
         """
         Get full device info.
@@ -202,7 +199,7 @@ class DeviceThread(controller.QTaskThread):
         otherwise, request a new version from the device.
         """
         if self.device:
-            return self["full_info"] if self._full_info_job else self.rpyc_obtain(self.device.get_full_info(variables=self.full_info_variables))
+            return self["full_info"] if self._full_info_job else self.rpyc_obtain(self.device.get_full_info(include=self.full_info_variables))
         else:
             return {}
     def _device_method(self, name, args, kwargs):

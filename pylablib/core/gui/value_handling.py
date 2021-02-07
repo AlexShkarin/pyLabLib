@@ -8,6 +8,7 @@ from ..utils.functions import FunctionSignature
 from ..thread.controller import gui_thread_method
 
 from PyQt5 import QtCore, QtWidgets
+import collections
 
 
 
@@ -79,13 +80,6 @@ class IValueHandler:
         If ``name`` is not ``None``, it specifies the name of the value parameter inside the widget (for complex widgets).
         """
         raise NotImplementedError("IValueHandler.get_value")
-    def get_all_values(self):
-        """
-        Get all values of the widget.
-
-        Return widget value for simple widgets, or a dictionary of all internal values for complex widgets.
-        """
-        return self.get_value()
     def set_value(self, value, name=None):
         """
         Set widget value.
@@ -93,13 +87,6 @@ class IValueHandler:
         If ``name`` is not ``None``, it specifies the name of the value parameter inside the widget (for complex widgets).
         """
         raise NotImplementedError("IValueHandler.set_value")
-    def set_all_values(self, value):
-        """
-        Set all values of the widget.
-
-        `value` is a target value for simple widgets, or a dictionary of values for complex widgets.
-        """
-        return self.set_value(value)
     def repr_value(self, value, name=None):
         """
         Return textual representation of the value.
@@ -205,7 +192,7 @@ class StandardValueHandler(IValueHandler):
         self.repr_value_kind=get_method_kind(getattr(self.widget,"repr_value",None),add_args=1)
         self.default_name=default_name
     def get_value(self, name=None):
-        if not name:
+        if name is None:
             if self.get_value_kind=="simple":
                 return self.widget.get_value()
             elif self.get_value_kind=="named":
@@ -218,15 +205,8 @@ class StandardValueHandler(IValueHandler):
             elif self.get_all_values_kind=="simple":
                 return self.widget.get_all_values()[name]
         raise ValueError("can't find getter for widget {} with name {}".format(self.widget,name))
-    def get_all_values(self):
-        if self.get_all_values_kind=="simple":
-            return self.widget.get_all_values()
-        elif self.get_value_kind=="simple":
-            return self.widget.get_value()
-        else:
-            return self.widget.get_value(self.default_name)
     def set_value(self, value, name=None):
-        if not name:
+        if name is None:
             if self.set_value_kind=="simple":
                 return self.widget.set_value(value)
             elif self.set_value_kind=="named":
@@ -241,15 +221,8 @@ class StandardValueHandler(IValueHandler):
                     name="/".join(name)
                 return self.widget.set_all_values({name:value})
         raise ValueError("can't find setter for widget {} with name {}".format(self.widget,name))
-    def set_all_values(self, values):
-        if self.set_all_values_kind=="simple":
-            return self.widget.set_all_values(values)
-        elif self.set_value_kind=="simple":
-            return self.widget.set_value(values)
-        else:
-            return self.widget.set_value(self.default_name,values)
     def repr_value(self, value, name=None):
-        if not name:
+        if name is None:
             if self.repr_value_kind=="simple":
                 return self.widget.repr_value(value)
             elif self.repr_value_kind=="named":
@@ -419,7 +392,7 @@ def create_value_handler(widget):
         return CheckboxValueHandler(widget)
     if isinstance(widget,QtWidgets.QPushButton):
         return PushButtonValueHandler(widget)
-    if isinstance(widget,(QtWidgets.QComboBox)):
+    if isinstance(widget,QtWidgets.QComboBox):
         return ComboBoxValueHandler(widget)
     if isinstance(widget,QtWidgets.QProgressBar):
         return ProgressBarValueHandler(widget)
@@ -478,7 +451,7 @@ class StandardIndicatorHandler(IIndicatorHandler):
     def get_value(self, name=None):
         if not (self.get_indicator_kind or self.get_all_indicators_kind):
             raise ValueError("can't find default indicator getter for widget {}".format(self.widget))
-        if not name:
+        if name is None:
             if self.get_indicator_kind=="simple":
                 return self.widget.get_indicator()
             elif self.get_indicator_kind=="named":
@@ -494,7 +467,7 @@ class StandardIndicatorHandler(IIndicatorHandler):
     def set_value(self, value, name=None):
         if not (self.set_indicator_kind or self.set_all_indicators_kind):
             raise ValueError("can't find default indicator setter for widget {}".format(self.widget))
-        if not name:
+        if name is None:
             if self.set_indicator_kind=="simple":
                 return self.widget.set_indicator(value)
             elif self.set_indicator_kind=="named":
@@ -579,9 +552,9 @@ def create_indicator_handler(widget, label=None, require_setter=False):
 
 
 
-class ValuesTable:
+class GUIValues:
     """
-    A table of values which can be used to manipulate many value handlers at once and represent them as a hierarchical structure.
+    A collection of values which can be used to manipulate many value handlers at once and represent them as a hierarchical structure.
 
     Has four container-like accessor:
     ``.h`` for getting/adding/removing the value handler
@@ -631,11 +604,11 @@ class ValuesTable:
     def get_widget(self, name):
         """Get the widget corresponding to the handler under the given name"""
         return self.get_handler(name).widget
-    def add_table(self, name, table, add_indicator=True):
-        """Add a nested :class:`ValuesTable` under a given name"""
-        h=self.add_handler(name,StandardValueHandler(table))
+    def add_nested(self, name, gui_values, add_indicator=True):
+        """Add a nested :class:`GUIValues` under a given name"""
+        h=self.add_handler(name,StandardValueHandler(gui_values))
         if add_indicator:
-            self.add_indicator_handler(name,StandardIndicatorHandler(table))
+            self.add_indicator_handler(name,StandardIndicatorHandler(gui_values))
         return h
     def add_virtual_element(self, name, value=None, multivalued=False, add_indicator=True):
         """
@@ -649,10 +622,10 @@ class ValuesTable:
         if add_indicator:
             self.add_indicator_handler(name,VirtualIndicatorHandler(value))
         return h
-    _default_value_types=(edit.LVTextEdit,edit.LVNumEdit,QtWidgets.QLineEdit,QtWidgets.QCheckBox,QtWidgets.QPushButton,QtWidgets.QComboBox,QtWidgets.QProgressBar)
+    _default_value_types=(edit.TextEdit,edit.NumEdit,QtWidgets.QLineEdit,QtWidgets.QCheckBox,QtWidgets.QPushButton,QtWidgets.QComboBox,QtWidgets.QProgressBar)
     def add_all_children(self, root, root_name=None, types_include=None, types_exclude=(), names_exclude=None):
         """
-        Add a widget and all its children to the table.
+        Add a widget and all its children to the values set.
 
         The result is organized as a tree using parent-child relations (note that it implies that only children widgets correspond to tree nodes,
         i.e., only their values can be get/set).
@@ -660,9 +633,9 @@ class ValuesTable:
         Args:
             root: root widget
             root_name: path to the sub-branch where the values will be placed
-            types_include: if not ``None``, specifies list of widget classes (e.g., ``QCheckBox``) to include in the table
-            types_include: specifies list of widget classes to exclude from the table
-            names_exclude: if not ``None``, specifies list of widget names to exclude from the table
+            types_include: if not ``None``, specifies list of widget classes (e.g., ``QCheckBox``) to include
+            types_include: specifies list of widget classes to exclude
+            names_exclude: if not ``None``, specifies list of widget names to exclude
         """
         name_filt=string.sfregex(exclude=names_exclude)
         def is_excluded(w):
@@ -677,6 +650,7 @@ class ValuesTable:
                 name="/".join([p for p in path if p])
                 self.add_widget(name,widget)
 
+    TIndicatorsSet=collections.namedtuple("TIndicatorsSet",["ind"])
     def add_indicator_handler(self, name, handler, ind_name="__default__"):
         """
         Add indicator handler with a given name.
@@ -684,7 +658,7 @@ class ValuesTable:
         `ind_name` can distinguish different sub-indicators with the same name, if the same value has multiple indicators.
         """
         if handler is not None:
-            self.indicator_handlers[name,ind_name]=handler
+            self.indicator_handlers.setdefault(name,self.TIndicatorsSet({})).ind[ind_name]=handler
             return handler
         return None
     def remove_indicator_handler(self, name, ind_name=None):
@@ -696,8 +670,12 @@ class ValuesTable:
         """
         if ind_name is None:
             del self.indicator_handlers[name]
-        else:
-            del self.indicator_handlers[name,ind_name]
+        elif name in self.indicator_handlers:
+            ind_set=self.indicator_handlers[name].ind
+            if ind_name in ind_set:
+                del ind_set[ind_name]
+                if not ind_set:
+                    del self.indicator_handlers[name]
     def add_widget_indicator(self, name, widget, label=None, ind_name="__default__"):
         """
         Add widget-based indicator with a given name.
@@ -720,122 +698,119 @@ class ValuesTable:
         return self.add_indicator_handler(name,LabelIndicatorHandler(label,formatter=formatter),ind_name=ind_name)
 
     @gui_thread_method
-    def get_value(self, name):
+    def get_value(self, name=None, include=None):
         """
-        Get value under a given name.
+        Get a value or a set of values in a subtree under a given name (all values by default).
 
-        Automatically handles complex widgets and sub-names
-        """
-        path,subpath=self.handlers.get_max_prefix(name,kind="leaf")
-        if path is None:
-            raise KeyError("missing handler {}".format(name))
-        return self.handlers[path].get_value(subpath)
-    @gui_thread_method
-    def get_all_values(self, root="", include=None):
-        """
-        Get all values in a subtree with the given root (all table values by default).
-        
+        Automatically handles complex widgets and sub-names.
+        If `name` refers to a branchm return a :class:`.Dictionary` object containing tree structure of the names.
         If supplied, `include` is a container specifies which specifies names (relative to the root) to include in the result; by default, include everything.
-        Return a :class:`.Dictionary` object containing tree structure of the names.
         """
-        values=dictionary.Dictionary()
-        if root in self.handlers:
-            for n in self.handlers[root].paths():
-                if (include is None) or ("/".join(n) in include):
-                    values[n]=self.handlers[(root,n)].get_all_values()
-        return values
+        name=name or ""
+        path,subpath=self.handlers.get_max_prefix(name,kind="leaf")
+        if path: # path is in handlers and handlers are not empty
+            if include is None or "/".join(path) in include:
+                return self.handlers[path].get_value(subpath or None)
+        elif name in self.handlers:
+            values=dictionary.Dictionary()
+            subtree=self.handlers[name]
+            for n in subtree.paths():
+                if include is None or "/".join(n) in include:
+                    values[n]=subtree[n].get_value()
+            if values:
+                return values
+        raise KeyError("missing handler '{}'".format(name))
+    get_all_values=get_value
     @gui_thread_method
-    def set_value(self, name, value):
+    def set_value(self, name, value, include=None):
         """
         Set value under a given name.
 
         Automatically handles complex widgets and sub-names
         """
+        name=name or ""
         path,subpath=self.handlers.get_max_prefix(name,kind="leaf")
-        if path is None:
-            raise KeyError("missing handler {}".format(name))
-        return self.handlers[path].set_value(value,subpath)
-    @gui_thread_method
-    def set_all_values(self, values, root="", include=None):
-        """
-        Set all values in a subtree with the given root (all table values by default).
-        
-        `values` is a dictionary with values (can only contain some values out of the ones the table).
-        If supplied, `include` is a container specifies which specifies names (relative to the root) to include in the result; by default, include everything.
-        """
-        for n,v in dictionary.as_dictionary(values).iternodes(to_visit="all",topdown=True,include_path=True):
-            if self.handlers.has_entry((root,n),kind="leaf"):
-                if (include is None) or ("/".join(n) in include):
-                    self.handlers[root,n].set_all_values(v)
+        if path: # path is in handlers and handlers are not empty
+            if include is None or "/".join(path) in include:
+                return self.handlers[path].set_value(value,subpath or None)
+        elif name in self.handlers:
+            subtree=self.handlers[name]
+            for n,v in dictionary.as_dictionary(value).iternodes(to_visit="all",topdown=True,include_path=True):
+                if subtree.has_entry(n,kind="leaf"):
+                    if (include is None) or ("/".join(n) in include):
+                        subtree[n].set_value(v)
+            return
+        raise KeyError("missing handler '{}'".format(name))
+    def set_all_values(self, value, root="", include=None):
+        return self.set_value(root,value,include=include)
 
     @gui_thread_method
-    def get_indicator(self, name, ind_name="__default__"):
+    def get_indicator(self, name=None, ind_name="__default__", include=None):
         """
         Get indicator value with a given name.
 
         `ind_name` can distinguish different sub-indicators with the same name, if the same value has multiple indicators.
         """
-        path,subpath=self.indicator_handlers.get_max_prefix(name)
-        epath=path+[ind_name] if (ind_name and path is not None) else path
-        if path is None or (len(subpath)>0 and not self.indicator_handlers.has_entry(epath,kind="leaf")):
-            raise KeyError("missing handler {}".format(name))
-        args=[subpath] if len(subpath) else []
-        return self.indicator_handlers[epath].get_value(*args)
-    @gui_thread_method
-    def get_all_indicators(self, root="", ind_name="__default__", include=None):
-        """
-        Get all indicator values in a subtree with the given root (all table values by default).
-        
-        `ind_name` can distinguish different sub-indicators with the same name, if the same value has multiple indicators.
-        If supplied, `include` is a container specifies which specifies names (relative to the root) to include in the result; by default, include everything.
-        Return a :class:`.Dictionary` object containing tree structure of the names.
-        """
-        values=dictionary.Dictionary()
-        if root in self.handlers:
-            for n in self.handlers[root].paths():
+        name=name or ""
+        path,subpath=self.indicator_handlers.get_max_prefix(name,kind="leaf")
+        if path: # path is in indicator_handlers and indicator_handlers are not empty
+            if include is None or "/".join(path) in include:
+                ind_set=self.indicator_handlers[path].ind
+                if ind_name not in ind_set:
+                    raise KeyError("missing indicator handler '{}' for with sub-name '{}'".format(name,ind_name))
+                return ind_set[ind_name].get_value(subpath or None)
+        elif name in self.indicator_handlers:
+            values=dictionary.Dictionary()
+            subtree=self.indicator_handlers[name]
+            for n in subtree.paths():
                 if (include is None) or ("/".join(n) in include):
-                    try:
-                        values[n]=self.get_indicator(n,ind_name=ind_name)
-                    except (KeyError, ValueError):
-                        pass
-        return values
+                    ind_set=subtree[n].ind
+                    if ind_name in ind_set:
+                        values[n]=ind_set[ind_name].get_value()
+            if values:
+                return values
+        raise KeyError("missing indicator handler '{}'".format(name))
+    get_all_indicators=get_indicator
     @gui_thread_method
-    def set_indicator(self, name, value, ind_name=None):
+    def set_indicator(self, name, value, ind_name=None, include=None):
         """
         Set indicator value with a given name.
 
         `ind_name` can distinguish different sub-indicators with the same name, if the same value has multiple indicators.
         By default, set all sub-indicators to the given value.
         """
-        path,subpath=self.indicator_handlers.get_max_prefix(name)
-        epath=path+[ind_name] if (ind_name and path is not None) else path
-        if path is None:
-            raise KeyError("missing handler {}".format(name))
-        args=[value,subpath] if len(subpath) else [value]
-        if ind_name is None:
-            for i in self.indicator_handlers[path].iternodes():
-                i.set_value(*args)
-        else:
-            return self.indicator_handlers[epath].set_value(*args)
-    @gui_thread_method
-    def set_all_indicators(self, values, root="", include=None):
-        """
-        Set all indicator values in a subtree with the given root (all table values by default).
-        
-        `values` is a dictionary with indicated values (can only contain some values out of the ones the table).
-        If supplied, `include` is a container specifies which specifies names (relative to the root) to include in the result; by default, include everything.
-        """
-        for n,v in dictionary.as_dictionary(values).iternodes(include_path=True):
-            if self.indicator_handlers.has_entry((root,n,"__default__"),kind="leaf"):
-                if (include is None) or ("/".join(n) in include):
-                    try:
-                        self.set_indicator((root,n),v)
-                    except ValueError:
-                        pass
+        name=name or ""
+        path,subpath=self.indicator_handlers.get_max_prefix(name,kind="leaf")
+        if path: # path is in indicator_handlers and indicator_handlers are not empty
+            if include is None or "/".join(path) in include:
+                ind_set=self.indicator_handlers[path].ind
+                if ind_name is None:
+                    for ind in ind_set.values():
+                        ind.set_value(value,subpath or None)
+                    return
+                elif ind_name in ind_set:
+                    return ind_set[ind_name].set_value(value,subpath or None)
+                else:
+                    raise KeyError("missing handler '{}' for indicator with sub-name '{}'".format(name,ind_name))
+        elif name in self.indicator_handlers:
+            subtree=self.indicator_handlers[name]
+            for n,v in dictionary.as_dictionary(value).iternodes(to_visit="all",topdown=True,include_path=True):
+                if subtree.has_entry(n,kind="leaf"):
+                    if (include is None) or ("/".join(n) in include):
+                        ind_set=subtree[n].ind
+                        if ind_name is None:
+                            for ind in ind_set.values():
+                                ind.set_value(v)
+                        elif ind_name in ind_set:
+                            ind_set[ind_name].set_value(v)
+            return
+        raise KeyError("missing handler '{}'".format(name))
+    def set_all_indicators(self, value, root="", ind_name=None, include=None):
+        return self.set_indicator(root,value,ind_name=ind_name,include=include)
     @gui_thread_method
     def update_indicators(self, root="", include=None):
         """
-        Update all indicators in a subtree with the given root (all table values by default) to represent current values.
+        Update all indicators in a subtree with the given root (all values by default) to represent current values.
         
         If supplied, `include` is a container specifies which specifies names (relative to the root) to include in the result; by default, include everything.
         """
@@ -864,12 +839,12 @@ class ValuesTable:
 
 
 
-def create_virtual_table(**kwargs):
+def create_virtual_values(**kwargs):
     """
-    Create a values table with all virtual values.
+    Create a gui values set with all virtual values.
 
     ``kwargs`` define element names and default values.
     """
-    table=ValuesTable()
+    values=GUIValues()
     for k,v in kwargs.items():
-        table.add_virtual_element(k,v)
+        values.add_virtual_element(k,v)

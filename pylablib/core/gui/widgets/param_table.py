@@ -1,4 +1,4 @@
-from . import edit, label as widget_label
+from . import edit, label as widget_label, combo_box, button as widget_button
 from ...thread import threadprop, controller
 from .. import value_handling as value_handling, utils
 from ...utils import py3, dictionary
@@ -31,7 +31,7 @@ class ParamTable(QtWidgets.QWidget):
     automatically creates values table for easy settings/getting.
     By default supports 2-column (label-control) and 3-column (label-control-indicator) layout, depending on the parameters given to :meth:`setupUi`.
 
-    Similar to :class:`.ValuesTable`, has three container-like accessor:
+    Similar to :class:`.GUIValues`, has three container-like accessor:
     ``.h`` for getting the value handler
     (i.e., ``self.get_handler(name)`` is equivalent to ``self.h[name]``),
     ``.w`` for getting the underlying widget
@@ -53,17 +53,17 @@ class ParamTable(QtWidgets.QWidget):
         self.w=dictionary.ItemAccessor(self.get_widget)
         self.v=dictionary.ItemAccessor(self.get_value,self.set_value)
         self.i=dictionary.ItemAccessor(self.get_indicator,self.set_indicator)
-    def setupUi(self, name, add_indicator=True, values_table=None, values_table_root=None, gui_thread_safe=False, cache_values=False, change_focused_control=False):
+    def setupUi(self, name, add_indicator=True, gui_values=None, gui_values_root=None, gui_thread_safe=False, cache_values=False, change_focused_control=False):
         """
         Setup the table.
 
         Args:
             name (str): table widget name
             add_indicator (bool): if ``True``, add indicators for all added widgets by default.
-            values_table (bool): as :class:`.ValuesTable` object used to access table values; by default, create one internally
-            values_table_root (str): if not ``None``, specify root (i.e., path prefix) for values inside the table;
-                if not specified, then there's no additional root for internal table (``values_table is None``),
-                or it is equal to `name` if there is an external table  (``values_table is not None``)
+            gui_values (bool): as :class:`.GUIValues` object used to access table values; by default, create one internally
+            gui_values_root (str): if not ``None``, specify root (i.e., path prefix) for values inside the table;
+                if not specified, then there's no additional root for internal table (``gui_values is None``),
+                or it is equal to `name` if there is an external table  (``gui_values is not None``)
             gui_thread_safe (bool): if ``True``, all value-access and indicator-access calls
                 (``get/set_value``, ``get/set_all_values``, ``get/set_indicator``, and ``update_indicators``) are automatically called in the GUI thread.
             cache_values (bool): if ``True`` or ``"update_one"``, store a dictionary with all the current values and update it every time a GUI value is changed;
@@ -81,12 +81,12 @@ class ParamTable(QtWidgets.QWidget):
         self.formLayout.setContentsMargins(5,5,5,5)
         self.formLayout.setObjectName(_fromUtf8(self.name+"_formLayout"))
         self.add_indicator=add_indicator
-        if values_table is None:
-            self.values_table=value_handling.ValuesTable()
-            self.values_table_root=""
+        if gui_values is None:
+            self.gui_values=value_handling.GUIValues()
+            self.gui_values_root=""
         else:
-            self.values_table=values_table
-            self.values_table_root=values_table_root if values_table_root is not None else self.name
+            self.gui_values=gui_values
+            self.gui_values_root=gui_values_root if gui_values_root is not None else self.name
         self.gui_thread_safe=gui_thread_safe
         self.change_focused_control=change_focused_control
         self.cache_values=cache_values
@@ -115,10 +115,10 @@ class ParamTable(QtWidgets.QWidget):
     ParamRow=collections.namedtuple("ParamRow",["widget","label","indicator","value_handler","indicator_handler"])
     def _add_widget(self, name, params, add_change_event=True):
         self.params[name]=params
-        path=(self.values_table_root,name)
-        self.values_table.add_handler(path,params.value_handler)
+        path=(self.gui_values_root,name)
+        self.gui_values.add_handler(path,params.value_handler)
         if params.indicator_handler:
-            self.values_table.add_indicator_handler(path,params.indicator_handler)
+            self.gui_values.add_indicator_handler(path,params.indicator_handler)
         if add_change_event:
             params.value_handler.connect_value_changed_handler(lambda value: self.value_changed.emit(name,value),only_signal=True)
         if self.cache_values:
@@ -212,26 +212,44 @@ class ParamTable(QtWidgets.QWidget):
             add_indicator=self.add_indicator
         indicator_handler=value_handling.VirtualIndicatorHandler if add_indicator else None
         self._add_widget(name,self.ParamRow(None,None,None,value_handler,indicator_handler))
-    def add_button(self, name, caption, checkable=False, value=False, label=None, add_indicator=None, location=(None,0), add_change_event=True, virtual=False):
+    def add_button(self, name, caption, label=None, add_indicator=None, location=(None,0), add_change_event=True, virtual=False):
         """
         Add a button to the table.
 
         Args:
             name (str): widget name (used to reference its value in the values table)
             caption (str): text on the button
-            checkable (bool): determines whether the button is checkable (has on/off state) or simple press button
-            value (bool): if checkable, specifies initial value
+            virtual (bool): if ``True``, the widget is not added, and a virtual handler is added instead
+
+        Rest of the arguments and the return value are the same as :meth:`add_simple_widget`.
+        """
+        if virtual:
+            return self.add_virtual_element(name,add_indicator=add_indicator)
+        widget=QtWidgets.QPushButton(self)
+        widget.setText(_translate(self.name,caption,None))
+        widget.setObjectName(_fromUtf8(self.name+"_"+name))
+        return self.add_simple_widget(name,widget,label=label,add_indicator=add_indicator,location=location,add_change_event=add_change_event)
+    def add_toggle_button(self, name, caption, value=False, label=None, add_indicator=None, location=(None,0), add_change_event=True, virtual=False):
+        """
+        Add a toggle button to the table.
+
+        Args:
+            name (str): widget name (used to reference its value in the values table)
+            caption (str or list): text on the button; can be a single string, or a list of two strings which specifies the captiona for off and on states
+            value (bool): specifies initial value
             virtual (bool): if ``True``, the widget is not added, and a virtual handler is added instead
 
         Rest of the arguments and the return value are the same as :meth:`add_simple_widget`.
         """
         if virtual:
             return self.add_virtual_element(name,value=value,add_indicator=add_indicator)
-        widget=QtWidgets.QPushButton(self)
-        widget.setText(_translate(self.name,caption,None))
+        widget=widget_button.ToggleButton(self)
+        if isinstance(caption,(tuple,list)):
+            widget.set_value_labels([_translate(self.name,c,None) for c in caption])
+        else:
+            widget.setText(_translate(self.name,caption,None))
         widget.setObjectName(_fromUtf8(self.name+"_"+name))
-        widget.setCheckable(checkable)
-        widget.setChecked(value)
+        widget.set_value(value)
         return self.add_simple_widget(name,widget,label=label,add_indicator=add_indicator,location=location,add_change_event=add_change_event)
     def add_check_box(self, name, caption, value=False, label=None, add_indicator=None, location=(None,0), add_change_event=True, virtual=False):
         """
@@ -285,7 +303,7 @@ class ParamTable(QtWidgets.QWidget):
         """
         if virtual:
             return self.add_virtual_element(name,value=value)
-        widget=widget_label.LVNumLabel(self,value=value,limiter=limiter,formatter=formatter)
+        widget=widget_label.NumLabel(self,value=value,limiter=limiter,formatter=formatter)
         widget.setObjectName(_fromUtf8(self.name+"_"+name))
         return self.add_simple_widget(name,widget,label=label,add_indicator=False,location=location,add_change_event=add_change_event)
     def add_text_edit(self, name, value=None, label=None, add_indicator=None, location=(None,0), add_change_event=True, virtual=False):
@@ -301,7 +319,7 @@ class ParamTable(QtWidgets.QWidget):
         """
         if virtual:
             return self.add_virtual_element(name,value=value,add_indicator=add_indicator)
-        widget=edit.LVTextEdit(self,value=value)
+        widget=edit.TextEdit(self,value=value)
         widget.setObjectName(_fromUtf8(self.name+"_"+name))
         return self.add_simple_widget(name,widget,label=label,add_indicator=add_indicator,location=location,add_change_event=add_change_event)
     def add_num_edit(self, name, value=None, limiter=None, formatter=None, custom_steps=None, label=None, add_indicator=None, location=(None,0), add_change_event=True, virtual=False):
@@ -312,9 +330,9 @@ class ParamTable(QtWidgets.QWidget):
             name (str): widget name (used to reference its value in the values table)
             value (bool): specifies initial value
             limiter (tuple): tuple ``(upper_limit, lower_limit, action, value_type)`` specifying value limits;
-                see :func:`.LVNumEdit.set_limiter` for details
+                see :func:`.NumEdit.set_limiter` for details
             formatter (tuple): either ``"int"`` (for integer values), or tuple specifying floating value format;
-                see :func:`.LVNumEdit.set_formatter` for details
+                see :func:`.NumEdit.set_formatter` for details
             custom_steps: if not ``None``, can specify custom fixed value steps when up/down keys are pressed with a modifier key (Control, Alt, or Shift)
                 specifies a dictionary ``{'ctrl':ctrl_step, 'alt':alt_step, 'shift':shift_step}`` with the corresponding steps (missing elements mean that the modifier key is ignored)
             virtual (bool): if ``True``, the widget is not added, and a virtual handler is added instead
@@ -323,7 +341,7 @@ class ParamTable(QtWidgets.QWidget):
         """
         if virtual:
             return self.add_virtual_element(name,value=value,add_indicator=add_indicator)
-        widget=edit.LVNumEdit(self,value=value,limiter=limiter,formatter=formatter,custom_steps=custom_steps)
+        widget=edit.NumEdit(self,value=value,limiter=limiter,formatter=formatter,custom_steps=custom_steps)
         widget.setObjectName(_fromUtf8(self.name+"_"+name))
         return self.add_simple_widget(name,widget,label=label,add_indicator=add_indicator,location=location,add_change_event=add_change_event)
     def add_progress_bar(self, name, value=None, label=None, add_change_event=True, virtual=False):
@@ -344,7 +362,7 @@ class ParamTable(QtWidgets.QWidget):
         if value is not None:
             widget.setValue(value)
         return self.add_simple_widget(name,widget,label=label,add_change_event=add_change_event)
-    def add_combo_box(self, name, value=None, options=None, label=None, add_indicator=None, add_change_event=True, virtual=False):
+    def add_combo_box(self, name, value=None, options=None, index_values=None, label=None, add_indicator=None, add_change_event=True, virtual=False):
         """
         Add a combo box to the table.
 
@@ -352,16 +370,20 @@ class ParamTable(QtWidgets.QWidget):
             name (str): widget name (used to reference its value in the values table)
             value (bool): specifies initial value
             options (list): list of string specifying box options
+            index_values (list): list of values correpsonding to box options; if supplies, these number are used when setting/getting values or sending singals.
             virtual (bool): if ``True``, the widget is not added, and a virtual handler is added instead
             
         Rest of the arguments and the return value are the same as :meth:`add_simple_widget`.
         """
         if virtual:
             return self.add_virtual_element(name,value=value,add_indicator=add_indicator)
-        widget=QtWidgets.QComboBox(self)
+        # widget=QtWidgets.QComboBox(self)
+        widget=combo_box.ComboBox(self)
         widget.setObjectName(_fromUtf8(self.name+"_"+name))
         if options:
             widget.addItems(options)
+            if index_values is not None:
+                widget.set_index_values(index_values)
             if value is not None:
                 widget.setCurrentIndex(value)
         return self.add_simple_widget(name,widget,label=label,add_indicator=add_indicator,add_change_event=add_change_event)
@@ -418,9 +440,10 @@ class ParamTable(QtWidgets.QWidget):
                 par.indicator.setVisible(visible)
 
     @controller.gui_thread_method
-    def get_value(self, name):
+    def get_value(self, name=None):
         """Get value of a widget with the given name"""
-        return self.values_table.get_value((self.values_table_root,name))
+        return self.gui_values.get_value((self.gui_values_root,name or ""),include=self.params)
+    get_all_values=get_value
     @controller.gui_thread_method
     def set_value(self, name, value, force=False):
         """
@@ -430,15 +453,14 @@ class ParamTable(QtWidgets.QWidget):
         """
         par=self.params[name]
         if force or par.value_handler.is_set_allowed(allow_focus=self.change_focused_control):
-            return self.values_table.set_value((self.values_table_root,name),value)
+            return self.gui_values.set_value((self.gui_values_root,name),value)
     @controller.gui_thread_method
-    def get_all_values(self):
-        """Get values of all widgets in the table"""
-        return self.values_table.get_all_values(root=self.values_table_root,include=self.params)
-    @controller.gui_thread_method
-    def set_all_values(self, values):
+    def set_all_values(self, value, force=False):
         """Set values of all widgets in the table"""
-        return self.values_table.set_all_values(values,root=self.values_table_root,include=self.params)
+        for n,v in dictionary.as_dictionary(value).iternodes(to_visit="all",topdown=True,include_path=True):
+            path="/".join(n)
+            if path in self.params:
+                self.set_value(path,v,force=force)
 
     def get_handler(self, name):
         """Get value handler of a widget with the given name"""
@@ -451,21 +473,18 @@ class ParamTable(QtWidgets.QWidget):
         return self.params[name].value_handler.value_changed()
 
     @controller.gui_thread_method
-    def get_indicator(self, name):
+    def get_indicator(self, name=None):
         """Get indicator value for a widget with the given name"""
-        return self.values_table.get_indicator((self.values_table_root,name))
+        return self.gui_values.get_indicator((self.gui_values_root,name or ""),include=self.params)
+    get_all_indicators=get_indicator
     @controller.gui_thread_method
     def set_indicator(self, name, value):
         """Set indicator value for a widget with the given name"""
-        return self.values_table.set_indicator((self.values_table_root,name),value)
-    @controller.gui_thread_method
-    def get_all_indicators(self):
-        """Get all indicator values"""
-        return self.values_table.get_all_indicators(root=self.values_table_root)
+        return self.gui_values.set_indicator((self.gui_values_root,name or ""),value,include=self.params)
     @controller.gui_thread_method
     def update_indicators(self):
-        """Update all indicators (set their value """
-        return self.values_table.update_indicators(root=self.values_table_root,include=self.params)
+        """Update all indicators to represent current values"""
+        return self.gui_values.update_indicators(root=self.gui_values_root,include=self.params)
 
     def clear(self, disconnect=False):
         """
@@ -480,9 +499,9 @@ class ParamTable(QtWidgets.QWidget):
                 except TypeError: # no signals connected
                     pass
             for name in self.params:
-                path=(self.values_table_root,name)
-                self.values_table.remove_handler(path)
-                self.values_table.remove_indicator_handler(path)
+                path=(self.gui_values_root,name)
+                self.gui_values.remove_handler(path)
+                self.gui_values.remove_indicator_handler(path)
             self.params={}
             utils.clean_layout(self.formLayout,delete_layout=True)
             self.formLayout = QtWidgets.QGridLayout(self)

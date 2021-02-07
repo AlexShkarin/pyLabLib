@@ -8,8 +8,6 @@ import time
 import contextlib
 import warnings
 
-_depends_local=[".comm_backend"]
-
 
 class SCPIDevice(comm_backend.ICommBackendWrapper):
     """
@@ -37,7 +35,8 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
     _default_retry_times=5 # maximal number of operation attempts
     _default_operation_timeout=3. # timeout for an operator in the standard (non-failsafe) mode
     _default_wait_sync_timeout=600. # timeout for "sync" wait operation (waiting for the device operation to complete); an operation can be long (e.g., a single frequency sweep), thus the long timeout
-    _default_operation_cooldown=0.02 # operation cooldown (see backend description)
+    _default_operation_cooldown={"default":0} # operation cooldown (see description of ``setup_cooldown`` method in :class:`IDeviceCommBackend`)
+    _default_write_sync=False # default setting for ``wait_sync`` in ``write`` method
     _default_wait_callback_timeout=.3 # callback call period during wait operations (keeps the thread from complete halting)
     _default_failsafe=False # running in the failsafe mode by default
     _allow_concatenate_write=False # allow automatic concatenation of several write operations (see :meth:`using_write_buffer`)
@@ -59,7 +58,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
         self._wait_callback=wait_callback
         self._wait_callback_timeout=self._default_wait_callback_timeout
         instr=comm_backend.new_backend(conn,backend=backend,term_write=term_write,term_read=term_read,timeout=self._backend_timeout,**(backend_params or {}))
-        instr._operation_cooldown=self._default_operation_cooldown
+        instr.setup_cooldown(**self._default_operation_cooldown)
         comm_backend.ICommBackendWrapper.__init__(self,instr)
         self.conn=conn
         self.backend_params=backend_params or {}
@@ -75,8 +74,11 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
             self._add_info_variable("scpi_id",self.get_id)
     
     
-    def _instr_read(self, raw=False):
-        data=self.instr.readline(remove_term=not raw)
+    def _instr_read(self, raw=False, size=None):
+        if size is not None:
+            data=self.instr.read(size)
+        else:
+            data=self.instr.readline(remove_term=not raw)
         return data
     def _instr_write(self, msg):
         return self.instr.write(msg)
@@ -147,7 +149,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
     def sleep(self, delay):
         """Wait for `delay` seconds."""
         if delay is not None and delay>0:
-            time.sleep(delay)    
+            time.sleep(delay)
     
     @contextlib.contextmanager
     def using_write_buffer(self):
@@ -180,7 +182,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
         except self.instr.Error:
             if not silent:
                 raise
-    def _read_one_try(self, raw=False, timeout=None, wait_callback=None):
+    def _read_one_try(self, raw=False, size=None, timeout=None, wait_callback=None):
         timeout=self._operation_timeout if timeout is None else timeout
         if wait_callback is not None:
             backend_timeout=self._wait_callback_timeout
@@ -190,19 +192,19 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
         with self.instr.using_timeout(backend_timeout):
             for t in general_utils.RetryOnException(exceptions=self.instr.Error):
                 with t:
-                    return self._instr_read(raw=raw)
+                    return self._instr_read(raw=raw,size=size)
                 if wait_callback is not None:
                     wait_callback()
                 if (time.time()>start_time+timeout) or (not self._failsafe and wait_callback is None):
                     t.reraise()
-    def _read_retry(self, raw=False, timeout=None, wait_callback=None, retry=None):
+    def _read_retry(self, raw=False, size=None, timeout=None, wait_callback=None, retry=None):
         self._write_retry(flush=True)
         retry=(timeout is None) if (retry is None) else retry
         locking_timeout=self._operation_timeout if timeout is None else timeout
         for t in general_utils.RetryOnException(self._retry_times,exceptions=self.instr.Error):
             with t:
                 with self.instr.locking(timeout=locking_timeout):
-                    return self._read_one_try(raw,timeout=timeout,wait_callback=wait_callback)
+                    return self._read_one_try(raw=raw,size=size,timeout=timeout,wait_callback=wait_callback)
             if not retry:
                 t.reraise()
             error_msg="read raises IOError; waiting {0} sec before trying to recover".format(self._retry_delay)
@@ -228,7 +230,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
                 # log.default_log.info(error_msg,origin="devices/SCPI",level="warning")
                 self.sleep(self._retry_delay)
                 self._try_recover(t.try_number)
-    def _ask_retry(self, msg, delay=0., raw=False, timeout=None, wait_callback=None, retry=None):
+    def _ask_retry(self, msg, delay=0., raw=False, size=None, timeout=None, wait_callback=None, retry=None):
         self._write_retry(flush=True)
         retry=(timeout is None) if (retry is None) else retry
         locking_timeout=self._operation_timeout if timeout is None else timeout
@@ -237,7 +239,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
                 with self.instr.locking(timeout=locking_timeout):
                     self._instr_write(msg)
                     self.sleep(delay)
-                    return self._read_one_try(raw,timeout=timeout,wait_callback=wait_callback)
+                    return self._read_one_try(raw=raw,size=size,timeout=timeout,wait_callback=wait_callback)
             if not retry:
                 t.reraise()
             error_msg="ask raises IOError; waiting {0} sec before trying to recover".format(self._retry_delay)
@@ -247,7 +249,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
             self._try_recover(t.try_number)
                 
     
-    _id_comm="*IDN?" 
+    _id_comm="*IDN?"
     def get_id(self, timeout=None):
         """Get the device IDN. (query SCPI ``'*IDN?'`` command)."""
         return self.ask(self._id_comm,timeout=timeout) if self._id_comm else None
@@ -259,14 +261,18 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
     def get_esr(self, timeout=None):
         """Get the device status register (by default, ``"*ESR?"`` command)"""
         return self.ask(self._esr_comm,"int",timeout=timeout)
-    def _is_command_valid(self, comm, cached=True):
+    _cls_comm="*CLS"
+    def _is_command_valid(self, comm, cached=True, clear_status=True):
         """
         Check if the command or the query is valid.
 
         Send the command, ignore the output, and then check the status bit 5 (command parsing error).
         If ``cached==True``, only check the validity once, and then just use this value in all further attempts.
+        If ``clear_status==True``, clear status register before hand (if it's not cleared, the message queue can overflow, yielding false positives)
         """
         if (not cached) or (comm not in self._command_validity_cache):
+            if clear_status:
+                self.write(self._cls_comm)
             self.write(comm)
             self.flush()
             result=not bool(self.get_esr()&0x20)
@@ -292,7 +298,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
         """
         Pause execution of the device commands until device overlapped commands (e.g., taking sweeps) are complete.
 
-        Not that the code execution is not paused.
+        Note that the code execution is not paused.
         """
         self.write(self._wait_dev_comm)
     def wait(self, wait_type="sync", timeout=None, wait_callback=None):
@@ -310,6 +316,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
     
     @staticmethod
     def get_arg_type(arg):
+        """Autodetect argument type"""
         if isinstance(arg,bool):
             return "bool"
         if isinstance(arg,int):
@@ -318,30 +325,39 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
             return "float"
         if isinstance(arg,textstring):
             return "string"
+        if isinstance(arg,(tuple,list)):
+            return [SCPIDevice.get_arg_type(v) for v in arg]
         raise ValueError("can't determine type for argument {0}".format(arg))
-    _float_fmt="E"
-    def _compose_msg(self, msg, arg=None, arg_type=None, unit=None, fmt=None, bool_selector=("OFF","ON")):
-        if arg is not None:
-            if fmt is not None:
-                val=("{"+fmt+"}").format(arg)
+    _float_fmt="{:E}"
+    _bool_selector=(0,1)
+    def _convert_arg(self, arg, arg_type, bool_selector=None):
+        if arg_type is None:
+            arg_type=self.get_arg_type(arg)
+        if arg_type in ["s","string","r","raw"]:
+            return arg
+        elif arg_type in ["i","int"]:
+            return "{:d}".format(int(arg))
+        elif arg_type in ["f","float"]:
+            return self._float_fmt.format(float(arg))
+        elif arg_type in ["b","bool"]:
+            bool_selector=bool_selector or self._bool_selector
+            return "{}".format(bool_selector[1] if arg else bool_selector[0])
+        elif isinstance(arg_type,(list,tuple)):
+            return ",".join([self._convert_arg(a,t,bool_selector=bool_selector) for (a,t) in zip(arg,arg_type)])
+        elif arg_type.find(":")>=0:
+            if isinstance(arg,(list,tuple)):
+                return arg_type.format(*arg)
             else:
-                if arg_type is None:
-                    arg_type=self.get_arg_type(arg)
-                if arg_type=="string" or arg_type=="raw":
-                    val=arg
-                elif arg_type=="int":
-                    val="{:d}".format(int(arg))
-                elif arg_type=="float":
-                    val=("{:"+self._float_fmt+"}").format(float(arg))
-                elif arg_type=="bool":
-                    val="{}".format(bool_selector[1] if arg else bool_selector[0])
-                else:
-                    raise ValueError("unrecognized arg_type: {0}".format(arg_type))
-            msg=msg+" "+val
+                return arg_type.format(arg)
+        else:
+            raise ValueError("unrecognized arg_type: {0}".format(arg_type))
+    def _compose_msg(self, msg, arg=None, arg_type=None, unit=None, bool_selector=None):
+        if arg is not None:
+            msg=msg+" "+self._convert_arg(arg,arg_type,bool_selector=bool_selector)
             if unit is not None:
                 msg=msg+" "+unit
         return msg
-    def write(self, msg, arg=None, arg_type=None, unit=None, fmt=None, bool_selector=("OFF","ON"), read_echo=False, read_echo_delay=0.):
+    def write(self, msg, arg=None, arg_type=None, unit=None, bool_selector=None, wait_sync=None, read_echo=False, read_echo_delay=0.):
         """
         Send a command.
         
@@ -349,14 +365,25 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
             msg (str): Text message.
             arg: Optional argument to append in the end.
             arg_type (str): Argument type. Can be ``'raw'`` (in which case data is sent raw), ``'string'``, ``'int'``, ``'float'``,
-                ``'bool'`` or ``'value'``.
-            unit (str): If ``arg_type=='value'``, use it as a unit to append after the value.
-            fmt (str): If not ``None``, is a :meth:`str.format` string to convert arg.
-            bool_selector (tuple): A tuple ``(false_value, true_value)`` of two strings to represent bool argument.
+                ``'bool'``, a format string (such as ``'{:.3f}'``) or a list of argument types (for an iterable argument);
+                if format string is used and the argument is a list or a tuple, then it is expanded as a list of arguments
+                (e.g., ``arg_type='{0};{1}'`` with ``arg=[1,2]`` will produce a string ``'1;2'``);
+                if a list of types is used, each element of `arg` is converted using the corresponding type, and the result is joined with commas.
+            unit (str): If not ``None``, use it as a unit to append after the value.
+            bool_selector (tuple): A tuple ``(false_value, true_value)`` of two strings to represent bool argument;
+                by default, use ``._bool_selector`` attribute.
+            wait_sync: if ``True``, append the sync command (specified as ``._wait_sync_comm`` attribute, ``"*OPC?"`` by default)
+                after the message and pause the execution command is complete;
+                useful in long set operations, where the device might ignore later inputs until the current command is complete;
+                if ``None``, use the class default ``._default_write_sync`` attribute (``False`` by default).
             read_echo (bool): If ``True``, read a single line after write.
             read_echo_delay (float): The delay between write and read if ``read_echo==True``.
         """
-        msg=self._compose_msg(msg,arg,arg_type,unit,fmt,bool_selector)
+        msg=self._compose_msg(msg,arg,arg_type,unit,bool_selector)
+        if wait_sync is None:
+            wait_sync=self._default_write_sync
+        if wait_sync:
+            msg=msg+";"+self._wait_sync_comm
         self._write_retry(msg)
         if read_echo:
             try:
@@ -364,18 +391,26 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
                 self._read_one_try()
             except self.instr.Error:
                 pass
+        if wait_sync:
+            sync_msg=self.read()
+            if sync_msg!="1":
+                raise RuntimeError("unexpected reply to '{}' command: '{}'".format(self._wait_sync_comm,sync_msg))
     def _parse_msg(self, msg, data_type="string"):
-        if data_type=="raw":
+        if data_type in ["r","raw"]:
             return msg
-        msg=as_str(msg)
-        msg=msg.strip()
-        if data_type=="string":
+        msg=as_str(msg).strip()
+        if isinstance(data_type,list):
+            split_msg=[m.strip() for m in msg.split(",")]
+            if len(split_msg)!=len(data_type):
+                raise ValueError("message '{}' length {} is different from the format length {}".format(msg,len(split_msg),len(data_type)))
+            return [self._parse_msg(v,dt) for v,dt in zip(split_msg,data_type)]
+        if data_type in ["s","string"]:
             return msg
-        elif data_type=="int":
+        elif data_type in ["i","int"]:
             return int(float(msg))
-        elif data_type=="float":
+        elif data_type in ["f","float"]:
             return float(msg)
-        elif data_type=="value":
+        elif data_type in ["v","value"]:
             msg=msg.split()
             if len(msg)==1:
                 return float(msg[0]),None
@@ -383,13 +418,20 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
                 return float(msg[0]),msg[1]
             else:
                 raise ValueError("empty response")
-        elif data_type=="bool":
+        elif data_type in ["b","bool"]:
             msg=msg.lower()
             msg=msg.split()[-1]
             try:
                 return bool(int(msg))
             except ValueError:
                 return msg!="off"
+        elif isinstance(data_type,dict):
+            if msg in data_type:
+                return data_type(msg)
+            else:
+                return data_type[int(float(msg))]
+        elif hasattr(data_type,"__call__"):
+            return data_type(msg)
         else:
             raise ValueError("unrecognized data_type: {0}".format(data_type))
     def read(self, data_type="string", timeout=None):
@@ -397,8 +439,11 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
         Read data from the device.
         
         `data_type` determines the type of the data. Can be ``'raw'`` (just raw data), ``'string'`` (with trailing and leading spaces stripped),
-        ``'int'``, ``'float'``, ``'bool'`` (interprets ``0`` or ``'off'`` as ``False``, anything else as ``True``), or
-        ``'value'`` (returns tuple ``(value, unit)``, where `value` is float).
+        ``'int'``, ``'float'``, ``'bool'`` (interprets ``0`` or ``'off'`` as ``False``, anything else as ``True``),
+        ``'value'`` (returns tuple ``(value, unit)``, where `value` is float),
+        a callable (return the result of this callable applied to the string value),
+        a dictionary (return the stored value corresponding to the string value, or to the value converted into integer if the string value is not present),
+        or a list of data types (the result is treated as a list of values with the given types separated by commas).
         `timeout` overrides the default value.
         """
         msg=self._read_retry(raw=(data_type=="raw"),timeout=timeout)
@@ -440,25 +485,51 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
                     return l
         except self.instr.Error:
             return l
-    
+
+    def read_binary_array_data(self, include_header=False, timeout=None, flush_term=True):
+        """
+        Read a binary data in the from the device.
+
+        The data assumes the standard binary transfer header consisting of
+        ``"#"`` symbol, then a single digit with the size of the length string, then the length string containing the length of the binary data (in bytes).
+        If ``include_header==True``, return the data with the header; otherwise, return only the content.
+        If ``flush_term==True``, flush the following line to skip terminator characters after the binary data, which are added by some devices.
+        `timeout` overrides the default value.
+        """
+        data=b""
+        header=b""
+        header+=self._read_retry(raw=True,size=2,timeout=timeout)
+        if header[:1]!=b"#":
+            raise ValueError("malformed data")
+        len_size=int(header[1:2])
+        header+=self._read_retry(raw=True,size=len_size,timeout=timeout)
+        length=int(header[2:])
+        data=self._read_retry(raw=True,size=length,timeout=timeout)
+        if flush_term:
+            self.flush(one_line=True)
+        return (header+data) if include_header else data
     @staticmethod
-    def parse_array_data(data, fmt):
+    def parse_array_data(data, fmt, include_header=False):
         """
         Parse the data returned by the device. `fmt` is :class:`.DataFormat` description in numpy format (e.g., ``"<u2"``).
         
-        The data is assumed to be in a (somewhat) standard SCPI format:
+        If ``include_header==True``, the data is assumed to be in a (somewhat) standard SCPI format:
         ``b'#'``, then a single digit ``s`` denoting length of the size block,
         then ``s`` digits denoting length of the data (in bytes) followed by the actual data.
+        Otherwise (``include_header==False``), assume that the header is already removed.
         """
         fmt=data_format.DataFormat.from_desc(fmt)
-        if data[:1]!=b"#": # range access to accommodate for bytes type in Py3
-            if not fmt.is_ascii():
-                raise ValueError("malformed data")
-            length=None
+        if include_header:
+            if data[:1]!=b"#": # range access to accommodate for bytes type in Py3
+                if not fmt.is_ascii():
+                    raise ValueError("malformed data")
+                length=None
+            else:
+                len_size=int(data[1:2]) # range access to accommodate for bytes type in Py3
+                length=int(data[2:2+len_size])
+                data=data[2+len_size:]
         else:
-            len_size=int(data[1:2]) # range access to accommodate for bytes type in Py3
-            length=int(data[2:2+len_size])
-            data=data[2+len_size:]
+            length=len(data)
         if length is not None and len(data)!=length:
             if len(data)>length and data[length:]==b"\n"*(len(data)-length):
                 data=data[:length]

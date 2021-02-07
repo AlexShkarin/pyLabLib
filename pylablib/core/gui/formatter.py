@@ -177,7 +177,7 @@ class FloatFormatter:
             else:
                 dig="{{:.{:d}G}}".format(self.digits).format(abs(value))
         elif self.output_format=="sci":
-            if self.add_trailing_zeros:                
+            if self.add_trailing_zeros:
                 dig="{{:.0{:d}E}}".format(self.digits).format(abs(value))
             else:
                 dig="{{:.{:d}E}}".format(self.digits).format(abs(value))

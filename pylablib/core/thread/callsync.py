@@ -6,8 +6,6 @@ import threading
 import time
 import collections
 
-_depends_local=[".synchronizing"]
-
 class QCallResultSynchronizer(QThreadNotifier):
     def get_progress(self):
         """

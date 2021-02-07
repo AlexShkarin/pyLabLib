@@ -5,8 +5,6 @@ import numpy as np
 import collections
 from future.utils import viewitems
 
-_depends_local=["...core.thread.controller"]
-
 
 
 

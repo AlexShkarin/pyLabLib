@@ -7,9 +7,6 @@ from . import general
 import collections
 
 
-_depends_local=[".general"]
-
-
 
 class ObserverPool:
     """

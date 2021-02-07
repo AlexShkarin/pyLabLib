@@ -9,8 +9,6 @@ import contextlib
 import time
 import sys, traceback
 import heapq
-    
-_depends_local=[".announcement_pool",".synchronizing",".callsync","...core.utils.functions"]
 
 _default_announcement_pool=apool.AnnouncementPool()
 

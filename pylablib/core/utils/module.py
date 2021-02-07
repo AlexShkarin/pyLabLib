@@ -11,6 +11,7 @@ import pkg_resources
 import sys
 import subprocess
 import os
+import inspect
 
 from . import general, files as file_utils
 
@@ -86,6 +87,25 @@ def get_loaded_package_modules(pkg_name):
     """
     prefix=pkg_name+"."
     return dict([(name,module) for name,module in sys.modules.items() if (name.startswith(prefix) or name==pkg_name) and module is not None])
+def get_imported_modules(module, explicit=False):
+    """
+    Get modules imported within a given module.
+
+    If ``explicit==True``, take into account only toplevel objects which are modules (corresponds to ``import module`` or ``from package import module`` statements)
+    If ``explicit==False``, also include all modules containing toplevel objects (corresponds to ``from module import Class`` or ``from package import function`` statements).
+    Return a dictionary ``{name: module}`` (modules with the same name are considered to be the same).
+    """
+    imported={}
+    for n in module.__dict__:
+        v=getattr(module,n,None)
+        if v is not None:
+            if inspect.ismodule(v):
+                imported[v.__name__]=v
+            elif not explicit:
+                cm=inspect.getmodule(v)
+                if cm is not None and cm is not module:
+                    imported[cm.__name__]=cm
+    return imported
 
 def get_reload_order(modules):
     """
@@ -93,20 +113,16 @@ def get_reload_order(modules):
     
     `modules` is a dict ``{name: module}``.
     
-    The module dependencies (i.e., the modules which the current module depends on) are described in the variable ``_depends_local`` defined at its toplevel
-    (missing variable means no dependencies).
+    The module dependencies (i.e., the modules which the current module depends on) are determined based on imported modules and modules containing toplevel module objects.
     """
     deps={}
     for name,module in modules.items():
-        try:
-            deps[name]=[expand_relative_path(name,dep) for dep in module._depends_local]
-        except AttributeError:
-            pass
+        deps[name]=deps.get(name,set())|{m for m in get_imported_modules(module) if m in modules}
         for ch_name in modules:
             if ch_name.startswith(name+"."):
-                deps.setdefault(name,[]).append(ch_name)
+                deps.setdefault(name,set()).add(ch_name)
     for name in deps:
-        deps[name]=list(set(deps[name]))
+        deps[name]=set(deps[name])
     order=general.topological_order(deps)
     order=[name for name in modules if not name in order]+order
     return order

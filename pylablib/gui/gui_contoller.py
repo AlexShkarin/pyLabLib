@@ -14,7 +14,7 @@ class IGUIController(QtCore.QObject):
         self.widgets_desc={}
         self.widgets={}
         self.ctl=controller.get_gui_controller()
-        self.values_table=value_handling.ValuesTable()
+        self.gui_values=value_handling.GUIValues()
 
     TWidget=collections.namedtuple("TWidget",["params_path"])
     def add_widget_desc(self, name, params_path=None):
@@ -34,7 +34,7 @@ class IGUIController(QtCore.QObject):
         self.widgets[name]=widget
         desc=self.widgets_desc.setdefault(name,self.TWidget(None))
         if desc.params_path is not None:
-            self.values_table.add_widget(desc.params_path,widget)
+            self.gui_values.add_widget(desc.params_path,widget)
     def get_widget(self, name, default=None):
         """
         Get the widget with the given name
@@ -46,10 +46,10 @@ class IGUIController(QtCore.QObject):
     
     def get_all_values(self):
         """Get all widget parameter values"""
-        return self.values_table.get_all_values()
+        return self.gui_values.get_all_values()
     def set_all_values(self, values):
         """Set all widget parameter values"""
-        return self.values_table.set_all_values(values)
+        return self.gui_values.set_all_values(values)
     def get_all_indicators(self):
         """Get all GUI indicators as a dictionary"""
-        return self.values_table.get_all_indicators()
+        return self.gui_values.get_all_indicators()

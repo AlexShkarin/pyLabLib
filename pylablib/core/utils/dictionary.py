@@ -11,8 +11,6 @@ import collections
 import json
 import pandas as pd
 
-_depends_local=["..utils.strdump"]
-
 def split_path(path, omit_empty=True, sep=None):
     """
     Split generic path into individual path entries.
@@ -320,6 +318,12 @@ class Dictionary:
             return (kind=="all") or (kind=="branch" and self._is_branch(v)) or (kind=="leaf" and not self._is_branch(v))
         except KeyError:
             return False
+    def is_leaf_path(self, path):
+        """Determine if the path is in the dictionary and points to a leaf"""
+        return self.has_entry(path,kind="leaf")
+    def is_branch_path(self, path):
+        """Determine if the path is in the dictionary and points to a branch"""
+        return self.has_entry(path,kind="branch")
     def get_max_prefix(self, path, kind="all"):
         """
         Find the longest prefix of `path` contained in the dictionary.

@@ -82,6 +82,23 @@ class FunctionSignature(object):
         if self.obj is not None:
             wrapped=MethodType(wrapped,self.obj)
         return wrapped
+    def as_kwargs(self, args, kwargs):
+        """
+        Turn ``args`` and ``kwargs`` into a single ``kwargs`` dictionary using the names of positional arguments.
+        
+        If the function takes ``*args`` argument and some of the supplied arguments go there, place them into a list under ``"*"`` key in the result
+        """
+        args_dict=dict(zip(self.arg_names,args))
+        if len(args)>len(self.arg_names):
+            if self.varg_name is None:
+                raise ValueError("supplied more positional arguments than the function can take")
+            else:
+                args_dict["*"]=args[len(self.arg_names):]
+        for n in args_dict:
+            if n in kwargs:
+                raise ValueError("argument {} is supplied twice".format(n))
+        args_dict.update(kwargs)
+        return args_dict
     
     def mandatory_args_num(self):
         """
@@ -132,7 +149,7 @@ class FunctionSignature(object):
                 defaults.update(args.kwonlydefaults)
             kwonly_arg_names=args.kwonlyargs
             kwargs=args.varkw
-        except AttributeError:
+        except AttributeError: # Python 2 (use getargspec instead of getfullargspec)
             try:
                 args=inspect.getargspec(ifunc)
             except TypeError:

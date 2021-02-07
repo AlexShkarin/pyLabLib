@@ -11,12 +11,10 @@ import re
 import contextlib
 import warnings
 
-_depends_local=[".interface"]
-
 
 ### Generic backend interface ###
 
-class IDeviceCommBackend(object):
+class IDeviceCommBackend:
     """
     An abstract class for a device communication backend.
     
@@ -31,15 +29,16 @@ class IDeviceCommBackend(object):
             or ``"auto"`` (default Python result: ``str`` in Python 2 and ``bytes`` in Python 3)
     """
     Error=RuntimeError
-    """Base class for the errors raised by the backend operations""" 
+    """Base class for the errors raised by the backend operations"""
     
+    _default_operation_cooldown={"default":0.}
     def __init__(self, conn, timeout=None, term_write=None, term_read=None, datatype="auto"):
-        object.__init__(self)
         funcargparse.check_parameter_range(datatype,"datatype",{"auto","str","bytes"})
         self.datatype=datatype
         self.conn=conn
         self.term_write=term_write
         self.term_read=term_read
+        self._operation_cooldown=dict(self._default_operation_cooldown)
 
     _conn_params=["addr"]
     _default_conn=[None]
@@ -90,9 +89,30 @@ class IDeviceCommBackend(object):
         """Context manager for lock & unlock"""
         yield
     
-    def cooldown(self):
-        """Cooldown between the operations (usually, some short time delay)"""
-        pass
+    def setup_cooldown(self, **kwargs):
+        """
+        Setup cooldown times for various operations.
+
+        The arguments are of the form ``kind=value``, where ``value`` is the cooldown time (in seconds),
+        and ``kind`` is the operation kind (common kinds are ``open``, ``close``, ``read``, ``write``, ``timeout``, and ``flush``).
+        ``kind`` can also be ``default`` (default value for all kind), or ``all`` (reset all cooldown values to this value).
+        The cooldowns of the given kinds are usually called after the corresponding operation (it is necessary for some devices, otherwise the communication can freeze or crush).
+        Default cooldown values are specified by ``_default_operation_cooldown`` class attribute dictionary.
+        """
+        if "all" in kwargs:
+            self._operation_cooldown={"default":kwargs.pop("all")}
+        self._operation_cooldown.update(kwargs)
+    def cooldown(self, kind="default"):
+        """
+        Cooldown between the operations.
+        
+        ``kind`` specifies the operation kind (common kinds are ``open``, ``close``, ``read``, ``write``, ``timeout``, and ``flush``);
+        ``"default"`` corresponds to the default cooldown (usually, specified as 0).
+        Called automatically by various backend operations, so usually there is no need to call explicitly.
+        """
+        cooldown=self._operation_cooldown.get(kind,self._operation_cooldown.get("default",0))
+        if cooldown>0:
+            time.sleep(cooldown)
     
     def set_timeout(self, timeout):
         """Set operations timeout (in seconds)"""
@@ -105,7 +125,7 @@ class IDeviceCommBackend(object):
     def using_timeout(self, timeout=None):
         """Context manager for usage of a different timeout inside a block"""
         if timeout is not None:
-            to=self.get_timeout()
+            to=self.get_timeout() # pylint: disable=assignment-from-none
             if to!=timeout:
                 self.set_timeout(timeout)
         try:
@@ -226,7 +246,6 @@ try:
             datatype (str): Type of the returned data; can be ``"bytes"`` (return `bytes` object), ``"str"`` (return `str` object),
                 or ``"auto"`` (default Python result: `str` in Python 2 and `bytes` in Python 3)
         """
-        _default_operation_cooldown=0.03
         _backend="visa"
         Error=visa.VisaIOError
         """Base class for the errors raised by the backend operations"""
@@ -239,18 +258,18 @@ try:
                 return self.instr.timeout
             def _open_resource(self, conn):
                 if not self.term_write.endswith(self.term_read):
-                    raise NotImplementedError("PyVisa version <1.6 doesn't support different terminators for reading and writing")
-                instr=visa.instrument(conn)
+                    raise NotImplementedError("PyVisa version <1.6 doesn't support different terminators for reading and writing; update to a newer version by running 'pip install --upgrade pyvisa'")
+                instr=visa.instrument(conn) # pylint: disable=no-member
                 instr.term_chars=self.term_read
                 self.term_write=self.term_write[:len(self.term_write)-len(self.term_read)]
                 return instr
             _lock_default=False
             def _lock(self, timeout=None):
-                raise NotImplementedError("PyVisa version <1.6 doesn't support locking")
+                raise NotImplementedError("PyVisa version <1.6 doesn't support locking; update to a newer version by running 'pip install --upgrade pyvisa'")
             def _unlock(self):
-                raise NotImplementedError("PyVisa version <1.6 doesn't support locking")
+                raise NotImplementedError("PyVisa version <1.6 doesn't support locking; update to a newer version by running 'pip install --upgrade pyvisa'")
             def _lock_context(self, timeout=None):
-                raise NotImplementedError("PyVisa version <1.6 doesn't support locking")
+                raise NotImplementedError("PyVisa version <1.6 doesn't support locking; update to a newer version by running 'pip install --upgrade pyvisa'")
             def _read_term(self):
                 return py3.as_builtin_bytes(self.instr.term_chars)
         else:
@@ -264,7 +283,7 @@ try:
                 instr.write_termination=self.term_write
                 self.term_read=self.term_write=""
                 return instr
-            _lock_default=False ## TODO: figure out GPIB locking issue 
+            _lock_default=False ## TODO: figure out GPIB locking issue
             def _lock(self, timeout=None):
                 self.instr.lock(timeout=timeout*1000. if timeout is not None else None)
             def _unlock(self):
@@ -276,7 +295,31 @@ try:
             @staticmethod
             def list_resources(desc=False):
                 return visa.ResourceManager().list_resources_info() if desc else visa.ResourceManager().list_resources()
-            
+        if module.cmp_versions(visa.__version__,"1.9")=="<": # older pyvisa versions have a slightly different interface
+            def _read_raw(self, size=None):
+                chunk_size=self.instr.chunk_size
+                data=bytearray()
+                with self.instr.ignore_warning(visa.constants.VI_SUCCESS_DEV_NPRESENT,visa.constants.VI_SUCCESS_MAX_CNT):
+                    while len(data)<size:
+                        to_read=min(chunk_size,size-len(data))
+                        chunk=self.instr.visalib.read(to_read)
+                        data.extend(chunk)
+                return bytes(data)
+        else:
+            def _read_raw(self, size):
+                return self.instr.read_bytes(size)
+        def _read_all(self):
+            data=bytearray()
+            with self.using_timeout(1E-3):
+                while True:
+                    try:
+                        chunk=self.instr.read_raw()
+                        data.extend(chunk)
+                    except visa.VisaIOError as err:
+                        if err.abbreviation=="VI_ERROR_TMO":
+                            return bytes(data)
+                        else:
+                            raise
         
         def __init__(self, conn, timeout=10., term_write=None, term_read=None, do_lock=None, datatype="auto"):
             if term_write is None:
@@ -287,9 +330,8 @@ try:
             try:
                 self.instr=self._open_resource(self.conn)
                 self.opened=True
-                self._operation_cooldown=self._default_operation_cooldown
                 self._do_lock=do_lock if do_lock is not None else self._lock_default
-                self.cooldown()
+                self.cooldown("open")
                 self.set_timeout(timeout)
             except self.Error as e:
                 raise VisaBackendOpenError(e)
@@ -298,12 +340,12 @@ try:
             """Open the connection"""
             self.instr.open()
             self.opened=True
-            self.cooldown()
+            self.cooldown("open")
         def close(self):
             """Close the connection"""
             self.instr.close()
             self.opened=False
-            self.cooldown()
+            self.cooldown("close")
         def is_opened(self):
             return self.opened
 
@@ -322,24 +364,14 @@ try:
             else:
                 return general.DummyResource()
         
-        def cooldown(self):
-            """
-            Cooldown between the operations.
-            
-            Sleeping for a short time defined by `_operation_cooldown` attribute (30 ms by default).
-            Also can be defined class-wide by `_default_operation_cooldown` class attribute.
-            """
-            if self._operation_cooldown>0:
-                time.sleep(self._operation_cooldown)
-        
         def set_timeout(self, timeout):
             """Set operations timeout (in seconds)"""
             if timeout is not None:
                 self._set_timeout(timeout)
-                self.cooldown()
+                self.cooldown("timeout")
         def get_timeout(self):
             """Get operations timeout (in seconds)"""
-            return self._get_timeout()            
+            return self._get_timeout()
         
         def readline(self, remove_term=True, timeout=None, skip_empty=True):
             """
@@ -359,7 +391,7 @@ try:
                             result=result[:-len(term)]
                     if (not skip_empty) or result:
                         break
-            self.cooldown()
+            self.cooldown("read")
             return self._to_datatype(result)
         def read(self, size=None):
             """
@@ -367,11 +399,8 @@ try:
             
             If `size` is not None, read `size` bytes (the standard timeout applies); otherwise, read all available data (return immediately).
             """
-            if size is None:
-                with self.using_timeout(0):
-                    return self.instr.read_raw(size=size)
-            result=self.instr.read_raw(size=size)
-            self.cooldown()
+            result=self._read_all() if size is None else self._read_raw(size=size)
+            self.cooldown("read")
             return self._to_datatype(result)
         
         def write(self, data, flush=True, read_echo=False, read_echo_delay=0, read_echo_lines=1):
@@ -385,13 +414,12 @@ try:
             if self.term_write:
                 data=data+py3.as_builtin_bytes(self.term_write)
             self.instr.write_raw(data)
-            self.cooldown()
+            self.cooldown("write")
             if read_echo_delay>0.:
                 time.sleep(read_echo_delay)
             if read_echo:
                 for _ in range(read_echo_lines):
                     self.readline()
-                    self.cooldown()
 
         def __repr__(self):
             return "VisaDeviceBackend("+self.instr.__repr__()+")"
@@ -427,18 +455,17 @@ try:
             conn: Connection parameters. Can be either a string (for a port),
                 or a list/tuple ``(port, baudrate, bytesize, parity, stopbits, xonxoff, rtscts, dsrdtr)`` supplied to the serial connection
                 (default is ``('COM1',19200,8,'N',1,0,0,0)``),
-                or a dict with the same parameters. 
+                or a dict with the same parameters.
             timeout (float): Default timeout (in seconds).
             term_write (str): Line terminator for writing operations; appended to the data
             term_read (str): List of possible single-char terminator for reading operations (specifies when :func:`readline` stops).
             connect_on_operation (bool): If ``True``, the connection is normally closed, and is opened only on the operations
-                (normally two processes can't be simultaneously connected to the same device). 
+                (normally two processes can't be simultaneously connected to the same device).
             open_retry_times (int): Number of times the connection is attempted before giving up.
             no_dtr (bool): If ``True``, turn off DTR status line before opening (e.g., turns off reset-on-connection for Arduino controllers).
             datatype (str): Type of the returned data; can be ``"bytes"`` (return `bytes` object), ``"str"`` (return `str` object),
                 or ``"auto"`` (default Python result: `str` in Python 2 and `bytes` in Python 3)
         """
-        _default_operation_cooldown=0.0
         _backend="serial"
         Error=serial.SerialException
         """Base class for the errors raised by the backend operations"""
@@ -467,11 +494,10 @@ try:
                         warnings.warn("Cannot set DTR for an unconnected device")
                 if not connect_on_operation:
                     self.instr.open()
-                self._operation_cooldown=self._default_operation_cooldown
                 self._connect_on_operation=connect_on_operation
                 self._opened_stack=0
                 self._open_retry_times=open_retry_times
-                self.cooldown()
+                self.cooldown("open")
                 self.set_timeout(timeout)
             except self.Error as e:
                 raise SerialBackendOpenError(e)
@@ -518,21 +544,11 @@ try:
                 self._op_close()
             
         
-        def cooldown(self):
-            """
-            Cooldown between the operations.
-            
-            Sleeping for a short time defined by `_operation_cooldown` attribute (no cooldown by default).
-            Also defined class-wide by `_default_operation_cooldown` class attribute.
-            """
-            if self._operation_cooldown>0:
-                time.sleep(self._operation_cooldown)
-            
         def set_timeout(self, timeout):
             """Set operations timeout (in seconds)"""
             if timeout is not None:
                 self.instr.timeout=timeout
-                self.cooldown()
+                self.cooldown("timeout")
         def get_timeout(self):
             """Get operations timeout (in seconds)"""
             return self.instr.timeout
@@ -570,7 +586,7 @@ try:
             """
             while True:
                 result=self._read_terms(self.term_read or [],timeout=timeout,error_on_timeout=error_on_timeout)
-                self.cooldown()
+                self.cooldown("read")
                 if remove_term and self.term_read:
                     result=remove_longest_term(result,self.term_read)
                 if not (skip_empty and remove_term and (not result)):
@@ -589,7 +605,7 @@ try:
                     result=self.instr.read(size=size)
                     if len(result)!=size:
                         raise self.Error("read returned less than expected: {} instead of {}".format(len(result),size))
-                self.cooldown()
+                self.cooldown("read")
                 return self._to_datatype(result)
         def read_multichar_term(self, term, remove_term=True, timeout=None, error_on_timeout=True):
             """
@@ -604,7 +620,7 @@ try:
             if isinstance(term,py3.anystring):
                 term=[term]
             result=self._read_terms(term,timeout=timeout,error_on_timeout=error_on_timeout)
-            self.cooldown()
+            self.cooldown("read")
             if remove_term and term:
                 result=remove_longest_term(result,term)
             return self._to_datatype(result)
@@ -620,16 +636,15 @@ try:
                 if self.term_write:
                     data=data+py3.as_builtin_bytes(self.term_write)
                 self.instr.write(data)
-                self.cooldown()
+                self.cooldown("write")
                 if flush:
                     self.instr.flush()
-                    self.cooldown()
+                    self.cooldown("flush")
                 if read_echo_delay>0.:
                     time.sleep(read_echo_delay)
                 if read_echo:
                     for _ in range(read_echo_lines):
                         self.readline()
-                        self.cooldown()
 
         def __repr__(self):
             return "SerialDeviceBackend("+self.instr.__repr__()+")"
@@ -670,18 +685,17 @@ try:
             conn: Connection parameters. Can be either a string (for a port),
                 or a list/tuple ``(port, baudrate, bytesize, parity, stopbits, xonxoff, rtscts, dsrdtr)`` supplied to the serial connection
                 (default is ``('COM1',19200,8,'N',1,0,0,0)``),
-                or a dict with the same parameters. 
+                or a dict with the same parameters.
             timeout (float): Default timeout (in seconds).
             term_write (str): Line terminator for writing operations; appended to the data
             term_read (str): List of possible single-char terminator for reading operations (specifies when :func:`readline` stops).
             connect_on_operation (bool): If ``True``, the connection is normally closed, and is opened only on the operations
-                (normally two processes can't be simultaneously connected to the same device). 
+                (normally two processes can't be simultaneously connected to the same device).
             open_retry_times (int): Number of times the connection is attempted before giving up.
             no_dtr (bool): If ``True``, turn off DTR status line before opening (e.g., turns off reset-on-connection for Arduino controllers).
             datatype (str): Type of the returned data; can be ``"bytes"`` (return `bytes` object), ``"str"`` (return `str` object),
                 or ``"auto"`` (default Python result: `str` in Python 2 and `bytes` in Python 3)
         """
-        _default_operation_cooldown=0.0
         _backend="ft232"
         Error=ft232.Ft232Exception
         """Base class for the errors raised by the backend operations"""
@@ -698,15 +712,16 @@ try:
                 term_read=b"\n"
             if isinstance(term_read,py3.anystring):
                 term_read=[term_read]
+            conn_dict=conn_dict.copy()
+            conn_dict["port"]=str(conn_dict["port"])
             IDeviceCommBackend.__init__(self,conn_dict.copy(),term_write=term_write,term_read=term_read,datatype=datatype)
             port=conn_dict.pop("port")
             self.opened=False
             try:
                 self.instr=ft232.Ft232(port,**conn_dict)
                 self.opened=True
-                self._operation_cooldown=self._default_operation_cooldown
                 self._open_retry_times=open_retry_times
-                self.cooldown()
+                self.cooldown("open")
                 self.set_timeout(timeout)
                 self._conn_params=(port,conn_dict,timeout)
             except self.Error as e:
@@ -742,23 +757,13 @@ try:
             yield
             
         
-        def cooldown(self):
-            """
-            Cooldown between the operations.
-            
-            Sleeping for a short time defined by `_operation_cooldown` attribute (no cooldown by default).
-            Also defined class-wide by `_default_operation_cooldown` class attribute.
-            """
-            if self._operation_cooldown>0:
-                time.sleep(self._operation_cooldown)
-            
         def set_timeout(self, timeout):
             """Set operations timeout (in seconds)"""
             if timeout is not None:
                 if timeout<1E-3:
                     timeout=1E-3 # 0 is infinite timeout
                 self.instr.timeout=timeout
-                self.cooldown()
+                self.cooldown("timeout")
         def get_timeout(self):
             """Get operations timeout (in seconds)"""
             return self.instr.timeout
@@ -796,7 +801,7 @@ try:
             """
             while True:
                 result=self._read_terms(self.term_read or [],timeout=timeout,error_on_timeout=error_on_timeout)
-                self.cooldown()
+                self.cooldown("read")
                 if remove_term and self.term_read:
                     result=remove_longest_term(result,self.term_read)
                 if not (skip_empty and remove_term and (not result)):
@@ -815,7 +820,7 @@ try:
                     result=self.instr.read(size=size)
                     if len(result)!=size:
                         raise self.Error(4)
-                self.cooldown()
+                self.cooldown("read")
                 return self._to_datatype(result)
         def read_multichar_term(self, term, remove_term=True, timeout=None, error_on_timeout=True):
             """
@@ -830,7 +835,7 @@ try:
             if isinstance(term,py3.anystring):
                 term=[term]
             result=self._read_terms(term,timeout=timeout,error_on_timeout=error_on_timeout)
-            self.cooldown()
+            self.cooldown("read")
             if remove_term and term:
                 result=remove_longest_term(result,term)
             return self._to_datatype(result)
@@ -846,23 +851,30 @@ try:
                 if self.term_write:
                     data=data+py3.as_builtin_bytes(self.term_write)
                 self.instr.write(data)
-                self.cooldown()
+                self.cooldown("write")
                 if flush:
                     self.instr.flush()
-                    self.cooldown()
+                    self.cooldown("flush")
                 if read_echo_delay>0.:
                     time.sleep(read_echo_delay)
                 if read_echo:
                     for _ in range(read_echo_lines):
                         self.readline()
-                        self.cooldown()
 
         def __repr__(self):
             return "FT232DeviceBackend("+self.instr.__repr__()+")"
 
         @staticmethod
+        def _as_str(v):
+            if isinstance(v,py3.anystring):
+                return py3.as_str(v)
+            if isinstance(v,(tuple,list)):
+                return type(v)([FT232DeviceBackend._as_str(e) for e in v])
+            return s
+        @staticmethod
         def list_resources(desc=False):
-            return [d if desc else d[0] for d in ft232.list_devices()]
+            devices=[FT232DeviceBackend._as_str(d) for d in ft232.list_devices()]
+            return [d if desc else d[0] for d in devices]
         
         
     _backends["ft232"]=FT232DeviceBackend
@@ -896,7 +908,6 @@ class NetworkDeviceBackend(IDeviceCommBackend):
         instead of being a multi-char terminator it is assumed to be a set of single-char terminators.
         If multi-char terminator is required, `term_read` should be a single-element list instead of a string.
     """
-    _default_operation_cooldown=0.0
     _backend="network"
     Error=net.socket.error
     """Base class for the errors raised by the backend operations"""
@@ -915,8 +926,7 @@ class NetworkDeviceBackend(IDeviceCommBackend):
         try:
             self.socket=None
             self.open()
-            self._operation_cooldown=self._default_operation_cooldown
-            self.cooldown()
+            self.cooldown("open")
             self.set_timeout(timeout)
         except self.Error as e:
             raise NetworkBackendOpenError(e)
@@ -944,16 +954,6 @@ class NetworkDeviceBackend(IDeviceCommBackend):
     def is_opened(self):
         return bool(self.socket)
         
-    def cooldown(self):
-        """
-        Cooldown between the operations.
-        
-        Sleeping for a short time defined by `_operation_cooldown` attribute (no cooldown by default).
-        Also defined class-wide by `_default_operation_cooldown` class attribute.
-        """
-        if self._operation_cooldown>0:
-            time.sleep(self._operation_cooldown)
-        
     def set_timeout(self, timeout):
         """Set operations timeout (in seconds)"""
         self.socket.set_timeout(timeout)
@@ -979,7 +979,7 @@ class NetworkDeviceBackend(IDeviceCommBackend):
             except net.SocketTimeout:
                 if error_on_timeout:
                     raise
-            self.cooldown()
+            self.cooldown("read")
             if remove_term and self.term_read:
                 result=remove_longest_term(result,self.term_read)
             if not (skip_empty and remove_term and (not result)):
@@ -999,6 +999,7 @@ class NetworkDeviceBackend(IDeviceCommBackend):
             except net.SocketTimeout:
                 if error_on_timeout:
                     raise
+        self.cooldown("read")
         return self._to_datatype(data)
     def read_multichar_term(self, term, remove_term=True, timeout=None, error_on_timeout=True):
         """
@@ -1011,9 +1012,9 @@ class NetworkDeviceBackend(IDeviceCommBackend):
             error_on_timeout (bool): If ``False``, return an incomplete line instead of raising the error on timeout.
         """
         if isinstance(term,py3.anystring):
-                term=[term]
+            term=[term]
         result=self.socket.recv_delimiter(term,strict=True)
-        self.cooldown()
+        self.cooldown("read")
         if remove_term and term:
             result=remove_longest_term(result,term)
         return self._to_datatype(result)
@@ -1025,13 +1026,12 @@ class NetworkDeviceBackend(IDeviceCommBackend):
         `flush` parameter is ignored.
         """
         self.socket.send_delimiter(data,self.term_write)
-        self.cooldown()
+        self.cooldown("write")
         if read_echo_delay>0.:
             time.sleep(read_echo_delay)
         if read_echo:
             for _ in range(read_echo_lines):
                 self.readline()
-                self.cooldown()
 
     def __repr__(self):
         return "NetworkDeviceBackend("+self.socket.__repr__()+")"
@@ -1064,7 +1064,7 @@ try:
             conn: Connection parameters. Can be either a string (for a port),
                 or a list/tuple ``(vendorID, productID, index, endpoint_read, endpoint_write, backend)`` supplied to the connection
                 (default is ``(0x0000,0x0000,0,0x00,0x01,'libusb0')``, which is invalid for most devices),
-                or a dict with the same parameters. 
+                or a dict with the same parameters.
                 ``vendorID`` and ``productID`` specify device kind, ``index`` is an integer index (starting from zero) of the device
                 among several identical (i.e., with the same ids) ones, and ``endpoint_read`` and ``endpoint_write`` specify connection endpoints for the specific device.
             timeout (float): Default timeout (in seconds).
@@ -1073,7 +1073,6 @@ try:
             datatype (str): Type of the returned data; can be ``"bytes"`` (return `bytes` object), ``"str"`` (return `str` object),
                 or ``"auto"`` (default Python result: `str` in Python 2 and `bytes` in Python 3)
         """
-        _default_operation_cooldown=0.0
         _backend="pyusb"
         Error=usb.USBError
         """Base class for the errors raised by the backend operations"""
@@ -1088,7 +1087,6 @@ try:
             funcargparse.check_parameter_range(conn_dict["backend"],"usb_backend",self._usb_backends)
             if isinstance(term_read,py3.anystring):
                 term_read=[term_read]
-            self._operation_cooldown=self._default_operation_cooldown
             IDeviceCommBackend.__init__(self,conn_dict.copy(),term_write=term_write,term_read=term_read,datatype=datatype)
             self.timeout=timeout
             self.check_read_size=check_read_size
@@ -1096,6 +1094,7 @@ try:
                 self.open()
             except self.Error as e:
                 raise PyUSBBackendOpenError(e)
+            self.cooldown("open")
             
         def open(self):
             """Open the connection"""
@@ -1107,7 +1106,7 @@ try:
             self.instr=all_devs[idx]
             self.ep_read=self.conn["endpoint_read"]
             self.ep_write=self.conn["endpoint_write"]
-            self.cooldown()
+            self.cooldown("open")
             self.opened=True
         def close(self):
             """Close the connection"""
@@ -1117,16 +1116,6 @@ try:
             return self.opened
             
         
-        def cooldown(self):
-            """
-            Cooldown between the operations.
-            
-            Sleeping for a short time defined by `_operation_cooldown` attribute (no cooldown by default).
-            Also defined class-wide by `_default_operation_cooldown` class attribute.
-            """
-            if self._operation_cooldown>0:
-                time.sleep(self._operation_cooldown)
-            
         def set_timeout(self, timeout):
             """Set operations timeout (in seconds)"""
             if timeout is not None:
@@ -1170,7 +1159,7 @@ try:
             """
             while True:
                 result=self._read_terms(self.term_read or [],timeout=timeout,error_on_timeout=error_on_timeout)
-                self.cooldown()
+                self.cooldown("read")
                 if remove_term and self.term_read:
                     result=remove_longest_term(result,self.term_read)
                 if not (skip_empty and remove_term and (not result)):
@@ -1188,7 +1177,7 @@ try:
                 result=self.instr.read(self.ep_read,size,timeout=self._timeout()).tobytes()
                 if len(result)!=size and self.check_read_size:
                     raise self.Error("read returned less than expected {} instead of {}".format(len(result),size))
-            self.cooldown()
+            self.cooldown("read")
             return self._to_datatype(result)
         def read_multichar_term(self, term, remove_term=True, timeout=None, error_on_timeout=True):
             """
@@ -1203,7 +1192,7 @@ try:
             if isinstance(term,py3.anystring):
                 term=[term]
             result=self._read_terms(term,timeout=timeout,error_on_timeout=error_on_timeout)
-            self.cooldown()
+            self.cooldown("read")
             if remove_term and term:
                 result=remove_longest_term(result,term)
             return self._to_datatype(result)
@@ -1217,13 +1206,12 @@ try:
             if self.term_write:
                 data=data+py3.as_builtin_bytes(self.term_write)
             self.instr.write(self.ep_write,data,timeout=self._timeout())
-            self.cooldown()
+            self.cooldown("write")
             if read_echo:
                 if read_echo_delay>0.:
                     time.sleep(read_echo_delay)
                 for _ in range(read_echo_lines):
                     self.readline()
-                    self.cooldown()
 
         def __repr__(self):
             return "PyUSBDeviceBackend("+self.instr.__repr__()+")"
@@ -1257,25 +1245,29 @@ def _is_serial_addr(addr):
 _network_re=re.compile(r"(\d+\.){3}\d+(:\d+)?",re.IGNORECASE)
 def _is_network_addr(addr):
     return isinstance(addr,py3.anystring) and bool(_network_re.match(addr))
-def autodetect_backend(conn):
+def autodetect_backend(conn, default="visa"):
     """
     Try to determine the backend by the connection.
 
-    The assumed default backend is ``'visa'``.
+    `default` specifies the default backend which is returned if the backend is unclear.
     """
     if isinstance(conn, (tuple,list)):
+        if len(conn)>=2 and isinstance(conn[0],int) and (0<=conn[0]<65536) and isinstance(conn[1],int) and (0<=conn[1]<65536): # PID / VID
+            return "pyusb"
         conn=conn[0]
     elif isinstance(conn, dict):
         if "addr" in conn and _is_network_addr(conn["addr"]):
             return "network"
         if "port" in conn and _is_serial_addr(conn["port"]):
             return "serial"
-        return "visa"
+        if "vendorID" in conn and "productID" in conn:
+            return "pyusb"
+        return default
     if _is_network_addr(conn):
         return "network"
     if _is_serial_addr(conn):
         return "serial"
-    return "visa"
+    return default
 def new_backend(conn, timeout=None, backend="auto", **kwargs):
     """
     Build new backend with the supplied parameters.
@@ -1307,7 +1299,7 @@ def backend_error(backend, conn=None):
 
 
 
-### Interface for a generic device class ###
+### Interface for a generic device class employing a coomunication backend ###
 
 class ICommBackendWrapper(interface.IDevice):
     """

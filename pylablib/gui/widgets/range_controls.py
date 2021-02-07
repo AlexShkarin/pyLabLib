@@ -1,6 +1,6 @@
 from PyQt5 import QtCore, QtWidgets
 
-from ...core.gui.widgets.edit import LVNumEdit
+from ...core.gui.widgets.edit import NumEdit
 from ...core.utils.numerical import limit_to_range
 
 import collections
@@ -25,7 +25,7 @@ class RangeCtl(QtWidgets.QWidget):
         value_changed: emitted when the value is changed
     """
     def __init__(self, parent=None):
-        super(RangeCtl, self).__init__(parent)
+        QtWidgets.QWidget.__init__(self,parent)
 
     def setupUi(self, name, lim=(None,None), order=True, formatter="float", labels=("Min","Max","Center","Span","Step"), elements=("minmax","cspan","step")):
         """
@@ -56,10 +56,10 @@ class RangeCtl(QtWidgets.QWidget):
             self.labelMax.setObjectName("labelMax")
             self.labelMax.setText(labels[1])
             self.gridLayout.addWidget(self.labelMax, row, 2, 1, 1)
-            self.e_min=LVNumEdit(self)
+            self.e_min=NumEdit(self)
             self.e_min.setObjectName("e_min")
             self.gridLayout.addWidget(self.e_min, row, 1, 1, 1)
-            self.e_max=LVNumEdit(self)
+            self.e_max=NumEdit(self)
             self.e_max.setObjectName("e_max")
             self.gridLayout.addWidget(self.e_max, row, 3, 1, 1)
             self.e_min.value_changed.connect(self._minmax_changed)
@@ -77,10 +77,10 @@ class RangeCtl(QtWidgets.QWidget):
             self.labelSpan.setObjectName("labelSpan")
             self.labelSpan.setText(labels[3])
             self.gridLayout.addWidget(self.labelSpan, row, 2, 1, 1)
-            self.e_cent=LVNumEdit(self)
+            self.e_cent=NumEdit(self)
             self.e_cent.setObjectName("e_cent")
             self.gridLayout.addWidget(self.e_cent, row, 1, 1, 1)
-            self.e_span=LVNumEdit(self)
+            self.e_span=NumEdit(self)
             self.e_span.setObjectName("e_span")
             self.gridLayout.addWidget(self.e_span, row, 3, 1, 1)
             self.e_cent.value_changed.connect(self._cspan_changed)
@@ -94,7 +94,7 @@ class RangeCtl(QtWidgets.QWidget):
             self.labelStep.setObjectName("labelStep")
             self.labelStep.setText(labels[4])
             self.gridLayout.addWidget(self.labelStep, row, 0, 1, 1)
-            self.e_step=LVNumEdit(self)
+            self.e_step=NumEdit(self)
             self.e_step.setObjectName("e_step")
             self.gridLayout.addWidget(self.e_step, row, 1, 1, 1)
             self.e_step.value_changed.connect(self._step_changed)
@@ -258,16 +258,16 @@ class ROICtl(QtWidgets.QWidget):
         self.labelY.setObjectName("labelY")
         self.labelY.setText(labels[1])
         self.gridLayout.addWidget(self.labelY, 2, 0, 1, 1)
-        self.x_min=LVNumEdit(self)
+        self.x_min=NumEdit(self)
         self.x_min.setObjectName("x_min")
         self.gridLayout.addWidget(self.x_min, 1, 1, 1, 1)
-        self.x_max=LVNumEdit(self)
+        self.x_max=NumEdit(self)
         self.x_max.setObjectName("x_max")
         self.gridLayout.addWidget(self.x_max, 1, 2, 1, 1)
-        self.y_min=LVNumEdit(self)
+        self.y_min=NumEdit(self)
         self.y_min.setObjectName("y_min")
         self.gridLayout.addWidget(self.y_min, 2, 1, 1, 1)
-        self.y_max=LVNumEdit(self)
+        self.y_max=NumEdit(self)
         self.y_max.setObjectName("y_max")
         self.gridLayout.addWidget(self.y_max, 2, 2, 1, 1)
         self.gridLayout.setContentsMargins(0,0,0,0)
@@ -375,14 +375,8 @@ class BinROICtl(ROICtl):
     """
     AxisParams=collections.namedtuple("AxisParams",["min","max","bin"])
     def __init__(self, parent=None):
-        QtWidgets.QWidget.__init__(self,parent)
-        self.xparams=self.AxisParams(0,1,1)
-        self.yparams=self.AxisParams(0,1,1)
-        self.validate=None
-        self.xlim=(0,None)
-        self.ylim=(0,None)
+        ROICtl.__init__(self,parent)
         self.maxbin=None
-        self.minsize=0
 
     def _limit_range(self, rng, lim, maxbin, minsize, maxsize):
         vmin=limit_to_range(rng.min,*lim)
@@ -453,22 +447,22 @@ class BinROICtl(ROICtl):
         self.labelY.setObjectName("labelY")
         self.labelY.setText("Y")
         self.gridLayout.addWidget(self.labelY, 2, 0, 1, 1)
-        self.x_min=LVNumEdit(self)
+        self.x_min=NumEdit(self)
         self.x_min.setObjectName("x_min")
         self.gridLayout.addWidget(self.x_min, 1, 1, 1, 1)
-        self.x_max=LVNumEdit(self)
+        self.x_max=NumEdit(self)
         self.x_max.setObjectName("x_max")
         self.gridLayout.addWidget(self.x_max, 1, 2, 1, 1)
-        self.x_bin=LVNumEdit(self)
+        self.x_bin=NumEdit(self)
         self.x_bin.setObjectName("x_bin")
         self.gridLayout.addWidget(self.x_bin, 1, 3, 1, 1)
-        self.y_min=LVNumEdit(self)
+        self.y_min=NumEdit(self)
         self.y_min.setObjectName("y_min")
         self.gridLayout.addWidget(self.y_min, 2, 1, 1, 1)
-        self.y_max=LVNumEdit(self)
+        self.y_max=NumEdit(self)
         self.y_max.setObjectName("y_max")
         self.gridLayout.addWidget(self.y_max, 2, 2, 1, 1)
-        self.y_bin=LVNumEdit(self)
+        self.y_bin=NumEdit(self)
         self.y_bin.setObjectName("y_bin")
         self.gridLayout.addWidget(self.y_bin, 2, 3, 1, 1)
         self.gridLayout.setContentsMargins(0,0,0,0)
@@ -516,12 +510,6 @@ class BinROICtl(ROICtl):
         for v in [self.x_bin,self.y_bin]:
             v.set_number_limit(1,self.maxbin,"coerce","int")
         self._show_values(*self.get_value())
-
-    value_changed=QtCore.pyqtSignal(object)
-    def _on_edit(self):
-        params=self.get_value()
-        self._show_values(*params)
-        self.value_changed.emit(params)
 
     def get_value(self):
         """

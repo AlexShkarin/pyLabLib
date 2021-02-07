@@ -3,7 +3,7 @@ from PyQt5 import QtWidgets, QtCore
 from ..limiter import as_limiter, LimitError, NumberLimit
 from ..formatter import as_formatter, str_to_float, order_to_pos, pos_to_order
 
-class LVTextEdit(QtWidgets.QLineEdit):
+class TextEdit(QtWidgets.QLineEdit):
     """
     Expanded text edit.
 
@@ -65,7 +65,7 @@ class LVTextEdit(QtWidgets.QLineEdit):
         self.show_value(interrupt_edit=interrupt_edit)
         return value_changed
 
-class LVNumEdit(QtWidgets.QLineEdit):
+class NumEdit(QtWidgets.QLineEdit):
     """
     Labview-style numerical edit.
 

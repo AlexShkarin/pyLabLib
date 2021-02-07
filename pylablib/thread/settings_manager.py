@@ -2,8 +2,6 @@ from ..core.thread import controller
 from ..core.utils import dictionary
 
 
-_depends_local=["..core.thread.controller"]
-
 class SettingsManager(controller.QTaskThread):
     """
     Settings manager.

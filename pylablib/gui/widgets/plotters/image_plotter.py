@@ -9,8 +9,8 @@ and :class:`ImagePlotterCtl` which controls the image display (value ranges, fli
 When both are used, :class:`ImagePlotter` is created and set up first, and then supplied to :meth:`ImagePlotterCtl.setupUi` method.
 """
 
-from ....core.gui.basic_widgets.param_table import ParamTable
-from ....core.gui.value_handling import create_virtual_table
+from ....core.gui.widgets.param_table import ParamTable
+from ....core.gui.value_handling import create_virtual_values
 from ....core.thread import controller
 from ....core.utils import funcargparse, module, dictionary
 from ....core.dataproc import filters
@@ -42,15 +42,15 @@ class ImagePlotterCtl(QtWidgets.QWidget):
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(parent)
 
-    def setupUi(self, name, plotter, values_table=None, values_table_root=None, save_values=("colormap","img_lim_preset")):
+    def setupUi(self, name, plotter, gui_values=None, gui_values_root=None, save_values=("colormap","img_lim_preset")):
         """
         Setup the image plotter controller.
 
         Args:
             name (str): widget name
             plotter (ImagePlotter): controlled image plotter
-            values_table (bool): as :class:`.ValuesTable` object used to access table values; by default, create one internally
-            values_table_root (str): if not ``None``, specify root (i.e., path prefix) for values inside the table.
+            gui_values (bool): as :class:`.GUIValues` object used to access table values; by default, create one internally
+            gui_values_root (str): if not ``None``, specify root (i.e., path prefix) for values inside the table.
             save_values (tuple): optional parameters to include on :meth:`get_all_values`;
                 can include ``"colormap"`` (colormap defined in the widget), and ``"img_lim_preset"`` (saved image limit preset)
         """
@@ -66,7 +66,7 @@ class ImagePlotterCtl(QtWidgets.QWidget):
         self.settings_table.setObjectName("settings_table")
         self.hLayout.addWidget(self.settings_table)
         self.img_lim=(0,65536)
-        self.settings_table.setupUi("img_settings",add_indicator=False,values_table=values_table,values_table_root=values_table_root)
+        self.settings_table.setupUi("img_settings",add_indicator=False,gui_values=gui_values,gui_values_root=gui_values_root)
         self.settings_table.add_text_label("size",label="Image size:")
         self.settings_table.add_check_box("flip_x","Flip X",value=False)
         self.settings_table.add_check_box("flip_y","Flip Y",value=False,location=(-1,1))
@@ -94,7 +94,7 @@ class ImagePlotterCtl(QtWidgets.QWidget):
         self.settings_table.add_button("center_lines","Center lines").value_changed().connect(plotter.center_lines)
         self.settings_table.value_changed.connect(lambda n: self.plotter.update_image(update_controls=(n=="normalize"),do_redraw=True),QtCore.Qt.DirectConnection)
         self.settings_table.add_spacer(10)
-        self.settings_table.add_button("update_image","Updating",checkable=True).value_changed().connect(plotter._set_image_update)
+        self.settings_table.add_toggle_button("update_image","Updating").value_changed().connect(plotter._set_image_update)
         def arm_single():
             self.settings_table.v["update_image"]=False
             self.plotter.arm_single()
@@ -290,7 +290,7 @@ class ImagePlotter(QtWidgets.QWidget):
     def _get_values(self):
         if self.ctl is not None:
             return self.ctl.settings_table
-        return create_virtual_table(**{"transpose":False,
+        return create_virtual_values(**{"transpose":False,
                 "flip_x":False,
                 "flip_y":False,
                 "normalize":True,

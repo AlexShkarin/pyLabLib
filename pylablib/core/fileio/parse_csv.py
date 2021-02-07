@@ -11,8 +11,6 @@ import re
 import numpy as np
 import pandas as pd
 
-_depends_local=["..utils.string"]
-
 
 _table_delimiters=string._delimiters
 _table_delimiters_regexp=re.compile(_table_delimiters)

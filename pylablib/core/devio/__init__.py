@@ -1,6 +1,6 @@
 from . import comm_backend
 
-from .interface import IDevice
+from .interface import IDevice, EnumParameterClass, RangeParameterClass, use_parameters
 
 from . import SCPI
 from .SCPI import SCPIDevice

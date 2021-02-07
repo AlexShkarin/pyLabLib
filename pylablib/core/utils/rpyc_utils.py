@@ -83,7 +83,7 @@ class SocketTunnelService(rpyc.SlaveService):
         remote_call=rpyc.async_(self._conn.root._send_socket)
         def port_func(port):
             remote_call(addr,port)
-        net.listen(None,0,listen,port_func=port_func,timeout=self._default_tunnel_timeout,connections_number=1,socket_kwargs={"nodelay":True})
+        net.listen(addr,0,listen,port_func=port_func,timeout=self._default_tunnel_timeout,connections_number=1,socket_kwargs={"nodelay":True})
     def _send_socket(self, dst_addr, dst_port):
         """Set up a client socket to connect to the other service"""
         self.tunnel_socket=net.ClientSocket(timeout=self._default_tunnel_timeout,nodelay=True)
@@ -175,7 +175,7 @@ class DeviceService(SocketTunnelService):
         except ModuleNotFoundError:
             module=importlib.import_module(module_utils.get_library_name()+".devices."+module)
         module._rpyc=True
-        return module.__dict__[cls]
+        return getattr(module,cls)
     def get_device(self, module, cls, *args, **kwargs):
         """
         Connect to a device.

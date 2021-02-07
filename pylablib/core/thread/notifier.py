@@ -71,7 +71,7 @@ class ISkipableNotifier(object):
 
         Called inside an internal lock section, so should be short and preferably non-blocking.
         """
-        pass        
+        pass
     def _do_notify(self):
         """
         Main notification routine.

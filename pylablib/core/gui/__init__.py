@@ -1,7 +1,7 @@
 from . import widgets as basic_widgets
 
 from . import value_handling
-from .value_handling import ValuesTable
+from .value_handling import GUIValues
 
 from . import formatter
 from .formatter import FloatFormatter, IntegerFormatter, FmtStringFormatter, as_formatter

@@ -98,6 +98,16 @@ def map_container(value, func):
     if isinstance(value,dict):
         return dict([(k,func(v)) for k,v in viewitems(value)])
     raise ValueError("value {} is not a container")
+def as_container(val, t):
+    """
+    Turn iterable into a container of type `t`.
+
+    Can handle named tuples, which have different constructor signature.
+    """
+    if issubclass(t,tuple) and hasattr(t,"_asdict"): # namedtuple
+        return t(*val)
+    else:
+        return t(val)
 def recursive_map(value, func):
     """
     Map container recursively.

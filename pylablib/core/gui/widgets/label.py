@@ -31,7 +31,7 @@ class LVTextLabel(QtWidgets.QLabel):
 
 
 
-class LVNumLabel(QtWidgets.QLabel):
+class NumLabel(QtWidgets.QLabel):
     """
     Labview-style numerical label.
 

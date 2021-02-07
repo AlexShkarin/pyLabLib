@@ -7,7 +7,7 @@ and :class:`TracePlotterCtl` which controls the channels (X-axis, enabled channe
 When both are used, :class:`TracePlotter` is created and set up first, and then supplied to :meth:`TracePlotterCtl.setupUi` method.
 """
 
-from ....core.gui.basic_widgets.param_table import ParamTable
+from ....core.gui.widgets.param_table import ParamTable
 from ....core.thread import controller
 from ....core.gui import value_handling
 from ....core.utils import funcargparse, dictionary
@@ -32,18 +32,18 @@ class TracePlotterCtl(QtWidgets.QWidget):
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(parent)
 
-    def setupUi(self, name, plotter, values_table=None, values_table_root=None):
+    def setupUi(self, name, plotter, gui_values=None, gui_values_root=None):
         """
         Setup the trace plotter controller.
 
         Args:
             name (str): widget name
             plotter (TracePlotter): controlled image plotter
-            values_table (bool): as :class:`.ValuesTable` object used to access table values; by default, create one internally
-            values_table_root (str): if not ``None``, specify root (i.e., path prefix) for values inside the table.
+            gui_values (bool): as :class:`.GUIValues` object used to access table values; by default, create one internally
+            gui_values_root (str): if not ``None``, specify root (i.e., path prefix) for values inside the table.
         """
-        self.values_table=values_table or value_handling.ValuesTable()
-        self.values_table_root=values_table_root or ""
+        self.gui_values=gui_values or value_handling.GUIValues()
+        self.gui_values_root=gui_values_root or ""
         self.plotter=plotter
         self.plotter._attach_controller(self)
 
@@ -78,22 +78,22 @@ class TracePlotterCtl(QtWidgets.QWidget):
         self.hLayout.addItem(spacerItem)
         self.hLayout.setStretch(2, 1)
 
-        self.channels_table.setupUi("channels",add_indicator=False,values_table=self.values_table,values_table_root=self.values_table_root+"/channels")
+        self.channels_table.setupUi("channels",add_indicator=False,gui_values=self.gui_values,gui_values_root=self.gui_values_root+"/channels")
         self.setup_channels()
-        self.plot_params_table.setupUi("plotting_params",add_indicator=False,values_table=self.values_table,values_table_root=self.values_table_root+"/plotting")
-        self.plot_params_table.add_button("update_plot","Updating",checkable=True)
+        self.plot_params_table.setupUi("plotting_params",add_indicator=False,gui_values=self.gui_values,gui_values_root=self.gui_values_root+"/plotting")
+        self.plot_params_table.add_toggle_button("update_plot","Updating")
         self.plot_params_table.add_num_edit("disp_last",1,limiter=(1,None,"coerce","int"),formatter=("int"),label="Display last: ")
         self.plot_params_table.add_button("reset_history","Reset").value_changed().connect(self.plotter.reset_history)
 
     def get_all_values(self):
         """Get all control values"""
-        return self.values_table.get_all_values(root=self.values_table_root)
+        return self.gui_values.get_all_values(root=self.gui_values_root)
     def set_all_values(self, values):
         """Set all control values"""
-        self.values_table.set_all_values(values,root=self.values_table_root)
+        self.gui_values.set_all_values(values,root=self.gui_values_root)
     def get_all_indicators(self):
         """Get all GUI indicators as a dictionary"""
-        return self.values_table.get_all_indicators(root=self.values_table_root)
+        return self.gui_values.get_all_indicators(root=self.gui_values_root)
 
     def setup_channels(self):
         """
