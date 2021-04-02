@@ -1,5 +1,5 @@
 """
-Processing and normalization of different indexing styles.  
+Processing and normalization of different indexing styles.
 """
 
 from builtins import range

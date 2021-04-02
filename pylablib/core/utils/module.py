@@ -60,7 +60,7 @@ def cmp_package_version(pkg, ver):
     if ver=="":
         return ">"
     return cmp_versions(cver,ver)
-            
+
 
 
 def expand_relative_path(module_name, rel_path):

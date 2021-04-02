@@ -606,6 +606,7 @@ class Countdown:
         self.timeout=timeout
         self.reset()
     def reset(self):
+        """Restart the countdown from the current moment"""
         self.start=time.time()
         if self.timeout is None:
             self.end=None
@@ -624,14 +625,10 @@ class Countdown:
             dtime=max(dtime,0.)
         return dtime
     def time_passed(self):
-        """
-        Return the amount of time passed since the countdown start/reset.
-        """
+        """Return the amount of time passed since the countdown start/reset"""
         return time.time()-self.start
     def passed(self):
-        """
-        Check if the timeout has passed.
-        """
+        """Check if the timeout has passed"""
         if self.timeout is None:
             return False
         elif self.timeout==0:

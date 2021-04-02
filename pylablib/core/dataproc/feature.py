@@ -18,7 +18,7 @@ class Baseline(collections.namedtuple("Baseline",["position","width"])): # makin
     """
     Baseline (background) for a trace.
     
-    `position` is the background level, and `width` is its noise width.  
+    `position` is the background level, and `width` is its noise width.
     """
 Baseline.__new__.__defaults__=(0.,1.)
 
@@ -58,7 +58,7 @@ class Peak(collections.namedtuple("Peak",["position","height","width","kernel"])
     """
     A trace peak.
     
-    `kernel` defines its shape (for, e.g., generation purposes).  
+    `kernel` defines its shape (for, e.g., generation purposes).
     """
 Peak.__new__.__defaults__=(0.,1.,1.,"generic")
 

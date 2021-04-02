@@ -383,10 +383,9 @@ def get_range_indices(xs, xs_range, ordered=False):
     Find trace indices correspoding to the given range.
     
     The range is defined as ``xs_range[0]:xs_range[1]``, or infinite if ``xs_range=None`` (so the data is returned unchanged in that case).
-    If ``ordered_x==True``, then the function assumes that `x_column` in ascending order.
+    If ``ordered_x==True``, then the function assumes that `xs` in ascending order.
     """
     # TODO: change ascending to arbitrary ordered
-    # TODO: add x_column argument (?)
     if xs_range is not None:
         xs_range=Range(*xs_range)
         if ordered:

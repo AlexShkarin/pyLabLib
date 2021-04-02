@@ -437,7 +437,7 @@ def split_into_bins(values, max_span, max_size=None):
                 bins.append(current_bin)
                 current_bin=[]
         if len(current_bin)==0:
-            start=x             
+            start=x
         current_bin.append(i)
         if max_size and len(current_bin)>=max_size:
             bins.append(current_bin)
