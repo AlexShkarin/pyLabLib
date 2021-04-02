@@ -87,7 +87,7 @@ class QDirectResultSynchronizer:
     def get_value(self):
         """Return stored value"""
         return self.value
-    def get_value_sync(self, timeout=None, default=None, error_on_fail=True, error_on_skip=True, pass_exception=True):
+    def get_value_sync(self, timeout=None, default=None, error_on_fail=True, error_on_skip=True, pass_exception=True):  # pylint: disable=unused-argument
         """
         Return stored value.
 
@@ -230,7 +230,7 @@ class QScheduler:
         if callback is not None:
             scheduled_call.add_callback(callback,pass_result=pass_result,call_on_fail=callback_on_fail)
         return scheduled_call
-    def schedule(self, call):
+    def schedule(self, call):  # pylint: disable=unused-argument
         """Schedule the call"""
         return False
     def clear(self):
@@ -289,7 +289,7 @@ class QQueueScheduler(QScheduler):
         self.working=True
         # self._call_add_notifiers=[]
         # self._call_pop_notifiers=[]
-    def can_schedule(self, call):
+    def can_schedule(self, call):  # pylint: disable=unused-argument
         """Check if the call can be scheduled"""
         return True
     def call_added(self, call):

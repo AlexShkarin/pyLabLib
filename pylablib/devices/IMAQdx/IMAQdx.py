@@ -205,9 +205,9 @@ class IMAQdxCamera(camera.IROICamera):
         "simple":IMAQdxAttributeVisibility.IMAQdxAttributeVisibilitySimple,
         "intermediate":IMAQdxAttributeVisibility.IMAQdxAttributeVisibilityIntermediate,
         "advanced":IMAQdxAttributeVisibility.IMAQdxAttributeVisibilityAdvanced})
-    def open(self, mode=None):
+    def open(self):
         """Open connection to the camera"""
-        mode=self._p_connection_mode(mode or self.mode)
+        mode=self._p_connection_mode(self.mode)
         self.sid=lib.IMAQdxOpenCamera(self.name,mode)
     def close(self):
         """Close connection to the camera"""

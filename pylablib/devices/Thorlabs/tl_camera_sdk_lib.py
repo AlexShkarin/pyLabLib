@@ -33,7 +33,7 @@ def errcheck(passing=None, lib=None):
     """
     if passing is None:
         passing={0}
-    def errchecker(result, func, arguments):
+    def errchecker(result, func, arguments):  # pylint: disable=unused-argument
         if result not in passing:
             raise ThorlabsTLCameraLibError(func.__name__,result,lib=lib)
         return result

@@ -142,7 +142,7 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
             self.buffer=None
             self.buffsize=0
             self.frame_dim=None
-        def new_frame(self, handle, buffer, idx, metadata, metadata_size, context):
+        def new_frame(self, handle, buffer, idx, metadata, metadata_size, context):  # pylint: disable=unused-argument
             """Callback for receiving a new frame"""
             if self.buffer is not None:
                 data=np.ctypeslib.as_array(buffer,shape=self.frame_dim).copy()

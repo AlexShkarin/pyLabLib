@@ -303,11 +303,11 @@ def strprep(l, ctype=None, unicode=False):
     """
     if unicode:
         ctype=ctype or ctypes.c_wchar_p
-        def prep(*args, **kwargs):
+        def prep(*args, **kwargs):  # pylint: disable=unused-argument
             return ctypes.cast(ctypes.create_unicode_buffer(l),ctype)
     else:
         ctype=ctype or ctypes.c_char_p
-        def prep(*args, **kwargs):
+        def prep(*args, **kwargs):  # pylint: disable=unused-argument
             return ctypes.cast(ctypes.create_string_buffer(l),ctype)
     return prep
 
@@ -319,7 +319,7 @@ def buffprep(size_arg_pos, dtype):
     The buffer size is given in elements. `dtype` specifies the datatype of the buffer, whose size is used to determine buffer size in bytes.
     """
     el_size=data_format.DataFormat.from_desc(dtype).size
-    def prep(*args, **kwargs):
+    def prep(*args, **kwargs):  # pylint: disable=unused-argument
         n=args[size_arg_pos]
         return ctypes.create_string_buffer(n*el_size)
     return prep
@@ -331,7 +331,7 @@ def buffconv(size_arg_pos, dtype):
     The buffer size is given in elements. `dtype` specifies the datatype of the resulting array.
     """
     dformat=data_format.DataFormat.from_desc(dtype)
-    def conv(buff, *args, **kwargs):
+    def conv(buff, *args, **kwargs):  # pylint: disable=unused-argument
         n=args[size_arg_pos]
         data=ctypes.string_at(buff,n*dformat.size)
         return np.fromstring(data,dtype=dformat.to_desc("numpy"))
@@ -422,7 +422,7 @@ class CStructWrapper:
         fnames=[f for f in fnames if f not in self._tup_exc]
         fnames+=self._tup_add
         if self._tup_inc is not None:
-            fnames=[f for f in fnames if f in self._tup_inc]
+            fnames=[f for f in fnames if f in self._tup_inc]  # pylint: disable=unsupported-membership-test
         if self._tup_order is not None:
             def key(name):
                 try:
@@ -442,7 +442,7 @@ class CStructWrapper:
         return tcls(*vals)
 
     @classmethod
-    def prep_struct(cls, *args):
+    def prep_struct(cls, *args, **kwargs):  # pylint: disable=unused-argument
         """Prepare a blank C structure"""
         return cls().to_struct()
     @classmethod
@@ -453,7 +453,7 @@ class CStructWrapper:
             setattr(s,k,v)
         return s.to_struct()
     @classmethod
-    def tup_struct(cls, struct, *args):
+    def tup_struct(cls, struct, *args, **kwargs):  # pylint: disable=unused-argument
         """Convert C structure into a named tuple"""
         return cls(struct).tup()
 

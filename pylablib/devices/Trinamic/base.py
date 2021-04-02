@@ -129,10 +129,10 @@ class TMCM1110(comm_backend.ICommBackendWrapper):
         
         `direction` can be either ``"-"`` (negative, left) or ``"+"`` (positive, right).
         The motion continues until it is explicitly stopped, or until a limit is hit.
-        If ``speed is None``, use the 
+        If ``speed is None``, use the standard speed value.
         """
         if speed is None:
-            speed=self.get_speed(addr=addr)
+            speed=self.get_velocity_parameters(addr=addr)[0]
         self.query(1 if direction else 2,0,speed,addr=addr)
     def stop(self, addr=0):
         """Stop motion"""

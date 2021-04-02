@@ -30,7 +30,7 @@ def exint(error_msg_template="{}:"):
         yield
     except threadprop.InterruptExceptionStop:
         pass
-    except:
+    except:  # pylint: disable=bare-except
         with _exception_print_lock:
             try:
                 ctl_name=get_controller(sync=False).name
@@ -528,7 +528,7 @@ class QThreadController(QtCore.QObject):
         if tag=="execute":
             value()
             return True
-    def process_message(self, tag, value):
+    def process_message(self, tag, value):  # pylint: disable=unused-argument
         """
         Process a new message.
 
@@ -1684,7 +1684,7 @@ def stop_all_controllers(sync=True, concurrent=True, stop_self=True):
     If ``sync==True`` and ``concurrent==False`` stop threads in consecutive manner (wait for each thread to stop before stopping the next one).
     If ``stop_self==True`` stop current thread after stopping all other threads.
     """
-    global _running_threads_stopping
+    global _running_threads_stopping  # pylint: disable=global-statement
     with _running_threads_lock:
         _running_threads_stopping=True
         names=list(_running_threads.keys())

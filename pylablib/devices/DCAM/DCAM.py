@@ -278,27 +278,28 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
         """
         Get current ROI.
 
-        Return tuple ``(hstart, hend, vstart, vend, bin)`` (binning is the same for both axes).
+        Return tuple ``(hstart, hend, vstart, vend, hbin, vbin)``.
         """
         hstart=int(self.get_value("SUBARRAY HPOS"))
         hend=hstart+int(self.get_value("SUBARRAY HSIZE"))
         vstart=int(self.get_value("SUBARRAY VPOS"))
         vend=vstart+int(self.get_value("SUBARRAY VSIZE"))
-        bin=int(self.get_value("BINNING"))
-        return (hstart,hend,vstart,vend,bin)
+        hvbin=int(self.get_value("BINNING"))
+        return (hstart,hend,vstart,vend,hvbin,hvbin)
     @camera.acqcleared
-    def set_roi(self, hstart=0, hend=None, vstart=0, vend=None, bin=1):
+    def set_roi(self, hstart=0, hend=None, vstart=0, vend=None, hbin=1, vbin=1):
         """
         Set current ROI.
 
-        By default, all non-supplied parameters take extreme values. Binning is the same for both axes.
+        By default, all non-supplied parameters take extreme values.
+        Binning is the same for both axes, so value of `vbin` is ignored (it is left for compatibility).
         """
         self.set_value("SUBARRAY MODE",2)
         hend=hend or self.properties["SUBARRAY HSIZE"].vmax
         vend=vend or self.properties["SUBARRAY VSIZE"].vmax
         min_roi,max_roi=self.get_roi_limits()
-        if bin==3:
-            bin=2
+        if hbin==3:
+            hbin=2
         hstart=(hstart//min_roi[2])*min_roi[2]
         hend=(hend//min_roi[2])*min_roi[2]
         self.set_value("SUBARRAY HSIZE",min_roi[2])
@@ -309,7 +310,7 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
         self.set_value("SUBARRAY VSIZE",min_roi[3])
         self.set_value("SUBARRAY VPOS",(vstart//min_roi[3])*min_roi[3])
         self.set_value("SUBARRAY VSIZE",max(vend-vstart,min_roi[3]))
-        self.set_value("BINNING",min(bin,max_roi[4]))
+        self.set_value("BINNING",min(hbin,max_roi[4]))
         return self.get_roi()
     def get_roi_limits(self):
         """

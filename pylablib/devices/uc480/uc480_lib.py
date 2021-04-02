@@ -29,7 +29,7 @@ def errcheck(simple=False):
     Return a function which checks return codes of uc480 library functions.
     `passing` is a list specifying which return codes are acceptable (by default only 0, which is success code, is acceptable).
     """
-    def errchecker(result, func, arguments):
+    def errchecker(result, func, arguments):  # pylint: disable=unused-argument
         if result<0 or (not simple and result!=0):
             raise uc480LibError(func.__name__,result)
         return result

@@ -101,7 +101,7 @@ class NumEdit(QtWidgets.QLineEdit):
     def _on_enter(self):
         self._on_edit_done()
         self.clearFocus()
-    def _on_change_text(self, text):
+    def _on_change_text(self, text):  # pylint: disable=unused-argument
         if not self.isModified():
             try:
                 value=str_to_float(str(self.text()))

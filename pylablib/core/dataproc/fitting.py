@@ -7,7 +7,7 @@ from ..utils.py3 import textstring
 
 from ..utils import general as general_utils
 from ..utils import funcargparse
-from . import callable
+from . import callable as callable_func
 
 import numpy as np
 import scipy.optimize
@@ -42,7 +42,7 @@ class Fitter(object):
     """
     def __init__(self, func, xarg_name=None, fit_parameters=None, fixed_parameters=None, scale=None, limits=None, weights=None):
         object.__init__(self)
-        self.func=callable.to_callable(func)
+        self.func=callable_func.to_callable(func)
         self.set_xarg_name(xarg_name or [])
         self.set_fixed_parameters(fixed_parameters)
         self.set_fit_parameters(fit_parameters)
@@ -94,7 +94,7 @@ class Fitter(object):
         if np.iscomplexobj(template):
             return (lambda p: p[0]+1j*p[1]), 2
         try:
-            v,n=template.from_float_array(packed) # function is assumed to take 1 argument (float array) and return 2 values: the unpacked element and the number of consumed floats
+            _,n=template.from_float_array(packed) # function is assumed to take 1 argument (float array) and return 2 values: the unpacked element and the number of consumed floats
             return (lambda p: template.from_float_array(p)[0]),n
         except AttributeError:
             return (lambda p: p[0]), 1
@@ -255,7 +255,7 @@ class Fitter(object):
                 p_bounds.append(p_ibounds)
             kwargs.setdefault("bounds",p_bounds)
         if parscore:
-            parscore=callable.to_callable(parscore)
+            parscore=callable_func.to_callable(parscore)
         def calc_residuals(raw_res):
             if wkind=="point":
                 return (np.asarray(raw_res)*weights).flatten()

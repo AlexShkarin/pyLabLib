@@ -9,7 +9,6 @@ from . import location
 from . import dict_entry
 
 from ..utils import string as string_utils
-from ..utils import general as general_utils
 from ..utils import dictionary
 
 import numpy as np
@@ -59,7 +58,7 @@ class IOutputFileFormat(object):
 
 
 
-class ITextOutputFileFormat(IOutputFileFormat):
+class ITextOutputFileFormat(IOutputFileFormat):  # pylint: disable=abstract-method
     """
     Generic class for a text output file format.
     
@@ -237,8 +236,8 @@ class DictionaryOutputFileFormat(ITextOutputFileFormat):
                 
 
 
-class IBinaryOutputFileFormat(IOutputFileFormat):
-    def get_preamble(self, loc_file, data):
+class IBinaryOutputFileFormat(IOutputFileFormat):  # pylint: disable=abstract-method
+    def get_preamble(self, loc_file, data):  # pylint: disable=unused-argument
         return dictionary.Dictionary()
     
     

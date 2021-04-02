@@ -791,7 +791,7 @@ def setbp():
         except (ImportError, MultipleInstanceError):
             from IPython.core.debugger import Tracer
             return Tracer()
-    except Exception:
+    except:  # pylint: disable=bare-except
         import pdb
         return pdb.set_trace
 

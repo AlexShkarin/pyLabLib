@@ -1315,7 +1315,7 @@ class DictionaryNode:
         return str(self.__dict__)
     def __repr__(self):
         return "DictionaryNode({})".format(self)
-def _default_object_generator(data, name=None):
+def _default_object_generator(data, name=None):  # pylint: disable=unused-argument
     return DictionaryNode(**data)
 def dict_to_object_local(data, name=None, object_generator=_default_object_generator):
     obj_dict={}

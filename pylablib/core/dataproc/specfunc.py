@@ -106,10 +106,8 @@ def get_kernel_func(kernel):
 
 ### Windows ###
 # TODO: different compensations (total power, peak height, etc.?)
-def rectangle_w(x, N, ft_compensated=False):
-    """
-    Rectangle FT window function.
-    """
+def rectangle_w(x, N, ft_compensated=False):  # pylint: disable=unused-argument
+    """Rectangle FT window function"""
     return x*0+1
 
 def gen_hamming_w(x, N, alpha, beta, ft_compensated=False):

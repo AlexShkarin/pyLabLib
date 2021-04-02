@@ -43,7 +43,7 @@ def get_file_creation_time(path, timestamp=True):
         return datetime.datetime.fromtimestamp(get_file_creation_time(path,timestamp=True))
     try:
         return os.path.getctime(path)
-    except:
+    except OSError:
         return time.time()
 def get_file_modification_time(path, timestamp=True):
     """
@@ -55,7 +55,7 @@ def get_file_modification_time(path, timestamp=True):
         return datetime.datetime.fromtimestamp(get_file_modification_time(path,timestamp=True))
     try:
         return os.path.getmtime(path)
-    except:
+    except OSError:
         return time.time()
 
 def touch(fname, times=None):
@@ -261,7 +261,7 @@ def _handleRemoveReadonly(func, path, exc):
         os.chmod(path,stat.S_IRWXU|stat.S_IRWXG|stat.S_IRWXO) # 0777
         func(path)
     else:
-        raise
+        raise  # pylint: disable=misplaced-bare-raise
 def remove_dir(path, error_on_file=True):
     """
     Remove the folder recursively if it exists.
@@ -604,7 +604,7 @@ def retry_clean_dir(path, error_on_file=True, try_times=5, delay=0.3):
 ### Archiving zip files ###
 def _ZipFile(path, mode, compression, compresslevel):
     try:
-        return zipfile.ZipFile(path,mode=mode,compression=compression,compresslevel=compresslevel)
+        return zipfile.ZipFile(path,mode=mode,compression=compression,compresslevel=compresslevel)  # pylint: disable=unexpected-keyword-arg
     except TypeError:
         return zipfile.ZipFile(path,mode=mode,compression=compression)
 def zip_folder(zip_path, source_path, inside_path="", folder_filter=None, file_filter=None, mode="a", compression=zipfile.ZIP_DEFLATED, compresslevel=None):

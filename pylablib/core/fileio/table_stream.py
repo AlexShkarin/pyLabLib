@@ -27,7 +27,7 @@ class TableStreamFile(object):
         self.add_timestamp=add_timestamp
         self.fmt=fmt
         
-    def _get_path(self, line, timestamp):
+    def _get_path(self, line, timestamp):  # pylint: disable=unused-argument
         """
         Generate file path based on the data line and timestamp.
 

@@ -83,7 +83,7 @@ class ParamTable(QtWidgets.QWidget):
 
     value_changed=Signal(object,object)
     @controller.exsafeSlot()
-    def _update_cache_values(self, name=None, value=None):
+    def _update_cache_values(self, name=None, value=None):  # pylint: disable=unused-argument
         if self.cache_values:
             if name is None or self.cache_values=="update_all":
                 self.current_values=self.get_all_values()

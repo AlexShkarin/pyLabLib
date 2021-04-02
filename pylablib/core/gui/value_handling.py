@@ -87,7 +87,7 @@ class IValueHandler:
         If ``name`` is not ``None``, it specifies the name of the value parameter inside the widget (for complex widgets).
         """
         raise NotImplementedError("IValueHandler.set_value")
-    def repr_value(self, value, name=None):
+    def repr_value(self, value, name=None):  # pylint: disable=unused-argument
         """
         Return textual representation of the value.
 

@@ -77,7 +77,7 @@ class I1DWrapper(IGenWrapper):
         """
         raise NotImplementedError("I1DWrapper.from_array")
     @classmethod
-    def from_columns(cls, columns, column_names=None, wrapped=True):
+    def from_columns(cls, columns, column_names=None, wrapped=True):  # pylint: disable=unused-argument
         """
         Build a new object of the type corresponding to the wrapper from the supplied `columns` (a list of columns; only length-1 lists is supported).
 
@@ -86,7 +86,7 @@ class I1DWrapper(IGenWrapper):
         """
         if len(columns)!=1:
             raise ValueError("Array1DWrapper only supports single columns, got {} columns".format(len(columns)))
-        return cls.from_array(columns[0])
+        return cls.from_array(columns[0],wrapped=wrapped)
     def array_replaced(self, array, force_copy=False, force_numpy=True, wrapped=True):
         """
         Return a copy of the column with the data replaced by `array`.
@@ -253,8 +253,8 @@ class I2DWrapper(IGenWrapper):
         self.r=r
         self.c=c
         self.t=t
-    @staticmethod
-    def from_columns(columns, column_names=None, wrapped=True):
+    @classmethod
+    def from_columns(cls, columns, column_names=None, wrapped=True):
         """
         Build a new object of the type corresponding to the wrapper from the supplied `columns` (a list of columns).
 
@@ -467,8 +467,8 @@ class Array2DWrapper(I2DWrapper):
         If ``wrapped==True``, return a new wrapper contating the column; otherwise, just return the column.
         """
         return Array1DWrapper(self.cont[:,idx]) if wrapped else self.cont[:,idx]
-    @staticmethod
-    def from_columns(columns, column_names=None, wrapped=True):
+    @classmethod
+    def from_columns(cls, columns, column_names=None, wrapped=True):
         """
         Build a new object of the type corresponding to the wrapper from the supplied `columns` (a list of columns).
 
@@ -669,8 +669,8 @@ class DataFrame2DWrapper(I2DWrapper):
         If ``wrapped==True``, return a new wrapper contating the column; otherwise, just return the column.
         """
         return Series1DWrapper(self._get_df_columns(idx)) if wrapped else self._get_df_columns(idx)
-    @staticmethod
-    def from_columns(columns, column_names=None, wrapped=True):
+    @classmethod
+    def from_columns(cls, columns, column_names=None, wrapped=True):
         """
         Build a new object of the type corresponding to the wrapper from the supplied `columns` (a list of columns).
 

@@ -156,7 +156,7 @@ class ICamera(interface.IDevice):
     ### Frame waiting ###
     _p_frame_wait_mode=interface.EnumParameterClass("frame_wait_mode",["lastread","lastwait","now","start"])
     _wait_sleep_period=1E-3
-    def _wait_for_next_frame(self, timeout=20., idx=None):
+    def _wait_for_next_frame(self, timeout=20., idx=None):  # pylint: disable=unused-argument
         """
         Wait for a single frame with the given index for a given amount of time.
         
@@ -278,7 +278,7 @@ class ICamera(interface.IDevice):
             return self._frame_counter.get_new_frames_range(),0
         else:
             return self._frame_counter.trim_frames_range(rng)
-    def _read_frames(self, rng, return_info=False):
+    def _read_frames(self, rng, return_info=False):  # pylint: disable=unused-argument
         """
         Read and return frames given the range.
         

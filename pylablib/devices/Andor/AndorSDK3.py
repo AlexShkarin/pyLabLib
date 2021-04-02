@@ -613,13 +613,13 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
         """
         params=["AOILeft","AOITop","AOIWidth","AOIHeight","AOIHBin","AOIVBin"]
         minp,maxp=[list(p) for p in zip(*[self.get_value_range(p) for p in params])]
-        bin=[self.get_value(p) for p in params[-2:]]
+        bins=[self.get_value(p) for p in params[-2:]]
         for i in range(2):
             minp[i]-=1
             maxp[i]-=1
         for i in range(4):
-            minp[i]*=bin[i%2]
-            maxp[i]*=bin[i%2]
+            minp[i]*=bins[i%2]
+            maxp[i]*=bins[i%2]
         min_roi=(0,0)+tuple(minp[2:])
         max_roi=(maxp[2]-minp[2],maxp[3]-minp[3],maxp[2],maxp[3],maxp[4],maxp[5])
         return (min_roi,max_roi)

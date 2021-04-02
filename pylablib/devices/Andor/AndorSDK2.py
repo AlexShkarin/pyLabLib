@@ -921,11 +921,9 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         max_roi=(xdet-min_roi[2],xdet-min_roi[3],xdet,ydet,maxbin,maxbin)
         return (min_roi,max_roi)
 
-    def _get_data_dimensions_rc(self, mode=None, params=None):
-        if mode is None:
-            mode=self.get_read_mode()
-        if params is None:
-            params=self._cpar.get("read_params/"+mode,None)
+    def _get_data_dimensions_rc(self):
+        mode=self.get_read_mode()
+        params=self._cpar.get("read_params/"+mode,None)
         hdet,_=self.get_detector_size()
         if mode in {"fvb","single_track"}:
             return (1,hdet)

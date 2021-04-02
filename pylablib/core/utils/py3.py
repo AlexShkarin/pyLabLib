@@ -5,9 +5,9 @@ from builtins import bytes as new_bytes
 
 if str is bytes: # Python 2
 
-    textstring=(basestring,)
+    textstring=(basestring,)  # pylint: disable=undefined-variable
     bytestring=(str,new_bytes)
-    anystring=(str,unicode)
+    anystring=(str,unicode)  # pylint: disable=undefined-variable
 
     def as_str(data):
         """Convert a string into a text string"""

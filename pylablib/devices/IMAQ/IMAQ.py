@@ -180,11 +180,11 @@ class IMAQCamera(camera.IROICamera):
         """
         Get camera model data.
 
-        Return tuple ``(serial,interface)`` with the board serial number and an the interface kind (e.g., ``"1430"`` for NI PCIe-1430)
+        Return tuple ``(serial, interface)`` with the board serial number and an the interface type (e.g., ``"1430"`` for NI PCIe-1430)
         """
         serial_number=self.get_attribute_value("GETSERIAL")
-        interface=self.get_attribute_value("INTERFACE_TYPE")
-        return TDeviceInfo("{:08X}".format(serial_number),"{:04x}".format(interface))
+        interface_type=self.get_attribute_value("INTERFACE_TYPE")
+        return TDeviceInfo("{:08X}".format(serial_number),"{:04x}".format(interface_type))
 
     def _get_data_dimensions_rc(self):
         return self.get_attribute_value("ROI_HEIGHT"),self.get_attribute_value("ROI_WIDTH")

@@ -1,16 +1,13 @@
 from . import uc480_lib, uc480_defs
 from .uc480_lib import lib, uc480Error, uc480LibError, ERROR
 
-from ...core.utils import dictionary, py3, general
-from ...core.utils.ctypes_wrap import class_tuple_to_dict
+from ...core.utils import py3
 from ...core.devio import interface
 from ..interface import camera
 
 import numpy as np
 import collections
-import time
 import ctypes
-import threading
 
 
 
@@ -36,22 +33,22 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
     Thorlabs uc480 camera.
 
     Args:
-        id(int): camera ID; use 0 to get the first available camera
+        cam_id(int): camera ID; use 0 to get the first available camera
         roi_binning_mode: determines whether binning in ROI refers to binning or subsampling;
             can be ``"bin"``, ``"subsample"``, or ``"auto"`` (since most cameras only support one, it will pick the one which has non-trivial value, or ``"bin"`` if both are available).
-        dev_id(int): if ``None`` use `id` as a camera id (``dwCameraID`` field of the camera info returned by :func:`get_cameras_list`);
-            otherwise, ignore value of `id` and use `dev_id` as device id (``dwDeviceID`` field of the camera info).
+        dev_id(int): if ``None`` use `cam_id` as a camera id (``dwCameraID`` field of the camera info returned by :func:`get_cameras_list`);
+            otherwise, ignore value of `cam_id` and use `dev_id` as device id (``dwDeviceID`` field of the camera info).
             The first method requires assigning camera IDs beforehand (otherwise IDs might overlap, in which case only one camera can be accessed),
             but the assigned IDs are permanent; the second method always has unique IDs, but they might change if the cameras are disconnected and reconnected.
             For a more reliable assignment, one can use :func:`find_device_id` function to find device ID based on the camera serial number.
     """
     Error=uc480Error
     TimeoutError=uc480TimeoutError
-    def __init__(self, id=0, roi_binning_mode="auto", dev_id=None):
+    def __init__(self, cam_id=0, roi_binning_mode="auto", dev_id=None):
         super().__init__()
         lib.initlib()
         if dev_id is None:
-            self.id=id
+            self.id=cam_id
             self.is_dev_id=False
         else:
             self.id=dev_id
@@ -446,12 +443,12 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         sstep=lib.is_AOI(self.hcam,uc480_defs.IMAGE.IS_AOI_IMAGE_GET_SIZE_INC,uc480_defs.CIS_SIZE_2D)
         pstep=lib.is_AOI(self.hcam,uc480_defs.IMAGE.IS_AOI_IMAGE_GET_POS_INC,uc480_defs.CIS_POINT_2D)
         return (smin[0],sstep[0],pstep[0]),(smin[1],sstep[1],pstep[1])
-    def _adj_roi_axis(self, start, end, minsize, detsize, wstep, pstep, bin):
+    def _adj_roi_axis(self, start, end, minsize, detsize, wstep, pstep, binv):
         if end is None:
             end=detsize
-        start//=bin
-        end//=bin
-        detsize//=bin
+        start//=binv
+        end//=binv
+        detsize//=binv
         end=min(end,detsize)
         start=min(start,detsize)
         start-=start%pstep
@@ -462,7 +459,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         if end>detsize:
             end=detsize
             start=detsize-minsize
-        return start*bin,end*bin
+        return start*binv,end*binv
     def _trunc_roi(self, hstart=0, hend=None, vstart=0, vend=None, hbin=1, vbin=1):
         wdet,hdet=self.get_detector_size()
         hbin,vbin=self._truncate_roi_binning(hbin,vbin)

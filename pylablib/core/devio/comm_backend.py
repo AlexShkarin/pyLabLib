@@ -32,7 +32,7 @@ class IDeviceCommBackend:
     """Base class for the errors raised by the backend operations"""
     
     _default_operation_cooldown={"default":0.}
-    def __init__(self, conn, timeout=None, term_write=None, term_read=None, datatype="auto"):
+    def __init__(self, conn, timeout=None, term_write=None, term_read=None, datatype="auto"):  # pylint: disable=unused-argument
         funcargparse.check_parameter_range(datatype,"datatype",{"auto","str","bytes"})
         self.datatype=datatype
         self.conn=conn
@@ -85,7 +85,7 @@ class IDeviceCommBackend:
         """Unlock the access to the device from other threads/processes (isn't necessarily implemented)"""
         pass
     @contextlib.contextmanager
-    def locking(self, timeout=None):
+    def locking(self, timeout=None):  # pylint: disable=unused-argument
         """Context manager for lock & unlock"""
         yield
     
@@ -125,7 +125,7 @@ class IDeviceCommBackend:
     def using_timeout(self, timeout=None):
         """Context manager for usage of a different timeout inside a block"""
         if timeout is not None:
-            to=self.get_timeout() # pylint: disable=assignment-from-none
+            to=self.get_timeout()  # pylint: disable=assignment-from-none
             if to!=timeout:
                 self.set_timeout(timeout)
         try:
@@ -186,7 +186,7 @@ class IDeviceCommBackend:
             return self.readline()
 
     @staticmethod
-    def list_resources(desc=False):
+    def list_resources(desc=False):  # pylint: disable=unused-argument
         """
         List all availabe resources for this backend.
 

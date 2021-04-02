@@ -29,7 +29,7 @@ def errcheck(passing=None):
     """
     passing=set(passing) if passing is not None else set()
     passing.add(0) # always allow success
-    def errchecker(result, func, arguments):
+    def errchecker(result, func, arguments):  # pylint: disable=unused-argument
         if result not in passing:
             raise AndorSDK3LibError(func.__name__,result)
         return result

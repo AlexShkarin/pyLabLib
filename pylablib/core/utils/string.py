@@ -540,7 +540,7 @@ def to_range(range_tuple):
         return (not e) or (e is empty_string)
     range_tuple=[0 if is_zero(e) else e for e in range_tuple]
     return list(np.arange(*range_tuple))
-def _convert_parenthesis_struct(struct, case_sensitive=True, parenthesis_rules="text"):
+def _convert_parenthesis_struct(pstruct, case_sensitive=True, parenthesis_rules="text"):
     """
     Covert parsed parenthesis structure into python objects.
     
@@ -553,7 +553,7 @@ def _convert_parenthesis_struct(struct, case_sensitive=True, parenthesis_rules="
             and only ``(1+2j,)``, ``((1+2j))`` or ``((1+2j),)`` as a single-element tuple.
     """
     funcargparse.check_parameter_range(parenthesis_rules,"parenthesis_rules",{"text","python"})
-    elt_type,elt_val,_=struct
+    elt_type,elt_val,_=pstruct
     if elt_type=="e":
         return from_string(elt_val,case_sensitive=case_sensitive,parenthesis_rules=parenthesis_rules)
     elif elt_type in _quotation_characters:
@@ -586,7 +586,6 @@ def _convert_parenthesis_struct(struct, case_sensitive=True, parenthesis_rules="
         parsed=[_convert_parenthesis_struct(e,case_sensitive=case_sensitive,parenthesis_rules=parenthesis_rules) for e in elt_val]
         if elt_type in "[(":
             if any([ct==":" for ct in closing_tokens]):
-                #raise ValueError("malformatted parenthesis structure")
                 expanded=[]
                 curr_range=tuple()
                 for e_val,e_ct in zip(parsed,closing_tokens):
@@ -681,8 +680,8 @@ def from_string(value, case_sensitive=True, parenthesis_rules="text", use_classe
     if value[0] in _parenthesis_pairs:
         pos,parsed_value=_parse_parenthesis_struct(value,use_classes=use_classes)
         if pos==len(value): # malformatted parentheses structures are treated as strings
-            struct=(value[0],parsed_value,None)
-            return _convert_parenthesis_struct(struct,case_sensitive=case_sensitive,parenthesis_rules=parenthesis_rules)
+            pstruct=(value[0],parsed_value,None)
+            return _convert_parenthesis_struct(pstruct,case_sensitive=case_sensitive,parenthesis_rules=parenthesis_rules)
     if _is_string_repr(value):
         pos,unescaped=extract_escaped_string(value)
         if pos!=len(value):
@@ -738,8 +737,8 @@ def from_string_partial(value, delimiters=_delimiters_regexp, case_sensitive=Tru
     if value[0] in _parenthesis_pairs:
         end,parsed_value=_parse_parenthesis_struct(value,use_classes=use_classes)
         if not return_string:
-            struct=(value[0],parsed_value,None)
-            res=_convert_parenthesis_struct(struct,case_sensitive=case_sensitive,parenthesis_rules=parenthesis_rules)
+            pstruct=(value[0],parsed_value,None)
+            res=_convert_parenthesis_struct(pstruct,case_sensitive=case_sensitive,parenthesis_rules=parenthesis_rules)
     elif value[0] in _quotation_characters:
         end,res=extract_escaped_string(value)
     elif use_classes:

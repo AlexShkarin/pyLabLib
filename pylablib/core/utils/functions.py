@@ -69,7 +69,7 @@ class FunctionSignature(object):
         If `pass_order` is not ``None``, it determines the order in which the positional arguments are passed to the wrapped function.
         """
         eval_string="lambda {0}: _func_({1})".format(self.signature(),self.signature(pass_order))
-        wrapped=eval(eval_string,{'_func_':func})
+        wrapped=eval(eval_string,{'_func_':func})  # pylint: disable=eval-used
         wrapped.__defaults__=tuple(self.get_defaults_list())
         if self.doc:
             wrapped.__doc__=self.doc
@@ -162,10 +162,10 @@ class FunctionSignature(object):
             kwargs=args.varkw
         except AttributeError: # Python 2 (use getargspec instead of getfullargspec)
             try:
-                args=inspect.getargspec(ifunc)
+                args=inspect.getargspec(ifunc)  # pylint: disable=deprecated-method,no-member
             except TypeError:
                 ifunc=ifunc.__call__
-                args=inspect.getargspec(ifunc)
+                args=inspect.getargspec(ifunc)  # pylint: disable=deprecated-method,no-member
             defaults=args.defaults and dict(zip(args.args[::-1],args.defaults[::-1]))
             kwonly_arg_names=None
             kwargs=args.keywords
@@ -449,27 +449,27 @@ class MethodObjectProperty(IObjectProperty):
         self.remover=MethodObjectCall(remover) if remover else None
         self.expand_tuple=expand_tuple
     def get(self, obj, params=None):
-        if self.getter:
+        if self.getter is not None:
             if params is not None:
                 if self.expand_tuple and isinstance(params,tuple):
-                    return self.getter(obj,*params)
-                return self.getter(obj,params)
-            return self.getter(obj)
+                    return self.getter(obj,*params)  # pylint: disable=not-callable
+                return self.getter(obj,params)  # pylint: disable=not-callable
+            return self.getter(obj)  # pylint: disable=not-callable
         raise RuntimeError("getter is not supplied")
     def set(self, obj, value):
-        if self.setter:
+        if self.setter is not None:
             if self.expand_tuple and isinstance(value,tuple):
-                return self.setter(obj,*value)
+                return self.setter(obj,*value)  # pylint: disable=not-callable
             else:
-                return self.setter(obj,value)
+                return self.setter(obj,value)  # pylint: disable=not-callable
         raise RuntimeError("setter is not supplied")
     def rem(self, obj, params=None):
-        if self.remover:
+        if self.remover is not None:
             if params is not None:
                 if self.expand_tuple and isinstance(params,tuple):
-                    return self.remover(obj,*params)
-                return self.remover(obj,params)
-            return self.remover(obj, *params)
+                    return self.remover(obj,*params)  # pylint: disable=not-callable
+                return self.remover(obj,params)  # pylint: disable=not-callable
+            return self.remover(obj, *params)  # pylint: disable=not-callable
         raise RuntimeError("remover is not supplied")
 class AttrObjectProperty(IObjectProperty):
     """

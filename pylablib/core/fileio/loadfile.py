@@ -36,7 +36,7 @@ class IInputFileFormat(object):
         raise NotImplementedError("{}.{}".format(self.__class__.__name__,"read"))
     
     
-class ITextInputFileFormat(IInputFileFormat):
+class ITextInputFileFormat(IInputFileFormat):  # pylint: disable=abstract-method
     """
     Generic class for a text input file format.
     

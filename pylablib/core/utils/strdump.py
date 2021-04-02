@@ -56,7 +56,7 @@ class StrDumper(object):
                 elif issubclass(cls,found[1]):
                     found=n,cls
                 elif not issubclass(found[1],cls):
-                    raise ValueError("both {} and {} satisfy for a base class of {}".format(n,found[0],obj))
+                    raise ValueError("both {} and {} satisfy for a base class of {}".format(n,found[0],obj))  # pylint: disable=unsubscriptable-object
         return None if found is None else found[0]
     
     def _dump_recursive(self, value):

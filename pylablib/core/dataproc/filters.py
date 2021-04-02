@@ -75,7 +75,7 @@ def convolution_filter(a, width=1., kernel="gaussian", kernel_span="auto", mode=
     if kernel_span>len(a):
         kernel_span=len(a)
     kernel=specfunc.get_kernel_func(kernel)
-    kernel_wf=kernel(np.arange(-kernel_span,kernel_span+1.),width,kernel_height)
+    kernel_wf=kernel(np.arange(-kernel_span,kernel_span+1.),width,kernel_height) # pylint: disable=invalid-unary-operand-type
     if kernel_height is None:
         kernel_wf=kernel_wf/kernel_wf.sum() #normalize kernel; non-normalized kernel might be useful e.g. for low-pass filtering when width is close len(a)
     return wrap(a).from_array(convolve1d(a, kernel_wf, mode=mode, cval=cval),wrapped=False)

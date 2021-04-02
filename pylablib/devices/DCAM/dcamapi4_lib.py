@@ -1,5 +1,4 @@
 from . import dcamprop_defs, dcamapi4_defs
-from .dcamprop_defs import *
 from .dcamapi4_defs import DCAM_GUID, DCAMAPI_INIT, DCAMDEV_OPEN, DCAMDEV_CAPABILITY
 from .dcamapi4_defs import DCAMDEV_STRING, DCAMDATA_HDR, DCAMDATA_REGION, DCAMDATA_REGIONRECT, DCAMDATA_LUT, DCAMDATA_LINEARLUT
 from .dcamapi4_defs import DCAMPROP_ATTR, DCAMPROP_VALUETEXT, DCAMBUF_ATTACH

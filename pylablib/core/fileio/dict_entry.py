@@ -186,7 +186,7 @@ class IDictionaryEntry:
         return _is_branch_valid(branch,cls._data_type)
     
     @classmethod
-    def from_dict(cls, dict_ptr, loc):
+    def from_dict(cls, dict_ptr, loc):  # pylint: disable=unused-argument
         """
         Convert a dictionary branch to a specific :class:`IDictionaryEntry` object.
         
@@ -195,7 +195,7 @@ class IDictionaryEntry:
             loc: Location for the data to be loaded.
         """
         return cls(None) if cls.is_branch_valid(dict_ptr) else None
-    def to_dict(self, dict_ptr, loc):
+    def to_dict(self, dict_ptr, loc):  # pylint: disable=unused-argument
         """
         Convert data to a dictionary branch on saving.
         

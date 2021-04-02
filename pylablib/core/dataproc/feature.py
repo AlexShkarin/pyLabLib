@@ -146,7 +146,7 @@ def get_kernel(width, kernel_width=None, kernel="lorentzian"):
     peakk=kernel(xs,width)
     return peakk/np.sum(peakk)
 
-def get_peakdet_kernel(peak_width, background_width, norm_width=None, kernel_width=None, kernel="lorentzian"):
+def get_peakdet_kernel(peak_width, background_width, kernel_width=None, kernel="lorentzian"):
     """
     Get a peak detection kernel.
 

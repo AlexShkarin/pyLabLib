@@ -19,7 +19,7 @@ class PCOSC2TimeoutError(PCOSC2Error):
 class PCOSC2NotSupportedError(PCOSC2Error):
     """Option not supported error"""
 
-_interface_names={
+_cam_interface_names={
     PCO_INTERFACE.PCO_INTERFACE_FW:"firewire",
     PCO_INTERFACE.PCO_INTERFACE_CL_MTX:"cl_mix",
     PCO_INTERFACE.PCO_INTERFACE_CL_ME3:"cl_sis_me3",
@@ -30,25 +30,30 @@ _interface_names={
     PCO_INTERFACE.PCO_INTERFACE_USB3:"usb3",
     PCO_INTERFACE.PCO_INTERFACE_WLAN:"wlan",
     PCO_INTERFACE.PCO_INTERFACE_CLHS:"clhs" }
-_interface_names_inv=general.invert_dict(_interface_names)
-def list_cameras(interface=None):
-    """List camera connections (interface kind and camera index)"""
-    if interface is None:
-        return [c for interface in _interface_names for c in list_cameras(interface)]
-    if interface in _interface_names_inv:
-        interface=_interface_names_inv[interface]
-    elif not isinstance(interface,int):
-        raise ValueError("unrecognized interface: {}".format(interface))
+_cam_interface_names_inv=general.invert_dict(_cam_interface_names)
+def list_cameras(cam_interface=None):
+    """
+    List camera connections (interface kind and camera index).
+    
+    If `cam_interface` is supplied, it defines one of camera interfaces to check (e.g., ``"usb3"`` or ``"clhs"``).
+    Otherwise, check all interfaces.
+    """
+    if cam_interface is None:
+        return [c for cam_interface in _cam_interface_names for c in list_cameras(cam_interface)]
+    if cam_interface in _cam_interface_names_inv:
+        cam_interface=_cam_interface_names_inv[cam_interface]
+    elif not isinstance(cam_interface,int):
+        raise ValueError("unrecognized interface: {}".format(cam_interface))
     lib.initlib()
     fails=0
     idx=0
     cams=[]
     while True:
         try:
-            ch,desc=lib.PCO_OpenCameraEx(interface,idx)
+            ch,desc=lib.PCO_OpenCameraEx(cam_interface,idx)
             lib.PCO_CloseCamera(ch)
             intf,num=desc.wInterfaceType,desc.wCameraNumAtInterface
-            cams.append((_interface_names.get(intf,intf),num))
+            cams.append((_cam_interface_names.get(intf,intf),num))
             fails=0
         except PCOSC2LibError:
             fails+=1
@@ -56,9 +61,14 @@ def list_cameras(interface=None):
                 break
         idx+=1
     return cams
-def get_cameras_number(interface=None):
-    """Get the total number of connected PCOSC2 cameras"""
-    return len(list_cameras(interface=interface))
+def get_cameras_number(cam_interface=None):
+    """
+    Get the total number of connected PCOSC2 cameras.
+    
+    If `cam_interface` is supplied, it defines one of camera interfaces to check (e.g., ``"usb3"`` or ``"clhs"``).
+    Otherwise, check all interfaces.
+    """
+    return len(list_cameras(cam_interface=cam_interface))
 
 def reset_api():
     """
@@ -81,17 +91,17 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
 
     Args:
         idx(int): camera index (use :func:`get_cameras_number` to get the total number of connected cameras)
-        interface: camera interface; if it is ``None``, get the first available connected camera (in this case `idx` is ignored);
+        cam_interface: camera interface; if it is ``None``, get the first available connected camera (in this case `idx` is ignored);
             if not, then value of `idx` is used to connect to a particular camera (interfaces and indices can be obtain from :func:`list_cameras`)
         reboot_on_fail(bool): if ``True`` and the camera raised an error during initialization (but after opening), reboot the camera and try to connect again
             useful when the camera is in a broken state (e.g., wrong ROI or pixel clock settings)
     """
     Error=PCOSC2Error
     TimeoutError=PCOSC2TimeoutError
-    def __init__(self, idx=0, interface=None, reboot_on_fail=True):
+    def __init__(self, idx=0, cam_interface=None, reboot_on_fail=True):
         super().__init__()
         lib.initlib()
-        self.interface=interface
+        self.interface=cam_interface
         self.idx=idx
         self.handle=None
         self.reboot_on_fail=reboot_on_fail
@@ -124,7 +134,7 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         self._add_info_variable("conversion_factor",self.get_conversion_factor)
         self._add_status_variable("camera_status",self.get_camera_status)
 
-    _p_open_interface=interface.EnumParameterClass("open_interface",_interface_names_inv)
+    _p_open_interface=interface.EnumParameterClass("open_interface",_cam_interface_names_inv)
     def open(self):
         """Open connection to the camera"""
         for t in range(2):
@@ -556,12 +566,12 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
                 end=detsize
                 start=detsize-minsize
         return start,end
-    def _adj_bin(self, bin, maxbin, binmode):
-        bin=max(bin,1)
-        bin=min(bin,maxbin)
+    def _adj_bin(self, binval, maxbin, binmode):
+        binval=max(binval,1)
+        binval=min(binval,maxbin)
         if binmode!=1:
-            bin=int(2**np.floor(np.log2(bin)))
-        return bin
+            binval=int(2**np.floor(np.log2(binval)))
+        return binval
     def _trunc_roi(self, hstart=0, hend=None, vstart=0, vend=None, hbin=1, vbin=1, soft_roi=False):
         xdet,ydet=self.get_detector_size()
         if hend is None:
@@ -590,8 +600,8 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         return hstart,hend,vstart,vend,hbin,vbin
     def get_roi(self):
         roi=lib.PCO_GetROI(self.handle)
-        bin=lib.PCO_GetBinning(self.handle)
-        return ((roi[0]-1)*bin[0],roi[2]*bin[0],(roi[1]-1)*bin[1],roi[3]*bin[1],bin[0],bin[1])
+        bins=lib.PCO_GetBinning(self.handle)
+        return ((roi[0]-1)*bins[0],roi[2]*bins[0],(roi[1]-1)*bins[1],roi[3]*bins[1],bins[0],bins[1])
     def set_roi(self, hstart=0, hend=None, vstart=0, vend=None, hbin=1, vbin=1, symmetric=False):
         """
         Setup camera ROI.
@@ -672,19 +682,19 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         lib.PCO_SetNoiseFilterMode(self.handle,mode)
         self._arm()
         return self.get_noise_filter_mode()
-    def set_status_line_mode(self, binary=True, ascii=False):
+    def set_status_line_mode(self, binary=True, text=False):
         """
         Set status line mode.
 
         `binary` determines if the binary line is present (it occupies first 14 pixels of the image).
-        `ascii` determines if the ascii line is present (it is plane text timestamp, which takes first 8 rows and about 300 columns).
+        `text` determines if the text line is present (it is plane text timestamp, which takes first 8 rows and about 300 columns).
 
         It is recommended to always have `binary` option on, since it is used to determine frame index for checking if there are any missing frames.
         """
         if binary:
-            mode=2 if ascii else 1
+            mode=2 if text else 1
         else:
-            mode=3 if ascii else 0
+            mode=3 if text else 0
         if not self._has_option(CAPS1.GENERALCAPS1_TIMESTAMP_ASCII_ONLY) and mode==3:
             mode=2
         lib.PCO_SetTimestampMode(self.handle,mode)
@@ -694,7 +704,7 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         """
         Get status line mode.
 
-        Return tuple ``(binary, ascii)`` (see :meth:`set_status_line_mode` for description)
+        Return tuple ``(binary, text)`` (see :meth:`set_status_line_mode` for description)
         """
         mode=lib.PCO_GetTimestampMode(self.handle)
         return mode in {1,2}, mode in {2,3}

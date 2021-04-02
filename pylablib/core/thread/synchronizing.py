@@ -23,7 +23,7 @@ class QThreadNotifier(notifier.ISkipableNotifier):
         notifier.ISkipableNotifier.__init__(self,skipable=skipable)
         self._uid=None
         self.value=None
-    def _pre_wait(self, *args, **kwargs):
+    def _pre_wait(self, *args, **kwargs):  # pylint: disable=unused-argument
         self._controller=threadprop.current_controller(require_controller=True)
         self._uid=self._uid_gen()
         return True
@@ -35,7 +35,7 @@ class QThreadNotifier(notifier.ISkipableNotifier):
             return False
     def _pre_notify(self, value=None):
         self.value=value
-    def _do_notify(self, *args, **kwargs):
+    def _do_notify(self, *args, **kwargs):  # pylint: disable=unused-argument
         self._controller.send_sync(self._notify_tag,self._uid)
         return True
     def get_value(self):

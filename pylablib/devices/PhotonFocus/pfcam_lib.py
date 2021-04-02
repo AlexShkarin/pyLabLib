@@ -33,7 +33,7 @@ def errcheck(passing=None, lib=None, pass_positive=False):
     """
     if passing is None:
         passing={0}
-    def errchecker(result, func, arguments):
+    def errchecker(result, func, arguments):  # pylint: disable=unused-argument
         if not (result in passing or (pass_positive and result>=0)):
             raise PFCamLibError(func.__name__,result,lib=lib)
         return result

@@ -94,6 +94,7 @@ def find_savetime_comment(comments):
     """Try to find savetime comment"""
     if len(comments)==0:
         return None
+    i=0
     for i,c in enumerate(comments):
         creation_time=test_savetime_comment(c)
         if creation_time is not None:

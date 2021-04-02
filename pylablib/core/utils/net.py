@@ -291,7 +291,7 @@ class ClientSocket(object):
         
         
 
-def recv_JSON(socket, chunk_l=1024, strict=True):
+def recv_JSON(sock, chunk_l=1024, strict=True):
     """
     Receive a complete JSON token from the socket.
 
@@ -299,9 +299,9 @@ def recv_JSON(socket, chunk_l=1024, strict=True):
     If ``strict==False``, keep receiving as much data as possible until the received data forms a complete JSON token.
     otherwise, receive the data byte-by-byte and stop as soon as a token is formed (equivalent ot setting ``chunk_l=1``).
     """
-    msg="" if socket.datatype=="str" else b""
+    msg="" if sock.datatype=="str" else b""
     while True:
-        msg+=socket.recv_delimiter("}",chunk_l=chunk_l,strict=strict)
+        msg+=sock.recv_delimiter("}",chunk_l=chunk_l,strict=strict)
         try:
             json.loads(msg)
             return msg

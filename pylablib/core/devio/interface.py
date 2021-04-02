@@ -259,7 +259,7 @@ class IParameterClass:
         If not ``None``, `device` specifies the corresponding device instance for device-dependent conversion.
         """
         return alias
-    def i(self, value, device=None):
+    def i(self, value, device=None):  # pylint: disable=unused-argument
         """
         Convert device parameter value into a corresponding use parameter value
         
@@ -275,10 +275,10 @@ class ICheckingParameterClass(IParameterClass):
     Specifies six methods: :meth:`check_value`, :meth:`to_alias` and :meth:`_value_error_str` for handling value-to-alias conversion,
     and :meth:`check_alias`, :meth:`to_value` and :meth:`_alias_error_str` for handling alias-to-value conversion.
     """
-    def check_alias(self, alias):
+    def check_alias(self, alias):  # pylint: disable=unused-argument
         """Check if the alias is valid"""
         return True
-    def check_value(self, value):
+    def check_value(self, value):  # pylint: disable=unused-argument
         """Check if the device value is valid"""
         return True
     def to_value(self, alias):

@@ -18,7 +18,7 @@ class ISkipableNotifier(object):
         self._notifying="init"
         self._skipable=skipable # if skipable and Notifier.notify() is called before Notifier.wait(), doesn't call the internal _notify and _wait functions
     
-    def _pre_wait(self, *args, **kwargs):
+    def _pre_wait(self, *args, **kwargs):  # pylint: disable=unused-argument
         """
         Check if the waiting initialization is successfull.
 
@@ -26,7 +26,7 @@ class ISkipableNotifier(object):
         If return value is ``False``, waiting aborts and returns `False``, and the waiting status is marked as ``"failed"``.
         """
         return True
-    def _do_wait(self, *args, **kwargs):
+    def _do_wait(self, *args, **kwargs):  # pylint: disable=unused-argument
         """
         Main waiting routine.
 
@@ -72,7 +72,7 @@ class ISkipableNotifier(object):
         Called inside an internal lock section, so should be short and preferably non-blocking.
         """
         pass
-    def _do_notify(self):
+    def _do_notify(self, *args, **kwargs):
         """
         Main notification routine.
         """

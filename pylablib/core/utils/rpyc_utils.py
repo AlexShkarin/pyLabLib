@@ -157,7 +157,7 @@ class DeviceService(SocketTunnelService):
         for dev in self.devices:
             try:
                 dev.close()
-            except:
+            except:  # pylint: disable=bare-except
                 pass
         self.devices=[]
         if self.verbose:

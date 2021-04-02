@@ -43,7 +43,7 @@ def errcheck(passing=None, lib=None):
     """
     if passing is None:
         passing={0}
-    def errchecker(result, func, arguments):
+    def errchecker(result, func, arguments):  # pylint: disable=unused-argument
         if result not in passing:
             raise IMAQdxLibError(func.__name__,result,lib=lib)
         return result
@@ -88,7 +88,7 @@ class IMAQdxLib:
         self.IMAQdxCloseCamera=wrapper(lib.IMAQdxCloseCamera)
 
 
-        def attr_prep(type):
+        def attr_prep(type):  # pylint: disable=redefined-builtin
             return self._new_attr_value(type)
         def attr_conv(v, _, kwargs):
             return self._from_attr_value(v,kwargs["type"])
@@ -295,17 +295,17 @@ class IMAQdxLib:
             return callback_type(wrapped_callback)
         else:
             return callback_type(callback)
-    def IMAQdxRegisterFrameDoneEvent(self, id, bufferInterval, callbackFunction, callbackData=None, wrap=True):
+    def IMAQdxRegisterFrameDoneEvent(self, sid, bufferInterval, callbackFunction, callbackData=None, wrap=True):
         cb=self._wrap_callback(callbackFunction,self.c_frame_done_callback,wrap=wrap)
-        self.IMAQdxRegisterFrameDoneEvent_lib(id,bufferInterval,cb,callbackData)
+        self.IMAQdxRegisterFrameDoneEvent_lib(sid,bufferInterval,cb,callbackData)
         return cb
-    def IMAQdxRegisterPnpEvent(self, id, event, callbackFunction, callbackData=None, wrap=True):
+    def IMAQdxRegisterPnpEvent(self, sid, event, callbackFunction, callbackData=None, wrap=True):
         cb=self._wrap_callback(callbackFunction,self.c_pnp_callback,wrap=wrap)
-        self.IMAQdxRegisterPnpEvent_lib(id,event,cb,callbackData)
+        self.IMAQdxRegisterPnpEvent_lib(sid,event,cb,callbackData)
         return cb
-    def IMAQdxRegisterAttributeUpdatedEvent(self, id, name, callbackFunction, callbackData=None, wrap=True):
+    def IMAQdxRegisterAttributeUpdatedEvent(self, sid, name, callbackFunction, callbackData=None, wrap=True):
         cb=self._wrap_callback(callbackFunction,self.c_attr_updated_callback,wrap=wrap)
-        self.IMAQdxRegisterAttributeUpdatedEvent_lib(id,name,cb,callbackData)
+        self.IMAQdxRegisterAttributeUpdatedEvent_lib(sid,name,cb,callbackData)
         return cb
 
 lib=IMAQdxLib()
