@@ -1,7 +1,7 @@
 from ..core.thread import controller, announcement_pool
 from ..core.utils import functions
 
-from PyQt5 import QtCore
+from ..core.gui import QtCore, Slot, Signal
 
 import collections
 
@@ -10,6 +10,7 @@ import collections
 class ScriptStopException(Exception):
     """Exception for stopping script execution"""
 
+TAnnouncementWaitResult=collections.namedtuple("TAnnouncementWaitResult",["monitor","message"])
 class ScriptThread(controller.QTaskThread):
     """
     A script thread.
@@ -118,8 +119,8 @@ class ScriptThread(controller.QTaskThread):
             self.interrupt_reason="failed"
             raise
 
-    _monitor_signal=QtCore.pyqtSignal("PyQt_PyObject")
-    @QtCore.pyqtSlot("PyQt_PyObject")
+    _monitor_signal=Signal(object)
+    @Slot(object)
     def _on_monitor_signal(self, value):
         mon,msg=value
         try:
@@ -129,7 +130,7 @@ class ScriptThread(controller.QTaskThread):
         except KeyError:
             pass
     
-    class MonitoredSignal(object):
+    class MonitoredSignal(object): # TODO: signal -> announcement; put in separate class?
         def __init__(self, uid):
             object.__init__(self)
             self.uid=uid
@@ -152,7 +153,6 @@ class ScriptThread(controller.QTaskThread):
             raise KeyError("signal monitor {} doesn't exist".format(mon))
         uid,_=self._monitored_signals.pop(mon)
         self.unsubscribe(uid)
-    TWaitResult=collections.namedtuple("TWaitResult",["monitor","message"])
     def wait_for_signal_monitor(self, mons, timeout=None):
         """
         Wait for a signal to be received on a given monitor or several monitors 
@@ -168,7 +168,7 @@ class ScriptThread(controller.QTaskThread):
         def check_monitors(pop=False):
             for mon in mons:
                 if self._monitored_signals[mon].messages:
-                    return self.TWaitResult(mon,self._monitored_signals[mon].messages.pop(0)) if pop else True
+                    return TAnnouncementWaitResult(mon,self._monitored_signals[mon].messages.pop(0)) if pop else True
         result=check_monitors(pop=True)
         if result is not None:
             return result

@@ -17,7 +17,7 @@ from ....core.dataproc import filters
 
 import pyqtgraph
 
-from PyQt5 import QtWidgets, QtCore
+from ....core.gui import QtWidgets, QtCore
 import numpy as np
 import contextlib
 import time
@@ -212,7 +212,7 @@ class ImagePlotter(QtWidgets.QWidget):
             self.rect=rect
             self.center=center or (0,0)
             self.size=size or (0,0)
-        def update_params(self, center=None, size=None):
+        def update_parameters(self, center=None, size=None):
             if center:
                 self.center=center
             if size:
@@ -376,7 +376,7 @@ class ImagePlotter(QtWidgets.QWidget):
             self.imageWindow.getView().addItem(pqrect)
             self.rectangles[name]=self.Rectangle(pqrect)
         rect=self.rectangles[name]
-        rect.update_params(center,size)
+        rect.update_parameters(center,size)
         rcenter=rect.center[0]-rect.size[0]/2.,rect.center[1]-rect.size[1]/2.
         rsize=rect.size
         imshape=self.img.shape

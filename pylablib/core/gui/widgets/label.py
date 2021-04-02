@@ -1,4 +1,4 @@
-from PyQt5 import QtWidgets, QtCore
+from .. import QtWidgets, Signal
 
 from ..limiter import as_limiter, LimitError, NumberLimit
 from ..formatter import as_formatter, str_to_float
@@ -16,7 +16,7 @@ class LVTextLabel(QtWidgets.QLabel):
         self._value=None
         if value is not None:
             self.set_value(value)
-    value_changed=QtCore.pyqtSignal(object)
+    value_changed=Signal(object)
     """Signal emitted when value is changed"""
     def get_value(self):
         """Get current numerical value"""
@@ -116,7 +116,7 @@ class NumLabel(QtWidgets.QLabel):
         """Return representation of `value` according to the current numerical format"""
         return self.formatter(value)
 
-    value_changed=QtCore.pyqtSignal(object)
+    value_changed=Signal(object)
     """Signal emitted when value is changed"""
     def get_value(self):
         """Get current numerical value"""

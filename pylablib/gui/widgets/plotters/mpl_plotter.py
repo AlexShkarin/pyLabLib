@@ -1,10 +1,6 @@
-from matplotlib.backends.qt_compat import is_pyqt5
-if is_pyqt5():
-    from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT as NavigationToolbar
-else:
-    from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, NavigationToolbar2QT as NavigationToolbar
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT as NavigationToolbar
 
-from PyQt5 import QtWidgets
+from ....core.gui import QtWidgets
 
 import matplotlib.pyplot as mpl
 import time

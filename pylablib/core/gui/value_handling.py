@@ -7,7 +7,7 @@ from ..utils import dictionary, py3, string, functions as func_utils
 from ..utils.functions import FunctionSignature
 from ..thread.controller import gui_thread_method
 
-from PyQt5 import QtCore, QtWidgets
+from . import QtCore, QtWidgets
 import collections
 
 
@@ -96,7 +96,7 @@ class IValueHandler:
         return str(value)
     def value_changed(self):
         """
-        Get the pyQt signal emitted when the value is changed.
+        Get the Qt signal emitted when the value is changed.
         """
         if hasattr(self.widget,"value_changed"):
             return self.widget.value_changed
@@ -236,7 +236,7 @@ class StandardValueHandler(IValueHandler):
 
 class ISingleValueHandler(IValueHandler):
     """
-    Base class for single-value widget handler, typically used for built-in pyQt widgets.
+    Base class for single-value widget handler, typically used for built-in Qt widgets.
 
     Defines new functions ``get/set_single_value`` which don't take a name argument; raises an error if the name is supplied to any of the standard functions. 
 
@@ -650,7 +650,7 @@ class GUIValues:
                 name="/".join([p for p in path if p])
                 self.add_widget(name,widget)
 
-    TIndicatorsSet=collections.namedtuple("TIndicatorsSet",["ind"])
+    IndicatorsSet=collections.namedtuple("IndicatorsSet",["ind"])
     def add_indicator_handler(self, name, handler, ind_name="__default__"):
         """
         Add indicator handler with a given name.
@@ -658,7 +658,7 @@ class GUIValues:
         `ind_name` can distinguish different sub-indicators with the same name, if the same value has multiple indicators.
         """
         if handler is not None:
-            self.indicator_handlers.setdefault(name,self.TIndicatorsSet({})).ind[ind_name]=handler
+            self.indicator_handlers.setdefault(name,self.IndicatorsSet({})).ind[ind_name]=handler
             return handler
         return None
     def remove_indicator_handler(self, name, ind_name=None):

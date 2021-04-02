@@ -3,7 +3,7 @@ from pylablib.core.gui.qt import utils
 from pylablib.core.utils import dictionary
 from pylablib.aux_libs.gui.widgets import image_plotter, trace_plotter, line_plotter, param_table
 
-from PyQt5 import QtWidgets, QtCore
+from ..core.gui import QtWidgets, QtCore
 
 
 
@@ -253,7 +253,7 @@ class ImageTab(IAutoupdateTab):
     Image plotter tab.
 
     The tab which contains :cls:`.ImageView` and :cls:`.ImageViewController` widgets to show images.
-    The image can be changed in a thread-safe manner, and updated automaitcally or explicitly.
+    The image can be changed in a thread-safe manner, and updated automatically or explicitly.
     """
     def __init__(self, frame, name):
         IAutoupdateTab.__init__(self,frame,name)
@@ -265,7 +265,7 @@ class ImageTab(IAutoupdateTab):
         self.imctl=image_plotter.ImageViewController(frame)
         self.imctl.setupUi(name=name+"_image_view_ctl",view=self.imview)
         self.imctl.setMinimumSize(200,0)
-        self.imctl.setMaximumSize(200,16777215)
+        self.imctl.setMaximumSize(200,2**16)
         self.side_layout=QtWidgets.QVBoxLayout()
         self.side_layout.addWidget(self.imctl)
         self.layout.addLayout(self.side_layout)

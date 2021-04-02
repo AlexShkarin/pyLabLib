@@ -2,7 +2,7 @@ from __future__ import print_function # Python 2 compatibility
 from ..utils import general, funcargparse, dictionary, functions as func_utils
 from . import announcement_pool as apool, threadprop, synchronizing, callsync
 
-from PyQt5 import QtCore
+from ..gui import QtCore, Slot, Signal
 
 import threading
 import contextlib
@@ -52,18 +52,18 @@ def exint(error_msg_template="{}:"):
 def exsafe(func):
     """Decorator that intercepts exceptions raised by `func` and stops the execution in a controlled manner (quitting the main thread)"""
     error_msg_template="{{}} executing function '{}':".format(func.__name__)
-    @func_utils.getargsfrom(func,hide_outer_obj=True) # PyQt slots don't work well with bound methods
+    @func_utils.getargsfrom(func,hide_outer_obj=True) # Qt slots don't work well with bound methods
     def safe_func(*args, **kwargs):
         with exint(error_msg_template=error_msg_template):
             return func(*args,**kwargs)
     return safe_func
 def exsafeSlot(*slargs, **slkwargs):
-    """Wrapper around ``PyQt5.QtCore.pyqtSlot`` which intercepts exceptions and stops the execution in a controlled manner"""
+    """Wrapper around Qt slot which intercepts exceptions and stops the execution in a controlled manner"""
     def wrapper(func):
-        return QtCore.pyqtSlot(*slargs,**slkwargs)(exsafe(func))
+        return Slot(*slargs,**slkwargs)(exsafe(func))
     return wrapper
 def _toploop(func):
-    @func_utils.getargsfrom(func,hide_outer_obj=True) # PyQt slots don't work well with bound methods
+    @func_utils.getargsfrom(func,hide_outer_obj=True) # slots don't work well with bound methods
     def tlfunc(self, *args, **kwargs):
         if self._in_inner_loop():
             self._toploop_calls.append(lambda: func(self,*args,**kwargs))
@@ -71,9 +71,9 @@ def _toploop(func):
             func(self,*args,**kwargs)
     return tlfunc
 def toploopSlot(*slargs, **slkwargs):
-    """Wrapper around ``PyQt5.QtCore.pyqtSlot`` which intercepts exceptions and stops the execution in a controlled manner"""
+    """Wrapper around Qt slot which intercepts exceptions and stops the execution in a controlled manner"""
     def wrapper(func):
-        slot=QtCore.pyqtSlot(*slargs,**slkwargs)(_toploop(exsafe(func)))
+        slot=Slot(*slargs,**slkwargs)(_toploop(exsafe(func)))
         return slot
     return wrapper
 
@@ -84,8 +84,8 @@ def toploopSlot(*slargs, **slkwargs):
 
 
 class QThreadControllerThread(QtCore.QThread):
-    finalized=QtCore.pyqtSignal()
-    _stop_request=QtCore.pyqtSignal()
+    finalized=Signal()
+    _stop_request=Signal()
     def __init__(self, controller):
         QtCore.QThread.__init__(self)
         self.moveToThread(self)
@@ -100,7 +100,7 @@ class QThreadControllerThread(QtCore.QThread):
                 self.finalized.emit()
                 self.exec_() # finalizing event loop (exitted after finalizing event is processed)
                 self.controller._kill_poke_timer()
-    @QtCore.pyqtSlot()
+    @Slot()
     def _do_quit(self):
         if self.isRunning() and not self._stop_requested:
             self.controller.request_stop() # signal controller to stop
@@ -241,7 +241,7 @@ class QThreadController(QtCore.QObject):
             self.thread.finalized.connect(self._on_finish_event,type=QtCore.Qt.QueuedConnection)
     
     ### Special signals processing ###
-    _control_sent=QtCore.pyqtSignal(object)
+    _control_sent=Signal(object)
     @exsafeSlot(object)
     def _recv_control(self, ctl): # control signal processing
         kind,tag,priority,value=ctl
@@ -281,7 +281,7 @@ class QThreadController(QtCore.QObject):
             _,call=heapq.heappop(self._call_queue)
             self._next_execute_call_counter+=1
             call()
-    _thread_call_request=QtCore.pyqtSignal(object)
+    _thread_call_request=Signal(object)
     @exsafeSlot(object)
     def _on_call_in_thread(self, call): # call signal processing
         if (not call[2]) and self._in_inner_loop(): # call=(cnt,func,interrupt)
@@ -290,8 +290,8 @@ class QThreadController(QtCore.QObject):
             self._execute_queued_call(call[:2])
 
     ### Execution starting / finishing ###
-    _recv_started_event=QtCore.pyqtSignal()
-    started=QtCore.pyqtSignal()
+    _recv_started_event=Signal()
+    started=Signal()
     """This signal is emitted after the thread has started (after the setup code has been executed, before its lifetime state is changed)"""
     @exsafeSlot()
     def _on_start_event(self):
@@ -322,7 +322,7 @@ class QThreadController(QtCore.QObject):
             if self._lifetime_state=="starting": # thread failed in self.on_start, need to notify waiting threads
                 self.fail_exec_point("run")
             self.poke()  # add a message into the event loop, so that it executed and detects that the thread.quit was called
-    finished=QtCore.pyqtSignal()
+    finished=Signal()
     """This signal is emitted before the thread has finished (before the cleanup code has been executed, after its lifetime state is changed)"""
     def _kill_poke_timer(self):
         if self._poke_timer_id is not None:
@@ -355,7 +355,7 @@ class QThreadController(QtCore.QObject):
             self.poke()  # add a message into the event loop, so that it executed and detects that the thread.quit was called
             with self._lifetime_state_lock:
                 self._lifetime_state="stopped"
-    @QtCore.pyqtSlot()
+    @Slot()
     def _on_last_window_closed(self):
         if threadprop.get_app().quitOnLastWindowClosed():
             self.request_stop()
@@ -368,7 +368,7 @@ class QThreadController(QtCore.QObject):
     ### Message loop management ###
     def _do_run(self):
         self.run()
-    _check_toploop_signals=QtCore.pyqtSignal()
+    _check_toploop_signals=Signal()
     @exsafeSlot()
     def _process_toploop_signals(self):
         if not self._in_inner_loop():
@@ -1363,7 +1363,7 @@ class QTaskThread(QMultiRepeatingThread):
         for name in self._commands:
             self._commands[name][1].clear()
 
-    _directed_announcement=QtCore.pyqtSignal(object)
+    _directed_announcement=Signal(object)
     @toploopSlot(object)
     def _on_directed_announcement(self, msg):
         self.process_announcement(*msg)

@@ -133,6 +133,7 @@ class DataBlockMessage:
 
 
 
+TStreamFormerQueueStatus=collections.namedtuple("TStreamFormerQueueStatus",["enabled","queue_len","max_queue_len"])
 class StreamFormerThread(controller.QTaskThread):
     """
     Thread that combines data from different sources and aligns it in complete rows.
@@ -208,7 +209,6 @@ class StreamFormerThread(controller.QTaskThread):
         Manages adding and updating new datapoints.
         For arguments, see :meth:`.StreamFormerThread.add_channel`.
         """
-        QueueStatus=collections.namedtuple("QueueStatus",["enabled","queue_len","max_queue_len"])
         def __init__(self, func=None, max_queue_len=10, required="auto", background=False, enabled=True, fill_on="started", latching=True, expand_list=False, pure_func=True, initial=None):
             object.__init__(self)
             funcargparse.check_parameter_range(fill_on,"fill_on",{"started","completed"})
@@ -323,7 +323,7 @@ class StreamFormerThread(controller.QTaskThread):
 
             Return tuple ``(enabled, queue_len, max_queue_len)``
             """
-            return self.QueueStatus(self.enabled,len(self.queue),self.max_queue_len)
+            return TStreamFormerQueueStatus(self.enabled,len(self.queue),self.max_queue_len)
             
 
     def add_channel(self, name, func=None, max_queue_len=10, enabled=True, required="auto", background=False, fill_on="started", latching=True, expand_list=False, pure_func=True, initial=None):

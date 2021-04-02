@@ -1,4 +1,4 @@
-from PyQt5 import QtWidgets, QtCore
+from .. import QtWidgets, Signal
 
 class ComboBox(QtWidgets.QComboBox):
     """
@@ -37,7 +37,7 @@ class ComboBox(QtWidgets.QComboBox):
             raise ValueError("number of values {} is different from the number of options {}".format(len(values),self.count()))
         self._index_values=values
 
-    value_changed=QtCore.pyqtSignal(object)
+    value_changed=Signal(object)
     """Signal emitted when value is changed"""
     def get_value(self):
         """Get current numerical value"""

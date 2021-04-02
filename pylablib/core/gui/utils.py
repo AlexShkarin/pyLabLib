@@ -1,4 +1,4 @@
-import sip
+from . import qdelete
 
 def delete_layout_item(layout, idx):
     """Remove and item with the given index (completely delete it)"""
@@ -6,9 +6,9 @@ def delete_layout_item(layout, idx):
         item=layout.takeAt(idx)
         layout.removeItem(item)
         if item.layout():
-            clean_layout(item.layout())
+            clean_layout(item.layout(),delete_layout=True)
         if item.widget():
-            clean_layout(item.widget().layout())
+            clean_layout(item.widget().layout(),delete_layout=True)
             item.widget().deleteLater()
 def clean_layout(layout, delete_layout=False):
     """
@@ -20,7 +20,7 @@ def clean_layout(layout, delete_layout=False):
         while layout.count():
             delete_layout_item(layout,0)
         if delete_layout:
-            sip.delete(layout)
+            qdelete(layout)
 
 
 def is_layout_row_empty(layout, row):

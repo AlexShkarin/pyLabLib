@@ -1,4 +1,4 @@
-from PyQt5 import QtWidgets, QtCore
+from .. import QtCore, QtWidgets, Signal
 
 from ..limiter import as_limiter, LimitError, NumberLimit
 from ..formatter import as_formatter, str_to_float, order_to_pos, pos_to_order
@@ -33,9 +33,9 @@ class TextEdit(QtWidgets.QLineEdit):
         else:
             QtWidgets.QLineEdit.keyPressEvent(self,event)
 
-    value_entered=QtCore.pyqtSignal(object)
+    value_entered=Signal(object)
     """Signal emitted when value is entered (regardless of whether it stayed the same)"""
-    value_changed=QtCore.pyqtSignal(object)
+    value_changed=Signal(object)
     """Signal emitted when value is changed"""
     def get_value(self):
         """Get current numerical value"""
@@ -226,9 +226,9 @@ class NumEdit(QtWidgets.QLineEdit):
         """Return representation of `value` according to the current numerical format"""
         return self.formatter(value)
 
-    value_entered=QtCore.pyqtSignal(object)
+    value_entered=Signal(object)
     """Signal emitted when value is entered (regardless of whether it stayed the same)"""
-    value_changed=QtCore.pyqtSignal(object)
+    value_changed=Signal(object)
     """Signal emitted when value is changed"""
     def get_value(self):
         """Get current numerical value"""

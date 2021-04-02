@@ -320,6 +320,7 @@ def get_status_line_roi(frame, status_line):
 
 ########## Frame saving ##########
 
+TPretriggerBufferStatus=collections.namedtuple("TPretriggerBufferStatus",["frames","skipped","nbytes","size"])
 class PretriggerBuffer:
     """
     Pretrigger buffer.
@@ -379,7 +380,6 @@ class PretriggerBuffer:
     def nbytes(self):
         """Get total size of the frames in bytes"""
         return sum([m.nbytes() for m in self.buffer])
-    TBufferStatus=collections.namedtuple("TBufferStatus",["frames","skipped","nbytes","size"])
     def get_status(self):
         """
         Get buffer status.
@@ -394,7 +394,7 @@ class PretriggerBuffer:
         for m in self.buffer:
             skipped+=m.get_missed_frames(last_frame_idx if m.first_frame_index() else None) # don't count reset as skip
             last_frame_idx=m.last_frame_index()
-        return self.TBufferStatus(nframes,skipped,nbytes,self.size)
+        return TPretriggerBufferStatus(nframes,skipped,nbytes,self.size)
     
 
 

@@ -126,7 +126,7 @@ class QScheduledCall:
         result_synchronizer: result synchronizer object; can be ``None`` (create new :class:`QCallResultSynchronizer`),
             ``"async"`` (no result synchronization), or a :class:`QCallResultSynchronizer` object. 
     """
-    TCallback=collections.namedtuple("TCallback",["func","pass_result","call_on_fail"])
+    Callback=collections.namedtuple("Callback",["func","pass_result","call_on_fail"])
     def __init__(self, func, args=None, kwargs=None, result_synchronizer=None):
         self.func=func
         self.args=args or []
@@ -170,7 +170,7 @@ class QScheduledCall:
         If ``callback_on_fail==True``, call it even if the original call raised an exception.
         `position` specifies callback position in the call list (by default, end of the list).
         """
-        cb=self.TCallback(callback,pass_result,call_on_fail)
+        cb=self.Callback(callback,pass_result,call_on_fail)
         if position is None:
             self.callbacks.append(cb)
         else:

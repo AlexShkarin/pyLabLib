@@ -3,22 +3,9 @@ from ...thread import threadprop, controller
 from .. import value_handling as value_handling, utils
 from ...utils import py3, dictionary
 
-from PyQt5 import QtCore, QtWidgets
+from .. import QtCore, QtWidgets, Signal
 
 import collections
-
-try:
-    _fromUtf8=QtCore.QString.fromUtf8
-except AttributeError:
-    def _fromUtf8(s):
-        return s
-try:
-    _encoding=QtWidgets.QApplication.UnicodeUTF8
-    def _translate(context, text, disambig):
-        return QtWidgets.QApplication.translate(context,text,disambig,_encoding)
-except AttributeError:
-    def _translate(context, text, disambig):
-        return QtWidgets.QApplication.translate(context,text,disambig)
 
 
 class ParamTable(QtWidgets.QWidget):
@@ -75,11 +62,13 @@ class ParamTable(QtWidgets.QWidget):
                 note that :meth:`set_all_values` will still set the widget value.
         """
         self.name=name
-        self.setObjectName(_fromUtf8(self.name))
+        self.setObjectName(self.name)
         self.formLayout=QtWidgets.QGridLayout(self)
         self.formLayout.setSizeConstraint(QtWidgets.QLayout.SetDefaultConstraint)
         self.formLayout.setContentsMargins(5,5,5,5)
-        self.formLayout.setObjectName(_fromUtf8(self.name+"_formLayout"))
+        self.formLayout.setSpacing(5)
+        self.formLayout.setObjectName(self.name+"_formLayout")
+        self._sublayouts={}
         self.add_indicator=add_indicator
         if gui_values is None:
             self.gui_values=value_handling.GUIValues()
@@ -92,7 +81,7 @@ class ParamTable(QtWidgets.QWidget):
         self.cache_values=cache_values
         self.current_values=dictionary.Dictionary()
 
-    value_changed=QtCore.pyqtSignal(object,object)
+    value_changed=Signal(object,object)
     @controller.exsafeSlot()
     def _update_cache_values(self, name=None, value=None):
         if self.cache_values:
@@ -101,17 +90,84 @@ class ParamTable(QtWidgets.QWidget):
             else:
                 self.current_values[name]=self.get_value(name)
 
-    def _normalize_location(self, location, default=(None,0,1,1)):
+    def _normalize_location(self, location, default=("next",0,1,1)):
         if location=="skip":
             return "skip"
         if not isinstance(location,(list,tuple)):
             location=(location,)
+        if isinstance(location[0],py3.textstring) and location[0]!="next":
+            lname,location=location[0],location[1:]
+            layout,lkind=self._sublayouts[lname]
+        else:
+            lname=None
+            layout,lkind=self.formLayout,"grid"
         location+=(None,)*(4-len(location))
         location=[d if l is None else l for (l,d) in zip(location,default)]
         row,col,rowspan,colspan=location
-        row_cnt=self.formLayout.rowCount()
-        row=row_cnt if row is None else (row%row_cnt)
-        return row,col,rowspan,colspan
+        if lkind=="grid":
+            row_cnt,col_cnt=layout.rowCount(),layout.columnCount()
+        elif lkind=="vbox":
+            col,colspan,rowspan=0,1,1
+            row_cnt,col_cnt=layout.count(),1
+        else:
+            if location[1:]==(None,None,None):
+                row,col,rowspan,colspan=0,location[0],1,1
+            row,colspan,rowspan=0,1,1
+            row_cnt,col_cnt=1,layout.count()
+        row=row_cnt if row is "next" else (row%row_cnt if row<0 else row)
+        if rowspan=="end":
+            rowspan=max(row_cnt-row,1)
+        col=col_cnt if col is "next" else (col%col_cnt if col<0 else col)
+        if colspan=="end":
+            colspan=max(col_cnt-col,1)
+        return lname,(row,col,rowspan,colspan)
+    def _insert_layout_element(self, lname, element, location, kind="widget"):
+        if lname is None:
+            layout,lkind=self.formLayout,"grid"
+        else:
+            layout,lkind=self._sublayouts[lname]
+        if lkind=="grid":
+            if kind=="widget":
+                layout.addWidget(element,*location)
+            elif kind=="item":
+                layout.addItem(element,*location)
+            elif kind=="layout":
+                layout.addLayout(element,*location)
+            else:
+                raise ValueError("unrecognized element kind: {}".format(kind))
+        else:
+            idx=location[0] if lkind=="vbox" else location[1]
+            if lkind=="vbox" and location[0]!=0:
+                raise ValueError("can't space widgets vertically in a vbox environment")
+            if kind=="widget":
+                layout.insertWidget(idx,element)
+            elif kind=="item":
+                layout.insertItem(idx,element)
+            elif kind=="layout":
+                layout.insertLayout(idx,element)
+            else:
+                raise ValueError("unrecognized element kind: {}".format(kind))
+    def add_sublayout(self, name, kind="grid", location=("next",0,1,"end")):
+        """
+        Add a sublayout to the given location.
+
+        `name` specifies the sublayout name, which can be used to refer to it in specifying locations later.
+        `kind` can be ``"grid"``, ``"vbox"`` (vertical single-column box), or ``"hbox"`` (horizontal single-row box).
+        """
+        if name in self._sublayouts:
+            raise ValueError("sublayout {} already exists".format(name))
+        if kind=="grid":
+            layout=QtWidgets.QGridLayout(self)
+        elif kind=="vbox":
+            layout=QtWidgets.QVBoxLayout(self)
+        elif kind=="hbox":
+            layout=QtWidgets.QHBoxLayout(self)
+        else:
+            raise ValueError("unrecognized layout kind: {}".format(kind))
+        lname,location=self._normalize_location(location)
+        self._insert_layout_element(lname,layout,location,kind="layout")
+        self._sublayouts[name]=(layout,kind)
+
     ParamRow=collections.namedtuple("ParamRow",["widget","label","indicator","value_handler","indicator_handler"])
     def _add_widget(self, name, params, add_change_event=True):
         self.params[name]=params
@@ -124,7 +180,7 @@ class ParamTable(QtWidgets.QWidget):
         if self.cache_values:
             params.value_handler.connect_value_changed_handler(lambda value: self._update_cache_values(name,value),only_signal=False)
         self._update_cache_values()
-    def add_simple_widget(self, name, widget, label=None, value_handler=None, add_indicator=None, location=(None,0), add_change_event=True):
+    def add_simple_widget(self, name, widget, label=None, value_handler=None, add_indicator=None, location="next", tooltip=None, add_change_event=True):
         """
         Add a 'simple' (single-spaced, single-valued) widget to the table.
 
@@ -139,41 +195,53 @@ class ParamTable(QtWidgets.QWidget):
                 by default, add to a new row in the end and into the first column
                 can also be a string ``"skip"``, which means that the widget is added to some other location manually later
                 (this option only works if ``label=None``, and doesn't add any indicator)
+            tooltip: widget tooltip (mouseover text)
             add_change_event (bool): if ``True``, changing of the widget's value emits the table's ``value_changed`` event
         
         Return the widget's value handler
         """
         if name in self.params:
             raise KeyError("widget {} already exists".format(name))
-        location=self._normalize_location(location,default=(None,0,1,None))
+        if add_indicator is None:
+            add_indicator=self.add_indicator
+        lname,location=self._normalize_location(location,default=("next",0,1,3 if add_indicator else 2))
         if location!="skip":
             row,col,rowspan,colspan=location
+            labelspan=1 if label is not None else 0
+            indspan=1 if add_indicator else 0
+            if colspan<indspan+labelspan+1:
+                raise ValueError("column span should be at least {} to accommodate the widget, the label, and the indicator".format(indspan+labelspan+1))
+        else:
+            if label is not None:
+                raise ValueError("label can not be combined with 'skip' location")
+            add_indicator=False
         if label is not None:
             wlabel=QtWidgets.QLabel(self)
-            wlabel.setObjectName(_fromUtf8("{}__label".format(name)))
-            self.formLayout.addWidget(wlabel,row,col,rowspan,1)
-            wlabel.setText(_translate(self.name,label,None))
+            wlabel.setObjectName("{}__label".format(name))
+            self._insert_layout_element(lname,wlabel,(row,col,rowspan,1))
+            wlabel.setText(label)
         else:
             wlabel=None
         value_handler=value_handler or value_handling.create_value_handler(widget)
-        if add_indicator is None:
-            add_indicator=self.add_indicator and (location!="skip")
         if add_indicator:
             windicator=QtWidgets.QLabel(self)
-            windicator.setObjectName(_fromUtf8("{}__indicator".format(name)))
-            self.formLayout.addWidget(windicator,row,col+2,rowspan,1)
+            windicator.setObjectName("{}__indicator".format(name))
+            self._insert_layout_element(lname,windicator,(row,col+colspan-1,rowspan,1))
             indicator_handler=value_handling.LabelIndicatorHandler(windicator,formatter=value_handler)
         else:
             windicator=None
             indicator_handler=None
-        if wlabel is None:
-            self.formLayout.addWidget(widget,row,col,rowspan,colspan or (2 if add_indicator else 3))
-        elif location!="skip":
-            self.formLayout.addWidget(widget,row,col+1,rowspan,colspan or (1 if add_indicator else 2))
+        if location!="skip":
+            self._insert_layout_element(lname,widget,(row,col+labelspan,rowspan,colspan-labelspan-indspan))
+        if tooltip is not None:
+            if wlabel is not None:
+                wlabel.setToolTip(tooltip)
+            else:
+                widget.setToolTip(tooltip)
         self._add_widget(name,self.ParamRow(widget,wlabel,windicator,value_handler,indicator_handler),add_change_event=add_change_event)
         return value_handler
 
-    def add_custom_widget(self, name, widget, value_handler=None, indicator_handler=None, location=(None,0,1,None), add_change_event=True):
+    def add_custom_widget(self, name, widget, value_handler=None, indicator_handler=None, location="next", tooltip=None, add_change_event=True):
         """
         Add a 'custom' (multi-spaced, possibly complex-valued) widget to the table.
 
@@ -192,11 +260,13 @@ class ParamTable(QtWidgets.QWidget):
         """
         if name in self.params:
             raise KeyError("widget {} already exists".format(name))
-        location=self._normalize_location(location,default=(None,0,1,3))
+        lname,location=self._normalize_location(location,default=("next",0,1,3))
         if location!="skip":
-            self.formLayout.addWidget(widget,*location)
+            self._insert_layout_element(lname,widget,location)
         value_handler=value_handler or value_handling.create_value_handler(widget)
         indicator_handler=indicator_handler or value_handling.create_indicator_handler(widget)
+        if tooltip is not None:
+            widget.setToolTip(tooltip)
         self._add_widget(name,self.ParamRow(widget,None,None,value_handler,indicator_handler),add_change_event=add_change_event)
         return value_handler
 
@@ -212,7 +282,7 @@ class ParamTable(QtWidgets.QWidget):
             add_indicator=self.add_indicator
         indicator_handler=value_handling.VirtualIndicatorHandler if add_indicator else None
         self._add_widget(name,self.ParamRow(None,None,None,value_handler,indicator_handler))
-    def add_button(self, name, caption, label=None, add_indicator=None, location=(None,0), add_change_event=True, virtual=False):
+    def add_button(self, name, caption, label=None, add_indicator=None, location="next", tooltip=None, add_change_event=True, virtual=False):
         """
         Add a button to the table.
 
@@ -226,10 +296,10 @@ class ParamTable(QtWidgets.QWidget):
         if virtual:
             return self.add_virtual_element(name,add_indicator=add_indicator)
         widget=QtWidgets.QPushButton(self)
-        widget.setText(_translate(self.name,caption,None))
-        widget.setObjectName(_fromUtf8(self.name+"_"+name))
-        return self.add_simple_widget(name,widget,label=label,add_indicator=add_indicator,location=location,add_change_event=add_change_event)
-    def add_toggle_button(self, name, caption, value=False, label=None, add_indicator=None, location=(None,0), add_change_event=True, virtual=False):
+        widget.setText(caption)
+        widget.setObjectName(self.name+"_"+name)
+        return self.add_simple_widget(name,widget,label=label,add_indicator=add_indicator,location=location,tooltip=tooltip,add_change_event=add_change_event)
+    def add_toggle_button(self, name, caption, value=False, label=None, add_indicator=None, location="next", tooltip=None, add_change_event=True, virtual=False):
         """
         Add a toggle button to the table.
 
@@ -245,13 +315,13 @@ class ParamTable(QtWidgets.QWidget):
             return self.add_virtual_element(name,value=value,add_indicator=add_indicator)
         widget=widget_button.ToggleButton(self)
         if isinstance(caption,(tuple,list)):
-            widget.set_value_labels([_translate(self.name,c,None) for c in caption])
+            widget.set_value_labels([c for c in caption])
         else:
-            widget.setText(_translate(self.name,caption,None))
-        widget.setObjectName(_fromUtf8(self.name+"_"+name))
+            widget.setText(caption)
+        widget.setObjectName(self.name+"_"+name)
         widget.set_value(value)
-        return self.add_simple_widget(name,widget,label=label,add_indicator=add_indicator,location=location,add_change_event=add_change_event)
-    def add_check_box(self, name, caption, value=False, label=None, add_indicator=None, location=(None,0), add_change_event=True, virtual=False):
+        return self.add_simple_widget(name,widget,label=label,add_indicator=add_indicator,location=location,tooltip=tooltip,add_change_event=add_change_event)
+    def add_check_box(self, name, caption, value=False, label=None, add_indicator=None, location="next", tooltip=None, add_change_event=True, virtual=False):
         """
         Add a checkbox to the table.
 
@@ -266,11 +336,11 @@ class ParamTable(QtWidgets.QWidget):
         if virtual:
             return self.add_virtual_element(name,value=value,add_indicator=add_indicator)
         widget=QtWidgets.QCheckBox(self)
-        widget.setText(_translate(self.name,caption,None))
-        widget.setObjectName(_fromUtf8(self.name+"_"+name))
+        widget.setText(caption)
+        widget.setObjectName(self.name+"_"+name)
         widget.setChecked(value)
-        return self.add_simple_widget(name,widget,label=label,add_indicator=add_indicator,location=location,add_change_event=add_change_event)
-    def add_text_label(self, name, value=None, label=None, location=(None,0), add_change_event=False, virtual=False):
+        return self.add_simple_widget(name,widget,label=label,add_indicator=add_indicator,location=location,tooltip=tooltip,add_change_event=add_change_event)
+    def add_text_label(self, name, value=None, label=None, location="next", tooltip=None, add_change_event=False, virtual=False):
         """
         Add a text label to the table.
 
@@ -284,9 +354,9 @@ class ParamTable(QtWidgets.QWidget):
         if virtual:
             return self.add_virtual_element(name,value=value)
         widget=widget_label.LVTextLabel(self,value=value)
-        widget.setObjectName(_fromUtf8(self.name+"_"+name))
-        return self.add_simple_widget(name,widget,label=label,add_indicator=False,location=location,add_change_event=add_change_event)
-    def add_num_label(self, name, value=0, limiter=None, formatter=None, label=None, location=(None,0), add_change_event=False, virtual=False):
+        widget.setObjectName(self.name+"_"+name)
+        return self.add_simple_widget(name,widget,label=label,add_indicator=False,location=location,tooltip=tooltip,add_change_event=add_change_event)
+    def add_num_label(self, name, value=0, limiter=None, formatter=None, label=None, tooltip=None, location="next", add_change_event=False, virtual=False):
         """
         Add a numerical label to the table.
 
@@ -304,9 +374,9 @@ class ParamTable(QtWidgets.QWidget):
         if virtual:
             return self.add_virtual_element(name,value=value)
         widget=widget_label.NumLabel(self,value=value,limiter=limiter,formatter=formatter)
-        widget.setObjectName(_fromUtf8(self.name+"_"+name))
-        return self.add_simple_widget(name,widget,label=label,add_indicator=False,location=location,add_change_event=add_change_event)
-    def add_text_edit(self, name, value=None, label=None, add_indicator=None, location=(None,0), add_change_event=True, virtual=False):
+        widget.setObjectName(self.name+"_"+name)
+        return self.add_simple_widget(name,widget,label=label,add_indicator=False,location=location,tooltip=tooltip,add_change_event=add_change_event)
+    def add_text_edit(self, name, value=None, label=None, add_indicator=None, location="next", tooltip=None, add_change_event=True, virtual=False):
         """
         Add a text edit to the table.
 
@@ -320,9 +390,9 @@ class ParamTable(QtWidgets.QWidget):
         if virtual:
             return self.add_virtual_element(name,value=value,add_indicator=add_indicator)
         widget=edit.TextEdit(self,value=value)
-        widget.setObjectName(_fromUtf8(self.name+"_"+name))
-        return self.add_simple_widget(name,widget,label=label,add_indicator=add_indicator,location=location,add_change_event=add_change_event)
-    def add_num_edit(self, name, value=None, limiter=None, formatter=None, custom_steps=None, label=None, add_indicator=None, location=(None,0), add_change_event=True, virtual=False):
+        widget.setObjectName(self.name+"_"+name)
+        return self.add_simple_widget(name,widget,label=label,add_indicator=add_indicator,location=location,tooltip=tooltip,add_change_event=add_change_event)
+    def add_num_edit(self, name, value=None, limiter=None, formatter=None, custom_steps=None, label=None, add_indicator=None, location="next", tooltip=None, add_change_event=True, virtual=False):
         """
         Add a numerical edit to the table.
 
@@ -342,9 +412,9 @@ class ParamTable(QtWidgets.QWidget):
         if virtual:
             return self.add_virtual_element(name,value=value,add_indicator=add_indicator)
         widget=edit.NumEdit(self,value=value,limiter=limiter,formatter=formatter,custom_steps=custom_steps)
-        widget.setObjectName(_fromUtf8(self.name+"_"+name))
-        return self.add_simple_widget(name,widget,label=label,add_indicator=add_indicator,location=location,add_change_event=add_change_event)
-    def add_progress_bar(self, name, value=None, label=None, add_change_event=True, virtual=False):
+        widget.setObjectName(self.name+"_"+name)
+        return self.add_simple_widget(name,widget,label=label,add_indicator=add_indicator,location=location,tooltip=tooltip,add_change_event=add_change_event)
+    def add_progress_bar(self, name, value=None, label=None, location="next", tooltip=None, add_change_event=True, virtual=False):
         """
         Add a progress bar to the table.
 
@@ -358,11 +428,11 @@ class ParamTable(QtWidgets.QWidget):
         if virtual:
             return self.add_virtual_element(name,value=value)
         widget=QtWidgets.QProgressBar(self)
-        widget.setObjectName(_fromUtf8(self.name+"_"+name))
+        widget.setObjectName(self.name+"_"+name)
         if value is not None:
             widget.setValue(value)
-        return self.add_simple_widget(name,widget,label=label,add_change_event=add_change_event)
-    def add_combo_box(self, name, value=None, options=None, index_values=None, label=None, add_indicator=None, add_change_event=True, virtual=False):
+        return self.add_simple_widget(name,widget,label=label,location=location,tooltip=tooltip,add_change_event=add_change_event)
+    def add_combo_box(self, name, value=None, options=None, index_values=None, label=None, add_indicator=None, location="next", tooltip=None, add_change_event=True, virtual=False):
         """
         Add a combo box to the table.
 
@@ -377,38 +447,51 @@ class ParamTable(QtWidgets.QWidget):
         """
         if virtual:
             return self.add_virtual_element(name,value=value,add_indicator=add_indicator)
-        # widget=QtWidgets.QComboBox(self)
         widget=combo_box.ComboBox(self)
-        widget.setObjectName(_fromUtf8(self.name+"_"+name))
+        widget.setObjectName(self.name+"_"+name)
         if options:
             widget.addItems(options)
             if index_values is not None:
                 widget.set_index_values(index_values)
             if value is not None:
                 widget.setCurrentIndex(value)
-        return self.add_simple_widget(name,widget,label=label,add_indicator=add_indicator,add_change_event=add_change_event)
+        return self.add_simple_widget(name,widget,label=label,add_indicator=add_indicator,location=location,tooltip=tooltip,add_change_event=add_change_event)
 
-    def add_spacer(self, height, width=1, location=(None,0)):
-        """Add a spacer with the given width and height"""
-        spacer=QtWidgets.QSpacerItem(width,height,QtWidgets.QSizePolicy.Minimum,QtWidgets.QSizePolicy.Minimum)
-        location=self._normalize_location(location)
-        self.formLayout.addItem(spacer,*location)
+    def add_spacer(self, height=0, width=0, stretch_height=False, stretch_width=False, location="next"):
+        """
+        Add a spacer with the given width and height to the given location.
+        
+        If ``stretch_height==True`` or ``stretch_width==True``, the widget will stretch in these directions; otherwise, the widget size is fixed.
+        """
+        spacer=QtWidgets.QSpacerItem(width,height,
+            QtWidgets.QSizePolicy.MinimumExpanding if stretch_width else QtWidgets.QSizePolicy.Minimum,
+            QtWidgets.QSizePolicy.MinimumExpanding if stretch_height else QtWidgets.QSizePolicy.Minimum)
+        lname,location=self._normalize_location(location)
+        self._insert_layout_element(lname,spacer,location,kind="item")
         return spacer
-    def add_padding(self, prop=1):
-        """Add a padding (expandable spacer) with the given proportion"""
-        self.add_spacer(0)
-        self.formLayout.setRowStretch(self.formLayout.rowCount(),prop)
-    def add_decoration_label(self, text, location=(None,0)):
+    def add_padding(self, kind="vertical", location="next"):
+        """Add a padding (expandable spacer) of the given kind (``"vertical"`` or ``"horizontal"``) to the given location"""
+        if kind=="vertical":
+            self.add_spacer(stretch_height=True,location=location)
+        elif kind=="horizontal":
+            self.add_spacer(stretch_width=True,location=location)
+    def add_decoration_label(self, text, location="next"):
         """Add a text label (only for decoration) with the given text"""
         label=QtWidgets.QLabel(self)
         label.setText(str(text))
         label.setAlignment(QtCore.Qt.AlignLeft)
-        location=self._normalize_location(location)
-        self.formLayout.addWidget(label,*location)
+        lname,location=self._normalize_location(location)
+        self._insert_layout_element(lname,label,location)
         return label
-    def insert_row(self, row):
+    def insert_row(self, row, sublayout=None):
         """Insert a new table row at the given location"""
-        utils.insert_layout_row(self.formLayout,row%(self.formLayout.rowCount() or 1))
+        if sublayout is None:
+            layout=self.formLayout
+        else:
+            layout,kind=self._sublayouts[sublayout]
+            if kind!="grid":
+                raise ValueError("only grid layouts are allowed (hbox layouts work automatically)")
+        utils.insert_layout_row(layout,row%(layout.rowCount() or 1))
 
     def set_enabled(self, names=None, enabled=True, include_indicator=True, include_label=True):
         """Enable or disable widgets with the given names (by default, all widgets)"""
@@ -504,10 +587,12 @@ class ParamTable(QtWidgets.QWidget):
                 self.gui_values.remove_indicator_handler(path)
             self.params={}
             utils.clean_layout(self.formLayout,delete_layout=True)
-            self.formLayout = QtWidgets.QGridLayout(self)
+            self.formLayout=QtWidgets.QGridLayout(self)
             self.formLayout.setSizeConstraint(QtWidgets.QLayout.SetDefaultConstraint)
             self.formLayout.setContentsMargins(5,5,5,5)
-            self.formLayout.setObjectName(_fromUtf8("formLayout"))
+            self.formLayout.setSpacing(5)
+            self.formLayout.setObjectName(self.name+"_formLayout")
+            self._sublayouts={}
             self._update_cache_values()
 
     def __contains__(self, name):

@@ -1,7 +1,7 @@
 from ..core.thread import controller
 from ..core.gui import value_handling
 
-from PyQt5 import QtCore
+from ..core.gui import QtCore
 
 import collections
 
@@ -16,7 +16,7 @@ class IGUIController(QtCore.QObject):
         self.ctl=controller.get_gui_controller()
         self.gui_values=value_handling.GUIValues()
 
-    TWidget=collections.namedtuple("TWidget",["params_path"])
+    Widget=collections.namedtuple("Widget",["params_path"])
     def add_widget_desc(self, name, params_path=None):
         """
         Add a widget description under a given name.
@@ -24,7 +24,7 @@ class IGUIController(QtCore.QObject):
         If `params_path` is not ``None``, it specifies path under which the widget is stored in the parameters' table
         (by default, same as the widget's name).
         """
-        self.widgets_desc[name]=self.TWidget(params_path)
+        self.widgets_desc[name]=self.Widget(params_path)
     def set_widget(self, name, widget):
         """
         Set the widget with the given name.
@@ -32,7 +32,7 @@ class IGUIController(QtCore.QObject):
         Description with the given name should be created beforehand (see :meth:`add_widget_desc`).
         """
         self.widgets[name]=widget
-        desc=self.widgets_desc.setdefault(name,self.TWidget(None))
+        desc=self.widgets_desc.setdefault(name,self.Widget(None))
         if desc.params_path is not None:
             self.gui_values.add_widget(desc.params_path,widget)
     def get_widget(self, name, default=None):

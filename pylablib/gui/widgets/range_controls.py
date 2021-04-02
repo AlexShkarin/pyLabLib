@@ -1,4 +1,4 @@
-from PyQt5 import QtCore, QtWidgets
+from ...core.gui import QtCore, QtWidgets, Signal
 
 from ...core.gui.widgets.edit import NumEdit
 from ...core.utils.numerical import limit_to_range
@@ -135,7 +135,7 @@ class RangeCtl(QtWidgets.QWidget):
         self.lim=lim
         self.set_value(self.rng)
 
-    value_changed=QtCore.pyqtSignal(object)
+    value_changed=Signal(object)
     def get_value(self):
         """Get current range value (3-tuple ``(left, right, step)`` if step is included, or 2-tuple ``(left, right)`` if it's not)"""
         return self.rng
@@ -171,6 +171,7 @@ class RangeCtl(QtWidgets.QWidget):
 ##### ROI control #####
 
 
+TAxisParams=collections.namedtuple("AxisParams",["min","max"])
 class ROICtl(QtWidgets.QWidget):
     """
     Class for ROI control.
@@ -185,11 +186,10 @@ class ROICtl(QtWidgets.QWidget):
     Attributes:
         value_changed: signal emitted when the ROI value is changed
     """
-    AxisParams=collections.namedtuple("AxisParams",["min","max"])
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self,parent)
-        self.xparams=self.AxisParams(0,1,1)
-        self.yparams=self.AxisParams(0,1,1)
+        self.xparams=TAxisParams(0,1)
+        self.yparams=TAxisParams(0,1)
         self.validate=None
         self.xlim=(0,None)
         self.ylim=(0,None)
@@ -205,7 +205,7 @@ class ROICtl(QtWidgets.QWidget):
             vmin=limit_to_range(vmax-minsize,*lim)
         if maxsize and (vmax-vmin>minsize):
             vmax=vmin+maxsize
-        return self.AxisParams(int(vmin),int(vmax))
+        return TAxisParams(int(vmin),int(vmax))
     def validateROI(self, xparams, yparams):
         """Restrict current ROI values according to the class constraints"""
         xminsize,yminsize=self.minsize if isinstance(self.minsize,tuple) else (self.minsize,self.minsize)
@@ -214,8 +214,8 @@ class ROICtl(QtWidgets.QWidget):
         yparams=self._limit_range(yparams,self.ylim,yminsize,ymaxsize)
         if self.validate:
             xparams,yparams=self.validate((xparams,yparams))
-            xparams=self.AxisParams(*xparams)
-            yparams=self.AxisParams(*yparams)
+            xparams=TAxisParams(*xparams)
+            yparams=TAxisParams(*yparams)
         return xparams,yparams
     def setupUi(self, name, xlim=(0,None), ylim=None, minsize=0, maxsize=None, labels=("X","Y"), kind="minmax", validate=None):
         """
@@ -234,47 +234,47 @@ class ROICtl(QtWidgets.QWidget):
         self.name=name
         self.kind=kind
         self.setObjectName(self.name)
-        self.setMinimumSize(QtCore.QSize(100, 60))
-        self.setMaximumSize(QtCore.QSize(16777215, 60))
+        self.setMinimumSize(QtCore.QSize(100,60))
+        self.setMaximumSize(QtCore.QSize(2**16,60))
         self.gridLayout=QtWidgets.QGridLayout(self)
         self.gridLayout.setObjectName("gridLayout")
         self.labelROI=QtWidgets.QLabel(self)
         self.labelROI.setObjectName("labelROI")
         self.labelROI.setText("ROI")
-        self.gridLayout.addWidget(self.labelROI, 0, 0, 1, 1)
+        self.gridLayout.addWidget(self.labelROI,0,0,1,1)
         self.labelMin=QtWidgets.QLabel(self)
         self.labelMin.setObjectName("labelMin")
         self.labelMin.setText("Min")
-        self.gridLayout.addWidget(self.labelMin, 0, 1, 1, 1)
+        self.gridLayout.addWidget(self.labelMin,0,1,1,1)
         self.labelMax=QtWidgets.QLabel(self)
         self.labelMax.setObjectName("labelMax")
         self.labelMax.setText("Max" if kind=="minmax" else "Size")
-        self.gridLayout.addWidget(self.labelMax, 0, 2, 1, 1)
+        self.gridLayout.addWidget(self.labelMax,0,2,1,1)
         self.labelX=QtWidgets.QLabel(self)
         self.labelX.setObjectName("labelX")
         self.labelX.setText(labels[0])
-        self.gridLayout.addWidget(self.labelX, 1, 0, 1, 1)
+        self.gridLayout.addWidget(self.labelX,1,0,1,1)
         self.labelY=QtWidgets.QLabel(self)
         self.labelY.setObjectName("labelY")
         self.labelY.setText(labels[1])
-        self.gridLayout.addWidget(self.labelY, 2, 0, 1, 1)
+        self.gridLayout.addWidget(self.labelY,2,0,1,1)
         self.x_min=NumEdit(self)
         self.x_min.setObjectName("x_min")
-        self.gridLayout.addWidget(self.x_min, 1, 1, 1, 1)
+        self.gridLayout.addWidget(self.x_min,1,1,1,1)
         self.x_max=NumEdit(self)
         self.x_max.setObjectName("x_max")
-        self.gridLayout.addWidget(self.x_max, 1, 2, 1, 1)
+        self.gridLayout.addWidget(self.x_max,1,2,1,1)
         self.y_min=NumEdit(self)
         self.y_min.setObjectName("y_min")
-        self.gridLayout.addWidget(self.y_min, 2, 1, 1, 1)
+        self.gridLayout.addWidget(self.y_min,2,1,1,1)
         self.y_max=NumEdit(self)
         self.y_max.setObjectName("y_max")
-        self.gridLayout.addWidget(self.y_max, 2, 2, 1, 1)
+        self.gridLayout.addWidget(self.y_max,2,2,1,1)
         self.gridLayout.setContentsMargins(0,0,0,0)
         self.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum,QtWidgets.QSizePolicy.Preferred))
         self.gridLayout.setSpacing(4)
-        self.gridLayout.setColumnStretch(1, 2)
-        self.gridLayout.setColumnStretch(2, 2)
+        self.gridLayout.setColumnStretch(1,2)
+        self.gridLayout.setColumnStretch(2,2)
         self.validate=validate
         for v in [self.x_min,self.y_min]:
             v.set_formatter("int")
@@ -313,7 +313,7 @@ class ROICtl(QtWidgets.QWidget):
             v.set_limiter((1,self.maxbin,"coerce","int"))
         self._show_values(*self.get_value())
 
-    value_changed=QtCore.pyqtSignal(object)
+    value_changed=Signal(object)
     def _on_edit(self):
         params=self.get_value()
         self._show_values(*params)
@@ -326,13 +326,13 @@ class ROICtl(QtWidgets.QWidget):
         Return tuple ``(xparams, yparams)`` of two axes parameters (each is a 2-tuple ``(min, max)``).
         """
         if self.kind=="minmax":
-            xparams=self.AxisParams(self.x_min.get_value(),self.x_max.get_value())
-            yparams=self.AxisParams(self.y_min.get_value(),self.y_max.get_value())
+            xparams=TAxisParams(self.x_min.get_value(),self.x_max.get_value())
+            yparams=TAxisParams(self.y_min.get_value(),self.y_max.get_value())
         else:
             xmin=self.x_min.get_value()
             ymin=self.y_min.get_value()
-            xparams=self.AxisParams(xmin,xmin+self.x_max.get_value())
-            yparams=self.AxisParams(ymin,ymin+self.y_max.get_value())
+            xparams=TAxisParams(xmin,xmin+self.x_max.get_value())
+            yparams=TAxisParams(ymin,ymin+self.y_max.get_value())
         return self.validateROI(xparams,yparams)
     def _show_values(self, xparams, yparams):
         if self.kind=="minmax":
@@ -350,7 +350,7 @@ class ROICtl(QtWidgets.QWidget):
         `roi` is a tuple ``(xparams, yparams)`` of two axes parameters (each is a 2-tuple ``(min, max)``).
         If ``notify_value_change==True``, emit the `value_changed` signal; otherwise, change value silently.
         """
-        roi=self.AxisParams(*roi[0]),self.AxisParams(*roi[1])
+        roi=TAxisParams(*roi[0]),TAxisParams(*roi[1])
         params=self.validateROI(*roi)
         self._show_values(*params)
         if notify_value_change:
@@ -359,6 +359,7 @@ class ROICtl(QtWidgets.QWidget):
 
 
 
+TBinAxisParams=collections.namedtuple("TBinAxisParams",["min","max","bin"])
 class BinROICtl(ROICtl):
     """
     Class for ROI control with binning.
@@ -373,9 +374,10 @@ class BinROICtl(ROICtl):
     Attributes:
         value_changed: signal emitted when the ROI value is changed
     """
-    AxisParams=collections.namedtuple("AxisParams",["min","max","bin"])
     def __init__(self, parent=None):
         ROICtl.__init__(self,parent)
+        self.xparams=TBinAxisParams(0,1,1)
+        self.yparams=TBinAxisParams(0,1,1)
         self.maxbin=None
 
     def _limit_range(self, rng, lim, maxbin, minsize, maxsize):
@@ -389,7 +391,7 @@ class BinROICtl(ROICtl):
         if maxsize and (vmax-vmin>minsize):
             vmax=vmin+maxsize
         vbin=limit_to_range(rng.bin,1,maxbin)
-        return self.AxisParams(int(vmin),int(vmax),int(vbin))
+        return TBinAxisParams(int(vmin),int(vmax),int(vbin))
     def validateROI(self, xparams, yparams):
         """Restrict current ROI values according to the class constraints"""
         xminsize,yminsize=self.minsize if isinstance(self.minsize,tuple) else (self.minsize,self.minsize)
@@ -398,8 +400,8 @@ class BinROICtl(ROICtl):
         yparams=self._limit_range(yparams,self.ylim,self.maxbin,yminsize,ymaxsize)
         if self.validate:
             xparams,yparams=self.validate((xparams,yparams))
-            xparams=self.AxisParams(*xparams)
-            yparams=self.AxisParams(*yparams)
+            xparams=TBinAxisParams(*xparams)
+            yparams=TBinAxisParams(*yparams)
         return xparams,yparams
     def setupUi(self, name, xlim=(0,None), ylim=None, maxbin=None, minsize=0, maxsize=None, kind="minmax", validate=None):
         """
@@ -419,58 +421,58 @@ class BinROICtl(ROICtl):
         self.name=name
         self.kind=kind
         self.setObjectName(self.name)
-        self.setMinimumSize(QtCore.QSize(100, 60))
-        self.setMaximumSize(QtCore.QSize(16777215, 60))
+        self.setMinimumSize(QtCore.QSize(100,60))
+        self.setMaximumSize(QtCore.QSize(2**16,60))
         self.gridLayout=QtWidgets.QGridLayout(self)
         self.gridLayout.setObjectName("gridLayout")
         self.labelROI=QtWidgets.QLabel(self)
         self.labelROI.setObjectName("labelROI")
         self.labelROI.setText("ROI")
-        self.gridLayout.addWidget(self.labelROI, 0, 0, 1, 1)
+        self.gridLayout.addWidget(self.labelROI,0,0,1,1)
         self.labelMin=QtWidgets.QLabel(self)
         self.labelMin.setObjectName("labelMin")
         self.labelMin.setText("Min")
-        self.gridLayout.addWidget(self.labelMin, 0, 1, 1, 1)
+        self.gridLayout.addWidget(self.labelMin,0,1,1,1)
         self.labelMax=QtWidgets.QLabel(self)
         self.labelMax.setObjectName("labelMax")
         self.labelMax.setText("Max" if kind=="minmax" else "Size")
-        self.gridLayout.addWidget(self.labelMax, 0, 2, 1, 1)
+        self.gridLayout.addWidget(self.labelMax,0,2,1,1)
         self.labelBin=QtWidgets.QLabel(self)
         self.labelBin.setObjectName("labelBin")
         self.labelBin.setText("Bin")
-        self.gridLayout.addWidget(self.labelBin, 0, 3, 1, 1)
+        self.gridLayout.addWidget(self.labelBin,0,3,1,1)
         self.labelX=QtWidgets.QLabel(self)
         self.labelX.setObjectName("labelX")
         self.labelX.setText("X")
-        self.gridLayout.addWidget(self.labelX, 1, 0, 1, 1)
+        self.gridLayout.addWidget(self.labelX,1,0,1,1)
         self.labelY=QtWidgets.QLabel(self)
         self.labelY.setObjectName("labelY")
         self.labelY.setText("Y")
-        self.gridLayout.addWidget(self.labelY, 2, 0, 1, 1)
+        self.gridLayout.addWidget(self.labelY,2,0,1,1)
         self.x_min=NumEdit(self)
         self.x_min.setObjectName("x_min")
-        self.gridLayout.addWidget(self.x_min, 1, 1, 1, 1)
+        self.gridLayout.addWidget(self.x_min,1,1,1,1)
         self.x_max=NumEdit(self)
         self.x_max.setObjectName("x_max")
-        self.gridLayout.addWidget(self.x_max, 1, 2, 1, 1)
+        self.gridLayout.addWidget(self.x_max,1,2,1,1)
         self.x_bin=NumEdit(self)
         self.x_bin.setObjectName("x_bin")
-        self.gridLayout.addWidget(self.x_bin, 1, 3, 1, 1)
+        self.gridLayout.addWidget(self.x_bin,1,3,1,1)
         self.y_min=NumEdit(self)
         self.y_min.setObjectName("y_min")
-        self.gridLayout.addWidget(self.y_min, 2, 1, 1, 1)
+        self.gridLayout.addWidget(self.y_min,2,1,1,1)
         self.y_max=NumEdit(self)
         self.y_max.setObjectName("y_max")
-        self.gridLayout.addWidget(self.y_max, 2, 2, 1, 1)
+        self.gridLayout.addWidget(self.y_max,2,2,1,1)
         self.y_bin=NumEdit(self)
         self.y_bin.setObjectName("y_bin")
-        self.gridLayout.addWidget(self.y_bin, 2, 3, 1, 1)
+        self.gridLayout.addWidget(self.y_bin,2,3,1,1)
         self.gridLayout.setContentsMargins(0,0,0,0)
         self.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum,QtWidgets.QSizePolicy.Preferred))
         self.gridLayout.setSpacing(4)
-        self.gridLayout.setColumnStretch(1, 2)
-        self.gridLayout.setColumnStretch(2, 2)
-        self.gridLayout.setColumnStretch(3, 1)
+        self.gridLayout.setColumnStretch(1,2)
+        self.gridLayout.setColumnStretch(2,2)
+        self.gridLayout.setColumnStretch(3,1)
         self.validate=validate
         for v in [self.x_min,self.y_min]:
             v.set_number_format("int")
@@ -518,13 +520,13 @@ class BinROICtl(ROICtl):
         Return tuple ``(xparams, yparams)`` of two axes parameters (each is a 3-tuple ``(min, max, bin)``).
         """
         if self.kind=="minmax":
-            xparams=self.AxisParams(self.x_min.get_value(),self.x_max.get_value(),self.x_bin.get_value())
-            yparams=self.AxisParams(self.y_min.get_value(),self.y_max.get_value(),self.y_bin.get_value())
+            xparams=TBinAxisParams(self.x_min.get_value(),self.x_max.get_value(),self.x_bin.get_value())
+            yparams=TBinAxisParams(self.y_min.get_value(),self.y_max.get_value(),self.y_bin.get_value())
         else:
             xmin=self.x_min.get_value()
             ymin=self.y_min.get_value()
-            xparams=self.AxisParams(xmin,xmin+self.x_max.get_value(),self.x_bin.get_value())
-            yparams=self.AxisParams(ymin,ymin+self.y_max.get_value(),self.y_bin.get_value())
+            xparams=TBinAxisParams(xmin,xmin+self.x_max.get_value(),self.x_bin.get_value())
+            yparams=TBinAxisParams(ymin,ymin+self.y_max.get_value(),self.y_bin.get_value())
         return self.validateROI(xparams,yparams)
     def _show_values(self, xparams, yparams):
         if self.kind=="minmax":
@@ -544,7 +546,7 @@ class BinROICtl(ROICtl):
         `roi` is a tuple ``(xparams, yparams)`` of two axes parameters (each is a 3-tuple ``(min, max, bin)``).
         If ``notify_value_change==True``, emit the `value_changed` signal; otherwise, change value silently.
         """
-        roi=self.AxisParams(*roi[0]),self.AxisParams(*roi[1])
+        roi=TBinAxisParams(*roi[0]),TBinAxisParams(*roi[1])
         params=self.validateROI(*roi)
         self._show_values(*params)
         if notify_value_change:
