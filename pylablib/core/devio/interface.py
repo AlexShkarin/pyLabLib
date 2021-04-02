@@ -18,7 +18,7 @@ class IDevice:
         self._device_vars=dict([(ik,{}) for ik in _device_var_kinds])
         self._device_vars_order=dict([(ik,[]) for ik in _device_var_kinds])
         self._add_status_variable("cls",lambda: self.__class__.__name__)
-        self.v=dictionary.ItemAccessor(getter=self.get_device_variable,setter=self.set_device_variable)
+        self.dv=dictionary.ItemAccessor(getter=self.get_device_variable,setter=self.set_device_variable)
         self._setup_parameter_classes()
 
     def open(self):
@@ -82,6 +82,15 @@ class IDevice:
             else:
                 return [func(ch) for ch in choices]
         return func_mux
+    def _update_device_variable_order(self, path, kind):
+        """Shift the order of the device variable to the current position"""
+        if kind not in self._device_vars:
+            raise ValueError("unrecognized info node kind: {}".format(kind))
+        if path not in self._device_vars[kind]:
+            raise ValueError("variable {} does not exist".format(path))
+        order=self._device_vars_order[kind]
+        del order[order.index(path)]
+        order.append(path)
     def _add_device_variable(self, path, kind, getter=None, setter=None, ignore_error=(), mux=None, multiarg=True, priority=0):
         """
         Adds a device variable.
@@ -543,7 +552,7 @@ def use_parameters(*args, **kwargs):
         def wrapped(*args, **kwargs):
             device=args[0] if args and sig.arg_names and sig.arg_names[0]=="self" else None
             obj_params=getattr(device,"_parameters",{})
-            all_args=sig.as_kwargs(args,kwargs)
+            all_args=sig.as_kwargs(args,kwargs,add_defaults=True)
             if "*" in all_args:
                 raise ValueError("can't handle *args arguments")
             for n in all_args:

@@ -1,8 +1,7 @@
 from ...core.devio import comm_backend
 from ...core.utils import py3, units
-import collections
 
-_depends_local=["...core.devio.comm_backend"]
+import collections
 
 class OphirDevice(comm_backend.ICommBackendWrapper):
     """
@@ -33,6 +32,8 @@ class OphirDevice(comm_backend.ICommBackendWrapper):
         return self._parse_response(comm,resp)
 
 
+TWavelengthInfo=collections.namedtuple("TWavelengthInfo",["mode","rng","curr_idx","presets","curr_wavelength"])
+TRangeInfo=collections.namedtuple("TRangeInfo",["curr_idx","ranges","curr_range"])
 class VegaPowerMeter(OphirDevice):
     """
     Ophir Vega power meter.
@@ -50,13 +51,16 @@ class VegaPowerMeter(OphirDevice):
         self._add_settings_variable("filter_in",self.is_filter_in,self.set_filter)
 
     def get_power(self):
-        """Get the current power readings"""
+        """
+        Get the current power readings
+        
+        Return either measured power, or ``"over"``, if the power is overrange.
+        """
         power=self.query("$SP")
         if power.lower()=="over":
             return "over"
         return float(power)
 
-    WavelengthInfo=collections.namedtuple("WavelengthInfo",["mode","rng","curr_idx","presets","curr_wavelength"])
     def get_wavelength_info(self):
         """
         Get wavelength setting info.
@@ -71,7 +75,7 @@ class VegaPowerMeter(OphirDevice):
         rng=(float(info[1])*1E-9,float(info[2])*1E-9)
         curr_idx=int(info[3])
         presets=[float(w)*1E-9 for w in info[4:] if w.upper()!="NONE"]
-        return self.WavelengthInfo(mode,rng,curr_idx-1,presets,presets[curr_idx-1])
+        return TWavelengthInfo(mode,rng,curr_idx-1,presets,presets[curr_idx-1])
     def get_wavelength(self):
         """Get current calibration wavelength"""
         return self.get_wavelength_info().curr_wavelength
@@ -80,7 +84,6 @@ class VegaPowerMeter(OphirDevice):
         self.query("$WL{:d}".format(int(wavelength*1E9)))
         return self.get_wavelength()
 
-    RangeInfo=collections.namedtuple("RangeInfo",["curr_idx","ranges","curr_range"])
     def get_range_info(self):
         """
         Get power range info.
@@ -95,7 +98,7 @@ class VegaPowerMeter(OphirDevice):
             curr_range=info[3+curr_idx]
         else:
             curr_range=ranges[curr_idx]
-        return self.RangeInfo(curr_idx,ranges,curr_range)
+        return TRangeInfo(curr_idx,ranges,curr_range)
     def get_range(self):
         """Get current power range (maximal power in W)"""
         return self.get_range_info().curr_range

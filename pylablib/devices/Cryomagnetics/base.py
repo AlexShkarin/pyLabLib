@@ -1,7 +1,6 @@
 from ...core.utils.py3 import textstring
-from ...core.devio import SCPI, comm_backend
+from ...core.devio import comm_backend, SCPI, interface
 
-_depends_local=["...core.devio.SCPI"]
 
 
 class LM500(SCPI.SCPIDevice):
@@ -20,6 +19,7 @@ class LM500(SCPI.SCPIDevice):
         try:
             self.write("ERROR 0")
             self.write("REMOTE")
+            self._select_channel(1)
         except self.instr.Error:
             self.close()
             raise
@@ -39,36 +39,60 @@ class LM500(SCPI.SCPIDevice):
 
     def _instr_write(self, msg):
         return self.instr.write(msg,read_echo=True,read_echo_delay=0.1)
-    def _instr_read(self, raw=False):
-        data=""
-        while not data:
-            data=self.instr.readline(remove_term=True).strip()
+    def _instr_read(self, raw=False, size=None):
+        if size:
+            data=self.instr.read(size=size)
+        elif raw:
+            data=self.instr.readline(remove_term=False)
+        else:
+            data=""
+            while not data:
+                data=self.instr.readline(remove_term=True).strip()
         return data
 
+    _p_channel=interface.EnumParameterClass("channel",[1,2])
     def get_channel(self):
         """Get current measurement channel"""
         return self.ask("CHAN?","int")
+    @interface.use_parameters
     def set_channel(self, channel=1):
         """Set current measurement channel"""
         self.write("CHAN",channel)
         return self.get_channel()
 
+    _p_channel_type=interface.EnumParameterClass("channel_type",{"lhe":1,"ln":2})
+    @interface.use_parameters(_returns="channel_type")
     def get_type(self, channel=1):
-        """Get channel type (``"LHe"`` or ``"LN"``)"""
-        chan_type=self.ask("TYPE? {}".format(channel),"int")
-        return ["LHe","LN"][chan_type]
+        """Get type of a given channel (``"lhe"`` or ``"ln"``)"""
+        return self.ask("TYPE? {}".format(channel),"int")
+    def _select_channel(self, channel):
+        if channel is not None:
+            self.write("CHAN",channel)
     def _check_channel_LHe(self, op, channel=None):
         if channel is None:
             channel=self.get_channel()
-        if self.get_type(channel)=="LN":
+        if self.get_type(channel)=="ln":
             raise RuntimeError("LN channel doesn't support {}".format(op))
     
-    def get_mode(self):
-        """Get measurement mode at the current channel (``"S"`` for sample/hold, ``"C"`` for continuous)"""
+    _p_mode=interface.EnumParameterClass("mode",{"sample_hold":"s","continuous":"c"})
+    @interface.use_parameters(_returns="mode")
+    def get_mode(self, channel=None):
+        """
+        Get measurement mode at the given channel (``None`` for the currently selected channel).
+
+        Can be either ``'sample_hold'``, or ``'continuous'``.
+        """
+        self._select_channel(channel)
         self._check_channel_LHe("measurement modes")
         return self.ask("MODE?").upper()
-    def set_mode(self, mode):
-        """Set measurement mode at the current channel (``"S"`` for sample/hold, ``"C"`` for continuous)"""
+    @interface.use_parameters
+    def set_mode(self, mode, channel=None):
+        """
+        Set measurement mode at the given channel (``None`` for the current channel).
+
+        Can be either ``'sample_hold'``, or ``'continuous'``.
+        """
+        self._select_channel(channel)
         self._check_channel_LHe("measurement modes")
         self.write("MODE",mode)
         return self.get_mode()
@@ -81,46 +105,56 @@ class LM500(SCPI.SCPIDevice):
     @staticmethod
     def _sec_to_str(s):
         return "{:02d}:{:02d}:{:02d}".format(s//60**2,(s//60)%60,s%60)
-    def get_interval(self):
-        """Get measurement interval in sample/hold mode (in seconds)"""
+    @interface.use_parameters
+    def get_interval(self, channel=None):
+        """Get measurement interval (in seconds) in sample/hold mode at the given channel (``None`` for the current channel)"""
+        self._select_channel(channel)
         self._check_channel_LHe("measurement intervals")
         return self._str_to_sec(self.ask("INTVL?"))
-    def set_interval(self, intvl):
-        """Set measurement interval in sample/hold mode (in seconds)"""
+    @interface.use_parameters
+    def set_interval(self, intvl, channel=None):
+        """Set measurement interval (in seconds) in sample/hold mode at the given channel (``None`` for the current channel)"""
+        self._select_channel(channel)
         self._check_channel_LHe("measurement intervals")
         if not isinstance(intvl,textstring):
             intvl=self._sec_to_str(intvl)
         self.write("INTVL",intvl)
         return self.get_interval()
     
-    def start_meas(self, channel=1):
+    @interface.use_parameters
+    def start_measurement(self, channel=1):
         """Initialize measurement on a given channel"""
         self.write("MEAS",channel)
     def _get_stb(self):
         return self.ask("*STB?","int")
-    def wait_meas(self, channel=1):
-        """Wait for a measurement on a given channel to finish"""
+    @interface.use_parameters
+    def wait_for_measurement(self, channel=1):
+        """Wait for the measurement on a given channel to finish"""
         mask=0x01 if channel==1 else 0x04
         while not self._get_stb()&mask:
             self.sleep(0.1)
+    @interface.use_parameters
     def get_level(self, channel=1):
         """Get level reading on a given channel"""
         res=self.ask("MEAS? {}".format(channel))
         return float(res.split()[0])
+    @interface.use_parameters
     def measure_level(self, channel=1):
-        """Measure the level (initialize a measurement and return the result) on a given channel"""
-        self.start_meas(channel=channel)
-        self.wait_meas(channel=channel)
+        """Measure the level (perform the measurement and return the result) on a given channel"""
+        self.start_measurement(channel=channel)
+        self.wait_for_measurement(channel=channel)
         return self.get_level(channel=channel)
 
+    @interface.use_parameters
     def start_fill(self, channel=1):
-        """Initialize filling at a given channels"""
+        """Initialize filling at a given channel (``None`` for the current channel)"""
         self.write("FILL",channel)
+    @interface.use_parameters
     def get_fill_status(self, channel=1):
         """
-        Get filling status at a given channels.
+        Get filling status at a given channels (``None`` for the current channel).
         
-        Return either ``"off"`` (filling is off), ``"timeout"`` (filling timed out) or a float (time since filling started, in seconds)
+        Return either ``"off"`` (filling is off), ``"timeout"`` (filling timed out) or a float (time since filling started, in seconds).
         """
         res=self.ask("FILL? {}".format(channel)).lower()
         if res in {"off","timeout"}:
@@ -132,19 +166,41 @@ class LM500(SCPI.SCPIDevice):
             return float(spres[0])
         raise ValueError("unexpected response: {}".format(res))
 
-    def get_low_level(self, channel=1):
-        """Get low level setting on a given channel"""
-        self.set_channel(channel)
+    @interface.use_parameters
+    def get_low_level(self, channel=None):
+        """Get low level (automated refill start) setting on a given channel (``None`` for the current channel)"""
+        self._select_channel(channel)
         return float(self.ask("LOW?").split()[0])
-    def set_low_level(self, level, channel=1):
-        """Set low level setting on a given channel"""
-        self.set_channel(channel)
+    @interface.use_parameters
+    def set_low_level(self, level, channel=None):
+        """Set low level (automated refill start) setting on a given channel (``None`` for the current channel)"""
+        self._select_channel(channel)
         self.write("LOW",level)
-    def get_high_level(self, channel=1):
-        """Get high level setting on a given channel"""
-        self.set_channel(channel)
+    @interface.use_parameters
+    def get_high_level(self, channel=None):
+        """Get high level (automated refill stop) setting on a given channel (``None`` for the current channel)"""
+        self._select_channel(channel)
         return float(self.ask("HIGH?").split()[0])
-    def set_high_level(self, level, channel=1):
-        """Set high level setting on a given channel"""
-        self.set_channel(channel)
+    @interface.use_parameters
+    def set_high_level(self, level, channel=None):
+        """Set high level (automated refill stop) setting on a given channel (``None`` for the current channel)"""
+        self._select_channel(channel)
         self.write("HIGH",level)
+
+    # _p_analog_output_channel=interface.EnumParameterClass("source",{"sel":0,1:1,2:2})
+    # @interface.use_parameters
+    # def set_analog_output_channel(self, source):
+    #     """
+    #     Select source of the analog output.
+
+    #     Can be a channel number (1 or 2) or ``'sel'``, if the digital input select is used.
+    #     """
+    #     self.write("OUT",source)
+    # @interface.use_parameters(_returns="source")
+    # def get_analog_output_channel(self):
+    #     """
+    #     Get the source of the analog output.
+
+    #     Can be a channel number (1 or 2) or ``'sel'``, if the digital input select is used.
+    #     """
+    #     self.ask("OUT?","int")

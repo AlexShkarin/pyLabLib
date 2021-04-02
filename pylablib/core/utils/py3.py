@@ -7,7 +7,7 @@ if str is bytes: # Python 2
 
     textstring=(basestring,)
     bytestring=(str,new_bytes)
-    anystring=(str, unicode)
+    anystring=(str,unicode)
 
     def as_str(data):
         """Convert a string into a text string"""

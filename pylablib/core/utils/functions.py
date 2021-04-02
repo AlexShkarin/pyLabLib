@@ -82,22 +82,33 @@ class FunctionSignature(object):
         if self.obj is not None:
             wrapped=MethodType(wrapped,self.obj)
         return wrapped
-    def as_kwargs(self, args, kwargs):
+    def as_kwargs(self, args, kwargs, add_defaults=False, exclude=None):
         """
         Turn ``args`` and ``kwargs`` into a single ``kwargs`` dictionary using the names of positional arguments.
         
-        If the function takes ``*args`` argument and some of the supplied arguments go there, place them into a list under ``"*"`` key in the result
+        If ``add_defaults==True``, add all the non-specified default arguments as well.
+        If the function takes ``*args`` argument and some of the supplied arguments go there, place them into a list under ``"*"`` key in the result.
+        If `exclude` is not ``None`` is specifies arguments which should be excluded.
         """
-        args_dict=dict(zip(self.arg_names,args))
-        if len(args)>len(self.arg_names):
+        arg_names=self.arg_names if self.obj is None else self.arg_names[1:]
+        args_dict=dict(zip(arg_names,args))
+        if len(args)>len(arg_names):
             if self.varg_name is None:
                 raise ValueError("supplied more positional arguments than the function can take")
             else:
-                args_dict["*"]=args[len(self.arg_names):]
+                args_dict["*"]=args[len(arg_names):]
         for n in args_dict:
             if n in kwargs:
                 raise ValueError("argument {} is supplied twice".format(n))
         args_dict.update(kwargs)
+        if add_defaults:
+            ext_args_dict=self.defaults.copy()
+            ext_args_dict.update(args_dict)
+            args_dict=ext_args_dict
+        if exclude:
+            for k in exclude:
+                if k in args_dict:
+                    del args_dict[k]
         return args_dict
     
     def mandatory_args_num(self):

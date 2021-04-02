@@ -1,10 +1,12 @@
-from ...core.utils import files, dictionary
+from ...core.utils import files, dictionary, general
 
 import platform
 import ctypes
 import sys
-import os.path
 import os
+import threading
+import contextlib
+import collections
 
 
 _module_parameters={"devices/dlls":dictionary.Dictionary()}
@@ -21,8 +23,10 @@ def get_os_lib_folder():
         return os.path.join(os.environ["WINDIR"],"SysWOW64")
 os_lib_folder=get_os_lib_folder()
 
-def get_program_files_folder():
-    """Get default Windows Program Files folder (``Program Files`` or ``Program Files (x86)``, depending on Python and Windows bitness)"""
+def get_program_files_folder(subfolder=""):
+    """Get default Windows Program Files folder or a subfolder within it (``Program Files`` or ``Program Files (x86)``, depending on Python and Windows bitness)"""
+    if subfolder:
+        return os.path.join(get_program_files_folder(),subfolder)
     arch=platform.architecture()[0]
     winarch="64bit" if platform.machine().endswith("64") else "32bit"
     if arch=="32bit" and winarch=="64bit":
@@ -78,7 +82,6 @@ def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, erro
             else:
                 folder=loc
         path=os.path.join(folder,n)
-        print(path)
         if locally:
             loc_folder,loc_name=os.path.split(path)
             old_env_path=os.environ["PATH"]
@@ -98,3 +101,115 @@ def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, erro
                 os.environ["PATH"]=old_env_path
     error_message="\n"+error_message if error_message else ""
     raise OSError("can't import module {}".format(" or ".join(name))+error_message)
+
+
+
+TLibraryOpenResult=collections.namedtuple("TLibraryOpenResult",["init_result","open_result","opid"])
+TLibraryCloseResult=collections.namedtuple("TLibraryCloseResult",["close_result","uninit_result"])
+class LibraryController:
+    """
+    Simple wrapper to control libraries which require initialization when a new device is opened
+    or shutdown when all devices are closed.
+
+    Args:
+        lib: controlled library
+    """
+    def __init__(self, lib):
+        self.open_devices=0
+        self.lib=lib
+        self.lock=threading.RLock()
+        self.initialized=False
+        self._counter=general.UIDGenerator()
+        self.opened=set()
+        self.closed=set()
+    def _do_preinit(self):
+        """
+        Perform pre-initialization.
+        
+        Called only once on the first controller call.
+        """
+        self.lib.initlib()
+    def _do_init(self):
+        """
+        Perform initialization.
+
+        Called whenever the first device is opened (including the instances when after all devices have been previously closed).        
+        """
+    def _do_uninit(self):
+        """
+        Perform shutdown.
+
+        Called whenever the last device is closed.
+        """
+    def _do_open(self):
+        """
+        Perform opening-related procedures.
+
+        Called whenever any devices is opened.
+        """
+    def _do_close(self):
+        """
+        Perform closing-related procedures.
+
+        Called whenever any devices is closed.
+        """
+    def preinit(self):
+        """Pre-initialize the library, if it hasn't been done already"""
+        with self.lock:
+            if not self.initialized:
+                self._do_preinit()
+                self.initialized=True
+    def open(self):
+        """
+        Mark device opening.
+        
+        Return tuple ``(init_result, open_result, opid)`` with the results of the initialization and the opening,
+        and the opening ID which should afterwards be used for closing.
+        If library is already initialized, set ``init_result=None``
+        """
+        with self.lock:
+            self.preinit()
+            init_result=None
+            if self.open_devices==0:
+                init_result=self._do_init() # pylint: disable=assignment-from-no-return
+            open_result=self._do_open() # pylint: disable=assignment-from-no-return
+            self.open_devices+=1
+            opid=self._counter()
+            self.opened.add(opid)
+        return TLibraryOpenResult(init_result,open_result,opid)
+    def close(self, opid):
+        """
+        Mark device closing.
+        
+        Return tuple ``(close_result, uninit_result)`` with the results of the closing and the shotdown.
+        If library does not need to be shut down yet, set ``uninit_result=None``
+        """
+        with self.lock:
+            if opid in self.opened:
+                self.opened.pop(opid)
+                self.closed.add(opid)
+            elif opid in self.closed:
+                return None,None
+            else:
+                raise ValueError("supplied opid {} has never been issued")
+            self.preinit()
+            self.open_devices-=1
+            close_result=self._do_close() # pylint: disable=assignment-from-no-return
+            uninit_result=None
+            if self.open_devices==0:
+                uninit_result=self._do_uninit() # pylint: disable=assignment-from-no-return
+            return TLibraryCloseResult(close_result,uninit_result)
+    @contextlib.contextmanager
+    def temp_open(self):
+        """Context for temporarily opening a new device connection"""
+        opid=None
+        try:
+            init_result,open_result,opid=self.open()
+            yield init_result,open_result
+        finally:
+            if opid is not None:
+                self.close(opid)
+    def shutdown(self):
+        """Close all opeend connections and shutdown the library"""
+        for opid in list(self.opened):
+            self.close(opid)
