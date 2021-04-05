@@ -1,5 +1,7 @@
 ##########   This file is generated automatically based on SCU3DControl.h   ##########
 
+# pylint: disable=unused-import, unused-argument
+
 
 import ctypes
 import enum
@@ -142,7 +144,7 @@ drECompatibility={a.value:a.name for a in ECompatibility}
 BYTE=ctypes.c_ubyte
 PBYTE=ctypes.POINTER(BYTE)
 CHAR=ctypes.c_char
-PCHAR=ctypes.POINTER(CHAR)
+PCHAR=ctypes.c_char_p
 UCHAR=ctypes.c_ubyte
 PUCHAR=ctypes.POINTER(UCHAR)
 ULONG_PTR=ctypes.c_uint64
@@ -153,9 +155,14 @@ LONGLONG=ctypes.c_int64
 LPLONG=ctypes.POINTER(ctypes.c_long)
 HANDLE=ctypes.c_void_p
 LPHANDLE=ctypes.POINTER(HANDLE)
+HWND=ctypes.c_void_p
+HGLOBAL=ctypes.c_void_p
+HINSTANCE=ctypes.c_void_p
+HDC=ctypes.c_void_p
+HMODULE=ctypes.c_void_p
+HKEY=ctypes.c_void_p
 PVOID=ctypes.c_void_p
 LPVOID=ctypes.c_void_p
-HWND=ctypes.c_void_p
 SA_STATUS=ctypes.c_uint
 SA_INDEX=ctypes.c_uint
 SA_PACKET_TYPE=ctypes.c_uint
@@ -179,282 +186,293 @@ class CSA_PACKET(ctypes_wrap.CStructWrapper):
 
 
 
+def addfunc(lib, name, restype, argtypes=None, argnames=None):
+    if getattr(lib,name,None) is None:
+        setattr(lib,name,None)
+    else:
+        func=getattr(lib,name)
+        func.restype=restype
+        if argtypes is not None:
+            func.argtypes=argtypes
+        if argnames is not None:
+            func.argnames=argnames
+
 def define_functions(lib):
     #  SA_STATUS SA_GetDLLVersion(ctypes.POINTER(ctypes.c_uint) version)
-    lib.SA_GetDLLVersion.restype=SA_STATUS
-    lib.SA_GetDLLVersion.argtypes=[ctypes.POINTER(ctypes.c_uint)]
-    lib.SA_GetDLLVersion.argnames=["version"]
+    addfunc(lib, "SA_GetDLLVersion", restype = SA_STATUS,
+            argtypes = [ctypes.POINTER(ctypes.c_uint)],
+            argnames = ["version"] )
     #  SA_STATUS SA_GetAvailableDevices(ctypes.POINTER(ctypes.c_uint) idList, ctypes.POINTER(ctypes.c_uint) idListSize)
-    lib.SA_GetAvailableDevices.restype=SA_STATUS
-    lib.SA_GetAvailableDevices.argtypes=[ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint)]
-    lib.SA_GetAvailableDevices.argnames=["idList", "idListSize"]
+    addfunc(lib, "SA_GetAvailableDevices", restype = SA_STATUS,
+            argtypes = [ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint)],
+            argnames = ["idList", "idListSize"] )
     #  SA_STATUS SA_AddDeviceToInitDevicesList(ctypes.c_uint deviceId)
-    lib.SA_AddDeviceToInitDevicesList.restype=SA_STATUS
-    lib.SA_AddDeviceToInitDevicesList.argtypes=[ctypes.c_uint]
-    lib.SA_AddDeviceToInitDevicesList.argnames=["deviceId"]
+    addfunc(lib, "SA_AddDeviceToInitDevicesList", restype = SA_STATUS,
+            argtypes = [ctypes.c_uint],
+            argnames = ["deviceId"] )
     #  SA_STATUS SA_ClearInitDevicesList()
-    lib.SA_ClearInitDevicesList.restype=SA_STATUS
-    lib.SA_ClearInitDevicesList.argtypes=[]
-    lib.SA_ClearInitDevicesList.argnames=[]
+    addfunc(lib, "SA_ClearInitDevicesList", restype = SA_STATUS,
+            argtypes = [],
+            argnames = [] )
     #  SA_STATUS SA_InitDevices(ctypes.c_uint configuration)
-    lib.SA_InitDevices.restype=SA_STATUS
-    lib.SA_InitDevices.argtypes=[ctypes.c_uint]
-    lib.SA_InitDevices.argnames=["configuration"]
+    addfunc(lib, "SA_InitDevices", restype = SA_STATUS,
+            argtypes = [ctypes.c_uint],
+            argnames = ["configuration"] )
     #  SA_STATUS SA_ReleaseDevices()
-    lib.SA_ReleaseDevices.restype=SA_STATUS
-    lib.SA_ReleaseDevices.argtypes=[]
-    lib.SA_ReleaseDevices.argnames=[]
+    addfunc(lib, "SA_ReleaseDevices", restype = SA_STATUS,
+            argtypes = [],
+            argnames = [] )
     #  SA_STATUS SA_GetNumberOfDevices(ctypes.POINTER(ctypes.c_uint) number)
-    lib.SA_GetNumberOfDevices.restype=SA_STATUS
-    lib.SA_GetNumberOfDevices.argtypes=[ctypes.POINTER(ctypes.c_uint)]
-    lib.SA_GetNumberOfDevices.argnames=["number"]
+    addfunc(lib, "SA_GetNumberOfDevices", restype = SA_STATUS,
+            argtypes = [ctypes.POINTER(ctypes.c_uint)],
+            argnames = ["number"] )
     #  SA_STATUS SA_GetDeviceID(SA_INDEX deviceIndex, ctypes.POINTER(ctypes.c_uint) deviceId)
-    lib.SA_GetDeviceID.restype=SA_STATUS
-    lib.SA_GetDeviceID.argtypes=[SA_INDEX, ctypes.POINTER(ctypes.c_uint)]
-    lib.SA_GetDeviceID.argnames=["deviceIndex", "deviceId"]
+    addfunc(lib, "SA_GetDeviceID", restype = SA_STATUS,
+            argtypes = [SA_INDEX, ctypes.POINTER(ctypes.c_uint)],
+            argnames = ["deviceIndex", "deviceId"] )
     #  SA_STATUS SA_GetDeviceFirmwareVersion(SA_INDEX deviceIndex, ctypes.POINTER(ctypes.c_uint) version)
-    lib.SA_GetDeviceFirmwareVersion.restype=SA_STATUS
-    lib.SA_GetDeviceFirmwareVersion.argtypes=[SA_INDEX, ctypes.POINTER(ctypes.c_uint)]
-    lib.SA_GetDeviceFirmwareVersion.argnames=["deviceIndex", "version"]
+    addfunc(lib, "SA_GetDeviceFirmwareVersion", restype = SA_STATUS,
+            argtypes = [SA_INDEX, ctypes.POINTER(ctypes.c_uint)],
+            argnames = ["deviceIndex", "version"] )
     #  SA_STATUS SA_SetClosedLoopMaxFrequency_S(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.c_uint frequency)
-    lib.SA_SetClosedLoopMaxFrequency_S.restype=SA_STATUS
-    lib.SA_SetClosedLoopMaxFrequency_S.argtypes=[SA_INDEX, SA_INDEX, ctypes.c_uint]
-    lib.SA_SetClosedLoopMaxFrequency_S.argnames=["deviceIndex", "channelIndex", "frequency"]
+    addfunc(lib, "SA_SetClosedLoopMaxFrequency_S", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.c_uint],
+            argnames = ["deviceIndex", "channelIndex", "frequency"] )
     #  SA_STATUS SA_GetClosedLoopMaxFrequency_S(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.POINTER(ctypes.c_uint) frequency)
-    lib.SA_GetClosedLoopMaxFrequency_S.restype=SA_STATUS
-    lib.SA_GetClosedLoopMaxFrequency_S.argtypes=[SA_INDEX, SA_INDEX, ctypes.POINTER(ctypes.c_uint)]
-    lib.SA_GetClosedLoopMaxFrequency_S.argnames=["deviceIndex", "channelIndex", "frequency"]
+    addfunc(lib, "SA_GetClosedLoopMaxFrequency_S", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.POINTER(ctypes.c_uint)],
+            argnames = ["deviceIndex", "channelIndex", "frequency"] )
     #  SA_STATUS SA_SetZero_S(SA_INDEX deviceIndex, SA_INDEX channelIndex)
-    lib.SA_SetZero_S.restype=SA_STATUS
-    lib.SA_SetZero_S.argtypes=[SA_INDEX, SA_INDEX]
-    lib.SA_SetZero_S.argnames=["deviceIndex", "channelIndex"]
+    addfunc(lib, "SA_SetZero_S", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX],
+            argnames = ["deviceIndex", "channelIndex"] )
     #  SA_STATUS SA_GetSensorPresent_S(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.POINTER(ctypes.c_uint) present)
-    lib.SA_GetSensorPresent_S.restype=SA_STATUS
-    lib.SA_GetSensorPresent_S.argtypes=[SA_INDEX, SA_INDEX, ctypes.POINTER(ctypes.c_uint)]
-    lib.SA_GetSensorPresent_S.argnames=["deviceIndex", "channelIndex", "present"]
+    addfunc(lib, "SA_GetSensorPresent_S", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.POINTER(ctypes.c_uint)],
+            argnames = ["deviceIndex", "channelIndex", "present"] )
     #  SA_STATUS SA_SetSensorType_S(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.c_uint type)
-    lib.SA_SetSensorType_S.restype=SA_STATUS
-    lib.SA_SetSensorType_S.argtypes=[SA_INDEX, SA_INDEX, ctypes.c_uint]
-    lib.SA_SetSensorType_S.argnames=["deviceIndex", "channelIndex", "type"]
+    addfunc(lib, "SA_SetSensorType_S", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.c_uint],
+            argnames = ["deviceIndex", "channelIndex", "type"] )
     #  SA_STATUS SA_GetSensorType_S(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.POINTER(ctypes.c_uint) type)
-    lib.SA_GetSensorType_S.restype=SA_STATUS
-    lib.SA_GetSensorType_S.argtypes=[SA_INDEX, SA_INDEX, ctypes.POINTER(ctypes.c_uint)]
-    lib.SA_GetSensorType_S.argnames=["deviceIndex", "channelIndex", "type"]
+    addfunc(lib, "SA_GetSensorType_S", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.POINTER(ctypes.c_uint)],
+            argnames = ["deviceIndex", "channelIndex", "type"] )
     #  SA_STATUS SA_SetPositionerAlignment_S(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.c_uint alignment, ctypes.c_uint forwardAmplitude, ctypes.c_uint backwardAmplitude)
-    lib.SA_SetPositionerAlignment_S.restype=SA_STATUS
-    lib.SA_SetPositionerAlignment_S.argtypes=[SA_INDEX, SA_INDEX, ctypes.c_uint, ctypes.c_uint, ctypes.c_uint]
-    lib.SA_SetPositionerAlignment_S.argnames=["deviceIndex", "channelIndex", "alignment", "forwardAmplitude", "backwardAmplitude"]
+    addfunc(lib, "SA_SetPositionerAlignment_S", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.c_uint, ctypes.c_uint, ctypes.c_uint],
+            argnames = ["deviceIndex", "channelIndex", "alignment", "forwardAmplitude", "backwardAmplitude"] )
     #  SA_STATUS SA_GetPositionerAlignment_S(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.POINTER(ctypes.c_uint) alignment, ctypes.POINTER(ctypes.c_uint) forwardAmplitude, ctypes.POINTER(ctypes.c_uint) backwardAmplitude)
-    lib.SA_GetPositionerAlignment_S.restype=SA_STATUS
-    lib.SA_GetPositionerAlignment_S.argtypes=[SA_INDEX, SA_INDEX, ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint)]
-    lib.SA_GetPositionerAlignment_S.argnames=["deviceIndex", "channelIndex", "alignment", "forwardAmplitude", "backwardAmplitude"]
+    addfunc(lib, "SA_GetPositionerAlignment_S", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint)],
+            argnames = ["deviceIndex", "channelIndex", "alignment", "forwardAmplitude", "backwardAmplitude"] )
     #  SA_STATUS SA_SetSafeDirection_S(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.c_uint direction)
-    lib.SA_SetSafeDirection_S.restype=SA_STATUS
-    lib.SA_SetSafeDirection_S.argtypes=[SA_INDEX, SA_INDEX, ctypes.c_uint]
-    lib.SA_SetSafeDirection_S.argnames=["deviceIndex", "channelIndex", "direction"]
+    addfunc(lib, "SA_SetSafeDirection_S", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.c_uint],
+            argnames = ["deviceIndex", "channelIndex", "direction"] )
     #  SA_STATUS SA_GetSafeDirection_S(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.POINTER(ctypes.c_uint) direction)
-    lib.SA_GetSafeDirection_S.restype=SA_STATUS
-    lib.SA_GetSafeDirection_S.argtypes=[SA_INDEX, SA_INDEX, ctypes.POINTER(ctypes.c_uint)]
-    lib.SA_GetSafeDirection_S.argnames=["deviceIndex", "channelIndex", "direction"]
+    addfunc(lib, "SA_GetSafeDirection_S", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.POINTER(ctypes.c_uint)],
+            argnames = ["deviceIndex", "channelIndex", "direction"] )
     #  SA_STATUS SA_SetScale_S(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.c_int reserved, ctypes.c_uint inverted)
-    lib.SA_SetScale_S.restype=SA_STATUS
-    lib.SA_SetScale_S.argtypes=[SA_INDEX, SA_INDEX, ctypes.c_int, ctypes.c_uint]
-    lib.SA_SetScale_S.argnames=["deviceIndex", "channelIndex", "reserved", "inverted"]
+    addfunc(lib, "SA_SetScale_S", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.c_int, ctypes.c_uint],
+            argnames = ["deviceIndex", "channelIndex", "reserved", "inverted"] )
     #  SA_STATUS SA_GetScale_S(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.POINTER(ctypes.c_int) reserved, ctypes.POINTER(ctypes.c_uint) inverted)
-    lib.SA_GetScale_S.restype=SA_STATUS
-    lib.SA_GetScale_S.argtypes=[SA_INDEX, SA_INDEX, ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_uint)]
-    lib.SA_GetScale_S.argnames=["deviceIndex", "channelIndex", "reserved", "inverted"]
+    addfunc(lib, "SA_GetScale_S", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_uint)],
+            argnames = ["deviceIndex", "channelIndex", "reserved", "inverted"] )
     #  SA_STATUS SA_MoveStep_S(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.c_int steps, ctypes.c_uint amplitude, ctypes.c_uint frequency)
-    lib.SA_MoveStep_S.restype=SA_STATUS
-    lib.SA_MoveStep_S.argtypes=[SA_INDEX, SA_INDEX, ctypes.c_int, ctypes.c_uint, ctypes.c_uint]
-    lib.SA_MoveStep_S.argnames=["deviceIndex", "channelIndex", "steps", "amplitude", "frequency"]
+    addfunc(lib, "SA_MoveStep_S", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.c_int, ctypes.c_uint, ctypes.c_uint],
+            argnames = ["deviceIndex", "channelIndex", "steps", "amplitude", "frequency"] )
     #  SA_STATUS SA_SetAmplitude_S(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.c_uint amplitude)
-    lib.SA_SetAmplitude_S.restype=SA_STATUS
-    lib.SA_SetAmplitude_S.argtypes=[SA_INDEX, SA_INDEX, ctypes.c_uint]
-    lib.SA_SetAmplitude_S.argnames=["deviceIndex", "channelIndex", "amplitude"]
+    addfunc(lib, "SA_SetAmplitude_S", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.c_uint],
+            argnames = ["deviceIndex", "channelIndex", "amplitude"] )
     #  SA_STATUS SA_MovePositionAbsolute_S(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.c_int position, ctypes.c_uint holdTime)
-    lib.SA_MovePositionAbsolute_S.restype=SA_STATUS
-    lib.SA_MovePositionAbsolute_S.argtypes=[SA_INDEX, SA_INDEX, ctypes.c_int, ctypes.c_uint]
-    lib.SA_MovePositionAbsolute_S.argnames=["deviceIndex", "channelIndex", "position", "holdTime"]
+    addfunc(lib, "SA_MovePositionAbsolute_S", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.c_int, ctypes.c_uint],
+            argnames = ["deviceIndex", "channelIndex", "position", "holdTime"] )
     #  SA_STATUS SA_MovePositionRelative_S(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.c_int diff, ctypes.c_uint holdTime)
-    lib.SA_MovePositionRelative_S.restype=SA_STATUS
-    lib.SA_MovePositionRelative_S.argtypes=[SA_INDEX, SA_INDEX, ctypes.c_int, ctypes.c_uint]
-    lib.SA_MovePositionRelative_S.argnames=["deviceIndex", "channelIndex", "diff", "holdTime"]
+    addfunc(lib, "SA_MovePositionRelative_S", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.c_int, ctypes.c_uint],
+            argnames = ["deviceIndex", "channelIndex", "diff", "holdTime"] )
     #  SA_STATUS SA_MoveAngleAbsolute_S(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.c_int angle, ctypes.c_int revolution, ctypes.c_uint holdTime)
-    lib.SA_MoveAngleAbsolute_S.restype=SA_STATUS
-    lib.SA_MoveAngleAbsolute_S.argtypes=[SA_INDEX, SA_INDEX, ctypes.c_int, ctypes.c_int, ctypes.c_uint]
-    lib.SA_MoveAngleAbsolute_S.argnames=["deviceIndex", "channelIndex", "angle", "revolution", "holdTime"]
+    addfunc(lib, "SA_MoveAngleAbsolute_S", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.c_int, ctypes.c_int, ctypes.c_uint],
+            argnames = ["deviceIndex", "channelIndex", "angle", "revolution", "holdTime"] )
     #  SA_STATUS SA_MoveAngleRelative_S(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.c_int angleDiff, ctypes.c_int revolutionDiff, ctypes.c_uint holdTime)
-    lib.SA_MoveAngleRelative_S.restype=SA_STATUS
-    lib.SA_MoveAngleRelative_S.argtypes=[SA_INDEX, SA_INDEX, ctypes.c_int, ctypes.c_int, ctypes.c_uint]
-    lib.SA_MoveAngleRelative_S.argnames=["deviceIndex", "channelIndex", "angleDiff", "revolutionDiff", "holdTime"]
+    addfunc(lib, "SA_MoveAngleRelative_S", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.c_int, ctypes.c_int, ctypes.c_uint],
+            argnames = ["deviceIndex", "channelIndex", "angleDiff", "revolutionDiff", "holdTime"] )
     #  SA_STATUS SA_CalibrateSensor_S(SA_INDEX deviceIndex, SA_INDEX channelIndex)
-    lib.SA_CalibrateSensor_S.restype=SA_STATUS
-    lib.SA_CalibrateSensor_S.argtypes=[SA_INDEX, SA_INDEX]
-    lib.SA_CalibrateSensor_S.argnames=["deviceIndex", "channelIndex"]
+    addfunc(lib, "SA_CalibrateSensor_S", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX],
+            argnames = ["deviceIndex", "channelIndex"] )
     #  SA_STATUS SA_MoveToReference_S(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.c_uint holdTime, ctypes.c_uint autoZero)
-    lib.SA_MoveToReference_S.restype=SA_STATUS
-    lib.SA_MoveToReference_S.argtypes=[SA_INDEX, SA_INDEX, ctypes.c_uint, ctypes.c_uint]
-    lib.SA_MoveToReference_S.argnames=["deviceIndex", "channelIndex", "holdTime", "autoZero"]
+    addfunc(lib, "SA_MoveToReference_S", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.c_uint, ctypes.c_uint],
+            argnames = ["deviceIndex", "channelIndex", "holdTime", "autoZero"] )
     #  SA_STATUS SA_MoveToEndStop_S(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.c_uint direction, ctypes.c_uint holdTime, ctypes.c_uint autoZero)
-    lib.SA_MoveToEndStop_S.restype=SA_STATUS
-    lib.SA_MoveToEndStop_S.argtypes=[SA_INDEX, SA_INDEX, ctypes.c_uint, ctypes.c_uint, ctypes.c_uint]
-    lib.SA_MoveToEndStop_S.argnames=["deviceIndex", "channelIndex", "direction", "holdTime", "autoZero"]
+    addfunc(lib, "SA_MoveToEndStop_S", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.c_uint, ctypes.c_uint, ctypes.c_uint],
+            argnames = ["deviceIndex", "channelIndex", "direction", "holdTime", "autoZero"] )
     #  SA_STATUS SA_Stop_S(SA_INDEX deviceIndex, SA_INDEX channelIndex)
-    lib.SA_Stop_S.restype=SA_STATUS
-    lib.SA_Stop_S.argtypes=[SA_INDEX, SA_INDEX]
-    lib.SA_Stop_S.argnames=["deviceIndex", "channelIndex"]
+    addfunc(lib, "SA_Stop_S", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX],
+            argnames = ["deviceIndex", "channelIndex"] )
     #  SA_STATUS SA_GetStatus_S(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.POINTER(ctypes.c_uint) status)
-    lib.SA_GetStatus_S.restype=SA_STATUS
-    lib.SA_GetStatus_S.argtypes=[SA_INDEX, SA_INDEX, ctypes.POINTER(ctypes.c_uint)]
-    lib.SA_GetStatus_S.argnames=["deviceIndex", "channelIndex", "status"]
+    addfunc(lib, "SA_GetStatus_S", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.POINTER(ctypes.c_uint)],
+            argnames = ["deviceIndex", "channelIndex", "status"] )
     #  SA_STATUS SA_GetAmplitude_S(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.POINTER(ctypes.c_uint) amplitude)
-    lib.SA_GetAmplitude_S.restype=SA_STATUS
-    lib.SA_GetAmplitude_S.argtypes=[SA_INDEX, SA_INDEX, ctypes.POINTER(ctypes.c_uint)]
-    lib.SA_GetAmplitude_S.argnames=["deviceIndex", "channelIndex", "amplitude"]
+    addfunc(lib, "SA_GetAmplitude_S", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.POINTER(ctypes.c_uint)],
+            argnames = ["deviceIndex", "channelIndex", "amplitude"] )
     #  SA_STATUS SA_GetPosition_S(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.POINTER(ctypes.c_int) position)
-    lib.SA_GetPosition_S.restype=SA_STATUS
-    lib.SA_GetPosition_S.argtypes=[SA_INDEX, SA_INDEX, ctypes.POINTER(ctypes.c_int)]
-    lib.SA_GetPosition_S.argnames=["deviceIndex", "channelIndex", "position"]
+    addfunc(lib, "SA_GetPosition_S", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.POINTER(ctypes.c_int)],
+            argnames = ["deviceIndex", "channelIndex", "position"] )
     #  SA_STATUS SA_GetAngle_S(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.POINTER(ctypes.c_int) angle, ctypes.POINTER(ctypes.c_int) revolution)
-    lib.SA_GetAngle_S.restype=SA_STATUS
-    lib.SA_GetAngle_S.argtypes=[SA_INDEX, SA_INDEX, ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int)]
-    lib.SA_GetAngle_S.argnames=["deviceIndex", "channelIndex", "angle", "revolution"]
+    addfunc(lib, "SA_GetAngle_S", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int)],
+            argnames = ["deviceIndex", "channelIndex", "angle", "revolution"] )
     #  SA_STATUS SA_GetPhysicalPositionKnown_S(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.POINTER(ctypes.c_uint) known)
-    lib.SA_GetPhysicalPositionKnown_S.restype=SA_STATUS
-    lib.SA_GetPhysicalPositionKnown_S.argtypes=[SA_INDEX, SA_INDEX, ctypes.POINTER(ctypes.c_uint)]
-    lib.SA_GetPhysicalPositionKnown_S.argnames=["deviceIndex", "channelIndex", "known"]
+    addfunc(lib, "SA_GetPhysicalPositionKnown_S", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.POINTER(ctypes.c_uint)],
+            argnames = ["deviceIndex", "channelIndex", "known"] )
     #  SA_STATUS SA_SetClosedLoopMaxFrequency_A(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.c_uint frequency)
-    lib.SA_SetClosedLoopMaxFrequency_A.restype=SA_STATUS
-    lib.SA_SetClosedLoopMaxFrequency_A.argtypes=[SA_INDEX, SA_INDEX, ctypes.c_uint]
-    lib.SA_SetClosedLoopMaxFrequency_A.argnames=["deviceIndex", "channelIndex", "frequency"]
+    addfunc(lib, "SA_SetClosedLoopMaxFrequency_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.c_uint],
+            argnames = ["deviceIndex", "channelIndex", "frequency"] )
     #  SA_STATUS SA_GetClosedLoopMaxFrequency_A(SA_INDEX deviceIndex, SA_INDEX channelIndex)
-    lib.SA_GetClosedLoopMaxFrequency_A.restype=SA_STATUS
-    lib.SA_GetClosedLoopMaxFrequency_A.argtypes=[SA_INDEX, SA_INDEX]
-    lib.SA_GetClosedLoopMaxFrequency_A.argnames=["deviceIndex", "channelIndex"]
+    addfunc(lib, "SA_GetClosedLoopMaxFrequency_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX],
+            argnames = ["deviceIndex", "channelIndex"] )
     #  SA_STATUS SA_SetZero_A(SA_INDEX deviceIndex, SA_INDEX channelIndex)
-    lib.SA_SetZero_A.restype=SA_STATUS
-    lib.SA_SetZero_A.argtypes=[SA_INDEX, SA_INDEX]
-    lib.SA_SetZero_A.argnames=["deviceIndex", "channelIndex"]
+    addfunc(lib, "SA_SetZero_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX],
+            argnames = ["deviceIndex", "channelIndex"] )
     #  SA_STATUS SA_GetSensorPresent_A(SA_INDEX deviceIndex, SA_INDEX channelIndex)
-    lib.SA_GetSensorPresent_A.restype=SA_STATUS
-    lib.SA_GetSensorPresent_A.argtypes=[SA_INDEX, SA_INDEX]
-    lib.SA_GetSensorPresent_A.argnames=["deviceIndex", "channelIndex"]
+    addfunc(lib, "SA_GetSensorPresent_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX],
+            argnames = ["deviceIndex", "channelIndex"] )
     #  SA_STATUS SA_SetSensorType_A(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.c_uint type)
-    lib.SA_SetSensorType_A.restype=SA_STATUS
-    lib.SA_SetSensorType_A.argtypes=[SA_INDEX, SA_INDEX, ctypes.c_uint]
-    lib.SA_SetSensorType_A.argnames=["deviceIndex", "channelIndex", "type"]
+    addfunc(lib, "SA_SetSensorType_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.c_uint],
+            argnames = ["deviceIndex", "channelIndex", "type"] )
     #  SA_STATUS SA_GetSensorType_A(SA_INDEX deviceIndex, SA_INDEX channelIndex)
-    lib.SA_GetSensorType_A.restype=SA_STATUS
-    lib.SA_GetSensorType_A.argtypes=[SA_INDEX, SA_INDEX]
-    lib.SA_GetSensorType_A.argnames=["deviceIndex", "channelIndex"]
+    addfunc(lib, "SA_GetSensorType_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX],
+            argnames = ["deviceIndex", "channelIndex"] )
     #  SA_STATUS SA_SetPositionerAlignment_A(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.c_uint alignment, ctypes.c_uint forwardAmplitude, ctypes.c_uint backwardAmplitude)
-    lib.SA_SetPositionerAlignment_A.restype=SA_STATUS
-    lib.SA_SetPositionerAlignment_A.argtypes=[SA_INDEX, SA_INDEX, ctypes.c_uint, ctypes.c_uint, ctypes.c_uint]
-    lib.SA_SetPositionerAlignment_A.argnames=["deviceIndex", "channelIndex", "alignment", "forwardAmplitude", "backwardAmplitude"]
+    addfunc(lib, "SA_SetPositionerAlignment_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.c_uint, ctypes.c_uint, ctypes.c_uint],
+            argnames = ["deviceIndex", "channelIndex", "alignment", "forwardAmplitude", "backwardAmplitude"] )
     #  SA_STATUS SA_GetPositionerAlignment_A(SA_INDEX deviceIndex, SA_INDEX channelIndex)
-    lib.SA_GetPositionerAlignment_A.restype=SA_STATUS
-    lib.SA_GetPositionerAlignment_A.argtypes=[SA_INDEX, SA_INDEX]
-    lib.SA_GetPositionerAlignment_A.argnames=["deviceIndex", "channelIndex"]
+    addfunc(lib, "SA_GetPositionerAlignment_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX],
+            argnames = ["deviceIndex", "channelIndex"] )
     #  SA_STATUS SA_SetSafeDirection_A(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.c_uint direction)
-    lib.SA_SetSafeDirection_A.restype=SA_STATUS
-    lib.SA_SetSafeDirection_A.argtypes=[SA_INDEX, SA_INDEX, ctypes.c_uint]
-    lib.SA_SetSafeDirection_A.argnames=["deviceIndex", "channelIndex", "direction"]
+    addfunc(lib, "SA_SetSafeDirection_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.c_uint],
+            argnames = ["deviceIndex", "channelIndex", "direction"] )
     #  SA_STATUS SA_GetSafeDirection_A(SA_INDEX deviceIndex, SA_INDEX channelIndex)
-    lib.SA_GetSafeDirection_A.restype=SA_STATUS
-    lib.SA_GetSafeDirection_A.argtypes=[SA_INDEX, SA_INDEX]
-    lib.SA_GetSafeDirection_A.argnames=["deviceIndex", "channelIndex"]
+    addfunc(lib, "SA_GetSafeDirection_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX],
+            argnames = ["deviceIndex", "channelIndex"] )
     #  SA_STATUS SA_SetScale_A(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.c_int reserved, ctypes.c_uint inverted)
-    lib.SA_SetScale_A.restype=SA_STATUS
-    lib.SA_SetScale_A.argtypes=[SA_INDEX, SA_INDEX, ctypes.c_int, ctypes.c_uint]
-    lib.SA_SetScale_A.argnames=["deviceIndex", "channelIndex", "reserved", "inverted"]
+    addfunc(lib, "SA_SetScale_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.c_int, ctypes.c_uint],
+            argnames = ["deviceIndex", "channelIndex", "reserved", "inverted"] )
     #  SA_STATUS SA_GetScale_A(SA_INDEX deviceIndex, SA_INDEX channelIndex)
-    lib.SA_GetScale_A.restype=SA_STATUS
-    lib.SA_GetScale_A.argtypes=[SA_INDEX, SA_INDEX]
-    lib.SA_GetScale_A.argnames=["deviceIndex", "channelIndex"]
+    addfunc(lib, "SA_GetScale_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX],
+            argnames = ["deviceIndex", "channelIndex"] )
     #  SA_STATUS SA_SetReportOnComplete_A(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.c_uint report)
-    lib.SA_SetReportOnComplete_A.restype=SA_STATUS
-    lib.SA_SetReportOnComplete_A.argtypes=[SA_INDEX, SA_INDEX, ctypes.c_uint]
-    lib.SA_SetReportOnComplete_A.argnames=["deviceIndex", "channelIndex", "report"]
+    addfunc(lib, "SA_SetReportOnComplete_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.c_uint],
+            argnames = ["deviceIndex", "channelIndex", "report"] )
     #  SA_STATUS SA_MoveStep_A(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.c_int steps, ctypes.c_uint amplitude, ctypes.c_uint frequency)
-    lib.SA_MoveStep_A.restype=SA_STATUS
-    lib.SA_MoveStep_A.argtypes=[SA_INDEX, SA_INDEX, ctypes.c_int, ctypes.c_uint, ctypes.c_uint]
-    lib.SA_MoveStep_A.argnames=["deviceIndex", "channelIndex", "steps", "amplitude", "frequency"]
+    addfunc(lib, "SA_MoveStep_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.c_int, ctypes.c_uint, ctypes.c_uint],
+            argnames = ["deviceIndex", "channelIndex", "steps", "amplitude", "frequency"] )
     #  SA_STATUS SA_SetAmplitude_A(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.c_uint amplitude)
-    lib.SA_SetAmplitude_A.restype=SA_STATUS
-    lib.SA_SetAmplitude_A.argtypes=[SA_INDEX, SA_INDEX, ctypes.c_uint]
-    lib.SA_SetAmplitude_A.argnames=["deviceIndex", "channelIndex", "amplitude"]
+    addfunc(lib, "SA_SetAmplitude_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.c_uint],
+            argnames = ["deviceIndex", "channelIndex", "amplitude"] )
     #  SA_STATUS SA_MovePositionAbsolute_A(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.c_int position, ctypes.c_uint holdTime)
-    lib.SA_MovePositionAbsolute_A.restype=SA_STATUS
-    lib.SA_MovePositionAbsolute_A.argtypes=[SA_INDEX, SA_INDEX, ctypes.c_int, ctypes.c_uint]
-    lib.SA_MovePositionAbsolute_A.argnames=["deviceIndex", "channelIndex", "position", "holdTime"]
+    addfunc(lib, "SA_MovePositionAbsolute_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.c_int, ctypes.c_uint],
+            argnames = ["deviceIndex", "channelIndex", "position", "holdTime"] )
     #  SA_STATUS SA_MovePositionRelative_A(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.c_int diff, ctypes.c_uint holdTime)
-    lib.SA_MovePositionRelative_A.restype=SA_STATUS
-    lib.SA_MovePositionRelative_A.argtypes=[SA_INDEX, SA_INDEX, ctypes.c_int, ctypes.c_uint]
-    lib.SA_MovePositionRelative_A.argnames=["deviceIndex", "channelIndex", "diff", "holdTime"]
+    addfunc(lib, "SA_MovePositionRelative_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.c_int, ctypes.c_uint],
+            argnames = ["deviceIndex", "channelIndex", "diff", "holdTime"] )
     #  SA_STATUS SA_MoveAngleAbsolute_A(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.c_int angle, ctypes.c_int revolution, ctypes.c_uint holdTime)
-    lib.SA_MoveAngleAbsolute_A.restype=SA_STATUS
-    lib.SA_MoveAngleAbsolute_A.argtypes=[SA_INDEX, SA_INDEX, ctypes.c_int, ctypes.c_int, ctypes.c_uint]
-    lib.SA_MoveAngleAbsolute_A.argnames=["deviceIndex", "channelIndex", "angle", "revolution", "holdTime"]
+    addfunc(lib, "SA_MoveAngleAbsolute_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.c_int, ctypes.c_int, ctypes.c_uint],
+            argnames = ["deviceIndex", "channelIndex", "angle", "revolution", "holdTime"] )
     #  SA_STATUS SA_MoveAngleRelative_A(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.c_int angleDiff, ctypes.c_int revolutionDiff, ctypes.c_uint holdTime)
-    lib.SA_MoveAngleRelative_A.restype=SA_STATUS
-    lib.SA_MoveAngleRelative_A.argtypes=[SA_INDEX, SA_INDEX, ctypes.c_int, ctypes.c_int, ctypes.c_uint]
-    lib.SA_MoveAngleRelative_A.argnames=["deviceIndex", "channelIndex", "angleDiff", "revolutionDiff", "holdTime"]
+    addfunc(lib, "SA_MoveAngleRelative_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.c_int, ctypes.c_int, ctypes.c_uint],
+            argnames = ["deviceIndex", "channelIndex", "angleDiff", "revolutionDiff", "holdTime"] )
     #  SA_STATUS SA_CalibrateSensor_A(SA_INDEX deviceIndex, SA_INDEX channelIndex)
-    lib.SA_CalibrateSensor_A.restype=SA_STATUS
-    lib.SA_CalibrateSensor_A.argtypes=[SA_INDEX, SA_INDEX]
-    lib.SA_CalibrateSensor_A.argnames=["deviceIndex", "channelIndex"]
+    addfunc(lib, "SA_CalibrateSensor_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX],
+            argnames = ["deviceIndex", "channelIndex"] )
     #  SA_STATUS SA_MoveToReference_A(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.c_uint holdTime, ctypes.c_uint autoZero)
-    lib.SA_MoveToReference_A.restype=SA_STATUS
-    lib.SA_MoveToReference_A.argtypes=[SA_INDEX, SA_INDEX, ctypes.c_uint, ctypes.c_uint]
-    lib.SA_MoveToReference_A.argnames=["deviceIndex", "channelIndex", "holdTime", "autoZero"]
+    addfunc(lib, "SA_MoveToReference_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.c_uint, ctypes.c_uint],
+            argnames = ["deviceIndex", "channelIndex", "holdTime", "autoZero"] )
     #  SA_STATUS SA_MoveToEndStop_A(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.c_uint direction, ctypes.c_uint holdTime, ctypes.c_uint autoZero)
-    lib.SA_MoveToEndStop_A.restype=SA_STATUS
-    lib.SA_MoveToEndStop_A.argtypes=[SA_INDEX, SA_INDEX, ctypes.c_uint, ctypes.c_uint, ctypes.c_uint]
-    lib.SA_MoveToEndStop_A.argnames=["deviceIndex", "channelIndex", "direction", "holdTime", "autoZero"]
+    addfunc(lib, "SA_MoveToEndStop_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.c_uint, ctypes.c_uint, ctypes.c_uint],
+            argnames = ["deviceIndex", "channelIndex", "direction", "holdTime", "autoZero"] )
     #  SA_STATUS SA_Stop_A(SA_INDEX deviceIndex, SA_INDEX channelIndex)
-    lib.SA_Stop_A.restype=SA_STATUS
-    lib.SA_Stop_A.argtypes=[SA_INDEX, SA_INDEX]
-    lib.SA_Stop_A.argnames=["deviceIndex", "channelIndex"]
+    addfunc(lib, "SA_Stop_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX],
+            argnames = ["deviceIndex", "channelIndex"] )
     #  SA_STATUS SA_GetStatus_A(SA_INDEX deviceIndex, SA_INDEX channelIndex)
-    lib.SA_GetStatus_A.restype=SA_STATUS
-    lib.SA_GetStatus_A.argtypes=[SA_INDEX, SA_INDEX]
-    lib.SA_GetStatus_A.argnames=["deviceIndex", "channelIndex"]
+    addfunc(lib, "SA_GetStatus_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX],
+            argnames = ["deviceIndex", "channelIndex"] )
     #  SA_STATUS SA_GetAmplitude_A(SA_INDEX deviceIndex, SA_INDEX channelIndex)
-    lib.SA_GetAmplitude_A.restype=SA_STATUS
-    lib.SA_GetAmplitude_A.argtypes=[SA_INDEX, SA_INDEX]
-    lib.SA_GetAmplitude_A.argnames=["deviceIndex", "channelIndex"]
+    addfunc(lib, "SA_GetAmplitude_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX],
+            argnames = ["deviceIndex", "channelIndex"] )
     #  SA_STATUS SA_GetPosition_A(SA_INDEX deviceIndex, SA_INDEX channelIndex)
-    lib.SA_GetPosition_A.restype=SA_STATUS
-    lib.SA_GetPosition_A.argtypes=[SA_INDEX, SA_INDEX]
-    lib.SA_GetPosition_A.argnames=["deviceIndex", "channelIndex"]
+    addfunc(lib, "SA_GetPosition_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX],
+            argnames = ["deviceIndex", "channelIndex"] )
     #  SA_STATUS SA_GetAngle_A(SA_INDEX deviceIndex, SA_INDEX channelIndex)
-    lib.SA_GetAngle_A.restype=SA_STATUS
-    lib.SA_GetAngle_A.argtypes=[SA_INDEX, SA_INDEX]
-    lib.SA_GetAngle_A.argnames=["deviceIndex", "channelIndex"]
+    addfunc(lib, "SA_GetAngle_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX],
+            argnames = ["deviceIndex", "channelIndex"] )
     #  SA_STATUS SA_GetPhysicalPositionKnown_A(SA_INDEX deviceIndex, SA_INDEX channelIndex)
-    lib.SA_GetPhysicalPositionKnown_A.restype=SA_STATUS
-    lib.SA_GetPhysicalPositionKnown_A.argtypes=[SA_INDEX, SA_INDEX]
-    lib.SA_GetPhysicalPositionKnown_A.argnames=["deviceIndex", "channelIndex"]
+    addfunc(lib, "SA_GetPhysicalPositionKnown_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX],
+            argnames = ["deviceIndex", "channelIndex"] )
     #  SA_STATUS SA_SetReceiveNotification_A(SA_INDEX deviceIndex, HANDLE event)
-    lib.SA_SetReceiveNotification_A.restype=SA_STATUS
-    lib.SA_SetReceiveNotification_A.argtypes=[SA_INDEX, HANDLE]
-    lib.SA_SetReceiveNotification_A.argnames=["deviceIndex", "event"]
+    addfunc(lib, "SA_SetReceiveNotification_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, HANDLE],
+            argnames = ["deviceIndex", "event"] )
     #  SA_STATUS SA_ReceiveNextPacket_A(SA_INDEX deviceIndex, ctypes.c_uint timeout, ctypes.POINTER(SA_PACKET) packet)
-    lib.SA_ReceiveNextPacket_A.restype=SA_STATUS
-    lib.SA_ReceiveNextPacket_A.argtypes=[SA_INDEX, ctypes.c_uint, ctypes.POINTER(SA_PACKET)]
-    lib.SA_ReceiveNextPacket_A.argnames=["deviceIndex", "timeout", "packet"]
+    addfunc(lib, "SA_ReceiveNextPacket_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, ctypes.c_uint, ctypes.POINTER(SA_PACKET)],
+            argnames = ["deviceIndex", "timeout", "packet"] )
     #  SA_STATUS SA_ReceiveNextPacketIfChannel_A(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.c_uint timeout, ctypes.POINTER(SA_PACKET) packet)
-    lib.SA_ReceiveNextPacketIfChannel_A.restype=SA_STATUS
-    lib.SA_ReceiveNextPacketIfChannel_A.argtypes=[SA_INDEX, SA_INDEX, ctypes.c_uint, ctypes.POINTER(SA_PACKET)]
-    lib.SA_ReceiveNextPacketIfChannel_A.argnames=["deviceIndex", "channelIndex", "timeout", "packet"]
+    addfunc(lib, "SA_ReceiveNextPacketIfChannel_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, SA_INDEX, ctypes.c_uint, ctypes.POINTER(SA_PACKET)],
+            argnames = ["deviceIndex", "channelIndex", "timeout", "packet"] )
     #  SA_STATUS SA_LookAtNextPacket_A(SA_INDEX deviceIndex, ctypes.c_uint timeout, ctypes.POINTER(SA_PACKET) packet)
-    lib.SA_LookAtNextPacket_A.restype=SA_STATUS
-    lib.SA_LookAtNextPacket_A.argtypes=[SA_INDEX, ctypes.c_uint, ctypes.POINTER(SA_PACKET)]
-    lib.SA_LookAtNextPacket_A.argnames=["deviceIndex", "timeout", "packet"]
+    addfunc(lib, "SA_LookAtNextPacket_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX, ctypes.c_uint, ctypes.POINTER(SA_PACKET)],
+            argnames = ["deviceIndex", "timeout", "packet"] )
     #  SA_STATUS SA_DiscardPacket_A(SA_INDEX deviceIndex)
-    lib.SA_DiscardPacket_A.restype=SA_STATUS
-    lib.SA_DiscardPacket_A.argtypes=[SA_INDEX]
-    lib.SA_DiscardPacket_A.argnames=["deviceIndex"]
+    addfunc(lib, "SA_DiscardPacket_A", restype = SA_STATUS,
+            argtypes = [SA_INDEX],
+            argnames = ["deviceIndex"] )
 
 

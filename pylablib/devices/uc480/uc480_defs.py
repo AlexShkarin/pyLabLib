@@ -1,5 +1,7 @@
 ##########   This file is generated automatically based on uc480.h   ##########
 
+# pylint: disable=unused-import, unused-argument
+
 
 import ctypes
 import enum
@@ -1461,7 +1463,6 @@ WORD=ctypes.c_ushort
 DWORD=ctypes.c_ulong
 LPWORD=ctypes.POINTER(WORD)
 ULONG=ctypes.c_ulong
-ULONG=ctypes.c_ulong
 LONGLONG=ctypes.c_int64
 LPLONG=ctypes.POINTER(ctypes.c_long)
 INT=ctypes.c_int
@@ -1475,44 +1476,9 @@ HINSTANCE=ctypes.c_void_p
 HDC=ctypes.c_void_p
 HMODULE=ctypes.c_void_p
 HKEY=ctypes.c_void_p
-HANDLE=ctypes.c_void_p
 VOID=None
 PVOID=ctypes.c_void_p
 LPVOID=ctypes.c_void_p
-HWND=ctypes.c_void_p
-BOOL=ctypes.c_int
-BYTE=ctypes.c_ubyte
-PBYTE=ctypes.POINTER(BYTE)
-CHAR=ctypes.c_char
-PCHAR=ctypes.c_char_p
-UCHAR=ctypes.c_ubyte
-PUCHAR=ctypes.POINTER(UCHAR)
-ULONG_PTR=ctypes.c_uint64
-LONG_PTR=ctypes.c_int64
-WORD=ctypes.c_ushort
-DWORD=ctypes.c_ulong
-LPWORD=ctypes.POINTER(WORD)
-ULONG=ctypes.c_ulong
-ULONG=ctypes.c_ulong
-LONGLONG=ctypes.c_int64
-LPLONG=ctypes.POINTER(ctypes.c_long)
-INT=ctypes.c_int
-UINT=ctypes.c_uint
-UINT64=ctypes.c_uint64
-HANDLE=ctypes.c_void_p
-LPHANDLE=ctypes.POINTER(HANDLE)
-HWND=ctypes.c_void_p
-HGLOBAL=ctypes.c_void_p
-HINSTANCE=ctypes.c_void_p
-HDC=ctypes.c_void_p
-HMODULE=ctypes.c_void_p
-HKEY=ctypes.c_void_p
-HANDLE=ctypes.c_void_p
-VOID=None
-PVOID=ctypes.c_void_p
-LPVOID=ctypes.c_void_p
-HWND=ctypes.c_void_p
-INT=ctypes.c_int
 IS_CHAR=ctypes.c_char
 HCAM=DWORD
 class IS_RANGE_S32(ctypes.Structure):
@@ -1768,7 +1734,7 @@ class CKNEEPOINT(ctypes_wrap.CStructWrapper):
     _struct=KNEEPOINT
 
 
-PKNEEPOINT=ctypes.POINTER(KNEEPOINT)
+PKNEEPOINT=ctypes.c_void_p
 class KNEEPOINTARRAY(ctypes.Structure):
     _fields_=[  ("NumberOfUsedKneepoints",INT),
                 ("Kneepoint",KNEEPOINT*10) ]
@@ -1777,7 +1743,7 @@ class CKNEEPOINTARRAY(ctypes_wrap.CStructWrapper):
     _struct=KNEEPOINTARRAY
 
 
-PKNEEPOINTARRAY=ctypes.POINTER(KNEEPOINTARRAY)
+PKNEEPOINTARRAY=ctypes.c_void_p
 class KNEEPOINTINFO(ctypes.Structure):
     _fields_=[  ("NumberOfSupportedKneepoints",INT),
                 ("NumberOfUsedKneepoints",INT),
@@ -1792,7 +1758,7 @@ class CKNEEPOINTINFO(ctypes_wrap.CStructWrapper):
     _struct=KNEEPOINTINFO
 
 
-PKNEEPOINTINFO=ctypes.POINTER(KNEEPOINTINFO)
+PKNEEPOINTINFO=ctypes.c_void_p
 class UC480_GET_ESTIMATED_TIME_MODE(enum.IntEnum):
     IS_SE_STARTER_FW_UPLOAD=_int32(0x00000001)
     IS_CP_STARTER_FW_UPLOAD=_int32(0x00000002)
@@ -2861,7 +2827,7 @@ class CIS_OPTIMAL_CAMERA_TIMING(ctypes_wrap.CStructWrapper):
     _struct=IS_OPTIMAL_CAMERA_TIMING
 
 
-PUC480_ETH_ADDR_IPV4=ctypes.POINTER(DWORD)
+PUC480_ETH_ADDR_IPV4=ctypes.c_void_p
 class UC480_ETH_ADDR_MAC(ctypes.Structure):
     _fields_=[  ("abyOctet",BYTE*6) ]
 PUC480_ETH_ADDR_MAC=ctypes.POINTER(UC480_ETH_ADDR_MAC)
@@ -2869,7 +2835,7 @@ class CUC480_ETH_ADDR_MAC(ctypes_wrap.CStructWrapper):
     _struct=UC480_ETH_ADDR_MAC
 
 
-PUC480_ETH_ADDR_MAC=ctypes.POINTER(UC480_ETH_ADDR_MAC)
+PUC480_ETH_ADDR_MAC=ctypes.c_void_p
 class UC480_ETH_IP_CONFIGURATION(ctypes.Structure):
     _fields_=[  ("ipAddress",DWORD),
                 ("ipSubnetmask",DWORD),
@@ -2879,7 +2845,7 @@ class CUC480_ETH_IP_CONFIGURATION(ctypes_wrap.CStructWrapper):
     _struct=UC480_ETH_IP_CONFIGURATION
 
 
-PUC480_ETH_IP_CONFIGURATION=ctypes.POINTER(UC480_ETH_IP_CONFIGURATION)
+PUC480_ETH_IP_CONFIGURATION=ctypes.c_void_p
 class UC480_ETH_DEVICESTATUS(enum.IntEnum):
     IS_ETH_DEVSTATUS_READY_TO_OPERATE          =_int32(0x00000001)
     IS_ETH_DEVSTATUS_TESTING_IP_CURRENT        =_int32(0x00000002)
@@ -2935,7 +2901,7 @@ class CUC480_ETH_DEVICE_INFO_HEARTBEAT(ctypes_wrap.CStructWrapper):
     _struct=UC480_ETH_DEVICE_INFO_HEARTBEAT
 
 
-PUC480_ETH_DEVICE_INFO_HEARTBEAT=ctypes.POINTER(UC480_ETH_DEVICE_INFO_HEARTBEAT)
+PUC480_ETH_DEVICE_INFO_HEARTBEAT=ctypes.c_void_p
 class UC480_ETH_CONTROLSTATUS(enum.IntEnum):
     IS_ETH_CTRLSTATUS_AVAILABLE            =_int32(0x00000001)
     IS_ETH_CTRLSTATUS_ACCESSIBLE1          =_int32(0x00000002)
@@ -2970,7 +2936,7 @@ class CUC480_ETH_DEVICE_INFO_CONTROL(ctypes_wrap.CStructWrapper):
     _struct=UC480_ETH_DEVICE_INFO_CONTROL
 
 
-PUC480_ETH_DEVICE_INFO_CONTROL=ctypes.POINTER(UC480_ETH_DEVICE_INFO_CONTROL)
+PUC480_ETH_DEVICE_INFO_CONTROL=ctypes.c_void_p
 class UC480_ETH_ETHERNET_CONFIGURATION(ctypes.Structure):
     _fields_=[  ("ipcfg",UC480_ETH_IP_CONFIGURATION),
                 ("mac",UC480_ETH_ADDR_MAC) ]
@@ -2979,7 +2945,7 @@ class CUC480_ETH_ETHERNET_CONFIGURATION(ctypes_wrap.CStructWrapper):
     _struct=UC480_ETH_ETHERNET_CONFIGURATION
 
 
-PUC480_ETH_ETHERNET_CONFIGURATION=ctypes.POINTER(UC480_ETH_ETHERNET_CONFIGURATION)
+PUC480_ETH_ETHERNET_CONFIGURATION=ctypes.c_void_p
 class UC480_ETH_AUTOCFG_IP_SETUP(ctypes.Structure):
     _fields_=[  ("ipAutoCfgIpRangeBegin",DWORD),
                 ("ipAutoCfgIpRangeEnd",DWORD),
@@ -2989,7 +2955,7 @@ class CUC480_ETH_AUTOCFG_IP_SETUP(ctypes_wrap.CStructWrapper):
     _struct=UC480_ETH_AUTOCFG_IP_SETUP
 
 
-PUC480_ETH_AUTOCFG_IP_SETUP=ctypes.POINTER(UC480_ETH_AUTOCFG_IP_SETUP)
+PUC480_ETH_AUTOCFG_IP_SETUP=ctypes.c_void_p
 class UC480_ETH_PACKETFILTER_SETUP(enum.IntEnum):
     IS_ETH_PCKTFLT_PASSALL   =_int32(0)
     IS_ETH_PCKTFLT_BLOCKUEGET=_int32(1)
@@ -3023,7 +2989,7 @@ class CUC480_ETH_ADAPTER_INFO(ctypes_wrap.CStructWrapper):
     _struct=UC480_ETH_ADAPTER_INFO
 
 
-PUC480_ETH_ADAPTER_INFO=ctypes.POINTER(UC480_ETH_ADAPTER_INFO)
+PUC480_ETH_ADAPTER_INFO=ctypes.c_void_p
 class UC480_ETH_DRIVER_INFO(ctypes.Structure):
     _fields_=[  ("dwMinVerStarterFirmware",DWORD),
                 ("dwMaxVerStarterFirmware",DWORD),
@@ -3034,7 +3000,7 @@ class CUC480_ETH_DRIVER_INFO(ctypes_wrap.CStructWrapper):
     _struct=UC480_ETH_DRIVER_INFO
 
 
-PUC480_ETH_DRIVER_INFO=ctypes.POINTER(UC480_ETH_DRIVER_INFO)
+PUC480_ETH_DRIVER_INFO=ctypes.c_void_p
 class UC480_ETH_DEVICE_INFO(ctypes.Structure):
     _fields_=[  ("infoDevHeartbeat",UC480_ETH_DEVICE_INFO_HEARTBEAT),
                 ("infoDevControl",UC480_ETH_DEVICE_INFO_CONTROL),
@@ -3045,7 +3011,7 @@ class CUC480_ETH_DEVICE_INFO(ctypes_wrap.CStructWrapper):
     _struct=UC480_ETH_DEVICE_INFO
 
 
-PUC480_ETH_DEVICE_INFO=ctypes.POINTER(UC480_ETH_DEVICE_INFO)
+PUC480_ETH_DEVICE_INFO=ctypes.c_void_p
 class UC480_COMPORT_CONFIGURATION(ctypes.Structure):
     _fields_=[  ("wComportNumber",WORD) ]
 PUC480_COMPORT_CONFIGURATION=ctypes.POINTER(UC480_COMPORT_CONFIGURATION)
@@ -3053,7 +3019,7 @@ class CUC480_COMPORT_CONFIGURATION(ctypes_wrap.CStructWrapper):
     _struct=UC480_COMPORT_CONFIGURATION
 
 
-PUC480_COMPORT_CONFIGURATION=ctypes.POINTER(UC480_COMPORT_CONFIGURATION)
+PUC480_COMPORT_CONFIGURATION=ctypes.c_void_p
 class IPCONFIG_CAPABILITY_FLAGS(enum.IntEnum):
     IPCONFIG_CAP_PERSISTENT_IP_SUPPORTED=_int32(0x01)
     IPCONFIG_CAP_AUTOCONFIG_IP_SUPPORTED=_int32(0x04)

@@ -1,5 +1,7 @@
 ##########   This file is generated automatically based on atmcd32d.h   ##########
 
+# pylint: disable=unused-import, unused-argument
+
 
 import ctypes
 import enum
@@ -410,34 +412,18 @@ WORD=ctypes.c_ushort
 DWORD=ctypes.c_ulong
 LPWORD=ctypes.POINTER(WORD)
 ULONG=ctypes.c_ulong
-ULONG=ctypes.c_ulong
 LONGLONG=ctypes.c_int64
 LPLONG=ctypes.POINTER(ctypes.c_long)
 HANDLE=ctypes.c_void_p
 LPHANDLE=ctypes.POINTER(HANDLE)
+HWND=ctypes.c_void_p
+HGLOBAL=ctypes.c_void_p
+HINSTANCE=ctypes.c_void_p
+HDC=ctypes.c_void_p
+HMODULE=ctypes.c_void_p
+HKEY=ctypes.c_void_p
 PVOID=ctypes.c_void_p
 LPVOID=ctypes.c_void_p
-HWND=ctypes.c_void_p
-BYTE=ctypes.c_ubyte
-PBYTE=ctypes.POINTER(BYTE)
-CHAR=ctypes.c_char
-PCHAR=ctypes.c_char_p
-UCHAR=ctypes.c_ubyte
-PUCHAR=ctypes.POINTER(UCHAR)
-ULONG_PTR=ctypes.c_uint64
-LONG_PTR=ctypes.c_int64
-WORD=ctypes.c_ushort
-DWORD=ctypes.c_ulong
-LPWORD=ctypes.POINTER(WORD)
-ULONG=ctypes.c_ulong
-ULONG=ctypes.c_ulong
-LONGLONG=ctypes.c_int64
-LPLONG=ctypes.POINTER(ctypes.c_long)
-HANDLE=ctypes.c_void_p
-LPHANDLE=ctypes.POINTER(HANDLE)
-PVOID=ctypes.c_void_p
-LPVOID=ctypes.c_void_p
-HWND=ctypes.c_void_p
 class AT_VersionInfoId(enum.IntEnum):
     AT_SDKVersion         =_int32(0x40000000)
     AT_DeviceDriverVersion=_int32(0x40000001)
@@ -509,7 +495,7 @@ class CWhiteBalanceInfo(ctypes_wrap.CStructWrapper):
 
 
 def addfunc(lib, name, restype, argtypes=None, argnames=None):
-    if not hasattr(lib,name):
+    if getattr(lib,name,None) is None:
         setattr(lib,name,None)
     else:
         func=getattr(lib,name)

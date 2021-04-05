@@ -1,5 +1,7 @@
 ##########   This file is generated automatically based on dcamprop.h   ##########
 
+# pylint: disable=unused-import, unused-argument
+
 
 import ctypes
 import enum
@@ -19,7 +21,7 @@ def _int32(v): return (v+0x80000000)%0x100000000-0x80000000
 BYTE=ctypes.c_ubyte
 PBYTE=ctypes.POINTER(BYTE)
 CHAR=ctypes.c_char
-PCHAR=ctypes.POINTER(CHAR)
+PCHAR=ctypes.c_char_p
 UCHAR=ctypes.c_ubyte
 PUCHAR=ctypes.POINTER(UCHAR)
 ULONG_PTR=ctypes.c_uint64
@@ -30,9 +32,14 @@ LONGLONG=ctypes.c_int64
 LPLONG=ctypes.POINTER(ctypes.c_long)
 HANDLE=ctypes.c_void_p
 LPHANDLE=ctypes.POINTER(HANDLE)
+HWND=ctypes.c_void_p
+HGLOBAL=ctypes.c_void_p
+HINSTANCE=ctypes.c_void_p
+HDC=ctypes.c_void_p
+HMODULE=ctypes.c_void_p
+HKEY=ctypes.c_void_p
 PVOID=ctypes.c_void_p
 LPVOID=ctypes.c_void_p
-HWND=ctypes.c_void_p
 class DCAMPROPOPTION(enum.IntEnum):
     DCAMPROP_OPTION_PRIOR       =_int32(0xFF000000)
     DCAMPROP_OPTION_NEXT        =_int32(0x01000000)
@@ -631,6 +638,17 @@ drDCAMIDPROP={a.value:a.name for a in DCAMIDPROP}
 
 
 
+
+def addfunc(lib, name, restype, argtypes=None, argnames=None):
+    if getattr(lib,name,None) is None:
+        setattr(lib,name,None)
+    else:
+        func=getattr(lib,name)
+        func.restype=restype
+        if argtypes is not None:
+            func.argtypes=argtypes
+        if argnames is not None:
+            func.argnames=argnames
 
 def define_functions(lib):
     pass

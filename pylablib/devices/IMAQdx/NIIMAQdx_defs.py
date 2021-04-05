@@ -1,5 +1,7 @@
 ##########   This file is generated automatically based on NIIMAQdx.h   ##########
 
+# pylint: disable=unused-import, unused-argument
+
 
 import ctypes
 import enum
@@ -104,9 +106,14 @@ LONGLONG=ctypes.c_int64
 LPLONG=ctypes.POINTER(ctypes.c_long)
 HANDLE=ctypes.c_void_p
 LPHANDLE=ctypes.POINTER(HANDLE)
+HWND=ctypes.c_void_p
+HGLOBAL=ctypes.c_void_p
+HINSTANCE=ctypes.c_void_p
+HDC=ctypes.c_void_p
+HMODULE=ctypes.c_void_p
+HKEY=ctypes.c_void_p
 PVOID=ctypes.c_void_p
 LPVOID=ctypes.c_void_p
-HWND=ctypes.c_void_p
 uInt32=ctypes.c_uint
 bool32=uInt32
 IMAQdxSession=uInt32
@@ -430,7 +437,7 @@ AttributeUpdatedEventCallbackPtr=ctypes.c_void_p
 
 
 def addfunc(lib, name, restype, argtypes=None, argnames=None):
-    if not hasattr(lib,name):
+    if getattr(lib,name,None) is None:
         setattr(lib,name,None)
     else:
         func=getattr(lib,name)

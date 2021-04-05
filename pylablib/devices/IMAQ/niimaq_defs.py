@@ -1,5 +1,7 @@
 ##########   This file is generated automatically based on niimaq.h   ##########
 
+# pylint: disable=unused-import, unused-argument
+
 
 import ctypes
 import enum
@@ -1047,7 +1049,7 @@ drDEVID={a.value:a.name for a in DEVID}
 BYTE=ctypes.c_ubyte
 PBYTE=ctypes.POINTER(BYTE)
 CHAR=ctypes.c_char
-PCHAR=ctypes.POINTER(CHAR)
+PCHAR=ctypes.c_char_p
 UCHAR=ctypes.c_ubyte
 PUCHAR=ctypes.POINTER(UCHAR)
 ULONG_PTR=ctypes.c_uint64
@@ -1058,9 +1060,14 @@ LONGLONG=ctypes.c_int64
 LPLONG=ctypes.POINTER(ctypes.c_long)
 HANDLE=ctypes.c_void_p
 LPHANDLE=ctypes.POINTER(HANDLE)
+HWND=ctypes.c_void_p
+HGLOBAL=ctypes.c_void_p
+HINSTANCE=ctypes.c_void_p
+HDC=ctypes.c_void_p
+HMODULE=ctypes.c_void_p
+HKEY=ctypes.c_void_p
 PVOID=ctypes.c_void_p
 LPVOID=ctypes.c_void_p
-HWND=ctypes.c_void_p
 uInt8=ctypes.c_ubyte
 uInt16=ctypes.c_ushort
 uInt32=ctypes.c_uint
@@ -1172,274 +1179,289 @@ CALL_BACK_PTR2=ctypes.c_void_p
 
 
 
+def addfunc(lib, name, restype, argtypes=None, argnames=None):
+    if getattr(lib,name,None) is None:
+        setattr(lib,name,None)
+    else:
+        func=getattr(lib,name)
+        func.restype=restype
+        if argtypes is not None:
+            func.argtypes=argtypes
+        if argnames is not None:
+            func.argnames=argnames
+
 def define_functions(lib):
     #  Int32 imgInterfaceOpen(ctypes.c_char_p interface_name, ctypes.POINTER(INTERFACE_ID) ifid)
-    lib.imgInterfaceOpen.restype=Int32
-    lib.imgInterfaceOpen.argtypes=[ctypes.c_char_p, ctypes.POINTER(INTERFACE_ID)]
-    lib.imgInterfaceOpen.argnames=["interface_name", "ifid"]
+    addfunc(lib, "imgInterfaceOpen", restype = Int32,
+            argtypes = [ctypes.c_char_p, ctypes.POINTER(INTERFACE_ID)],
+            argnames = ["interface_name", "ifid"] )
     #  Int32 imgSessionOpen(INTERFACE_ID ifid, ctypes.POINTER(SESSION_ID) sid)
-    lib.imgSessionOpen.restype=Int32
-    lib.imgSessionOpen.argtypes=[INTERFACE_ID, ctypes.POINTER(SESSION_ID)]
-    lib.imgSessionOpen.argnames=["ifid", "sid"]
+    addfunc(lib, "imgSessionOpen", restype = Int32,
+            argtypes = [INTERFACE_ID, ctypes.POINTER(SESSION_ID)],
+            argnames = ["ifid", "sid"] )
     #  Int32 imgClose(uInt32 void_id, uInt32 freeResources)
-    lib.imgClose.restype=Int32
-    lib.imgClose.argtypes=[uInt32, uInt32]
-    lib.imgClose.argnames=["void_id", "freeResources"]
+    addfunc(lib, "imgClose", restype = Int32,
+            argtypes = [uInt32, uInt32],
+            argnames = ["void_id", "freeResources"] )
     #  Int32 imgSnap(SESSION_ID sid, ctypes.POINTER(ctypes.c_void_p) bufAddr)
-    lib.imgSnap.restype=Int32
-    lib.imgSnap.argtypes=[SESSION_ID, ctypes.POINTER(ctypes.c_void_p)]
-    lib.imgSnap.argnames=["sid", "bufAddr"]
+    addfunc(lib, "imgSnap", restype = Int32,
+            argtypes = [SESSION_ID, ctypes.POINTER(ctypes.c_void_p)],
+            argnames = ["sid", "bufAddr"] )
     #  Int32 imgSnapArea(SESSION_ID sid, ctypes.POINTER(ctypes.c_void_p) bufAddr, uInt32 top, uInt32 left, uInt32 height, uInt32 width, uInt32 rowBytes)
-    lib.imgSnapArea.restype=Int32
-    lib.imgSnapArea.argtypes=[SESSION_ID, ctypes.POINTER(ctypes.c_void_p), uInt32, uInt32, uInt32, uInt32, uInt32]
-    lib.imgSnapArea.argnames=["sid", "bufAddr", "top", "left", "height", "width", "rowBytes"]
+    addfunc(lib, "imgSnapArea", restype = Int32,
+            argtypes = [SESSION_ID, ctypes.POINTER(ctypes.c_void_p), uInt32, uInt32, uInt32, uInt32, uInt32],
+            argnames = ["sid", "bufAddr", "top", "left", "height", "width", "rowBytes"] )
     #  Int32 imgGrabSetup(SESSION_ID sid, uInt32 startNow)
-    lib.imgGrabSetup.restype=Int32
-    lib.imgGrabSetup.argtypes=[SESSION_ID, uInt32]
-    lib.imgGrabSetup.argnames=["sid", "startNow"]
+    addfunc(lib, "imgGrabSetup", restype = Int32,
+            argtypes = [SESSION_ID, uInt32],
+            argnames = ["sid", "startNow"] )
     #  Int32 imgGrab(SESSION_ID sid, ctypes.POINTER(ctypes.c_void_p) bufPtr, uInt32 syncOnVB)
-    lib.imgGrab.restype=Int32
-    lib.imgGrab.argtypes=[SESSION_ID, ctypes.POINTER(ctypes.c_void_p), uInt32]
-    lib.imgGrab.argnames=["sid", "bufPtr", "syncOnVB"]
+    addfunc(lib, "imgGrab", restype = Int32,
+            argtypes = [SESSION_ID, ctypes.POINTER(ctypes.c_void_p), uInt32],
+            argnames = ["sid", "bufPtr", "syncOnVB"] )
     #  Int32 imgGrabArea(SESSION_ID sid, ctypes.POINTER(ctypes.c_void_p) bufPtr, uInt32 syncOnVB, uInt32 top, uInt32 left, uInt32 height, uInt32 width, uInt32 rowBytes)
-    lib.imgGrabArea.restype=Int32
-    lib.imgGrabArea.argtypes=[SESSION_ID, ctypes.POINTER(ctypes.c_void_p), uInt32, uInt32, uInt32, uInt32, uInt32, uInt32]
-    lib.imgGrabArea.argnames=["sid", "bufPtr", "syncOnVB", "top", "left", "height", "width", "rowBytes"]
+    addfunc(lib, "imgGrabArea", restype = Int32,
+            argtypes = [SESSION_ID, ctypes.POINTER(ctypes.c_void_p), uInt32, uInt32, uInt32, uInt32, uInt32, uInt32],
+            argnames = ["sid", "bufPtr", "syncOnVB", "top", "left", "height", "width", "rowBytes"] )
     #  Int32 imgRingSetup(SESSION_ID sid, uInt32 numberBuffer, ctypes.POINTER(ctypes.c_void_p) bufferList, uInt32 skipCount, uInt32 startnow)
-    lib.imgRingSetup.restype=Int32
-    lib.imgRingSetup.argtypes=[SESSION_ID, uInt32, ctypes.POINTER(ctypes.c_void_p), uInt32, uInt32]
-    lib.imgRingSetup.argnames=["sid", "numberBuffer", "bufferList", "skipCount", "startnow"]
+    addfunc(lib, "imgRingSetup", restype = Int32,
+            argtypes = [SESSION_ID, uInt32, ctypes.POINTER(ctypes.c_void_p), uInt32, uInt32],
+            argnames = ["sid", "numberBuffer", "bufferList", "skipCount", "startnow"] )
     #  Int32 imgSequenceSetup(SESSION_ID sid, uInt32 numberBuffer, ctypes.POINTER(ctypes.c_void_p) bufferList, ctypes.POINTER(uInt32) skipCount, uInt32 startnow, uInt32 async)
-    lib.imgSequenceSetup.restype=Int32
-    lib.imgSequenceSetup.argtypes=[SESSION_ID, uInt32, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(uInt32), uInt32, uInt32]
-    lib.imgSequenceSetup.argnames=["sid", "numberBuffer", "bufferList", "skipCount", "startnow", "async"]
+    addfunc(lib, "imgSequenceSetup", restype = Int32,
+            argtypes = [SESSION_ID, uInt32, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(uInt32), uInt32, uInt32],
+            argnames = ["sid", "numberBuffer", "bufferList", "skipCount", "startnow", "async"] )
     #  Int32 imgSessionStartAcquisition(SESSION_ID sid)
-    lib.imgSessionStartAcquisition.restype=Int32
-    lib.imgSessionStartAcquisition.argtypes=[SESSION_ID]
-    lib.imgSessionStartAcquisition.argnames=["sid"]
+    addfunc(lib, "imgSessionStartAcquisition", restype = Int32,
+            argtypes = [SESSION_ID],
+            argnames = ["sid"] )
     #  Int32 imgSessionStopAcquisition(SESSION_ID sid)
-    lib.imgSessionStopAcquisition.restype=Int32
-    lib.imgSessionStopAcquisition.argtypes=[SESSION_ID]
-    lib.imgSessionStopAcquisition.argnames=["sid"]
+    addfunc(lib, "imgSessionStopAcquisition", restype = Int32,
+            argtypes = [SESSION_ID],
+            argnames = ["sid"] )
     #  Int32 imgSessionStatus(SESSION_ID sid, ctypes.POINTER(uInt32) boardStatus, ctypes.POINTER(uInt32) bufIndex)
-    lib.imgSessionStatus.restype=Int32
-    lib.imgSessionStatus.argtypes=[SESSION_ID, ctypes.POINTER(uInt32), ctypes.POINTER(uInt32)]
-    lib.imgSessionStatus.argnames=["sid", "boardStatus", "bufIndex"]
+    addfunc(lib, "imgSessionStatus", restype = Int32,
+            argtypes = [SESSION_ID, ctypes.POINTER(uInt32), ctypes.POINTER(uInt32)],
+            argnames = ["sid", "boardStatus", "bufIndex"] )
     #  Int32 imgSessionConfigureROI(SESSION_ID sid, uInt32 top, uInt32 left, uInt32 height, uInt32 width)
-    lib.imgSessionConfigureROI.restype=Int32
-    lib.imgSessionConfigureROI.argtypes=[SESSION_ID, uInt32, uInt32, uInt32, uInt32]
-    lib.imgSessionConfigureROI.argnames=["sid", "top", "left", "height", "width"]
+    addfunc(lib, "imgSessionConfigureROI", restype = Int32,
+            argtypes = [SESSION_ID, uInt32, uInt32, uInt32, uInt32],
+            argnames = ["sid", "top", "left", "height", "width"] )
     #  Int32 imgSessionGetROI(SESSION_ID sid, ctypes.POINTER(uInt32) top, ctypes.POINTER(uInt32) left, ctypes.POINTER(uInt32) height, ctypes.POINTER(uInt32) width)
-    lib.imgSessionGetROI.restype=Int32
-    lib.imgSessionGetROI.argtypes=[SESSION_ID, ctypes.POINTER(uInt32), ctypes.POINTER(uInt32), ctypes.POINTER(uInt32), ctypes.POINTER(uInt32)]
-    lib.imgSessionGetROI.argnames=["sid", "top", "left", "height", "width"]
+    addfunc(lib, "imgSessionGetROI", restype = Int32,
+            argtypes = [SESSION_ID, ctypes.POINTER(uInt32), ctypes.POINTER(uInt32), ctypes.POINTER(uInt32), ctypes.POINTER(uInt32)],
+            argnames = ["sid", "top", "left", "height", "width"] )
     #  Int32 imgSessionGetBufferSize(SESSION_ID sid, ctypes.POINTER(uInt32) sizeNeeded)
-    lib.imgSessionGetBufferSize.restype=Int32
-    lib.imgSessionGetBufferSize.argtypes=[SESSION_ID, ctypes.POINTER(uInt32)]
-    lib.imgSessionGetBufferSize.argnames=["sid", "sizeNeeded"]
+    addfunc(lib, "imgSessionGetBufferSize", restype = Int32,
+            argtypes = [SESSION_ID, ctypes.POINTER(uInt32)],
+            argnames = ["sid", "sizeNeeded"] )
     #  Int32 imgGetAttribute(uInt32 void_id, uInt32 attribute, ctypes.c_void_p value)
-    lib.imgGetAttribute.restype=Int32
-    lib.imgGetAttribute.argtypes=[uInt32, uInt32, ctypes.c_void_p]
-    lib.imgGetAttribute.argnames=["void_id", "attribute", "value"]
+    addfunc(lib, "imgGetAttribute", restype = Int32,
+            argtypes = [uInt32, uInt32, ctypes.c_void_p],
+            argnames = ["void_id", "attribute", "value"] )
     #  Int32 imgCreateBuffer(SESSION_ID sid, uInt32 where, uInt32 bufferSize, ctypes.POINTER(ctypes.c_void_p) bufAddr)
-    lib.imgCreateBuffer.restype=Int32
-    lib.imgCreateBuffer.argtypes=[SESSION_ID, uInt32, uInt32, ctypes.POINTER(ctypes.c_void_p)]
-    lib.imgCreateBuffer.argnames=["sid", "where", "bufferSize", "bufAddr"]
+    addfunc(lib, "imgCreateBuffer", restype = Int32,
+            argtypes = [SESSION_ID, uInt32, uInt32, ctypes.POINTER(ctypes.c_void_p)],
+            argnames = ["sid", "where", "bufferSize", "bufAddr"] )
     #  Int32 imgDisposeBuffer(ctypes.c_void_p bufferPtr)
-    lib.imgDisposeBuffer.restype=Int32
-    lib.imgDisposeBuffer.argtypes=[ctypes.c_void_p]
-    lib.imgDisposeBuffer.argnames=["bufferPtr"]
+    addfunc(lib, "imgDisposeBuffer", restype = Int32,
+            argtypes = [ctypes.c_void_p],
+            argnames = ["bufferPtr"] )
     #  Int32 imgCreateBufList(uInt32 numElements, ctypes.POINTER(BUFLIST_ID) bufListId)
-    lib.imgCreateBufList.restype=Int32
-    lib.imgCreateBufList.argtypes=[uInt32, ctypes.POINTER(BUFLIST_ID)]
-    lib.imgCreateBufList.argnames=["numElements", "bufListId"]
+    addfunc(lib, "imgCreateBufList", restype = Int32,
+            argtypes = [uInt32, ctypes.POINTER(BUFLIST_ID)],
+            argnames = ["numElements", "bufListId"] )
     #  Int32 imgDisposeBufList(BUFLIST_ID bid, uInt32 freeResources)
-    lib.imgDisposeBufList.restype=Int32
-    lib.imgDisposeBufList.argtypes=[BUFLIST_ID, uInt32]
-    lib.imgDisposeBufList.argnames=["bid", "freeResources"]
+    addfunc(lib, "imgDisposeBufList", restype = Int32,
+            argtypes = [BUFLIST_ID, uInt32],
+            argnames = ["bid", "freeResources"] )
     #  Int32 imgGetBufferElement(BUFLIST_ID bid, uInt32 element, uInt32 itemType, ctypes.c_void_p itemValue)
-    lib.imgGetBufferElement.restype=Int32
-    lib.imgGetBufferElement.argtypes=[BUFLIST_ID, uInt32, uInt32, ctypes.c_void_p]
-    lib.imgGetBufferElement.argnames=["bid", "element", "itemType", "itemValue"]
+    addfunc(lib, "imgGetBufferElement", restype = Int32,
+            argtypes = [BUFLIST_ID, uInt32, uInt32, ctypes.c_void_p],
+            argnames = ["bid", "element", "itemType", "itemValue"] )
     #  Int32 imgSessionConfigure(SESSION_ID sid, BUFLIST_ID buflist)
-    lib.imgSessionConfigure.restype=Int32
-    lib.imgSessionConfigure.argtypes=[SESSION_ID, BUFLIST_ID]
-    lib.imgSessionConfigure.argnames=["sid", "buflist"]
+    addfunc(lib, "imgSessionConfigure", restype = Int32,
+            argtypes = [SESSION_ID, BUFLIST_ID],
+            argnames = ["sid", "buflist"] )
     #  Int32 imgSessionAcquire(SESSION_ID sid, uInt32 async, CALL_BACK_PTR callback)
-    lib.imgSessionAcquire.restype=Int32
-    lib.imgSessionAcquire.argtypes=[SESSION_ID, uInt32, CALL_BACK_PTR]
-    lib.imgSessionAcquire.argnames=["sid", "async", "callback"]
+    addfunc(lib, "imgSessionAcquire", restype = Int32,
+            argtypes = [SESSION_ID, uInt32, CALL_BACK_PTR],
+            argnames = ["sid", "async", "callback"] )
     #  Int32 imgSessionAbort(SESSION_ID sid, ctypes.POINTER(uInt32) bufNum)
-    lib.imgSessionAbort.restype=Int32
-    lib.imgSessionAbort.argtypes=[SESSION_ID, ctypes.POINTER(uInt32)]
-    lib.imgSessionAbort.argnames=["sid", "bufNum"]
+    addfunc(lib, "imgSessionAbort", restype = Int32,
+            argtypes = [SESSION_ID, ctypes.POINTER(uInt32)],
+            argnames = ["sid", "bufNum"] )
     #  Int32 imgSessionReleaseBuffer(SESSION_ID sid)
-    lib.imgSessionReleaseBuffer.restype=Int32
-    lib.imgSessionReleaseBuffer.argtypes=[SESSION_ID]
-    lib.imgSessionReleaseBuffer.argnames=["sid"]
+    addfunc(lib, "imgSessionReleaseBuffer", restype = Int32,
+            argtypes = [SESSION_ID],
+            argnames = ["sid"] )
     #  Int32 imgSessionClearBuffer(SESSION_ID sid, uInt32 buf_num, uInt8 pixel_value)
-    lib.imgSessionClearBuffer.restype=Int32
-    lib.imgSessionClearBuffer.argtypes=[SESSION_ID, uInt32, uInt8]
-    lib.imgSessionClearBuffer.argnames=["sid", "buf_num", "pixel_value"]
+    addfunc(lib, "imgSessionClearBuffer", restype = Int32,
+            argtypes = [SESSION_ID, uInt32, uInt8],
+            argnames = ["sid", "buf_num", "pixel_value"] )
     #  Int32 imgSessionGetLostFramesList(SESSION_ID sid, ctypes.POINTER(uInt32) framelist, uInt32 numEntries)
-    lib.imgSessionGetLostFramesList.restype=Int32
-    lib.imgSessionGetLostFramesList.argtypes=[SESSION_ID, ctypes.POINTER(uInt32), uInt32]
-    lib.imgSessionGetLostFramesList.argnames=["sid", "framelist", "numEntries"]
+    addfunc(lib, "imgSessionGetLostFramesList", restype = Int32,
+            argtypes = [SESSION_ID, ctypes.POINTER(uInt32), uInt32],
+            argnames = ["sid", "framelist", "numEntries"] )
     #  Int32 imgSessionSetUserLUT8bit(SESSION_ID sid, uInt32 lutType, ctypes.POINTER(uInt8) lut)
-    lib.imgSessionSetUserLUT8bit.restype=Int32
-    lib.imgSessionSetUserLUT8bit.argtypes=[SESSION_ID, uInt32, ctypes.POINTER(uInt8)]
-    lib.imgSessionSetUserLUT8bit.argnames=["sid", "lutType", "lut"]
+    addfunc(lib, "imgSessionSetUserLUT8bit", restype = Int32,
+            argtypes = [SESSION_ID, uInt32, ctypes.POINTER(uInt8)],
+            argnames = ["sid", "lutType", "lut"] )
     #  Int32 imgSessionSetUserLUT16bit(SESSION_ID sid, uInt32 lutType, ctypes.POINTER(uInt16) lut)
-    lib.imgSessionSetUserLUT16bit.restype=Int32
-    lib.imgSessionSetUserLUT16bit.argtypes=[SESSION_ID, uInt32, ctypes.POINTER(uInt16)]
-    lib.imgSessionSetUserLUT16bit.argnames=["sid", "lutType", "lut"]
+    addfunc(lib, "imgSessionSetUserLUT16bit", restype = Int32,
+            argtypes = [SESSION_ID, uInt32, ctypes.POINTER(uInt16)],
+            argnames = ["sid", "lutType", "lut"] )
     #  Int32 imgGetCameraAttributeNumeric(SESSION_ID sid, ctypes.c_char_p attributeString, ctypes.POINTER(ctypes.c_double) currentValueNumeric)
-    lib.imgGetCameraAttributeNumeric.restype=Int32
-    lib.imgGetCameraAttributeNumeric.argtypes=[SESSION_ID, ctypes.c_char_p, ctypes.POINTER(ctypes.c_double)]
-    lib.imgGetCameraAttributeNumeric.argnames=["sid", "attributeString", "currentValueNumeric"]
+    addfunc(lib, "imgGetCameraAttributeNumeric", restype = Int32,
+            argtypes = [SESSION_ID, ctypes.c_char_p, ctypes.POINTER(ctypes.c_double)],
+            argnames = ["sid", "attributeString", "currentValueNumeric"] )
     #  Int32 imgSetCameraAttributeNumeric(SESSION_ID sid, ctypes.c_char_p attributeString, ctypes.c_double newValueNumeric)
-    lib.imgSetCameraAttributeNumeric.restype=Int32
-    lib.imgSetCameraAttributeNumeric.argtypes=[SESSION_ID, ctypes.c_char_p, ctypes.c_double]
-    lib.imgSetCameraAttributeNumeric.argnames=["sid", "attributeString", "newValueNumeric"]
+    addfunc(lib, "imgSetCameraAttributeNumeric", restype = Int32,
+            argtypes = [SESSION_ID, ctypes.c_char_p, ctypes.c_double],
+            argnames = ["sid", "attributeString", "newValueNumeric"] )
     #  Int32 imgGetCameraAttributeString(SESSION_ID sid, ctypes.c_char_p attributeString, ctypes.c_char_p currentValueString, uInt32 sizeofCurrentValueString)
-    lib.imgGetCameraAttributeString.restype=Int32
-    lib.imgGetCameraAttributeString.argtypes=[SESSION_ID, ctypes.c_char_p, ctypes.c_char_p, uInt32]
-    lib.imgGetCameraAttributeString.argnames=["sid", "attributeString", "currentValueString", "sizeofCurrentValueString"]
+    addfunc(lib, "imgGetCameraAttributeString", restype = Int32,
+            argtypes = [SESSION_ID, ctypes.c_char_p, ctypes.c_char_p, uInt32],
+            argnames = ["sid", "attributeString", "currentValueString", "sizeofCurrentValueString"] )
     #  Int32 imgSetCameraAttributeString(SESSION_ID sid, ctypes.c_char_p attributeString, ctypes.c_char_p newValueString)
-    lib.imgSetCameraAttributeString.restype=Int32
-    lib.imgSetCameraAttributeString.argtypes=[SESSION_ID, ctypes.c_char_p, ctypes.c_char_p]
-    lib.imgSetCameraAttributeString.argnames=["sid", "attributeString", "newValueString"]
+    addfunc(lib, "imgSetCameraAttributeString", restype = Int32,
+            argtypes = [SESSION_ID, ctypes.c_char_p, ctypes.c_char_p],
+            argnames = ["sid", "attributeString", "newValueString"] )
     #  Int32 imgSessionSerialWrite(SESSION_ID sid, ctypes.c_char_p buffer, ctypes.POINTER(uInt32) bufSize, uInt32 timeout)
-    lib.imgSessionSerialWrite.restype=Int32
-    lib.imgSessionSerialWrite.argtypes=[SESSION_ID, ctypes.c_char_p, ctypes.POINTER(uInt32), uInt32]
-    lib.imgSessionSerialWrite.argnames=["sid", "buffer", "bufSize", "timeout"]
+    addfunc(lib, "imgSessionSerialWrite", restype = Int32,
+            argtypes = [SESSION_ID, ctypes.c_char_p, ctypes.POINTER(uInt32), uInt32],
+            argnames = ["sid", "buffer", "bufSize", "timeout"] )
     #  Int32 imgSessionSerialRead(SESSION_ID sid, ctypes.c_char_p buffer, ctypes.POINTER(uInt32) bufSize, uInt32 timeout)
-    lib.imgSessionSerialRead.restype=Int32
-    lib.imgSessionSerialRead.argtypes=[SESSION_ID, ctypes.c_char_p, ctypes.POINTER(uInt32), uInt32]
-    lib.imgSessionSerialRead.argnames=["sid", "buffer", "bufSize", "timeout"]
+    addfunc(lib, "imgSessionSerialRead", restype = Int32,
+            argtypes = [SESSION_ID, ctypes.c_char_p, ctypes.POINTER(uInt32), uInt32],
+            argnames = ["sid", "buffer", "bufSize", "timeout"] )
     #  Int32 imgSessionSerialReadBytes(SESSION_ID sid, ctypes.c_char_p buffer, ctypes.POINTER(uInt32) bufferSize, uInt32 timeout)
-    lib.imgSessionSerialReadBytes.restype=Int32
-    lib.imgSessionSerialReadBytes.argtypes=[SESSION_ID, ctypes.c_char_p, ctypes.POINTER(uInt32), uInt32]
-    lib.imgSessionSerialReadBytes.argnames=["sid", "buffer", "bufferSize", "timeout"]
+    addfunc(lib, "imgSessionSerialReadBytes", restype = Int32,
+            argtypes = [SESSION_ID, ctypes.c_char_p, ctypes.POINTER(uInt32), uInt32],
+            argnames = ["sid", "buffer", "bufferSize", "timeout"] )
     #  Int32 imgSessionSerialFlush(SESSION_ID sid)
-    lib.imgSessionSerialFlush.restype=Int32
-    lib.imgSessionSerialFlush.argtypes=[SESSION_ID]
-    lib.imgSessionSerialFlush.argnames=["sid"]
+    addfunc(lib, "imgSessionSerialFlush", restype = Int32,
+            argtypes = [SESSION_ID],
+            argnames = ["sid"] )
     #  Int32 imgPulseCreate2(uInt32 timeBase, uInt32 delay, uInt32 width, ctypes.c_int signalType, uInt32 signalIdentifier, uInt32 signalPolarity, ctypes.c_int outputType, uInt32 outputNumber, uInt32 outputPolarity, uInt32 pulseMode, ctypes.POINTER(PULSE_ID) plsID)
-    lib.imgPulseCreate2.restype=Int32
-    lib.imgPulseCreate2.argtypes=[uInt32, uInt32, uInt32, ctypes.c_int, uInt32, uInt32, ctypes.c_int, uInt32, uInt32, uInt32, ctypes.POINTER(PULSE_ID)]
-    lib.imgPulseCreate2.argnames=["timeBase", "delay", "width", "signalType", "signalIdentifier", "signalPolarity", "outputType", "outputNumber", "outputPolarity", "pulseMode", "plsID"]
+    addfunc(lib, "imgPulseCreate2", restype = Int32,
+            argtypes = [uInt32, uInt32, uInt32, ctypes.c_int, uInt32, uInt32, ctypes.c_int, uInt32, uInt32, uInt32, ctypes.POINTER(PULSE_ID)],
+            argnames = ["timeBase", "delay", "width", "signalType", "signalIdentifier", "signalPolarity", "outputType", "outputNumber", "outputPolarity", "pulseMode", "plsID"] )
     #  Int32 imgPulseDispose(PULSE_ID plsID)
-    lib.imgPulseDispose.restype=Int32
-    lib.imgPulseDispose.argtypes=[PULSE_ID]
-    lib.imgPulseDispose.argnames=["plsID"]
+    addfunc(lib, "imgPulseDispose", restype = Int32,
+            argtypes = [PULSE_ID],
+            argnames = ["plsID"] )
     #  Int32 imgPulseRate(ctypes.c_double delaytime, ctypes.c_double widthtime, ctypes.POINTER(uInt32) delay, ctypes.POINTER(uInt32) width, ctypes.POINTER(uInt32) timebase)
-    lib.imgPulseRate.restype=Int32
-    lib.imgPulseRate.argtypes=[ctypes.c_double, ctypes.c_double, ctypes.POINTER(uInt32), ctypes.POINTER(uInt32), ctypes.POINTER(uInt32)]
-    lib.imgPulseRate.argnames=["delaytime", "widthtime", "delay", "width", "timebase"]
+    addfunc(lib, "imgPulseRate", restype = Int32,
+            argtypes = [ctypes.c_double, ctypes.c_double, ctypes.POINTER(uInt32), ctypes.POINTER(uInt32), ctypes.POINTER(uInt32)],
+            argnames = ["delaytime", "widthtime", "delay", "width", "timebase"] )
     #  Int32 imgPulseStart(PULSE_ID pid, SESSION_ID sid)
-    lib.imgPulseStart.restype=Int32
-    lib.imgPulseStart.argtypes=[PULSE_ID, SESSION_ID]
-    lib.imgPulseStart.argnames=["pid", "sid"]
+    addfunc(lib, "imgPulseStart", restype = Int32,
+            argtypes = [PULSE_ID, SESSION_ID],
+            argnames = ["pid", "sid"] )
     #  Int32 imgPulseUpdate(PULSE_ID pid, SESSION_ID sid, uInt32 delay, uInt32 width)
-    lib.imgPulseUpdate.restype=Int32
-    lib.imgPulseUpdate.argtypes=[PULSE_ID, SESSION_ID, uInt32, uInt32]
-    lib.imgPulseUpdate.argnames=["pid", "sid", "delay", "width"]
+    addfunc(lib, "imgPulseUpdate", restype = Int32,
+            argtypes = [PULSE_ID, SESSION_ID, uInt32, uInt32],
+            argnames = ["pid", "sid", "delay", "width"] )
     #  Int32 imgPulseStop(PULSE_ID pid)
-    lib.imgPulseStop.restype=Int32
-    lib.imgPulseStop.argtypes=[PULSE_ID]
-    lib.imgPulseStop.argnames=["pid"]
+    addfunc(lib, "imgPulseStop", restype = Int32,
+            argtypes = [PULSE_ID],
+            argnames = ["pid"] )
     #  Int32 imgSessionWaitSignal2(SESSION_ID sid, ctypes.c_int signalType, uInt32 signalIdentifier, uInt32 signalPolarity, uInt32 timeout)
-    lib.imgSessionWaitSignal2.restype=Int32
-    lib.imgSessionWaitSignal2.argtypes=[SESSION_ID, ctypes.c_int, uInt32, uInt32, uInt32]
-    lib.imgSessionWaitSignal2.argnames=["sid", "signalType", "signalIdentifier", "signalPolarity", "timeout"]
+    addfunc(lib, "imgSessionWaitSignal2", restype = Int32,
+            argtypes = [SESSION_ID, ctypes.c_int, uInt32, uInt32, uInt32],
+            argnames = ["sid", "signalType", "signalIdentifier", "signalPolarity", "timeout"] )
     #  Int32 imgSessionWaitSignalAsync2(SESSION_ID sid, ctypes.c_int signalType, uInt32 signalIdentifier, uInt32 signalPolarity, CALL_BACK_PTR2 funcptr, ctypes.c_void_p callbackData)
-    lib.imgSessionWaitSignalAsync2.restype=Int32
-    lib.imgSessionWaitSignalAsync2.argtypes=[SESSION_ID, ctypes.c_int, uInt32, uInt32, CALL_BACK_PTR2, ctypes.c_void_p]
-    lib.imgSessionWaitSignalAsync2.argnames=["sid", "signalType", "signalIdentifier", "signalPolarity", "funcptr", "callbackData"]
+    addfunc(lib, "imgSessionWaitSignalAsync2", restype = Int32,
+            argtypes = [SESSION_ID, ctypes.c_int, uInt32, uInt32, CALL_BACK_PTR2, ctypes.c_void_p],
+            argnames = ["sid", "signalType", "signalIdentifier", "signalPolarity", "funcptr", "callbackData"] )
     #  Int32 imgSessionTriggerDrive2(SESSION_ID sid, ctypes.c_int trigType, uInt32 trigNum, uInt32 polarity, uInt32 signal)
-    lib.imgSessionTriggerDrive2.restype=Int32
-    lib.imgSessionTriggerDrive2.argtypes=[SESSION_ID, ctypes.c_int, uInt32, uInt32, uInt32]
-    lib.imgSessionTriggerDrive2.argnames=["sid", "trigType", "trigNum", "polarity", "signal"]
+    addfunc(lib, "imgSessionTriggerDrive2", restype = Int32,
+            argtypes = [SESSION_ID, ctypes.c_int, uInt32, uInt32, uInt32],
+            argnames = ["sid", "trigType", "trigNum", "polarity", "signal"] )
     #  Int32 imgSessionTriggerRead2(SESSION_ID sid, ctypes.c_int trigType, uInt32 trigNum, uInt32 polarity, ctypes.POINTER(uInt32) status)
-    lib.imgSessionTriggerRead2.restype=Int32
-    lib.imgSessionTriggerRead2.argtypes=[SESSION_ID, ctypes.c_int, uInt32, uInt32, ctypes.POINTER(uInt32)]
-    lib.imgSessionTriggerRead2.argnames=["sid", "trigType", "trigNum", "polarity", "status"]
+    addfunc(lib, "imgSessionTriggerRead2", restype = Int32,
+            argtypes = [SESSION_ID, ctypes.c_int, uInt32, uInt32, ctypes.POINTER(uInt32)],
+            argnames = ["sid", "trigType", "trigNum", "polarity", "status"] )
     #  Int32 imgSessionTriggerRoute2(SESSION_ID sid, ctypes.c_int srcTriggerType, uInt32 srcTriggerNumber, ctypes.c_int dstTriggerType, uInt32 dstTriggerNumber)
-    lib.imgSessionTriggerRoute2.restype=Int32
-    lib.imgSessionTriggerRoute2.argtypes=[SESSION_ID, ctypes.c_int, uInt32, ctypes.c_int, uInt32]
-    lib.imgSessionTriggerRoute2.argnames=["sid", "srcTriggerType", "srcTriggerNumber", "dstTriggerType", "dstTriggerNumber"]
+    addfunc(lib, "imgSessionTriggerRoute2", restype = Int32,
+            argtypes = [SESSION_ID, ctypes.c_int, uInt32, ctypes.c_int, uInt32],
+            argnames = ["sid", "srcTriggerType", "srcTriggerNumber", "dstTriggerType", "dstTriggerNumber"] )
     #  Int32 imgSessionTriggerClear(SESSION_ID sid)
-    lib.imgSessionTriggerClear.restype=Int32
-    lib.imgSessionTriggerClear.argtypes=[SESSION_ID]
-    lib.imgSessionTriggerClear.argnames=["sid"]
+    addfunc(lib, "imgSessionTriggerClear", restype = Int32,
+            argtypes = [SESSION_ID],
+            argnames = ["sid"] )
     #  Int32 imgSessionTriggerConfigure2(SESSION_ID sid, ctypes.c_int trigType, uInt32 trigNum, uInt32 polarity, uInt32 timeout, uInt32 action)
-    lib.imgSessionTriggerConfigure2.restype=Int32
-    lib.imgSessionTriggerConfigure2.argtypes=[SESSION_ID, ctypes.c_int, uInt32, uInt32, uInt32, uInt32]
-    lib.imgSessionTriggerConfigure2.argnames=["sid", "trigType", "trigNum", "polarity", "timeout", "action"]
+    addfunc(lib, "imgSessionTriggerConfigure2", restype = Int32,
+            argtypes = [SESSION_ID, ctypes.c_int, uInt32, uInt32, uInt32, uInt32],
+            argnames = ["sid", "trigType", "trigNum", "polarity", "timeout", "action"] )
     #  Int32 imgSessionSaveBufferEx(SESSION_ID sid, ctypes.c_void_p buffer, ctypes.c_char_p file_name)
-    lib.imgSessionSaveBufferEx.restype=Int32
-    lib.imgSessionSaveBufferEx.argtypes=[SESSION_ID, ctypes.c_void_p, ctypes.c_char_p]
-    lib.imgSessionSaveBufferEx.argnames=["sid", "buffer", "file_name"]
+    addfunc(lib, "imgSessionSaveBufferEx", restype = Int32,
+            argtypes = [SESSION_ID, ctypes.c_void_p, ctypes.c_char_p],
+            argnames = ["sid", "buffer", "file_name"] )
     #  Int32 imgShowError(IMG_ERR error, ctypes.c_char_p text)
-    lib.imgShowError.restype=Int32
-    lib.imgShowError.argtypes=[IMG_ERR, ctypes.c_char_p]
-    lib.imgShowError.argnames=["error", "text"]
+    addfunc(lib, "imgShowError", restype = Int32,
+            argtypes = [IMG_ERR, ctypes.c_char_p],
+            argnames = ["error", "text"] )
     #  Int32 imgInterfaceReset(INTERFACE_ID ifid)
-    lib.imgInterfaceReset.restype=Int32
-    lib.imgInterfaceReset.argtypes=[INTERFACE_ID]
-    lib.imgInterfaceReset.argnames=["ifid"]
+    addfunc(lib, "imgInterfaceReset", restype = Int32,
+            argtypes = [INTERFACE_ID],
+            argnames = ["ifid"] )
     #  Int32 imgInterfaceQueryNames(uInt32 index, ctypes.c_char_p queryName)
-    lib.imgInterfaceQueryNames.restype=Int32
-    lib.imgInterfaceQueryNames.argtypes=[uInt32, ctypes.c_char_p]
-    lib.imgInterfaceQueryNames.argnames=["index", "queryName"]
+    addfunc(lib, "imgInterfaceQueryNames", restype = Int32,
+            argtypes = [uInt32, ctypes.c_char_p],
+            argnames = ["index", "queryName"] )
     #  Int32 imgCalculateBayerColorLUT(ctypes.c_double redGain, ctypes.c_double greenGain, ctypes.c_double blueGain, ctypes.POINTER(uInt32) redLUT, ctypes.POINTER(uInt32) greenLUT, ctypes.POINTER(uInt32) blueLUT, uInt32 bitDepth)
-    lib.imgCalculateBayerColorLUT.restype=Int32
-    lib.imgCalculateBayerColorLUT.argtypes=[ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.POINTER(uInt32), ctypes.POINTER(uInt32), ctypes.POINTER(uInt32), uInt32]
-    lib.imgCalculateBayerColorLUT.argnames=["redGain", "greenGain", "blueGain", "redLUT", "greenLUT", "blueLUT", "bitDepth"]
+    addfunc(lib, "imgCalculateBayerColorLUT", restype = Int32,
+            argtypes = [ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.POINTER(uInt32), ctypes.POINTER(uInt32), ctypes.POINTER(uInt32), uInt32],
+            argnames = ["redGain", "greenGain", "blueGain", "redLUT", "greenLUT", "blueLUT", "bitDepth"] )
     #  Int32 imgBayerColorDecode(ctypes.c_void_p dst, ctypes.c_void_p src, uInt32 rows, uInt32 cols, uInt32 dstRowPixels, uInt32 srcRowPixels, ctypes.POINTER(uInt32) redLUT, ctypes.POINTER(uInt32) greenLUT, ctypes.POINTER(uInt32) blueLUT, uInt8 bayerPattern, uInt32 bitDepth, uInt32 reserved)
-    lib.imgBayerColorDecode.restype=Int32
-    lib.imgBayerColorDecode.argtypes=[ctypes.c_void_p, ctypes.c_void_p, uInt32, uInt32, uInt32, uInt32, ctypes.POINTER(uInt32), ctypes.POINTER(uInt32), ctypes.POINTER(uInt32), uInt8, uInt32, uInt32]
-    lib.imgBayerColorDecode.argnames=["dst", "src", "rows", "cols", "dstRowPixels", "srcRowPixels", "redLUT", "greenLUT", "blueLUT", "bayerPattern", "bitDepth", "reserved"]
+    addfunc(lib, "imgBayerColorDecode", restype = Int32,
+            argtypes = [ctypes.c_void_p, ctypes.c_void_p, uInt32, uInt32, uInt32, uInt32, ctypes.POINTER(uInt32), ctypes.POINTER(uInt32), ctypes.POINTER(uInt32), uInt8, uInt32, uInt32],
+            argnames = ["dst", "src", "rows", "cols", "dstRowPixels", "srcRowPixels", "redLUT", "greenLUT", "blueLUT", "bayerPattern", "bitDepth", "reserved"] )
     #  Int32 imgSessionLineTrigSource2(SESSION_ID sid, ctypes.c_int trigType, uInt32 trigNum, uInt32 polarity, uInt32 skip)
-    lib.imgSessionLineTrigSource2.restype=Int32
-    lib.imgSessionLineTrigSource2.argtypes=[SESSION_ID, ctypes.c_int, uInt32, uInt32, uInt32]
-    lib.imgSessionLineTrigSource2.argnames=["sid", "trigType", "trigNum", "polarity", "skip"]
+    addfunc(lib, "imgSessionLineTrigSource2", restype = Int32,
+            argtypes = [SESSION_ID, ctypes.c_int, uInt32, uInt32, uInt32],
+            argnames = ["sid", "trigType", "trigNum", "polarity", "skip"] )
     #  Int32 imgSessionFitROI(SESSION_ID sid, ctypes.c_int fitMode, uInt32 top, uInt32 left, uInt32 height, uInt32 width, ctypes.POINTER(uInt32) fittedTop, ctypes.POINTER(uInt32) fittedLeft, ctypes.POINTER(uInt32) fittedHeight, ctypes.POINTER(uInt32) fittedWidth)
-    lib.imgSessionFitROI.restype=Int32
-    lib.imgSessionFitROI.argtypes=[SESSION_ID, ctypes.c_int, uInt32, uInt32, uInt32, uInt32, ctypes.POINTER(uInt32), ctypes.POINTER(uInt32), ctypes.POINTER(uInt32), ctypes.POINTER(uInt32)]
-    lib.imgSessionFitROI.argnames=["sid", "fitMode", "top", "left", "height", "width", "fittedTop", "fittedLeft", "fittedHeight", "fittedWidth"]
+    addfunc(lib, "imgSessionFitROI", restype = Int32,
+            argtypes = [SESSION_ID, ctypes.c_int, uInt32, uInt32, uInt32, uInt32, ctypes.POINTER(uInt32), ctypes.POINTER(uInt32), ctypes.POINTER(uInt32), ctypes.POINTER(uInt32)],
+            argnames = ["sid", "fitMode", "top", "left", "height", "width", "fittedTop", "fittedLeft", "fittedHeight", "fittedWidth"] )
     #  Int32 imgEncoderResetPosition(SESSION_ID sid)
-    lib.imgEncoderResetPosition.restype=Int32
-    lib.imgEncoderResetPosition.argtypes=[SESSION_ID]
-    lib.imgEncoderResetPosition.argnames=["sid"]
+    addfunc(lib, "imgEncoderResetPosition", restype = Int32,
+            argtypes = [SESSION_ID],
+            argnames = ["sid"] )
     #  Int32 imgSessionCopyBufferByNumber(SESSION_ID sid, uInt32 bufNumber, ctypes.c_void_p userBuffer, ctypes.c_int overwriteMode, ctypes.POINTER(uInt32) copiedNumber, ctypes.POINTER(uInt32) copiedIndex)
-    lib.imgSessionCopyBufferByNumber.restype=Int32
-    lib.imgSessionCopyBufferByNumber.argtypes=[SESSION_ID, uInt32, ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(uInt32), ctypes.POINTER(uInt32)]
-    lib.imgSessionCopyBufferByNumber.argnames=["sid", "bufNumber", "userBuffer", "overwriteMode", "copiedNumber", "copiedIndex"]
+    addfunc(lib, "imgSessionCopyBufferByNumber", restype = Int32,
+            argtypes = [SESSION_ID, uInt32, ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(uInt32), ctypes.POINTER(uInt32)],
+            argnames = ["sid", "bufNumber", "userBuffer", "overwriteMode", "copiedNumber", "copiedIndex"] )
     #  Int32 imgSessionCopyAreaByNumber(SESSION_ID sid, uInt32 bufNumber, uInt32 top, uInt32 left, uInt32 height, uInt32 width, ctypes.c_void_p userBuffer, uInt32 rowPixels, ctypes.c_int overwriteMode, ctypes.POINTER(uInt32) copiedNumber, ctypes.POINTER(uInt32) copiedIndex)
-    lib.imgSessionCopyAreaByNumber.restype=Int32
-    lib.imgSessionCopyAreaByNumber.argtypes=[SESSION_ID, uInt32, uInt32, uInt32, uInt32, uInt32, ctypes.c_void_p, uInt32, ctypes.c_int, ctypes.POINTER(uInt32), ctypes.POINTER(uInt32)]
-    lib.imgSessionCopyAreaByNumber.argnames=["sid", "bufNumber", "top", "left", "height", "width", "userBuffer", "rowPixels", "overwriteMode", "copiedNumber", "copiedIndex"]
+    addfunc(lib, "imgSessionCopyAreaByNumber", restype = Int32,
+            argtypes = [SESSION_ID, uInt32, uInt32, uInt32, uInt32, uInt32, ctypes.c_void_p, uInt32, ctypes.c_int, ctypes.POINTER(uInt32), ctypes.POINTER(uInt32)],
+            argnames = ["sid", "bufNumber", "top", "left", "height", "width", "userBuffer", "rowPixels", "overwriteMode", "copiedNumber", "copiedIndex"] )
     #  Int32 imgSetAttribute2(uInt32 void_id, uInt32 attribute, ...)
-    lib.imgSetAttribute2.restype=Int32
+    addfunc(lib, "imgSetAttribute2", restype = Int32,
+            argtypes = None,
+            argnames = None )
     #  Int32 imgSetBufferElement2(BUFLIST_ID bid, uInt32 element, uInt32 itemType, ...)
-    lib.imgSetBufferElement2.restype=Int32
+    addfunc(lib, "imgSetBufferElement2", restype = Int32,
+            argtypes = None,
+            argnames = None )
     #  Int32 imgSessionExamineBuffer2(SESSION_ID sid, uInt32 whichBuffer, ctypes.POINTER(uInt32) bufferNumber, ctypes.POINTER(ctypes.c_void_p) bufferAddr)
-    lib.imgSessionExamineBuffer2.restype=Int32
-    lib.imgSessionExamineBuffer2.argtypes=[SESSION_ID, uInt32, ctypes.POINTER(uInt32), ctypes.POINTER(ctypes.c_void_p)]
-    lib.imgSessionExamineBuffer2.argnames=["sid", "whichBuffer", "bufferNumber", "bufferAddr"]
+    addfunc(lib, "imgSessionExamineBuffer2", restype = Int32,
+            argtypes = [SESSION_ID, uInt32, ctypes.POINTER(uInt32), ctypes.POINTER(ctypes.c_void_p)],
+            argnames = ["sid", "whichBuffer", "bufferNumber", "bufferAddr"] )
     #  Int32 imgPlot2(ctypes.c_void_p hwnd, ctypes.c_void_p buffer, uInt32 leftBufOffset, uInt32 topBufOffset, uInt32 xsize, uInt32 ysize, uInt32 xpos, uInt32 ypos, uInt32 flags)
-    lib.imgPlot2.restype=Int32
-    lib.imgPlot2.argtypes=[ctypes.c_void_p, ctypes.c_void_p, uInt32, uInt32, uInt32, uInt32, uInt32, uInt32, uInt32]
-    lib.imgPlot2.argnames=["hwnd", "buffer", "leftBufOffset", "topBufOffset", "xsize", "ysize", "xpos", "ypos", "flags"]
+    addfunc(lib, "imgPlot2", restype = Int32,
+            argtypes = [ctypes.c_void_p, ctypes.c_void_p, uInt32, uInt32, uInt32, uInt32, uInt32, uInt32, uInt32],
+            argnames = ["hwnd", "buffer", "leftBufOffset", "topBufOffset", "xsize", "ysize", "xpos", "ypos", "flags"] )
     #  Int32 imgPlotDC2(ctypes.c_void_p hdc, ctypes.c_void_p buffer, uInt32 xbuffoff, uInt32 ybuffoff, uInt32 xsize, uInt32 ysize, uInt32 xscreen, uInt32 yscreen, uInt32 flags)
-    lib.imgPlotDC2.restype=Int32
-    lib.imgPlotDC2.argtypes=[ctypes.c_void_p, ctypes.c_void_p, uInt32, uInt32, uInt32, uInt32, uInt32, uInt32, uInt32]
-    lib.imgPlotDC2.argnames=["hdc", "buffer", "xbuffoff", "ybuffoff", "xsize", "ysize", "xscreen", "yscreen", "flags"]
+    addfunc(lib, "imgPlotDC2", restype = Int32,
+            argtypes = [ctypes.c_void_p, ctypes.c_void_p, uInt32, uInt32, uInt32, uInt32, uInt32, uInt32, uInt32],
+            argnames = ["hdc", "buffer", "xbuffoff", "ybuffoff", "xsize", "ysize", "xscreen", "yscreen", "flags"] )
     #  Int32 imgSetAttributeFromVoidPtr(uInt32 void_id, uInt32 attribute, ctypes.c_void_p valuePtr)
-    lib.imgSetAttributeFromVoidPtr.restype=Int32
-    lib.imgSetAttributeFromVoidPtr.argtypes=[uInt32, uInt32, ctypes.c_void_p]
-    lib.imgSetAttributeFromVoidPtr.argnames=["void_id", "attribute", "valuePtr"]
+    addfunc(lib, "imgSetAttributeFromVoidPtr", restype = Int32,
+            argtypes = [uInt32, uInt32, ctypes.c_void_p],
+            argnames = ["void_id", "attribute", "valuePtr"] )
 
 

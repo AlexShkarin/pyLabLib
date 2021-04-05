@@ -1,5 +1,7 @@
 ##########   This file is generated automatically based on nivision.h   ##########
 
+# pylint: disable=unused-import, unused-argument
+
 
 import ctypes
 import enum
@@ -823,8 +825,8 @@ CHAR=ctypes.c_char
 PCHAR=ctypes.c_char_p
 UCHAR=ctypes.c_ubyte
 PUCHAR=ctypes.POINTER(UCHAR)
-ULONG_PTR=ctypes.c_ulong
-LONG_PTR=ctypes.c_long
+ULONG_PTR=ctypes.c_uint64
+LONG_PTR=ctypes.c_int64
 WORD=ctypes.c_ushort
 LPWORD=ctypes.POINTER(WORD)
 LONGLONG=ctypes.c_int64
@@ -832,9 +834,14 @@ LPLONG=ctypes.POINTER(ctypes.c_long)
 __int64=ctypes.c_int64
 HANDLE=ctypes.c_void_p
 LPHANDLE=ctypes.POINTER(HANDLE)
+HWND=ctypes.c_void_p
+HGLOBAL=ctypes.c_void_p
+HINSTANCE=ctypes.c_void_p
+HDC=ctypes.c_void_p
+HMODULE=ctypes.c_void_p
+HKEY=ctypes.c_void_p
 PVOID=ctypes.c_void_p
 LPVOID=ctypes.c_void_p
-HWND=ctypes.c_void_p
 MirEGLNativeWindowType=ctypes.c_void_p
 MirEGLNativeDisplayType=ctypes.c_void_p
 class Plane3D(enum.IntEnum):
@@ -4961,7 +4968,6 @@ class CCIEXYZValue(ctypes_wrap.CStructWrapper):
     _struct=CIEXYZValue
 
 
-Color2=ctypes.c_int
 class BestEllipse2(ctypes.Structure):
     _fields_=[  ("center",PointFloat),
                 ("majorAxisStart",PointFloat),
@@ -6587,6 +6593,7 @@ class COverlayGroupColor(ctypes_wrap.CStructWrapper):
     _struct=OverlayGroupColor
 
 
+EventCallback=ctypes.c_void_p
 
 
 
@@ -6708,14 +6715,6 @@ def define_functions(lib):
     addfunc(lib, "imaqShowWindow", restype = ctypes.c_int,
             argtypes = [ctypes.c_int, ctypes.c_int],
             argnames = ["windowNumber", "visible"] )
-    #  ctypes.c_int imaqRTDisplayImage(ctypes.c_void_p image, ctypes.POINTER(Palette) _palette, ctypes.c_int resize)
-    addfunc(lib, "imaqRTDisplayImage", restype = ctypes.c_int,
-            argtypes = [ctypes.c_void_p, ctypes.POINTER(Palette), ctypes.c_int],
-            argnames = ["image", "_palette", "resize"] )
-    #  ctypes.c_int imaqRTVideoMode(ctypes.c_int set, ctypes.POINTER(ctypes.c_int) graphicsModeFlag)
-    addfunc(lib, "imaqRTVideoMode", restype = ctypes.c_int,
-            argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_int)],
-            argnames = ["set", "graphicsModeFlag"] )
     #  ctypes.c_int imaqCountParticles(ctypes.c_void_p image, ctypes.c_int connectivity8, ctypes.POINTER(ctypes.c_int) numParticles)
     addfunc(lib, "imaqCountParticles", restype = ctypes.c_int,
             argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_int)],
@@ -7068,6 +7067,10 @@ def define_functions(lib):
     addfunc(lib, "imaqSetCurrentTool", restype = ctypes.c_int,
             argtypes = [ctypes.c_int],
             argnames = ["currentTool"] )
+    #  ctypes.c_int imaqSetEventCallback(EventCallback callback, ctypes.c_int synchronous)
+    addfunc(lib, "imaqSetEventCallback", restype = ctypes.c_int,
+            argtypes = [EventCallback, ctypes.c_int],
+            argnames = ["callback", "synchronous"] )
     #  ctypes.c_int imaqSetToolColor(ctypes.POINTER(RGBValue) color)
     addfunc(lib, "imaqSetToolColor", restype = ctypes.c_int,
             argtypes = [ctypes.POINTER(RGBValue)],

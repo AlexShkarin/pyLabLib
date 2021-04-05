@@ -319,12 +319,12 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         self._acq_in_progress=True
         self._frame_counter.reset(self._acq_params["nframes"])
     def stop_acquisition(self):
-        if self._acq_in_progress():
+        if self.acquisition_in_progress():
             self._frame_counter.update_acquired_frames(self._get_acquired_frames())
             lib.is_StopLiveVideo(self.hcam,0)
             self._acq_in_progress=False
     def acquisition_in_progress(self):
-        return self._acq_in_progress,lib.is_CaptureVideo(self.hcam,uc480_defs.LIVEFREEZE.IS_GET_LIVE)
+        return self._acq_in_progress
     def get_acquired_frame_status(self):
         acquired=self._get_acquired_frames()
         cstat=lib.is_GetCaptureStatus(self.hcam).adwCapStatusCnt_Detail
@@ -368,6 +368,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         hsub=lib.is_SetSubSampling(self.hcam,uc480_defs.SUBSAMPLING.IS_GET_SUBSAMPLING_FACTOR_HORIZONTAL)
         vsub=lib.is_SetSubSampling(self.hcam,uc480_defs.SUBSAMPLING.IS_GET_SUBSAMPLING_FACTOR_VERTICAL)
         return hsub,vsub
+    @camera.acqcleared
     def set_subsampling(self, hsub=1, vsub=1):
         """
         Set subsampling.
@@ -407,6 +408,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         hbin=lib.is_SetBinning(self.hcam,uc480_defs.BINNING.IS_GET_BINNING_FACTOR_HORIZONTAL)
         vbin=lib.is_SetBinning(self.hcam,uc480_defs.BINNING.IS_GET_BINNING_FACTOR_VERTICAL)
         return hbin,vbin
+    @camera.acqcleared
     def set_binning(self, hbin=1, vbin=1):
         """
         Set binning.
@@ -476,6 +478,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         rect=lib.is_AOI(self.hcam,uc480_defs.IMAGE.IS_AOI_IMAGE_GET_AOI,uc480_defs.CIS_RECT)
         hbin,vbin=self._get_roi_binning()
         return (rect.s32X*hbin,(rect.s32X+rect.s32Width)*hbin,rect.s32Y*vbin,(rect.s32Y+rect.s32Height)*vbin,hbin,vbin)
+    @camera.acqcleared
     def set_roi(self, hstart=0, hend=None, vstart=0, vend=None, hbin=1, vbin=1):
         """
         Setup camera ROI.

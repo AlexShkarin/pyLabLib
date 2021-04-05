@@ -1,5 +1,7 @@
 ##########   This file is generated automatically based on dcamapi4.h   ##########
 
+# pylint: disable=unused-import, unused-argument
+
 
 import ctypes
 import enum
@@ -19,7 +21,7 @@ def _int32(v): return (v+0x80000000)%0x100000000-0x80000000
 BYTE=ctypes.c_ubyte
 PBYTE=ctypes.POINTER(BYTE)
 CHAR=ctypes.c_char
-PCHAR=ctypes.POINTER(CHAR)
+PCHAR=ctypes.c_char_p
 UCHAR=ctypes.c_ubyte
 PUCHAR=ctypes.POINTER(UCHAR)
 ULONG_PTR=ctypes.c_uint64
@@ -30,9 +32,14 @@ LONGLONG=ctypes.c_int64
 LPLONG=ctypes.POINTER(ctypes.c_long)
 HANDLE=ctypes.c_void_p
 LPHANDLE=ctypes.POINTER(HANDLE)
+HWND=ctypes.c_void_p
+HGLOBAL=ctypes.c_void_p
+HINSTANCE=ctypes.c_void_p
+HDC=ctypes.c_void_p
+HMODULE=ctypes.c_void_p
+HKEY=ctypes.c_void_p
 PVOID=ctypes.c_void_p
 LPVOID=ctypes.c_void_p
-HWND=ctypes.c_void_p
 HDCAM=ctypes.c_void_p
 int32=ctypes.c_int
 _ui32=ctypes.c_uint
@@ -677,8 +684,8 @@ class DCAMREC_OPENW(ctypes.Structure):
     _fields_=[  ("size",int32),
                 ("reserved",int32),
                 ("hrec",HDCAMREC),
-                ("path",ctypes.POINTER(ctypes.c_wchar)),
-                ("ext",ctypes.POINTER(ctypes.c_wchar)),
+                ("path",ctypes.c_wchar_p),
+                ("ext",ctypes.c_wchar_p),
                 ("maxframepersession",int32),
                 ("userdatasize",int32),
                 ("userdatasize_session",int32),
@@ -811,190 +818,201 @@ class CDCAM_METADATABLOCK(ctypes_wrap.CStructWrapper):
 
 
 
+def addfunc(lib, name, restype, argtypes=None, argnames=None):
+    if getattr(lib,name,None) is None:
+        setattr(lib,name,None)
+    else:
+        func=getattr(lib,name)
+        func.restype=restype
+        if argtypes is not None:
+            func.argtypes=argtypes
+        if argnames is not None:
+            func.argnames=argnames
+
 def define_functions(lib):
     #  ctypes.c_int dcamapi_init(ctypes.POINTER(DCAMAPI_INIT) param)
-    lib.dcamapi_init.restype=ctypes.c_int
-    lib.dcamapi_init.argtypes=[ctypes.POINTER(DCAMAPI_INIT)]
-    lib.dcamapi_init.argnames=["param"]
+    addfunc(lib, "dcamapi_init", restype = ctypes.c_int,
+            argtypes = [ctypes.POINTER(DCAMAPI_INIT)],
+            argnames = ["param"] )
     #  ctypes.c_int dcamapi_uninit()
-    lib.dcamapi_uninit.restype=ctypes.c_int
-    lib.dcamapi_uninit.argtypes=[]
-    lib.dcamapi_uninit.argnames=[]
+    addfunc(lib, "dcamapi_uninit", restype = ctypes.c_int,
+            argtypes = [],
+            argnames = [] )
     #  ctypes.c_int dcamdev_open(ctypes.POINTER(DCAMDEV_OPEN) param)
-    lib.dcamdev_open.restype=ctypes.c_int
-    lib.dcamdev_open.argtypes=[ctypes.POINTER(DCAMDEV_OPEN)]
-    lib.dcamdev_open.argnames=["param"]
+    addfunc(lib, "dcamdev_open", restype = ctypes.c_int,
+            argtypes = [ctypes.POINTER(DCAMDEV_OPEN)],
+            argnames = ["param"] )
     #  ctypes.c_int dcamdev_close(HDCAM h)
-    lib.dcamdev_close.restype=ctypes.c_int
-    lib.dcamdev_close.argtypes=[HDCAM]
-    lib.dcamdev_close.argnames=["h"]
+    addfunc(lib, "dcamdev_close", restype = ctypes.c_int,
+            argtypes = [HDCAM],
+            argnames = ["h"] )
     #  ctypes.c_int dcamdev_showpanel(HDCAM h, int32 iKind)
-    lib.dcamdev_showpanel.restype=ctypes.c_int
-    lib.dcamdev_showpanel.argtypes=[HDCAM, int32]
-    lib.dcamdev_showpanel.argnames=["h", "iKind"]
+    addfunc(lib, "dcamdev_showpanel", restype = ctypes.c_int,
+            argtypes = [HDCAM, int32],
+            argnames = ["h", "iKind"] )
     #  ctypes.c_int dcamdev_getcapability(HDCAM h, ctypes.POINTER(DCAMDEV_CAPABILITY) param)
-    lib.dcamdev_getcapability.restype=ctypes.c_int
-    lib.dcamdev_getcapability.argtypes=[HDCAM, ctypes.POINTER(DCAMDEV_CAPABILITY)]
-    lib.dcamdev_getcapability.argnames=["h", "param"]
+    addfunc(lib, "dcamdev_getcapability", restype = ctypes.c_int,
+            argtypes = [HDCAM, ctypes.POINTER(DCAMDEV_CAPABILITY)],
+            argnames = ["h", "param"] )
     #  ctypes.c_int dcamdev_getstring(HDCAM h, ctypes.POINTER(DCAMDEV_STRING) param)
-    lib.dcamdev_getstring.restype=ctypes.c_int
-    lib.dcamdev_getstring.argtypes=[HDCAM, ctypes.POINTER(DCAMDEV_STRING)]
-    lib.dcamdev_getstring.argnames=["h", "param"]
+    addfunc(lib, "dcamdev_getstring", restype = ctypes.c_int,
+            argtypes = [HDCAM, ctypes.POINTER(DCAMDEV_STRING)],
+            argnames = ["h", "param"] )
     #  ctypes.c_int dcamdev_setdata(HDCAM h, ctypes.POINTER(DCAMDATA_HDR) param)
-    lib.dcamdev_setdata.restype=ctypes.c_int
-    lib.dcamdev_setdata.argtypes=[HDCAM, ctypes.POINTER(DCAMDATA_HDR)]
-    lib.dcamdev_setdata.argnames=["h", "param"]
+    addfunc(lib, "dcamdev_setdata", restype = ctypes.c_int,
+            argtypes = [HDCAM, ctypes.POINTER(DCAMDATA_HDR)],
+            argnames = ["h", "param"] )
     #  ctypes.c_int dcamdev_getdata(HDCAM h, ctypes.POINTER(DCAMDATA_HDR) param)
-    lib.dcamdev_getdata.restype=ctypes.c_int
-    lib.dcamdev_getdata.argtypes=[HDCAM, ctypes.POINTER(DCAMDATA_HDR)]
-    lib.dcamdev_getdata.argnames=["h", "param"]
+    addfunc(lib, "dcamdev_getdata", restype = ctypes.c_int,
+            argtypes = [HDCAM, ctypes.POINTER(DCAMDATA_HDR)],
+            argnames = ["h", "param"] )
     #  ctypes.c_int dcamprop_getattr(HDCAM h, ctypes.POINTER(DCAMPROP_ATTR) param)
-    lib.dcamprop_getattr.restype=ctypes.c_int
-    lib.dcamprop_getattr.argtypes=[HDCAM, ctypes.POINTER(DCAMPROP_ATTR)]
-    lib.dcamprop_getattr.argnames=["h", "param"]
+    addfunc(lib, "dcamprop_getattr", restype = ctypes.c_int,
+            argtypes = [HDCAM, ctypes.POINTER(DCAMPROP_ATTR)],
+            argnames = ["h", "param"] )
     #  ctypes.c_int dcamprop_getvalue(HDCAM h, int32 iProp, ctypes.POINTER(ctypes.c_double) pValue)
-    lib.dcamprop_getvalue.restype=ctypes.c_int
-    lib.dcamprop_getvalue.argtypes=[HDCAM, int32, ctypes.POINTER(ctypes.c_double)]
-    lib.dcamprop_getvalue.argnames=["h", "iProp", "pValue"]
+    addfunc(lib, "dcamprop_getvalue", restype = ctypes.c_int,
+            argtypes = [HDCAM, int32, ctypes.POINTER(ctypes.c_double)],
+            argnames = ["h", "iProp", "pValue"] )
     #  ctypes.c_int dcamprop_setvalue(HDCAM h, int32 iProp, ctypes.c_double fValue)
-    lib.dcamprop_setvalue.restype=ctypes.c_int
-    lib.dcamprop_setvalue.argtypes=[HDCAM, int32, ctypes.c_double]
-    lib.dcamprop_setvalue.argnames=["h", "iProp", "fValue"]
+    addfunc(lib, "dcamprop_setvalue", restype = ctypes.c_int,
+            argtypes = [HDCAM, int32, ctypes.c_double],
+            argnames = ["h", "iProp", "fValue"] )
     #  ctypes.c_int dcamprop_setgetvalue(HDCAM h, int32 iProp, ctypes.POINTER(ctypes.c_double) pValue, int32 option)
-    lib.dcamprop_setgetvalue.restype=ctypes.c_int
-    lib.dcamprop_setgetvalue.argtypes=[HDCAM, int32, ctypes.POINTER(ctypes.c_double), int32]
-    lib.dcamprop_setgetvalue.argnames=["h", "iProp", "pValue", "option"]
+    addfunc(lib, "dcamprop_setgetvalue", restype = ctypes.c_int,
+            argtypes = [HDCAM, int32, ctypes.POINTER(ctypes.c_double), int32],
+            argnames = ["h", "iProp", "pValue", "option"] )
     #  ctypes.c_int dcamprop_queryvalue(HDCAM h, int32 iProp, ctypes.POINTER(ctypes.c_double) pValue, int32 option)
-    lib.dcamprop_queryvalue.restype=ctypes.c_int
-    lib.dcamprop_queryvalue.argtypes=[HDCAM, int32, ctypes.POINTER(ctypes.c_double), int32]
-    lib.dcamprop_queryvalue.argnames=["h", "iProp", "pValue", "option"]
+    addfunc(lib, "dcamprop_queryvalue", restype = ctypes.c_int,
+            argtypes = [HDCAM, int32, ctypes.POINTER(ctypes.c_double), int32],
+            argnames = ["h", "iProp", "pValue", "option"] )
     #  ctypes.c_int dcamprop_getnextid(HDCAM h, ctypes.POINTER(int32) pProp, int32 option)
-    lib.dcamprop_getnextid.restype=ctypes.c_int
-    lib.dcamprop_getnextid.argtypes=[HDCAM, ctypes.POINTER(int32), int32]
-    lib.dcamprop_getnextid.argnames=["h", "pProp", "option"]
+    addfunc(lib, "dcamprop_getnextid", restype = ctypes.c_int,
+            argtypes = [HDCAM, ctypes.POINTER(int32), int32],
+            argnames = ["h", "pProp", "option"] )
     #  ctypes.c_int dcamprop_getname(HDCAM h, int32 iProp, ctypes.c_char_p text, int32 textbytes)
-    lib.dcamprop_getname.restype=ctypes.c_int
-    lib.dcamprop_getname.argtypes=[HDCAM, int32, ctypes.c_char_p, int32]
-    lib.dcamprop_getname.argnames=["h", "iProp", "text", "textbytes"]
+    addfunc(lib, "dcamprop_getname", restype = ctypes.c_int,
+            argtypes = [HDCAM, int32, ctypes.c_char_p, int32],
+            argnames = ["h", "iProp", "text", "textbytes"] )
     #  ctypes.c_int dcamprop_getvaluetext(HDCAM h, ctypes.POINTER(DCAMPROP_VALUETEXT) param)
-    lib.dcamprop_getvaluetext.restype=ctypes.c_int
-    lib.dcamprop_getvaluetext.argtypes=[HDCAM, ctypes.POINTER(DCAMPROP_VALUETEXT)]
-    lib.dcamprop_getvaluetext.argnames=["h", "param"]
+    addfunc(lib, "dcamprop_getvaluetext", restype = ctypes.c_int,
+            argtypes = [HDCAM, ctypes.POINTER(DCAMPROP_VALUETEXT)],
+            argnames = ["h", "param"] )
     #  ctypes.c_int dcambuf_alloc(HDCAM h, int32 framecount)
-    lib.dcambuf_alloc.restype=ctypes.c_int
-    lib.dcambuf_alloc.argtypes=[HDCAM, int32]
-    lib.dcambuf_alloc.argnames=["h", "framecount"]
+    addfunc(lib, "dcambuf_alloc", restype = ctypes.c_int,
+            argtypes = [HDCAM, int32],
+            argnames = ["h", "framecount"] )
     #  ctypes.c_int dcambuf_attach(HDCAM h, ctypes.POINTER(DCAMBUF_ATTACH) param)
-    lib.dcambuf_attach.restype=ctypes.c_int
-    lib.dcambuf_attach.argtypes=[HDCAM, ctypes.POINTER(DCAMBUF_ATTACH)]
-    lib.dcambuf_attach.argnames=["h", "param"]
+    addfunc(lib, "dcambuf_attach", restype = ctypes.c_int,
+            argtypes = [HDCAM, ctypes.POINTER(DCAMBUF_ATTACH)],
+            argnames = ["h", "param"] )
     #  ctypes.c_int dcambuf_release(HDCAM h, int32 iKind)
-    lib.dcambuf_release.restype=ctypes.c_int
-    lib.dcambuf_release.argtypes=[HDCAM, int32]
-    lib.dcambuf_release.argnames=["h", "iKind"]
+    addfunc(lib, "dcambuf_release", restype = ctypes.c_int,
+            argtypes = [HDCAM, int32],
+            argnames = ["h", "iKind"] )
     #  ctypes.c_int dcambuf_lockframe(HDCAM h, ctypes.POINTER(DCAMBUF_FRAME) pFrame)
-    lib.dcambuf_lockframe.restype=ctypes.c_int
-    lib.dcambuf_lockframe.argtypes=[HDCAM, ctypes.POINTER(DCAMBUF_FRAME)]
-    lib.dcambuf_lockframe.argnames=["h", "pFrame"]
+    addfunc(lib, "dcambuf_lockframe", restype = ctypes.c_int,
+            argtypes = [HDCAM, ctypes.POINTER(DCAMBUF_FRAME)],
+            argnames = ["h", "pFrame"] )
     #  ctypes.c_int dcambuf_copyframe(HDCAM h, ctypes.POINTER(DCAMBUF_FRAME) pFrame)
-    lib.dcambuf_copyframe.restype=ctypes.c_int
-    lib.dcambuf_copyframe.argtypes=[HDCAM, ctypes.POINTER(DCAMBUF_FRAME)]
-    lib.dcambuf_copyframe.argnames=["h", "pFrame"]
+    addfunc(lib, "dcambuf_copyframe", restype = ctypes.c_int,
+            argtypes = [HDCAM, ctypes.POINTER(DCAMBUF_FRAME)],
+            argnames = ["h", "pFrame"] )
     #  ctypes.c_int dcambuf_copymetadata(HDCAM h, ctypes.POINTER(DCAM_METADATAHDR) hdr)
-    lib.dcambuf_copymetadata.restype=ctypes.c_int
-    lib.dcambuf_copymetadata.argtypes=[HDCAM, ctypes.POINTER(DCAM_METADATAHDR)]
-    lib.dcambuf_copymetadata.argnames=["h", "hdr"]
+    addfunc(lib, "dcambuf_copymetadata", restype = ctypes.c_int,
+            argtypes = [HDCAM, ctypes.POINTER(DCAM_METADATAHDR)],
+            argnames = ["h", "hdr"] )
     #  ctypes.c_int dcamcap_start(HDCAM h, int32 mode)
-    lib.dcamcap_start.restype=ctypes.c_int
-    lib.dcamcap_start.argtypes=[HDCAM, int32]
-    lib.dcamcap_start.argnames=["h", "mode"]
+    addfunc(lib, "dcamcap_start", restype = ctypes.c_int,
+            argtypes = [HDCAM, int32],
+            argnames = ["h", "mode"] )
     #  ctypes.c_int dcamcap_stop(HDCAM h)
-    lib.dcamcap_stop.restype=ctypes.c_int
-    lib.dcamcap_stop.argtypes=[HDCAM]
-    lib.dcamcap_stop.argnames=["h"]
+    addfunc(lib, "dcamcap_stop", restype = ctypes.c_int,
+            argtypes = [HDCAM],
+            argnames = ["h"] )
     #  ctypes.c_int dcamcap_status(HDCAM h, ctypes.POINTER(int32) pStatus)
-    lib.dcamcap_status.restype=ctypes.c_int
-    lib.dcamcap_status.argtypes=[HDCAM, ctypes.POINTER(int32)]
-    lib.dcamcap_status.argnames=["h", "pStatus"]
+    addfunc(lib, "dcamcap_status", restype = ctypes.c_int,
+            argtypes = [HDCAM, ctypes.POINTER(int32)],
+            argnames = ["h", "pStatus"] )
     #  ctypes.c_int dcamcap_transferinfo(HDCAM h, ctypes.POINTER(DCAMCAP_TRANSFERINFO) param)
-    lib.dcamcap_transferinfo.restype=ctypes.c_int
-    lib.dcamcap_transferinfo.argtypes=[HDCAM, ctypes.POINTER(DCAMCAP_TRANSFERINFO)]
-    lib.dcamcap_transferinfo.argnames=["h", "param"]
+    addfunc(lib, "dcamcap_transferinfo", restype = ctypes.c_int,
+            argtypes = [HDCAM, ctypes.POINTER(DCAMCAP_TRANSFERINFO)],
+            argnames = ["h", "param"] )
     #  ctypes.c_int dcamcap_firetrigger(HDCAM h, int32 iKind)
-    lib.dcamcap_firetrigger.restype=ctypes.c_int
-    lib.dcamcap_firetrigger.argtypes=[HDCAM, int32]
-    lib.dcamcap_firetrigger.argnames=["h", "iKind"]
+    addfunc(lib, "dcamcap_firetrigger", restype = ctypes.c_int,
+            argtypes = [HDCAM, int32],
+            argnames = ["h", "iKind"] )
     #  ctypes.c_int dcamcap_record(HDCAM h, HDCAMREC hrec)
-    lib.dcamcap_record.restype=ctypes.c_int
-    lib.dcamcap_record.argtypes=[HDCAM, HDCAMREC]
-    lib.dcamcap_record.argnames=["h", "hrec"]
+    addfunc(lib, "dcamcap_record", restype = ctypes.c_int,
+            argtypes = [HDCAM, HDCAMREC],
+            argnames = ["h", "hrec"] )
     #  ctypes.c_int dcamwait_open(ctypes.POINTER(DCAMWAIT_OPEN) param)
-    lib.dcamwait_open.restype=ctypes.c_int
-    lib.dcamwait_open.argtypes=[ctypes.POINTER(DCAMWAIT_OPEN)]
-    lib.dcamwait_open.argnames=["param"]
+    addfunc(lib, "dcamwait_open", restype = ctypes.c_int,
+            argtypes = [ctypes.POINTER(DCAMWAIT_OPEN)],
+            argnames = ["param"] )
     #  ctypes.c_int dcamwait_close(HDCAMWAIT hWait)
-    lib.dcamwait_close.restype=ctypes.c_int
-    lib.dcamwait_close.argtypes=[HDCAMWAIT]
-    lib.dcamwait_close.argnames=["hWait"]
+    addfunc(lib, "dcamwait_close", restype = ctypes.c_int,
+            argtypes = [HDCAMWAIT],
+            argnames = ["hWait"] )
     #  ctypes.c_int dcamwait_start(HDCAMWAIT hWait, ctypes.POINTER(DCAMWAIT_START) param)
-    lib.dcamwait_start.restype=ctypes.c_int
-    lib.dcamwait_start.argtypes=[HDCAMWAIT, ctypes.POINTER(DCAMWAIT_START)]
-    lib.dcamwait_start.argnames=["hWait", "param"]
+    addfunc(lib, "dcamwait_start", restype = ctypes.c_int,
+            argtypes = [HDCAMWAIT, ctypes.POINTER(DCAMWAIT_START)],
+            argnames = ["hWait", "param"] )
     #  ctypes.c_int dcamwait_abort(HDCAMWAIT hWait)
-    lib.dcamwait_abort.restype=ctypes.c_int
-    lib.dcamwait_abort.argtypes=[HDCAMWAIT]
-    lib.dcamwait_abort.argnames=["hWait"]
+    addfunc(lib, "dcamwait_abort", restype = ctypes.c_int,
+            argtypes = [HDCAMWAIT],
+            argnames = ["hWait"] )
     #  ctypes.c_int dcamrec_openA(ctypes.POINTER(DCAMREC_OPENA) param)
-    lib.dcamrec_openA.restype=ctypes.c_int
-    lib.dcamrec_openA.argtypes=[ctypes.POINTER(DCAMREC_OPENA)]
-    lib.dcamrec_openA.argnames=["param"]
+    addfunc(lib, "dcamrec_openA", restype = ctypes.c_int,
+            argtypes = [ctypes.POINTER(DCAMREC_OPENA)],
+            argnames = ["param"] )
     #  ctypes.c_int dcamrec_openW(ctypes.POINTER(DCAMREC_OPENW) param)
-    lib.dcamrec_openW.restype=ctypes.c_int
-    lib.dcamrec_openW.argtypes=[ctypes.POINTER(DCAMREC_OPENW)]
-    lib.dcamrec_openW.argnames=["param"]
+    addfunc(lib, "dcamrec_openW", restype = ctypes.c_int,
+            argtypes = [ctypes.POINTER(DCAMREC_OPENW)],
+            argnames = ["param"] )
     #  ctypes.c_int dcamrec_close(HDCAMREC hrec)
-    lib.dcamrec_close.restype=ctypes.c_int
-    lib.dcamrec_close.argtypes=[HDCAMREC]
-    lib.dcamrec_close.argnames=["hrec"]
+    addfunc(lib, "dcamrec_close", restype = ctypes.c_int,
+            argtypes = [HDCAMREC],
+            argnames = ["hrec"] )
     #  ctypes.c_int dcamrec_lockframe(HDCAMREC hrec, ctypes.POINTER(DCAMREC_FRAME) pFrame)
-    lib.dcamrec_lockframe.restype=ctypes.c_int
-    lib.dcamrec_lockframe.argtypes=[HDCAMREC, ctypes.POINTER(DCAMREC_FRAME)]
-    lib.dcamrec_lockframe.argnames=["hrec", "pFrame"]
+    addfunc(lib, "dcamrec_lockframe", restype = ctypes.c_int,
+            argtypes = [HDCAMREC, ctypes.POINTER(DCAMREC_FRAME)],
+            argnames = ["hrec", "pFrame"] )
     #  ctypes.c_int dcamrec_copyframe(HDCAMREC hrec, ctypes.POINTER(DCAMREC_FRAME) pFrame)
-    lib.dcamrec_copyframe.restype=ctypes.c_int
-    lib.dcamrec_copyframe.argtypes=[HDCAMREC, ctypes.POINTER(DCAMREC_FRAME)]
-    lib.dcamrec_copyframe.argnames=["hrec", "pFrame"]
+    addfunc(lib, "dcamrec_copyframe", restype = ctypes.c_int,
+            argtypes = [HDCAMREC, ctypes.POINTER(DCAMREC_FRAME)],
+            argnames = ["hrec", "pFrame"] )
     #  ctypes.c_int dcamrec_writemetadata(HDCAMREC hrec, ctypes.POINTER(DCAM_METADATAHDR) hdr)
-    lib.dcamrec_writemetadata.restype=ctypes.c_int
-    lib.dcamrec_writemetadata.argtypes=[HDCAMREC, ctypes.POINTER(DCAM_METADATAHDR)]
-    lib.dcamrec_writemetadata.argnames=["hrec", "hdr"]
+    addfunc(lib, "dcamrec_writemetadata", restype = ctypes.c_int,
+            argtypes = [HDCAMREC, ctypes.POINTER(DCAM_METADATAHDR)],
+            argnames = ["hrec", "hdr"] )
     #  ctypes.c_int dcamrec_lockmetadata(HDCAMREC hrec, ctypes.POINTER(DCAM_METADATAHDR) hdr)
-    lib.dcamrec_lockmetadata.restype=ctypes.c_int
-    lib.dcamrec_lockmetadata.argtypes=[HDCAMREC, ctypes.POINTER(DCAM_METADATAHDR)]
-    lib.dcamrec_lockmetadata.argnames=["hrec", "hdr"]
+    addfunc(lib, "dcamrec_lockmetadata", restype = ctypes.c_int,
+            argtypes = [HDCAMREC, ctypes.POINTER(DCAM_METADATAHDR)],
+            argnames = ["hrec", "hdr"] )
     #  ctypes.c_int dcamrec_copymetadata(HDCAMREC hrec, ctypes.POINTER(DCAM_METADATAHDR) hdr)
-    lib.dcamrec_copymetadata.restype=ctypes.c_int
-    lib.dcamrec_copymetadata.argtypes=[HDCAMREC, ctypes.POINTER(DCAM_METADATAHDR)]
-    lib.dcamrec_copymetadata.argnames=["hrec", "hdr"]
+    addfunc(lib, "dcamrec_copymetadata", restype = ctypes.c_int,
+            argtypes = [HDCAMREC, ctypes.POINTER(DCAM_METADATAHDR)],
+            argnames = ["hrec", "hdr"] )
     #  ctypes.c_int dcamrec_lockmetadatablock(HDCAMREC hrec, ctypes.POINTER(DCAM_METADATABLOCKHDR) hdr)
-    lib.dcamrec_lockmetadatablock.restype=ctypes.c_int
-    lib.dcamrec_lockmetadatablock.argtypes=[HDCAMREC, ctypes.POINTER(DCAM_METADATABLOCKHDR)]
-    lib.dcamrec_lockmetadatablock.argnames=["hrec", "hdr"]
+    addfunc(lib, "dcamrec_lockmetadatablock", restype = ctypes.c_int,
+            argtypes = [HDCAMREC, ctypes.POINTER(DCAM_METADATABLOCKHDR)],
+            argnames = ["hrec", "hdr"] )
     #  ctypes.c_int dcamrec_copymetadatablock(HDCAMREC hrec, ctypes.POINTER(DCAM_METADATABLOCKHDR) hdr)
-    lib.dcamrec_copymetadatablock.restype=ctypes.c_int
-    lib.dcamrec_copymetadatablock.argtypes=[HDCAMREC, ctypes.POINTER(DCAM_METADATABLOCKHDR)]
-    lib.dcamrec_copymetadatablock.argnames=["hrec", "hdr"]
+    addfunc(lib, "dcamrec_copymetadatablock", restype = ctypes.c_int,
+            argtypes = [HDCAMREC, ctypes.POINTER(DCAM_METADATABLOCKHDR)],
+            argnames = ["hrec", "hdr"] )
     #  ctypes.c_int dcamrec_pause(HDCAMREC hrec)
-    lib.dcamrec_pause.restype=ctypes.c_int
-    lib.dcamrec_pause.argtypes=[HDCAMREC]
-    lib.dcamrec_pause.argnames=["hrec"]
+    addfunc(lib, "dcamrec_pause", restype = ctypes.c_int,
+            argtypes = [HDCAMREC],
+            argnames = ["hrec"] )
     #  ctypes.c_int dcamrec_resume(HDCAMREC hrec)
-    lib.dcamrec_resume.restype=ctypes.c_int
-    lib.dcamrec_resume.argtypes=[HDCAMREC]
-    lib.dcamrec_resume.argnames=["hrec"]
+    addfunc(lib, "dcamrec_resume", restype = ctypes.c_int,
+            argtypes = [HDCAMREC],
+            argnames = ["hrec"] )
     #  ctypes.c_int dcamrec_status(HDCAMREC hrec, ctypes.POINTER(DCAMREC_STATUS) pStatus)
-    lib.dcamrec_status.restype=ctypes.c_int
-    lib.dcamrec_status.argtypes=[HDCAMREC, ctypes.POINTER(DCAMREC_STATUS)]
-    lib.dcamrec_status.argnames=["hrec", "pStatus"]
+    addfunc(lib, "dcamrec_status", restype = ctypes.c_int,
+            argtypes = [HDCAMREC, ctypes.POINTER(DCAMREC_STATUS)],
+            argnames = ["hrec", "pStatus"] )
 
 

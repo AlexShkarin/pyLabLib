@@ -1,5 +1,7 @@
 ##########   This file is generated automatically based on pfcam.h, pftypes.h   ##########
 
+# pylint: disable=unused-import, unused-argument
+
 
 import ctypes
 import enum
