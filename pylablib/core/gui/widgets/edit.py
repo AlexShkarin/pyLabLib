@@ -148,7 +148,7 @@ class NumEdit(QtWidgets.QLineEdit):
         """
         Change current numerical limiter.
 
-        Limiter can be a callable object which takes a single value and either returns a limited value, or raises :exc:`LimitError` if it should be ignored;
+        Limiter can be a callable object which takes a single value and either returns a limited value, or raises :exc:`.limiter.LimitError` if it should be ignored;
         or it can be a tuple ``(lower, upper, action, value_type)``, where ``lower`` and ``upper`` are the limits (``None`` means no limits),
         ``action`` defines out-of-limit action (either ``"ignore"`` to ignore entered value, or ``"coerce"`` to truncate to the nearest limit),
         and ``value_type`` can be ``None`` (keep value as is), ``"float"`` (cast value to float), ``"int"`` (cast value to int).
@@ -165,7 +165,7 @@ class NumEdit(QtWidgets.QLineEdit):
         Change current numerical formatter.
 
         Formatter can be a callable object turining value into a string, a string (``"float"``, ``"int"``, or a format string, e.g., ``".5f"``),
-        or a tuple starting with ``"float"`` which contains arguments to the :class:`FloatFormatter`.
+        or a tuple starting with ``"float"`` which contains arguments to the :class:`.formatter.FloatFormatter`.
         """
         self.formatter=as_formatter(formatter)
         self.show_value()

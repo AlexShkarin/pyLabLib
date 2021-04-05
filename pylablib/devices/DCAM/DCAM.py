@@ -401,7 +401,7 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
         """
         Get a frame at the given buffer index.
 
-        If ``return_info==True``, return tuple ``(data, info)``, where info is the :class:`FrameInfo` instance
+        If ``return_info==True``, return tuple ``(data, info)``, where info is the :class:`TFrameInfo` instance
         describing frame index, timestamp, camera stamp, frame location on the sensor, and pixel type.
         Does not advance the read frames counter.
         """
@@ -425,7 +425,7 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
         If ``peek==True``, return images but not mark them as read.
         `missing_frame` determines what to do with frames which are out of range (missing or lost):
         can be ``"none"`` (replacing them with ``None``), ``"zero"`` (replacing them with zero-filled frame), or ``"skip"`` (skipping them).
-        If ``return_info==True``, return tuple ``(frames, infos)``, where ``infos`` is a list of :class:`FrameInfo` instances
+        If ``return_info==True``, return tuple ``(frames, infos)``, where ``infos`` is a list of :class:`TFrameInfo` instances
         describing frame index and timestamp, camera stamp, frame location on the sensor, and pixel type;
         if some frames are missing and ``missing_frame!="skip"``, the corresponding frame info is ``None``.
         """

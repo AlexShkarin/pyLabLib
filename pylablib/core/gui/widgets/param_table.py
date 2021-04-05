@@ -353,7 +353,7 @@ class ParamTable(QtWidgets.QWidget):
         """
         if virtual:
             return self.add_virtual_element(name,value=value)
-        widget=widget_label.LVTextLabel(self,value=value)
+        widget=widget_label.TextLabel(self,value=value)
         widget.setObjectName(self.name+"_"+name)
         return self.add_simple_widget(name,widget,label=label,add_indicator=False,location=location,tooltip=tooltip,add_change_event=add_change_event)
     def add_num_label(self, name, value=0, limiter=None, formatter=None, label=None, tooltip=None, location="next", add_change_event=False, virtual=False):
@@ -364,9 +364,9 @@ class ParamTable(QtWidgets.QWidget):
             name (str): widget name (used to reference its value in the values table)
             value (float): specifies initial value
             limiter (tuple): tuple ``(upper_limit, lower_limit, action, value_type)`` specifying value limits;
-                see :func:`.limit.as_limiter` for details
+                see :func:`.limiter.as_limiter` for details
             formatter (tuple): either ``"int"`` (for integer values), or tuple specifying floating value format;
-                see :func:`.format.as_formatter` for details
+                see :func:`.formatter.as_formatter` for details
             virtual (bool): if ``True``, the widget is not added, and a virtual handler is added instead
             
         Rest of the arguments and the return value are the same as :meth:`add_simple_widget`.
@@ -400,9 +400,9 @@ class ParamTable(QtWidgets.QWidget):
             name (str): widget name (used to reference its value in the values table)
             value (bool): specifies initial value
             limiter (tuple): tuple ``(upper_limit, lower_limit, action, value_type)`` specifying value limits;
-                see :func:`.NumEdit.set_limiter` for details
+                see :meth:`.NumEdit.set_limiter` for details
             formatter (tuple): either ``"int"`` (for integer values), or tuple specifying floating value format;
-                see :func:`.NumEdit.set_formatter` for details
+                see :meth:`.NumEdit.set_formatter` for details
             custom_steps: if not ``None``, can specify custom fixed value steps when up/down keys are pressed with a modifier key (Control, Alt, or Shift)
                 specifies a dictionary ``{'ctrl':ctrl_step, 'alt':alt_step, 'shift':shift_step}`` with the corresponding steps (missing elements mean that the modifier key is ignored)
             virtual (bool): if ``True``, the widget is not added, and a virtual handler is added instead

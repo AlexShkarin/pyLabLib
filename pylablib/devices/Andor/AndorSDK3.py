@@ -37,7 +37,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
     Andor SDK3 camera.
 
     Args:
-        idx(int): camera index (use :func:`get_cameras_number_SDK3` to get the total number of connected cameras)
+        idx(int): camera index (use :func:`get_cameras_number` to get the total number of connected cameras)
     """
     Error=AndorError
     TimeoutError=AndorTimeoutError
@@ -108,7 +108,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
         `kind` determines feature kind, can be ``"int"``, ``"float"``, ``"str"``, ``"bool"`` or ``"enum``";
         by default (``"auto"``), auto-determine value kind (might not work for newer features).
         If ``enum_str==True``, return enum values as strings; otherwise, return as indices.
-        If ``default=="error"``, raise :exc:`AndorError` if the feature is not implemented; otherwise, return `default` if it is not implemented.
+        If ``default=="error"``, raise :exc:`.AndorError` if the feature is not implemented; otherwise, return `default` if it is not implemented.
         """
         if kind=="auto":
             if name in feature_types:
@@ -144,7 +144,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
         `kind` determines feature kind, can be ``"int"``, ``"float"``, ``"str"``, ``"bool"`` or ``"enum``";
         by default (``"auto"``), auto-determine value kind (might not work for newer features).
 
-        If ``not_implemented_error==True`` and the feature is not implemented, raise :exc:`AndorError`; otherwise, do nothing.
+        If ``not_implemented_error==True`` and the feature is not implemented, raise :exc:`.AndorError`; otherwise, do nothing.
         """
         if kind=="auto":
             if name in feature_types:

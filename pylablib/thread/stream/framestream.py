@@ -481,10 +481,10 @@ class FrameSaveThread(controller.QTaskThread):
     Receives frame announcements, and saves the frames to the disk.
 
     Setup args:
-        src: frames source
-        tag: frames announcement tag
-        settings_mgr: :class:`.SettingsManager` thread name (used to save settings file on saving start)
-        frame_processor: frame processor thread name (used to get snapshot background to save to the file, if appropriate)
+        - ``src``: frames source
+        - ``tag``: frames announcement tag
+        - ``settings_mgr``: :class:`.SettingsManager` thread name (used to save settings file on saving start)
+        - ``frame_processor``: frame processor thread name (used to get snapshot background to save to the file, if appropriate)
 
     Attributes:
         chunks_per_save: number of saving queue chunks to write to disk in one dump job (by default, one chunk)
@@ -492,24 +492,24 @@ class FrameSaveThread(controller.QTaskThread):
         dumping_period (float): period of queue dump job; by default, 0.1 seconds
 
     Variables:
-        path: saving path
-        batch_size: saving batch size (limit on the total number of frames saved)
-        received: total frames received since the saving started
-        scheduled: total frames scheduled for saving since the saving started (received frame is scheduled unless queue RAM is overflowing)
-        saved: total frames saved since the saving started
-        missed: total number of frames missed in saving since the saving stated (based on frames indices)
-        pretrigger_status: tuple with the pretrigger status (see :meth:`PretriggerBuffer.get_status`), or ``None`` if pretrigger is disabled
-        queue_ram: current occupied queue RAM size
-        max_queue_ram: maximal queue RAM size
-        status_line_check: status line check status; can be ``"off"`` (check is off), ``"none"`` (frames don't have status line), ``"na"`` (no frames have been received yet),
-            ``"ok"`` (status line check is ok), ``"missing"`` (missing frames), ``"still"`` (repeating frames), or ``"out_of_order"`` (later frames have lower index).
+        - ``path``: saving path
+        - ``batch_size``: saving batch size (limit on the total number of frames saved)
+        - ``received``: total frames received since the saving started
+        - ``scheduled``: total frames scheduled for saving since the saving started (received frame is scheduled unless queue RAM is overflowing)
+        - ``saved``: total frames saved since the saving started
+        - ``missed``: total number of frames missed in saving since the saving stated (based on frames indices)
+        - ``pretrigger_status``: tuple with the pretrigger status (see :meth:`PretriggerBuffer.get_status`), or ``None`` if pretrigger is disabled
+        - ``queue_ram``: current occupied queue RAM size
+        - ``max_queue_ram``: maximal queue RAM size
+        - ``status_line_check``: status line check status; can be ``"off"`` (check is off), ``"none"`` (frames don't have status line), ``"na"`` (no frames have been received yet),
+          ``"ok"`` (status line check is ok), ``"missing"`` (missing frames), ``"still"`` (repeating frames), or ``"out_of_order"`` (later frames have lower index).
 
     Commands:
-        save_start: start streaming
-        save_stop: stop streaming
-        setup_pretrigger: setup pretrigger buffer
-        clear_pretrigger: clear pretrigger buffer
-        setup_queue_ram: setup maximal saving queue RAM
+        - ``save_start``: start streaming
+        - ``save_stop``: stop streaming
+        - ``setup_pretrigger``: setup pretrigger buffer
+        - ``clear_pretrigger``: clear pretrigger buffer
+        - ``setup_queue_ram``: setup maximal saving queue RAM
     """
     def setup_task(self, src, tag, settings_mgr=None, frame_processor=None):
         self.subscribe_commsync(self.receive_frames,srcs=src,dsts="any",tags=tag,limit_queue=100)

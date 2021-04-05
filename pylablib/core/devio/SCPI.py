@@ -18,7 +18,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
         - implements automatic re-sending and reconnecting on communication failures (fail-safe mode)
     
     Args:
-        conn: Connection parameters (depend on the backend). Can also be an opened :class:`.backend.IDeviceCommBackend` class for a custom backend.
+        conn: Connection parameters (depend on the backend). Can also be an opened :class:`.comm_backend.IDeviceCommBackend` class for a custom backend.
         term_write (str): Line terminator for writing operations.
         wait_callback (callable): A function to be called periodically (every 300ms by default) while waiting for operations to complete.
         backend (str): Connection backend (e.g., ``'serial'`` or ``'visa'``).
@@ -35,7 +35,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
     _default_retry_times=5 # maximal number of operation attempts
     _default_operation_timeout=3. # timeout for an operator in the standard (non-failsafe) mode
     _default_wait_sync_timeout=600. # timeout for "sync" wait operation (waiting for the device operation to complete); an operation can be long (e.g., a single frequency sweep), thus the long timeout
-    _default_operation_cooldown={"default":0} # operation cooldown (see description of ``setup_cooldown`` method in :class:`IDeviceCommBackend`)
+    _default_operation_cooldown={"default":0} # operation cooldown (see description of ``setup_cooldown`` method in :class:`.comm_backend.IDeviceCommBackend`)
     _default_write_sync=False # default setting for ``wait_sync`` in ``write`` method
     _default_wait_callback_timeout=.3 # callback call period during wait operations (keeps the thread from complete halting)
     _default_failsafe=False # running in the failsafe mode by default

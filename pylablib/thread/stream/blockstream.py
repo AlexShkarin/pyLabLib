@@ -152,19 +152,19 @@ class StreamFormerThread(controller.QTaskThread):
         block_period: size of a row block which causes :meth:`on_new_block` call
 
     Commands:
-        get_data: get the completed aligned data in a dictionary form
-        pop_data: pop the completed aligned data (return the data and remove it from the internal storage)
-        clear_table: clear the table with the completed aligned data
-        clear_all: remove all data (table and all filled channels)
-        configure_channel: configure a channel behavior (enable or disable)
-        get_channel_status: get channel status (number of datapoints in the queue, maximal queue size, etc.)
-        get_source_status: get lengths of announcement queues for all the data sources
+        - ``get_data``: get the completed aligned data in a dictionary form
+        - ``pop_data``: pop the completed aligned data (return the data and remove it from the internal storage)
+        - ``clear_table``: clear the table with the completed aligned data
+        - ``clear_all``: remove all data (table and all filled channels)
+        - ``configure_channel``: configure a channel behavior (enable or disable)
+        - ``get_channel_status``: get channel status (number of datapoints in the queue, maximal queue size, etc.)
+        - ``get_source_status``: get lengths of announcement queues for all the data sources
 
     Methods to overload:
-        :meth:`setup`: set up the thread
-        :meth:`cleanup`: clean up the thread 
-        :meth:`on_new_block`: called every time a new block is completed; by default, send an announcement with the new block's data
-        :meth:`prepare_new_data`: modify a new data chunk (dictionary of columns) before adding it to the storage
+        - :meth:`setup`: set up the thread
+        - :meth:`cleanup`: clean up the thread 
+        - :meth:`on_new_block`: called every time a new block is completed; by default, send an announcement with the new block's data
+        - :meth:`prepare_new_data`: modify a new data chunk (dictionary of columns) before adding it to the storage
     """
     def setup(self):
         """Set up the thread"""

@@ -160,17 +160,17 @@ class QThreadController(QtCore.QObject):
         announcement_pool: :class:`.AnnouncementPool` for this thread (by default, use the default common pool)
 
     Methods to overload:
-        on_start: executed on the thread startup (between synchronization points ``"start"`` and ``"run"``)
-        on_finish: executed on thread cleanup (attempts to execute in any case, including exceptions)
-        run: executed once per thread; thread is stopped afterwards (only if ``kind=="run"``)
-        process_message: function that takes 2 arguments (tag and value) of the message and processes it; returns ``True`` if the message has been processed and ``False`` otherwise
+        - :meth:`on_start`: executed on the thread startup (between synchronization points ``"start"`` and ``"run"``)
+        - :meth:`on_finish`: executed on thread cleanup (attempts to execute in any case, including exceptions)
+        - :meth:`run`: executed once per thread; thread is stopped afterwards (only if ``kind=="run"``)
+        - :meth:`process_message`: function that takes 2 arguments (tag and value) of the message and processes it; returns ``True`` if the message has been processed and ``False`` otherwise
             (in which case it is stored and can be recovered via :meth:`wait_for_message`/:meth:`pop_message`); by default, always return ``False``
-        process_interrupt: function that tales 2 arguments (tag and value) of the interrupt message (message with a tag starting with ``"interrupt."``) and processes it;
+        - :meth:`process_interrupt`: function that tales 2 arguments (tag and value) of the interrupt message (message with a tag starting with ``"interrupt."``) and processes it;
             by default, assumes that any value with tag ``"execute"`` is a function and executes it
     
     Signals:
-        started: emitted on thread start (after :meth:`on_start` is executed)
-        finished: emitted on thread finish (before :meth:`on_finish` is executed)
+        - ``started``: emitted on thread start (after :meth:`on_start` is executed)
+        - ``finished``: emitted on thread finish (before :meth:`on_finish` is executed)
     """
     def __init__(self, name=None, kind="loop", announcement_pool=None):
         QtCore.QObject.__init__(self)
@@ -828,7 +828,7 @@ class QThreadController(QtCore.QObject):
         """
         Stop the thread.
 
-        If called from the thread, stop immediately by raising a :exc:`.qt.thread.threadprop.InterruptExceptionStop` exception. Otherwise, schedule thread stop.
+        If called from the thread, stop immediately by raising a :exc:`.threadprop.InterruptExceptionStop` exception. Otherwise, schedule thread stop.
         If the thread kind is ``"main"``, stop the whole application with the given exit code. Otherwise, stop the thread.
         If ``sync==True`` and the thread is not main or current, wait until it is completely stopped.
         Universal call method.
@@ -977,7 +977,7 @@ class QThreadController(QtCore.QObject):
         If ``pass_exception==True`` and `func` raises and exception, re-raise it in the caller thread (applies only if ``sync==True``).
         If `tag` is supplied, send the call in a message with the given tag and priority; otherwise, use the interrupt call (generally, higher priority method).
         If ``interrupt==True``, method can be called inside any control loop (either main loop, or during waiting); otherwise, only call it in the top loop.
-        If ``error_on_stopped==True`` and the controlled thread is stopped before it executed the call, raise :exc:`.qt.thread.threadprop.NoControllerThreadError`; otherwise, return `default_result`.
+        If ``error_on_stopped==True`` and the controlled thread is stopped before it executed the call, raise :exc:`.threadprop.NoControllerThreadError`; otherwise, return `default_result`.
         If ``same_thread_shortcut==True`` (default), the call is synchronous, and the caller thread is the same as the controlled thread, call the function directly.
         Universal call method.
         """
@@ -1017,9 +1017,9 @@ class QMultiRepeatingThread(QThreadController):
         announcement_pool: :class:`.AnnouncementPool` for this thread (by default, use the default common pool)
 
     Methods to overload:
-        on_start: executed on the thread startup (between synchronization points ``"start"`` and ``"run"``)
-        on_finish: executed on thread cleanup (attempts to execute in any case, including exceptions)
-        check_commands: executed once a scheduling cycle to check for new commands / events and execute them
+        - ``on_start``: executed on the thread startup (between synchronization points ``"start"`` and ``"run"``)
+        - :meth:`on_finish`: executed on thread cleanup (attempts to execute in any case, including exceptions)
+        - :meth:`check_commands`: executed once a scheduling cycle to check for new commands / events and execute them
     """
     _new_jobs_check_period=0.02 # command refresh period if no jobs are scheduled (otherwise, after every job)
     def __init__(self, name=None, announcement_pool=None):
@@ -1245,8 +1245,8 @@ class QTaskThread(QMultiRepeatingThread):
 
     Args:
         name(str): thread name (by default, generate a new unique name)
-        args: args supplied to :math:`setup_task` method
-        kwargs: keyword args supplied to :math:`setup_task` method
+        args: args supplied to :meth:`setup_task` method
+        kwargs: keyword args supplied to :meth:`setup_task` method
         announcement_pool: :class:`.AnnouncementPool` for this thread (by default, use the default common pool)
 
     Attributes:
@@ -1266,9 +1266,9 @@ class QTaskThread(QMultiRepeatingThread):
             (as command methods are usually not called directly from other threads), and it doesn't invoke warning about calling method instead of command from another thread.
 
     Methods to overload:
-        setup_task: executed on the thread startup (between synchronization points ``"start"`` and ``"run"``)
-        finalize_task: executed on thread cleanup (attempts to execute in any case, including exceptions)
-        process_announcement: process a directed announcement (announcement with ``dst`` equal to this thread name); by default, does nothing
+        - :meth:`setup_task`: executed on the thread startup (between synchronization points ``"start"`` and ``"run"``)
+        - :meth:`finalize_task`: executed on thread cleanup (attempts to execute in any case, including exceptions)
+        - :meth:`process_announcement`: process a directed announcement (announcement with ``dst`` equal to this thread name); by default, does nothing
     """
     ## Action performed when another thread explicitly calls a method corresponding to a command (which is usually a typo)
     ## Can be used to overload default behavior in children classes or instances

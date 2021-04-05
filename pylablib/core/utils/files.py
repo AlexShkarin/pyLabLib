@@ -156,7 +156,7 @@ class TempFile(object):
     Upon entry, create the file using supplied mode and return self.
     Upon exit, close and remove the file.
 
-    Can be mostly subsitituted by :class:`tempfile.TemporaryFile`, but generates file locally, and with specified/determined name.
+    Can be mostly subsitituted by :func:`tempfile.TemporaryFile`, but generates file locally, and with specified/determined name.
     Preserved largely for legacy reasons.
     
     Args:

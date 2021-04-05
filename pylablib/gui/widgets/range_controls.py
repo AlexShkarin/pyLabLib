@@ -22,7 +22,7 @@ class RangeCtl(QtWidgets.QWidget):
         parent: parent widget
 
     Signals:
-        value_changed: emitted when the value is changed
+        - ``value_changed``: emitted when the value is changed
     """
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self,parent)

@@ -20,14 +20,14 @@ class StreamFormer(helpers.StreamFormerThread):
     Specific stream former thread which is set up based on the settings file.
 
     Remote calls:
-        configure_daq_channels: turn DAQ channels on or off, or reset their queue
-        configure_cam_channels: turn camera channels on or off, or reset their queue
-        pause: pause signal sending
-        reset: reset the channels and the acquired rows
+        - ``configure_daq_channels``: turn DAQ channels on or off, or reset their queue
+        - ``configure_cam_channels``: turn camera channels on or off, or reset their queue
+        - ``pause``: pause signal sending
+        - ``reset``: reset the channels and the acquired rows
     
-    Signals:
-        point: sent when a new data block is acquired; value is a dictionary of columns
-        reset: sent when the stream former is reset
+    Announcements:
+        - ``point``: sent when a new data block is acquired; value is a dictionary of columns
+        - ``reset``: sent when the stream former is reset
     """
     def get_internal_channel(self, name):
         """Internal channel sources"""

@@ -130,7 +130,7 @@ def integrate(trace):
     """
     Calculate the integral of the trace.
     
-    Alias for :func:`np.cumsum`.
+    Alias for :func:`numpy.cumsum`.
     """
     return np.cumsum(trace)
 def differentiate(trace):

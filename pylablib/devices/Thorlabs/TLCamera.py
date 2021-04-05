@@ -50,7 +50,7 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
     Thorlabs TSI camera.
 
     Args:
-        serial(str): camera serial number; can be either a string obtained using :func:`get_cameras_list` function,
+        serial(str): camera serial number; can be either a string obtained using :func:`list_cameras` function,
             or ``None``, which means connecting to the first available camera (not recommended unless only one camera is connected)
     """
     Error=ThorlabsTLCameraError

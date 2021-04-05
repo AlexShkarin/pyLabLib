@@ -258,7 +258,7 @@ class I2DWrapper(IGenWrapper):
         """
         Build a new object of the type corresponding to the wrapper from the supplied `columns` (a list of columns).
 
-        `column_names` supplies names of the columns (only relevant for :class:`Table2DWrapper`).
+        `column_names` supplies names of the columns (only relevant for :class:`DataFrame2DWrapper`).
         If ``wrapped==True``, return a new wrapper contating the table; otherwise, just return the table.
         """
         raise NotImplementedError("I2DWrapper.from_columns")
@@ -274,7 +274,7 @@ class I2DWrapper(IGenWrapper):
         """
         Build a new object of the type corresponding to the wrapper from the supplied `array` (a list of rows or a 2D numpy array).
 
-        `column_names` supplies names of the columns (only relevant for :class:`Table2DWrapper`).
+        `column_names` supplies names of the columns (only relevant for :class:`DataFrame2DWrapper`).
         If ``wrapped==True``, return a new wrapper contating the table; otherwise, just return the table.
         """
         raise NotImplementedError("I2DWrapper.from_array")

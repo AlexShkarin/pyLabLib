@@ -25,6 +25,14 @@ def get_cameras_number():
     """Get the total number of connected uc480 cameras"""
     return len(list_cameras())
 
+def find_by_serial(serial_number):
+    """Find device ID using its serial number"""
+    serial_number=py3.as_str(serial_number) if isinstance(serial_number,py3.bytestring) else str(serial_number)
+    for c in list_cameras():
+        if c.serial_number==serial_number:
+            return c.dev_id
+    raise ValueError("can't find camera with serial number {}".format(serial_number))
+
 
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["model","manufacturer","serial_number","usb_version","date","dll_version","camera_type"])
 TAcquiredFramesStatus=collections.namedtuple("TAcquiredFramesStatus",["acquired","transfer_missed"])
@@ -36,11 +44,11 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         cam_id(int): camera ID; use 0 to get the first available camera
         roi_binning_mode: determines whether binning in ROI refers to binning or subsampling;
             can be ``"bin"``, ``"subsample"``, or ``"auto"`` (since most cameras only support one, it will pick the one which has non-trivial value, or ``"bin"`` if both are available).
-        dev_id(int): if ``None`` use `cam_id` as a camera id (``dwCameraID`` field of the camera info returned by :func:`get_cameras_list`);
+        dev_id(int): if ``None`` use `cam_id` as a camera id (``dwCameraID`` field of the camera info returned by :func:`list_cameras`);
             otherwise, ignore value of `cam_id` and use `dev_id` as device id (``dwDeviceID`` field of the camera info).
             The first method requires assigning camera IDs beforehand (otherwise IDs might overlap, in which case only one camera can be accessed),
             but the assigned IDs are permanent; the second method always has unique IDs, but they might change if the cameras are disconnected and reconnected.
-            For a more reliable assignment, one can use :func:`find_device_id` function to find device ID based on the camera serial number.
+            For a more reliable assignment, one can use :func:`find_by_serial` function to find device ID based on the camera serial number.
     """
     Error=uc480Error
     TimeoutError=uc480TimeoutError

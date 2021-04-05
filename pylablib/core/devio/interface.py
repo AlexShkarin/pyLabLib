@@ -229,7 +229,7 @@ class IParameterClass:
     Deals with converting device interface representation and the 'internal' representation (e.g., names used in SCPI commands or integer indices).
     Also responsible for validating the user-passed and device-returned parameters.
 
-    Needs to define to methods: :meth:`__call__` for coverting user parameters ('alias') into the device parameters ('value')
+    Needs to define to methods: ``__call__`` for coverting user parameters ('alias') into the device parameters ('value')
     and :meth:`i` for the opposite conversion.
     In addition, it provides :meth:`using_device` context manager to temporarily change the ``device`` attribute,
     which can be used by some parameter classes for device-dependent conversions.
@@ -272,8 +272,8 @@ class ICheckingParameterClass(IParameterClass):
     """
     Parameter class which separately handles checking and coversion.
 
-    Specifies six methods: :meth:`check_value`, :meth:`to_alias` and :meth:`_value_error_str` for handling value-to-alias conversion,
-    and :meth:`check_alias`, :meth:`to_value` and :meth:`_alias_error_str` for handling alias-to-value conversion.
+    Specifies six methods: :meth:`check_value`, :meth:`to_alias` and ``_value_error_str`` for handling value-to-alias conversion,
+    and :meth:`check_alias`, :meth:`to_value` and ``_alias_error_str`` for handling alias-to-value conversion.
     """
     def check_alias(self, alias):  # pylint: disable=unused-argument
         """Check if the alias is valid"""
@@ -371,8 +371,9 @@ class IEnumParameterClass(ICheckingParameterClass):
     Parameter class for a generic enum (i.e., predefined values) parameter.
 
     Defines two methods for handling conversion:
-        :meth:`_get_value_map` which returns a dictionary for converting device values into aliases,
-        and :meth:`_get_alias_map` which returns a dictionary for converting aliases into device values.
+        - ``_get_value_map`` which returns a dictionary for converting device values into aliases,
+        - ``_get_alias_map`` which returns a dictionary for converting aliases into device values.
+
     These methods need to be redefined in subclasses.
 
     Args:
@@ -384,7 +385,7 @@ class IEnumParameterClass(ICheckingParameterClass):
             or ``"lower"`` or ``"upper"`` (any received or returned alias will be normalized into this case)
         value_case: default value parameter case for string values; can be ``None`` (no case normalization),
             or ``"lower"`` or ``"upper"`` (any received or returned device value will be normalized into this case)
-        match_prefix: if ``True``, then the keys in the value map (returned by :meth:`_get_value_map`) assumed to prefixes,
+        match_prefix: if ``True``, then the keys in the value map (returned by ``_get_value_map`` method) assumed to prefixes,
             so in the value-to-alias conversion the supplied value matches the map value if it just starts with it;
             useful for some SCPI devices, where the shorter version of the value can sometimes be returned.
     """
@@ -457,7 +458,7 @@ class EnumParameterClass(IEnumParameterClass):
             or ``"lower"`` or ``"upper"`` (any received or returned alias will be normalized into this case)
         value_case: default value parameter case for string values; can be ``None`` (no case normalization),
             or ``"lower"`` or ``"upper"`` (any received or returned device value will be normalized into this case)
-        match_prefix: if ``True``, then the keys in the value map (returned by :meth:`_get_value_map`) assumed to prefixes,
+        match_prefix: if ``True``, then the keys in the value map (returned by ``_get_value_map`` method) assumed to prefixes,
             so in the value-to-alias conversion the supplied value matches the map value if it just starts with it;
             useful for some SCPI devices, where the shorter version of the value can sometimes be returned.
     """

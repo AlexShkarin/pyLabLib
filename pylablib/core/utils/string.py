@@ -640,13 +640,16 @@ def from_string(value, case_sensitive=True, parenthesis_rules="text", use_classe
     
     Args:
         case_sensitive (bool): applied when compared to ``None``, ``True`` or ``False``.
-        parenthesis_rules (str): determines how to deal with empty entries (e.g., ``[1,,3]``) and complex number representation (``"1+2j"`` vs. ``"(1+2j)"``):
-            - ``'text'``: any empty entries are translated into ``empty_string`` (i.e., ``[,] -> [empty_string, empty_string]``), except for completely empty structures (``[]`` or ``()``);
-                complex numbers are represented without parentheses, so that ``"(1+2j)"`` will be interpreted as a single-element tuple ``(1+2j,)``.
-            - ``'python'``: empty entries in the middle are not allowed; empty entries at the end are ignored (i.e., ``[2,] -> [2]``)
-                (single-element tuple can still be expressed in two ways: ``(e,)`` or ``(e)``);
-                complex numbers are by default represented with parentheses, so that ``"(1+2j)"`` will be interpreted as a complex number,
-                and only ``(1+2j,)``, ``((1+2j))`` or ``((1+2j),)`` as a single-element tuple.
+        parenthesis_rules (str): determines how to deal with empty entries (e.g., ``[1,,3]``)
+            and complex number representation (``"1+2j"`` vs. ``"(1+2j)"``):
+            
+                - ``'text'``: any empty entries are translated into ``empty_string`` (i.e., ``[,] -> [empty_string, empty_string]``),
+                  except for completely empty structures (``[]`` or ``()``);
+                  complex numbers are represented without parentheses, so that ``"(1+2j)"`` will be interpreted as a single-element tuple ``(1+2j,)``.
+                - ``'python'``: empty entries in the middle are not allowed; empty entries at the end are ignored (i.e., ``[2,] -> [2]``)
+                  (single-element tuple can still be expressed in two ways: ``(e,)`` or ``(e)``);
+                  complex numbers are by default represented with parentheses, so that ``"(1+2j)"`` will be interpreted as a complex number,
+                  and only ``(1+2j,)``, ``((1+2j))`` or ``((1+2j),)`` as a single-element tuple.
         use_classes (bool): if ``True``, use additional representation classes for special objects
             (e.g., ``"array([1, 2, 3])"`` will be converted into a numpy array instead of raising an error).
             See :func:`add_conversion_class` for more explanation.

@@ -160,7 +160,7 @@ class ICamera(interface.IDevice):
         """
         Wait for a single frame with the given index for a given amount of time.
         
-        If timeout is reached, :exc:`.TimeoutError` or simply return.
+        If timeout is reached, raise ``TimeoutError`` or simply return.
         Can also return without a next frame acquired (but should still wait for a small amount of time to avoid high CPU load).
         """
         sleep_time=min(self._wait_sleep_period,timeout) if timeout is not None else self._wait_sleep_period
@@ -175,8 +175,8 @@ class ICamera(interface.IDevice):
         ``"now"`` (from the start of the current call), or ``"start"`` (from the acquisition start, i.e., wait until `nframes` frames have been acquired).
         `timeout` can be either a number, ``None`` (infinite timeout), or a tuple ``(timeout, frame_timeout)``,
         in which case the call times out if the total time exceeds ``timeout``, or a single frame wait exceeds ``frame_timeout``.
-        If the call times out, raise :exc:`.TimeoutError`.
-        If ``error_on_stopped==True`` and the acquisition is not running, raise :exc:`.Error`;
+        If the call times out, raise ``TimeoutError``.
+        If ``error_on_stopped==True`` and the acquisition is not running, raise ``Error``;
         otherwise, simply return ``False`` without waiting.
         """
         wait_started=False
@@ -443,7 +443,7 @@ class FrameCounter:
             self.last_acquired_frame=acquired_frames-1
 
     def wait_start(self, acquired_frames):
-        """Set up waiting routine (called in the beginning of :meth:`.wait_for_frame`)"""
+        """Set up waiting routine (called in the beginning of :meth:`ICamera.wait_for_frame`)"""
         if self.buffer_size is None:
             return
         self.update_acquired_frames(acquired_frames)
@@ -452,8 +452,8 @@ class FrameCounter:
         """
         Check if the waiting condition is satisfied based on the counter values:
 
-        If not ``None`, `acquired_frames` specifies the most recent number of acquired frames (the internal counters is automatically updated).
-        `since` and `nframes` have the same meaning as in :meth:`.wait_for_frame`.
+        If not ``None``, `acquired_frames` specifies the most recent number of acquired frames (the internal counters is automatically updated).
+        `since` and `nframes` have the same meaning as in :meth:`ICamera.wait_for_frame`.
         """
         if self.buffer_size is None:
             return True
@@ -468,7 +468,7 @@ class FrameCounter:
             return True
         return False
     def wait_done(self):
-        """Clean up waiting routine (called in the end of :meth:`.wait_for_frame`)"""
+        """Clean up waiting routine (called in the end of :meth:`ICamera.wait_for_frame`)"""
         if self.buffer_size is None:
             return
         self.last_wait_frame=self.last_acquired_frame

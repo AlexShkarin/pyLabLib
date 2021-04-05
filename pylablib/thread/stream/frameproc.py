@@ -16,21 +16,21 @@ class FramePreprocessorThread(controller.QTaskThread):
     Frame preprocessor thread: receives frames and re-emit them after some simple preprocessing (binning in time or space).
 
     Setup args:
-        src: name of the source thread (usually, a camera)
-        tag_in: receiving announcement tag (for the source announcement)
-        tag_out: emitting announcement tag (for the announcement emitted by the processor)
+        - ``src``: name of the source thread (usually, a camera)
+        - ``tag_in``: receiving announcement tag (for the source announcement)
+        - ``tag_out``: emitting announcement tag (for the announcement emitted by the processor)
 
-    Signals:
-        ``<tag_out>``: emitted with pre-processed frames
+    Announcements:
+        - ``<tag_out>``: emitted with pre-processed frames
 
     Variables:
-        ``bin_params``: full binning parameters: tuple ``(spat_bin, spat_bin_mode, time_bin, time_bin_mode)``
-        ``result_type``: resulting frames type (see :meth:`setup_binning` for parameters)
-        ``enabled``: indicates whether binning has been enabled
+        - ``bin_params``: full binning parameters: tuple ``(spat_bin, spat_bin_mode, time_bin, time_bin_mode)``
+        - ``result_type``: resulting frames type (see :meth:`setup_binning` for parameters)
+        - ``enabled``: indicates whether binning has been enabled
 
     Commands:
-        enable_binning: enable or disable the binning
-        setup_binning: setup binning parameters
+        - ``enable_binning``: enable or disable the binning
+        - ``setup_binning``: setup binning parameters
     """
     def setup_task(self, src, tag_in, tag_out=None):
         self.subscribe_commsync(self.process_announcement,srcs=src,dsts="any",tags=tag_in,limit_queue=1,on_full_queue="wait",priority=-1)
@@ -169,25 +169,25 @@ class FrameSlowdownThread(controller.QTaskThread):
     Frame slowdown thread: receives frames and re-emit them with throttling FPS.
 
     Setup args:
-        src: name of the source thread (usually, a camera)
-        tag_in: receiving announcement tag (for the source announcement)
-        tag_out: emitting show announcement tag (for the announcement emitted by the processor)
+        - ``src``: name of the source thread (usually, a camera)
+        - ``tag_in``: receiving announcement tag (for the source announcement)
+        - ``tag_out``: emitting show announcement tag (for the announcement emitted by the processor)
 
-    Signals:
-        ``<tag_out>``: emitted with slowed frames
+    Announcements:
+        - ``<tag_out>``: emitted with slowed frames
 
     Variables:
-        ``buffer/filled``: the number of frames in the buffer
-        ``buffer/used``: the number of frames in the buffer which have already meen shown
-        ``buffer/empty``: indicates whether the buffer has already been completely filled and used
-            (in this case further frames are not shown, and the processor must be stopped)
-        ``enabled``: indicate whether the slowdown is on
-        ``fps/in``: FPS of the incoming stream
-        ``fps/out``: FPS of the outgoing stream
+        - ``buffer/filled``: the number of frames in the buffer
+        - ``buffer/used``: the number of frames in the buffer which have already been shown
+        - ``buffer/empty``: indicates whether the buffer has already been completely filled and used
+          (in this case further frames are not shown, and the processor must be stopped)
+        - ``enabled``: indicate whether the slowdown is on
+        - ``fps/in``: FPS of the incoming stream
+        - ``fps/out``: FPS of the outgoing stream
 
     Commands:
-        enable_slowdown: enable or disable slowdown mode
-        setup_slowdown: setup slowdown parameters
+        - ``enable_slowdown``: enable or disable slowdown mode
+        - ``setup_slowdown``: setup slowdown parameters
     """
     def setup_task(self, src, tag_in, tag_out=None):
         self.subscribe_commsync(self.process_announcement,srcs=src,dsts="any",tags=tag_in,limit_queue=1)

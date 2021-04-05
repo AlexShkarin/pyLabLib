@@ -127,15 +127,15 @@ class TableAccumulatorThread(controller.QTaskThread):
     Table accumulator thread which provides async access to :class:`TableAccumulator` instance.
 
     Setup args:
-        channels ([str]): channel names
-        src (str): name of a source thread which emits new data signals (typically, a name of :class:`StreamFormerThread` thread)
-        tag (str): tag of the source announcement
-        reset_tag (str): if not ``None``, defines the name of the reset announcement tag; if this announcement is received from the source, the table is automatically reset
-        memsize(int): maximal number of rows to store
+        - ``channels ([str])``: channel names
+        - ``src (str)``: name of a source thread which emits new data signals (typically, a name of :class:`StreamFormerThread` thread)
+        - ``tag (str)``: tag of the source announcement
+        - ``reset_tag (str)``: if not ``None``, defines the name of the reset announcement tag; if this announcement is received from the source, the table is automatically reset
+        - ``memsize (int)``: maximal number of rows to store
 
     Commands:
-        get_data: get some of the accumulated data
-        reset: clear stored data
+        - ``get_data``: get some of the accumulated data
+        - ``reset``: clear stored data
     """
     def setup_task(self, channels, src, tag, reset_tag=None, memsize=10**6):
         self.channels=channels

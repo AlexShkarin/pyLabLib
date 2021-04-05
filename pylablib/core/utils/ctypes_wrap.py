@@ -350,23 +350,24 @@ class CStructWrapper:
     
     Class variable ``_struct`` should be set to the ctypes structure which is being wrapped.
     Several other class variables determine the behavior when generating and parsing:
-        _prep: dictionary ``{name: prep}`` of methods to prepare individual structure parameters
-            can be either a value or a function (which takes as ordered arguments all structure fields as ctypes values)
-        _conv: dictionary ``{name: conv}`` of methods to convert individual structure parameters when parsing a C structure
-            can be either a function (which takes ctypes value of the field as a single argument) or a value;
-            also can be used as a source of default values on wrapper creation
-        _tup: dictionary ``{name: conv}`` of functions to convert structure values when generating a tuple
-        _tup_exc: list of values to exclude from the resulting tuple
-        _tup_inc: list of values to include in the resulting tuple (if ``None``, include all)
-        _tup_add: list of values to add to the resulting tuple (these values must then exist either as attributes, or as entries in ``_tup`` dictionary)
-        _tup_order: order of fields in the returned tuple (by default, same as structure order)
+    
+        - ``_prep``: dictionary ``{name: prep}`` of methods to prepare individual structure parameters;
+          can be either a value or a function (which takes as ordered arguments all structure fields as ctypes values)
+        - ``_conv``: dictionary ``{name: conv}`` of methods to convert individual structure parameters when parsing a C structure;
+          can be either a function (which takes ctypes value of the field as a single argument) or a value;
+          also can be used as a source of default values on wrapper creation
+        - ``_tup``: dictionary ``{name: conv}`` of functions to convert structure values when generating a tuple
+        - ``_tup_exc``: list of values to exclude from the resulting tuple
+        - ``_tup_inc``: list of values to include in the resulting tuple (if ``None``, include all)
+        - ``_tup_add``: list of values to add to the resulting tuple (these values must then exist either as attributes, or as entries in ``_tup`` dictionary)
+        - ``_tup_order``: order of fields in the returned tuple (by default, same as structure order)
     
     Also specifies two overloaded methods for a more flexible preparation/converstion of structures.
     :meth:`.conv` takes no arguments and is called in the end of wrapper creation to finish setting up attributes.
     :meth:`.prep` takes a single argument (C structure) and is called when converting into a C structure to finish setting up the fields (e.g., size field).
 
     Args:
-        strcut: C structure to wrap (if ``None``, create a new 'blank' structure).
+        struct: C structure to wrap (if ``None``, create a new 'blank' structure).
     """
     class _struct(ctypes.Structure):
         _fields_=[]

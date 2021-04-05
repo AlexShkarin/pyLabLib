@@ -748,17 +748,6 @@ class Dictionary:
         return self
     
     
-    class DictionaryDiff(collections.namedtuple("DictionaryDiff",["same","changed_from","changed_to","removed","added"])): # making Sphinx autodoc generate correct docstring
-        """
-        Describes a difference between the two dictionaries.
-        
-        Attributes:
-            same (:class:`Dictionary`): Contains the leafs which is the same.
-            changed_from (:class:`Dictionary`): Contains the leafs from the first dictionary which have different values in the second dictionary.
-            changed_to (:class:`Dictionary`): Contains the leafs from the second dictionary which have different values in the first dictionary.
-            removed (:class:`Dictionary`): Contains the leafs from the first dictionary which are absent in the second dictionary.
-            added (:class:`Dictionary`): Contains the leafs from the second dictionary which are absent in the first dictionary.
-        """
     def diff(self, other):
         """
         Perform an element-wise comparison to another Dictionary.
@@ -766,7 +755,7 @@ class Dictionary:
         If the other Dictionary has a different case sensitivity, raise :exc:`ValueError`.
         
         Returns:
-            :class:`Dictionary.DictionaryDiff`
+            :class:`DictionaryDiff`
         """
         if self._case_normalization!=other._case_normalization:
             raise ValueError("can't compare dictionaries with different case normalization")
@@ -789,14 +778,14 @@ class Dictionary:
             else:
                 changed_from[p]=vs
                 changed_to[p]=vo
-        return self.DictionaryDiff(same,changed_from,changed_to,removed,added)
+        return DictionaryDiff(same,changed_from,changed_to,removed,added)
     @staticmethod
     def diff_flatdict(first, second):
         """
         Find the difference between flat :class:`dict` objects.
         
         Returns:
-            :class:`Dictionary.DictionaryDiff`
+            :class:`DictionaryDiff`
         """
         first_paths=set(first)
         second_paths=set(second)
@@ -813,15 +802,7 @@ class Dictionary:
             else:
                 changed_from[p]=vf
                 changed_to[p]=vs
-        return Dictionary.DictionaryDiff(same,changed_from,changed_to,removed,added)
-    class DictionaryIntersection(collections.namedtuple("DictionaryIntersection",["common","individual"])): # making Sphinx autodoc generate correct docstring
-        """
-        Describes the result of finding intersection of multiple dictionaries.
-        
-        Attributes:
-            common (:class:`Dictionary`): Contains the intersection of all dictionaries.
-            individual ([:class:`Dictionary`]): Contains list of difference from intersection for all dictionaries.
-        """
+        return DictionaryDiff(same,changed_from,changed_to,removed,added)
     @staticmethod
     def find_intersection(dicts, use_flatten=False):
         """
@@ -832,18 +813,18 @@ class Dictionary:
             use_flatten (bool): If ``True`` flatten all dictionaries before comparison (works faster for a large number of dictionaries).
         
         Returns:
-            :class:`Dictionary.DictionaryIntersection`
+            :class:`DictionaryIntersection`
         """
         if len(dicts)==0:
-            return Dictionary.DictionaryIntersection(Dictionary(),[])
+            return DictionaryIntersection(Dictionary(),[])
         if len(dicts)==1:
-            return Dictionary.DictionaryIntersection(dicts[0],[Dictionary()])
+            return DictionaryIntersection(dicts[0],[Dictionary()])
         if not use_flatten:
             common=dicts[0]
             for d in dicts[1:]:
                 common=common.diff(d).same
             individual=[d.diff(common).removed for d in dicts]
-            return Dictionary.DictionaryIntersection(common,individual)
+            return DictionaryIntersection(common,individual)
         else:
             d0=dicts[0]
             for d in dicts[1:]:
@@ -856,7 +837,7 @@ class Dictionary:
             individual=[Dictionary.diff_flatdict(d,common).removed for d in fdicts]
             common=d0._make_similar_dict(common)
             individual=[d0._make_similar_dict(i) for i in individual]
-            return Dictionary.DictionaryIntersection(common,individual)
+            return DictionaryIntersection(common,individual)
 
     def _add_dict(self, d1, d2):
         if self._is_branch(d1):
@@ -938,6 +919,26 @@ class Dictionary:
             return self._make_similar_dict({},copy=False)
         return self._make_similar_dict(dfs_tree,copy=False)
 
+class DictionaryDiff(collections.namedtuple("DictionaryDiff",["same","changed_from","changed_to","removed","added"])): # making Sphinx autodoc generate correct docstring
+    """
+    Describes a difference between the two dictionaries.
+    
+    Attributes:
+        same (:class:`Dictionary`): Contains the leafs which is the same.
+        changed_from (:class:`Dictionary`): Contains the leafs from the first dictionary which have different values in the second dictionary.
+        changed_to (:class:`Dictionary`): Contains the leafs from the second dictionary which have different values in the first dictionary.
+        removed (:class:`Dictionary`): Contains the leafs from the first dictionary which are absent in the second dictionary.
+        added (:class:`Dictionary`): Contains the leafs from the second dictionary which are absent in the first dictionary.
+    """
+
+class DictionaryIntersection(collections.namedtuple("DictionaryIntersection",["common","individual"])): # making Sphinx autodoc generate correct docstring
+    """
+    Describes the result of finding intersection of multiple dictionaries.
+    
+    Attributes:
+        common (:class:`Dictionary`): Contains the intersection of all dictionaries.
+        individual ([:class:`Dictionary`]): Contains list of difference from intersection for all dictionaries.
+    """
 
 ### Conversion to and from a tuple ###
 ### Used in .strdump module (see that module for more info) ###

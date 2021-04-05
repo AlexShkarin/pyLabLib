@@ -79,7 +79,7 @@ class BoxManager:
     Takes care of creating and cleaning up boxes (containers) in a layout.
 
     Args:
-        frame_widget: base widget (class :cls:`.QWidget` or :cls:`.QFrame` with a :cls:`QBoxLayout` layout) which is the parent widget of the new boxes
+        frame_widget: base widget (class :class:`.QWidget` or :class:`.QFrame` with a :class:`QBoxLayout` layout) which is the parent widget of the new boxes
         layout: layout into which the boxes are added; by default, `frame_widget` layout
         index_offset: index offset for appending to the new box (by default, put the new boxes to the end; ``index_offset=1`` means that they are added into the next to the last palce)
     """
@@ -110,11 +110,11 @@ class BoxManager:
         return self.boxes[name]
     @controller.call_in_gui_thread
     def add_empty_box(self, name, caption, index=None):
-        """Add an empty box (:cls:`IBox`); called synchronously in the GUI thread."""
+        """Add an empty box (:class:`IBox`); called synchronously in the GUI thread."""
         return self._add_class_box(IBox,name,caption,index=index)
     @controller.call_in_gui_thread
     def add_param_table_box(self, name, caption, index=None, **kwargs):
-        """Add an parameters table box (:cls:`ParamTableBox`); called synchronously in the GUI thread"""
+        """Add an parameters table box (:class:`ParamTableBox`); called synchronously in the GUI thread"""
         return self._add_class_box(ParamTableBox,name,caption,index=index,**kwargs)
     
     def __getitem__(self, name):
@@ -159,7 +159,7 @@ class ITab:
     Generic tab controller
 
     Args:
-        frame: frame widget (class :cls:`.QFrame`)
+        frame: frame widget (class :class:`.QFrame`)
         name: tab name
     """
     def __init__(self, frame, name):
@@ -185,7 +185,7 @@ class BoxTab(ITab):
     Tab controller which contains box manager inside.
 
     Args:
-        frame: frame widget (class :cls:`.QFrame`)
+        frame: frame widget (class :class:`.QFrame`)
         name: tab name
     """
     def __init__(self, frame, name):
@@ -209,7 +209,7 @@ class IAutoupdateTab(ITab):
     Can be set up to be updated periodically in the GUI thread.
 
     Args:
-        frame: frame widget (class :cls:`.QFrame`)
+        frame: frame widget (class :class:`.QFrame`)
         name: tab name
         update_func: if not ``None``, specifies external update function
     """
@@ -252,7 +252,7 @@ class ImageTab(IAutoupdateTab):
     """
     Image plotter tab.
 
-    The tab which contains :cls:`.ImageView` and :cls:`.ImageViewController` widgets to show images.
+    The tab which contains :class:`.ImageView` and :class:`.ImageViewController` widgets to show images.
     The image can be changed in a thread-safe manner, and updated automatically or explicitly.
     """
     def __init__(self, frame, name):
@@ -298,7 +298,7 @@ class LinePlotTab(IAutoupdateTab):
     """
     Line plotter tab.
 
-    The tab which contains a :cls:`.LinePlotter` widget to show line plots.
+    The tab which contains a :class:`.LinePlotter` widget to show line plots.
     The plot traces can be changed in a thread-safe manner, and updated automaitcally or explicitly.
     """
     def __init__(self, frame, name):
@@ -330,7 +330,7 @@ class TabManager:
     Takes care of creating and cleaning up tabs.
 
     Args:
-        tab_widget: base tab widget (class :cls:`.QTabWidget`) into which the tabs are added.
+        tab_widget: base tab widget (class :class:`.QTabWidget`) into which the tabs are added.
     """
     def __init__(self, tab_widget):
         self.tab_widget=tab_widget
@@ -352,7 +352,7 @@ class TabManager:
     @controller.call_in_gui_thread
     def add_empty_tab(self, name, caption, update_func=None, index=None):
         """
-        Add an empty tab (:cls:`ITab` or :cls:`IAutoupdateTab`); called synchronously in the GUI thread
+        Add an empty tab (:class:`ITab` or :class:`IAutoupdateTab`); called synchronously in the GUI thread
         
         If `update_func` is not ``None``, it can specify a function for tab update and autoupdate, which will be called in the GUI thread
         (either on explicit request, or periodically).
@@ -363,15 +363,15 @@ class TabManager:
             return self._add_class_tab_frame(IAutoupdateTab,name,caption,update_func,index=index)
     @controller.call_in_gui_thread
     def add_image_tab(self, name, caption, index=None):
-        """Add an image tab (:cls:`ImageTab`); called synchronously in the GUI thread"""
+        """Add an image tab (:class:`ImageTab`); called synchronously in the GUI thread"""
         return self._add_class_tab_frame(ImageTab,name,caption,index=index)
     @controller.call_in_gui_thread
     def add_line_plot_tab(self, name, caption, index=None):
-        """Add an line plot tab (:cls:`LinePlotTab`); called synchronously in the GUI thread"""
+        """Add an line plot tab (:class:`LinePlotTab`); called synchronously in the GUI thread"""
         return self._add_class_tab_frame(LinePlotTab,name,caption,index=index)
     @controller.call_in_gui_thread
     def add_box_tab(self, name, caption, index=None):
-        """Add an box tab (:cls:`BoxTab`); called synchronously in the GUI thread"""
+        """Add an box tab (:class:`BoxTab`); called synchronously in the GUI thread"""
         return self._add_class_tab_frame(BoxTab,name,caption,index=index)
 
     def __getitem__(self, name):

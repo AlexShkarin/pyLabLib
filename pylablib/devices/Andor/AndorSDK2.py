@@ -78,7 +78,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
 
     Due to the library features, the camera needs to set up all of the parameters to some default values upon connection.
     Most of these parameters are chosen as reasonable defaults: full ROI, minimal exposure time, closed shutter,
-        internal trigger,fastest recommended verticals shift speed, no EMCCD gain.
+    internal trigger, fastest recommended verticals shift speed, no EMCCD gain.
     However, some should be supplied during the connection: temperature setpoint (where appropriate), fan mode, and amplifier mode;
     while there is still a possibility to have default values of these paramters, they might not be appropriate in some settings, and frequently need to be changed.
 

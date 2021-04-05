@@ -12,8 +12,8 @@ class DeviceThread(controller.QTaskThread):
 
     Args:
         name: thread name
-        rgs: args supplied to :math:`setup_task` method
-        kwargs: keyword args supplied to :math:`setup_task` method
+        rgs: args supplied to :meth:`setup_task` method
+        kwargs: keyword args supplied to :meth:`setup_task` method
         announcement_pool: :class:`.AnnouncementPool` for this thread (by default, use the default common pool)
 
     Attributes:
@@ -29,22 +29,22 @@ class DeviceThread(controller.QTaskThread):
             by default, read all variables, but if it takes too long, some can be omitted
 
     Methods to overload:
-        setup_task: executed on the thread startup (between synchronization points ``"start"`` and ``"run"``)
-        finalize_task: executed on thread cleanup (attempts to execute in any case, including exceptions); by default, close the device connection if it is opened
-        connect_device: create the device class and assign it to ``.device`` attribute; if connection failed, can leave the attribute ``None``
-        open_device: re-open currently closed device (by default, call ``.open`` method of the device)
-        close_device: close currently opened device (by default, call ``.close`` method of the device)
+        - :meth:`setup_task`: executed on the thread startup (between synchronization points ``"start"`` and ``"run"``)
+        - :meth:`finalize_task`: executed on thread cleanup (attempts to execute in any case, including exceptions); by default, close the device connection if it is opened
+        - :meth:`connect_device`: create the device class and assign it to ``.device`` attribute; if connection failed, can leave the attribute ``None``
+        - :meth:`open_device`: re-open currently closed device (by default, call ``.open`` method of the device)
+        - :meth:`close_device`: close currently opened device (by default, call ``.close`` method of the device)
 
     Methods to use:
-        setup_full_info_job: setup recurring job to update full info variables; reduces the lag when getting them from other threads
-        rpyc_devclass: get device class on local or remote PC; can be used to transparently implement remote devices
-        rpyc_obtain: transfer values returned by the remote device to the local Python instance
+        - :meth:`setup_full_info_job`: setup recurring job to update full info variables; reduces the lag when getting them from other threads
+        - :meth:`rpyc_devclass`: get device class on local or remote PC; can be used to transparently implement remote devices
+        - :meth:`rpyc_obtain`: transfer values returned by the remote device to the local Python instance
         
     Commands:
-        open: open the device, if not already opened
-        close: close the device, if opened
-        get_settings: get device settings
-        get_full_info: get full info of the device
+        - ``open``: open the device, if not already opened
+        - ``close``: close the device, if opened
+        - ``get_settings``: get device settings
+        - ``get_full_info``: get full info of the device
     """
     def __init__(self, name=None, args=None, kwargs=None, announcement_pool=None):
         controller.QTaskThread.__init__(self,name=name,announcement_pool=announcement_pool,args=args,kwargs=kwargs)

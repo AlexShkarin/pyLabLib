@@ -123,7 +123,7 @@ Default dumper for converting  into standard Python classes and pickling.
 
 Converts :class:`numpy.ndarray` and :class:`.Dictionary` objects
 (these conversion routines are defined when corresponding modules are imported).
-The converted values include non-printable characters (conversion uses :func:`numpy.ma.loads` and :func:`numpy.ma.dumps`),
+The converted values include non-printable characters (conversion uses :func:`numpy.load` and :meth:`numpy.ndarray.dump`),
 so they can't be saved into text files. However, they're suited for pickling.
 """
 
