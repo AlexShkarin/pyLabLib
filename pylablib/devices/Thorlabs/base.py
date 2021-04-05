@@ -1,5 +1,4 @@
 from ...core.devio import SCPI, interface
-from ...core.utils import units
 
 import collections
 

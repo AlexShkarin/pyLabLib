@@ -646,6 +646,7 @@ class Dictionary:
             for p,v in self.iternodes(to_visit="leafs",include_path=True):
                 d["/".join(p)]=v
             return d
+    asdict=as_dict  # alias to agree with the standard conventions
     def as_json(self, style="nested"):
         """
         Convert into a JSON string.

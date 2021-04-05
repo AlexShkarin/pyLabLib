@@ -1,14 +1,11 @@
-from . import dcamprop_defs, dcamapi4_defs
-from .dcamapi4_defs import DCAM_GUID, DCAMAPI_INIT, DCAMDEV_OPEN, DCAMDEV_CAPABILITY
-from .dcamapi4_defs import DCAMDEV_STRING, DCAMDATA_HDR, DCAMDATA_REGION, DCAMDATA_REGIONRECT, DCAMDATA_LUT, DCAMDATA_LINEARLUT
-from .dcamapi4_defs import DCAMPROP_ATTR, DCAMPROP_VALUETEXT, DCAMBUF_ATTACH
-from .dcamapi4_defs import DCAM_TIMESTAMP, CDCAM_TIMESTAMP
+from . import dcamprop_defs, dcamapi4_defs  # pylint: disable=unused-import
+from .dcamapi4_defs import DCAMAPI_INIT, DCAMDEV_OPEN, DCAMDEV_CAPABILITY
+from .dcamapi4_defs import DCAMDEV_STRING, DCAMDATA_HDR
+from .dcamapi4_defs import DCAMPROP_ATTR, DCAMPROP_VALUETEXT
+from .dcamapi4_defs import CDCAM_TIMESTAMP
 from .dcamapi4_defs import DCAMBUF_FRAME, DCAMWAIT_OPEN, DCAMWAIT_START, DCAMCAP_TRANSFERINFO
-from .dcamapi4_defs import DCAM_METADATAHDR, DCAM_METADATABLOCKHDR, DCAM_USERDATATEXT,DCAM_USERDATABIN
-from .dcamapi4_defs import DCAM_TIMESTAMPBLOCK, DCAM_FRAMESTAMPBLOCK, DCAM_METADATATEXTBLOCK, DCAM_METADATABINBLOCK,DCAM_METADATABLOCK
 from .dcamapi4_defs import DCAMERR, drDCAMERR, define_functions
-from .dcamapi4_defs import DCAM_PIXELTYPE, DCAM_ATTACHKIND, DCAMCAP_STATUS, DCAMWAIT_EVENT, DCAMCAP_START
-from .dcamapi4_defs import DCAM_IDSTR, DCAMWAIT_TIMEOUT, DCAMAPI_INITOPTION, DCAMBUF_METADATAKIND, DCAMDEV_CAPDOMAIN, DCAMDEV_CAPFLAG
+from .dcamapi4_defs import DCAMCAP_STATUS, DCAMWAIT_EVENT, DCAM_IDSTR  # pylint: disable=unused-import
 
 from ...core.utils import ctypes_wrap
 from ..utils import load_lib

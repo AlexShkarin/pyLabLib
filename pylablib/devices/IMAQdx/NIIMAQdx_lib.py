@@ -1,12 +1,8 @@
 from . import NIIMAQdx_defs
-from .NIIMAQdx_defs import Attributes, drIMAQdxError, IMAQdxError as IMAQdxErrorCode
-from .NIIMAQdx_defs import IMAQdxBusType, drIMAQdxBusType, IMAQdxUSBConnectionSpeed, IMAQdxCameraControlMode, IMAQdxBufferNumberMode, IMAQdxPnpEvent
-from .NIIMAQdx_defs import IMAQdxBayerPattern, IMAQdxBayerAlgorithm
-from .NIIMAQdx_defs import IMAQdxOutputImageType, IMAQdxPixelSignedness, IMAQdxDestinationMode, IMAQdxStreamChannelMode
-from .NIIMAQdx_defs import IMAQdxAttributeType, IMAQdxValueType, IMAQdxAttributeVisibility
-from .NIIMAQdx_defs import IMAQdxInterfaceFileFlags, IMAQdxOverwriteMode, IMAQdxIncompleteBufferMode, IMAQdxLostPacketMode
+from .NIIMAQdx_defs import drIMAQdxError, IMAQdxError as IMAQdxErrorCode
+from .NIIMAQdx_defs import IMAQdxBusType, IMAQdxCameraControlMode, IMAQdxBufferNumberMode  # pylint: disable=unused-import
+from .NIIMAQdx_defs import IMAQdxAttributeType, IMAQdxAttributeVisibility  # pylint: disable=unused-import
 from .NIIMAQdx_defs import IMAQdxCameraInformation, CIMAQdxCameraInformation
-from .NIIMAQdx_defs import IMAQdxCameraFile, CIMAQdxCameraFile
 from .NIIMAQdx_defs import IMAQdxAttributeInformation, CIMAQdxAttributeInformation
 from .NIIMAQdx_defs import IMAQdxEnumItem
 from .NIIMAQdx_defs import IMAQdxVideoMode

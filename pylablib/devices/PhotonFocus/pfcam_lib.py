@@ -1,4 +1,4 @@
-from . import pfcam_defs
+from . import pfcam_defs  # pylint: disable=unused-import
 from .pfcam_defs import define_functions
 
 from ...core.utils import ctypes_wrap, py3

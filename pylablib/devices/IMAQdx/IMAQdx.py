@@ -1,5 +1,5 @@
 from . import NIIMAQdx_lib
-from .NIIMAQdx_lib import IMAQdxAttributeType, IMAQdxValueType, IMAQdxAttributeVisibility, IMAQdxCameraControlMode, IMAQdxBufferNumberMode
+from .NIIMAQdx_lib import IMAQdxAttributeType, IMAQdxAttributeVisibility, IMAQdxCameraControlMode, IMAQdxBufferNumberMode
 from .NIIMAQdx_lib import lib, IMAQdxError, IMAQdxLibError
 
 from ...core.utils import dictionary, py3
@@ -8,9 +8,6 @@ from ..interface import camera
 
 import numpy as np
 import collections
-import contextlib
-import ctypes
-import warnings
 import time
 
 
@@ -375,14 +372,13 @@ class IMAQdxCamera(camera.IROICamera):
         last_buffer=self.v["StatusInformation/LastBufferNumber"]
         if last_buffer>=2**31:
             last_buffer=-1
-        newest_buffer=-1
+        # newest_buffer=-1
         # try:
         #     newest_buffer=lib.IMAQdxGetImageData(self.sid,None,0,IMAQdxBufferNumberMode.IMAQdxBufferNumberModeLast,0)
         # except IMAQdxLibError as e:
         #     if e.code!=NIIMAQdx_lib.IMAQdxErrorCode.IMAQdxErrorCameraNotRunning:
         #         raise
-        print(last_buffer,newest_buffer)
-        return last_buffer
+        return last_buffer+1
 
     def _read_data_raw(self, size_bytes, dtype="<u1", mode=IMAQdxBufferNumberMode.IMAQdxBufferNumberModeBufferNumber, buffer_num=0):
         """Return raw bytes string from the given buffer number"""

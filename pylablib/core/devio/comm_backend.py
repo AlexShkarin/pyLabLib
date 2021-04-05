@@ -962,7 +962,7 @@ class NetworkDeviceBackend(IDeviceCommBackend):
         return self.socket.get_timeout()
     
     
-    def readline(self, remove_term=True, timeout=None, skip_empty=True, error_on_timeout=True):
+    def readline(self, remove_term=True, timeout=None, skip_empty=True):
         """
         Read a single line from the device.
         
@@ -970,22 +970,17 @@ class NetworkDeviceBackend(IDeviceCommBackend):
             remove_term (bool): If ``True``, remove terminal characters from the result.
             timeout: Operation timeout. If ``None``, use the default device timeout.
             skip_empty (bool): If ``True``, ignore empty lines (works only for ``remove_term==True``).
-            error_on_timeout (bool): If ``False``, return an incomplete line instead of raising the error on timeout.
         """
         while True:
-            try:
-                with self.using_timeout(timeout):
-                    result=self.socket.recv_delimiter(self.term_read,strict=True)
-            except net.SocketTimeout:
-                if error_on_timeout:
-                    raise
+            with self.using_timeout(timeout):
+                result=self.socket.recv_delimiter(self.term_read,strict=True)
             self.cooldown("read")
             if remove_term and self.term_read:
                 result=remove_longest_term(result,self.term_read)
             if not (skip_empty and remove_term and (not result)):
                 break
         return self._to_datatype(result)
-    def read(self, size=None, error_on_timeout=True):
+    def read(self, size=None):
         """
         Read data from the device.
         
@@ -994,14 +989,10 @@ class NetworkDeviceBackend(IDeviceCommBackend):
         if size is None:
             return self.socket.recv_all()
         else:
-            try:
-                data=self.socket.recv_fixedlen(size)
-            except net.SocketTimeout:
-                if error_on_timeout:
-                    raise
+            data=self.socket.recv_fixedlen(size)
         self.cooldown("read")
         return self._to_datatype(data)
-    def read_multichar_term(self, term, remove_term=True, timeout=None, error_on_timeout=True):
+    def read_multichar_term(self, term, remove_term=True, timeout=None):
         """
         Read a single line with multiple possible terminators.
         
@@ -1009,11 +1000,11 @@ class NetworkDeviceBackend(IDeviceCommBackend):
             term: Either a string (single multi-char terminator) or a list of strings (multiple terminators).
             remove_term (bool): If ``True``, remove terminal characters from the result.
             timeout: Operation timeout. If ``None``, use the default device timeout.
-            error_on_timeout (bool): If ``False``, return an incomplete line instead of raising the error on timeout.
         """
         if isinstance(term,py3.anystring):
             term=[term]
-        result=self.socket.recv_delimiter(term,strict=True)
+        with self.socket.using_timeout(timeout):
+            result=self.socket.recv_delimiter(term,strict=True)
         self.cooldown("read")
         if remove_term and term:
             result=remove_longest_term(result,term)
@@ -1123,8 +1114,9 @@ try:
         def get_timeout(self):
             """Get operations timeout (in seconds)"""
             return self.timeout
-        def _timeout(self):
-            return None if self.timeout is None else int(self.timeout*1000)
+        def _timeout(self, timeout=None):
+            timeout=self.timeout if timeout is None else timeout
+            return None if timeout is None else int(timeout*1000)
         
         
         def _read_terms(self, terms=(), read_block_size=65536, timeout=None, error_on_timeout=True):
@@ -1132,7 +1124,7 @@ try:
             singlechar_terms=all(len(t)==1 for t in terms)
             terms=[py3.as_builtin_bytes(t) for t in terms]
             while True:
-                c=self.instr.read(self.ep_read,1 if terms else read_block_size,timeout=self._timeout()).tobytes()
+                c=self.instr.read(self.ep_read,1 if terms else read_block_size,timeout=self._timeout(timeout)).tobytes()
                 result=result+c
                 if c==b"":
                     if error_on_timeout and terms:

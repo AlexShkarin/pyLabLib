@@ -1,6 +1,6 @@
 from ...core.utils import ctypes_wrap
 from .SCU3DControl_defs import Error, drError
-from .SCU3DControl_defs import EAlignment, ECompatibility, EConfiguration, EPacketType, EReport, ESensorType, EStatusCode
+from .SCU3DControl_defs import EConfiguration  # pylint: disable=unused-import
 from .SCU3DControl_defs import define_functions
 from ..utils import load_lib
 

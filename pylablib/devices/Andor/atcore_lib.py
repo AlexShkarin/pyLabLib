@@ -1,7 +1,7 @@
 from . import atcore_defs
 from .atcore_defs import AT_ERR, drAT_ERR
 from .atcore_defs import define_functions
-from .atcore_features import feature_types
+from .atcore_features import feature_types  # pylint: disable=unused-import
 from .base import AndorError
 
 from ...core.utils import ctypes_wrap

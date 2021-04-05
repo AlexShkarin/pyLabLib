@@ -1,15 +1,13 @@
 from . import uc480_defs
-from .uc480_defs import ERROR, drERROR
+from .uc480_defs import ERROR, drERROR  # pylint: disable=unused-import
 from .uc480_defs import UC480_CAMERA_INFO
 from .uc480_defs import define_functions
 
-from ...core.utils import ctypes_wrap, py3
+from ...core.utils import ctypes_wrap
 from ..utils import load_lib
 
 import ctypes
-import struct
 import platform
-import functools
 
 
 class uc480Error(RuntimeError):

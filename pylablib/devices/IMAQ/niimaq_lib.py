@@ -1,15 +1,11 @@
 from . import niimaq_defs
-from .niimaq_defs import IMG_LUT, IMG_MODE, IMG_FILTER, IMG_FIELD, IMG_SCALE, IMG_TRIGMODE, IMG_ACQUIRE
-from .niimaq_defs import IMG_LUMA, IMG_COMB, IMG_CHROMA_PROCESS, IMG_CHROMA_BANDWIDTH, IMG_RGB, IMG_VIDEO
-from .niimaq_defs import IMG_EXAMINE_BUFF, IMG_BUFF, IMG_CMD, IMG_TRIG_ACTION, IMG_MAP, IMG_FRAMETIME, IMG_GAIN, IMG_BANDWIDTH, IMG_WHITEREF
-from .niimaq_defs import IMG_TRIG_POL, IMG_EXT_TRIG, IMG_INT_SIG, IMG_TYPE, IMG_COLOR_REP, PULSE_TIMEBASE, PULSE_MODE, PULSE_POL, IMG_POCL, IMG_TRIG_DRIVE
-from .niimaq_defs import IMG_BUFFER_LOCATION, IMG_BAYER_PATTERN, IMG_BAYER_ALGORITHM
-from .niimaq_defs import IMG_SIGNAL_STATE, IMG_ROI_FIT_MODE, IMG_SIGNAL_TYPE, IMG_OVERWRITE_MODE, IMG_SENSOR_PARTIAL_SCAN, IMG_SENSOR_BINNING
-from .niimaq_defs import IMG_LED_STATE, IMG_TIMEBASE, IMG_LIGHTING_MODE, IMG_LIGHTING_EXTERNAL_STROBE_MODE
-from .niimaq_defs import IMG_ERR_CODE, drIMG_ERR_CODE, IMG_ATTR, dIMG_ATTR
-from .niimaq_defs import INTERFACE_ID, SESSION_ID, PULSE_ID, BUFLIST_ID, IMG_ERR
+from .niimaq_defs import IMG_BUFF, IMG_CMD, IMG_TRIG_ACTION  # pylint: disable=unused-import
+from .niimaq_defs import IMG_TRIG_POL, IMG_INT_SIG, IMG_TRIG_DRIVE  # pylint: disable=unused-import
+from .niimaq_defs import IMG_SIGNAL_STATE, IMG_SIGNAL_TYPE  # pylint: disable=unused-import
+from .niimaq_defs import IMG_ERR_CODE, drIMG_ERR_CODE, IMG_ATTR, dIMG_ATTR  # pylint: disable=unused-import
+from .niimaq_defs import SESSION_ID, IMG_ERR
 from .niimaq_defs import define_functions
-from .niimaq_attrtypes import IMG_ATTR_DOUBLE, IMG_ATTR_UINT64, IMG_ATTR_NA
+from .niimaq_attrtypes import IMG_ATTR_DOUBLE, IMG_ATTR_UINT64, IMG_ATTR_NA  # pylint: disable=unused-import
 
 from ...core.utils import ctypes_wrap, py3
 from ..utils import load_lib

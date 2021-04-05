@@ -1,4 +1,4 @@
-from .tl_camera_sdk_lib import ThorlabsTLCameraLibError, ThorlabsTLCameraError
+from .tl_camera_sdk_lib import ThorlabsTLCameraError
 from .tl_camera_sdk_lib import lib
 from . import tl_camera_sdk_defs
 

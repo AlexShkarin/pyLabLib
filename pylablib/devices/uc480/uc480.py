@@ -1,5 +1,5 @@
-from . import uc480_lib, uc480_defs
-from .uc480_lib import lib, uc480Error, uc480LibError, ERROR
+from . import uc480_defs
+from .uc480_lib import lib, uc480Error, uc480LibError
 
 from ...core.utils import py3
 from ...core.devio import interface
@@ -200,7 +200,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
                 if m==nm:
                     names.append(n)
             except uc480LibError as err:
-                if err.code!=ERROR.IS_INVALID_COLOR_FORMAT:
+                if err.code!=uc480_defs.ERROR.IS_INVALID_COLOR_FORMAT:
                     raise
         lib.is_SetColorMode(self.hcam,m0)
         return names
@@ -233,7 +233,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
                     self.set_color_mode(mode)
                     return
                 except uc480LibError as err:
-                    if err.code!=ERROR.IS_INVALID_COLOR_FORMAT:
+                    if err.code!=uc480_defs.ERROR.IS_INVALID_COLOR_FORMAT:
                         raise
     _mode_properties={  "raw8":(8,1),"raw10":(16,1),"raw12":(16,1),"raw16":(16,1), # needs additional decoding
                         "mono8":(8,1),"mono10":(16,1),"mono12":(16,1),"mono16":(16,1),
@@ -512,7 +512,6 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
     def _read_buffer(self, n):
         buff=self._buffers[n%len(self._buffers)]
         frame_info=lib.is_GetImageInfo(self.hcam,buff[1])
-        print(frame_info)
         bpp,nchan=self._get_pixel_mode_settings()
         shape=(frame_info.dwImageHeight,frame_info.dwImageWidth)+((nchan,) if nchan>1 else ())
         frame=np.empty(shape=shape,dtype=self._np_dtypes[bpp//nchan])

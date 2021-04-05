@@ -1,10 +1,10 @@
 from . import atmcd32d_defs
 from .atmcd32d_defs import DRV_STATUS, drDRV_STATUS
 from .atmcd32d_defs import define_functions
-from .atmcd32d_defs import AT_STEPMODE, AT_GATEMODE
-from .atmcd32d_defs import AC_ACQMODE, AC_READMODE, AC_TRIGGERMODE, AC_EMGAIN, AC_FEATURES
-from .atmcd32d_defs import AC_CAMERATYPE, drAC_CAMERATYPE, AC_PIXELMODE, drAC_PIXELMODE
-from .atmcd32d_defs import AC_SETFUNC, AC_GETFUNC
+from .atmcd32d_defs import AT_STEPMODE, AT_GATEMODE  # pylint: disable=unused-import
+from .atmcd32d_defs import AC_ACQMODE, AC_READMODE, AC_TRIGGERMODE, AC_EMGAIN, AC_FEATURES  # pylint: disable=unused-import
+from .atmcd32d_defs import AC_CAMERATYPE, drAC_CAMERATYPE, AC_PIXELMODE  # pylint: disable=unused-import
+from .atmcd32d_defs import AC_SETFUNC, AC_GETFUNC  # pylint: disable=unused-import
 from .base import AndorError
 
 from ...core.utils import ctypes_wrap, py3

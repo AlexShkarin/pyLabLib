@@ -1,15 +1,14 @@
 from . import sc2_camexport_defs
 from .sc2_camexport_defs import define_functions
-from .PCO_err_defs import PCO_ERR, drPCO_ERR
-from .sc2_sdkstructures_defs import PCO_INTERFACE, drPCO_INTERFACE
-from . import sc2_defs_defs as sc2_defs
-from .sc2_defs_defs import CAPS1, CAPS3
+from .PCO_err_defs import PCO_ERR, drPCO_ERR  # pylint: disable=unused-import
+from .sc2_sdkstructures_defs import PCO_INTERFACE  # pylint: disable=unused-import
+from . import sc2_defs_defs as sc2_defs  # pylint: disable=unused-import
+from .sc2_defs_defs import CAPS1, CAPS3  # pylint: disable=unused-import
 
 from ...core.utils import ctypes_wrap, py3
 from ..utils import load_lib
 
 import ctypes
-import numpy as np
 
 
 class PCOSC2Error(RuntimeError):
