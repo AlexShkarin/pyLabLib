@@ -2,6 +2,10 @@ tools/
 legacy/
 examples/
 
+docs/_build
+docs/_static
+docs/.apidoc
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[co]
