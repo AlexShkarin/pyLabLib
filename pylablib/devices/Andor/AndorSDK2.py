@@ -383,7 +383,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         return lib.get_all_amp_modes()
     @_camfunc
     def get_max_vsspeed(self):
-        """Get  maximal recommended vertical scan speed"""
+        """Get maximal recommended vertical scan speed"""
         return lib.GetFastestRecommendedVSSpeed()[0]
     @_camfunc
     def set_amp_mode(self, channel=None, oamp=None, hsspeed=None, preamp=None):

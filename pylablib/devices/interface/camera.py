@@ -236,6 +236,7 @@ class ICamera(interface.IDevice):
         ``"xyt"`` (first index column, second index row, rows counted from the top), or ``"xyb"`` (same as ``"xyt"``, rows counted from the bottom)
         """
         self._image_indexing=indexing
+        return self._image_indexing
     def _convert_indexing(self, data, src_indexing, axes=(0,1)):
         """Convert data from the given source indexing to the camera indexing"""
         if src_indexing==self._image_indexing or data is None:

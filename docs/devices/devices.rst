@@ -1,0 +1,243 @@
+.. _devices:
+
+Devices
+======================================
+
+The devices are represented as Python objects, in most cases, one per device.
+
+Connection
+--------------------------------------
+
+The device identifier or address needs to be provided upon the device object creation, after which the devices automatically connect. Getting the address usually depends on the kind of device:
+
+    - Simple message-style devices, such as AWG, oscilloscopes, sensors and gauges, require an address, which depends on the exact connection protocol. For example, serial devices addresses look like ``"COM1"``, Visa addresses as ``"USB0::0x0699::0x039B::C020005::INSTR"``, and network addresses take IP and, possibly, port ``"192.168.0.3:7230"``. Sometimes they would also take additional parameters such as baud rate for serial devices, although the default values should fit in the majority of situations.
+
+    - More complicated devices using custom DLLs (usually cameras or translation stages) will have more unique methods of addressing individual devices: serial number, device index, device ID, etc. In most cases such devices come with ``list_devices`` or ``get_devices_number`` functions, which give the necessary information.
+
+After communication is done, the connection needs to be closed, since in most cases it can only be opened in one program or part of the script at a time. It also implies that usually it's impossible to connect to the device while its manufacturer software is still running.
+
+The devices have ``open`` and ``close`` methods, but they can also work in together with Python ``with`` statements::
+
+    # import Thorlabs device classes
+    from pylablib.devices import Thorlabs
+
+    # connect to FW102 motorized filter wheel
+    wheel = Thorlabs.FW("COM1")
+    # set the position
+    wheel.set_position(1)
+    # close the connection (until that it's impossible to establish a different connection to this device)
+    wheel.close()
+
+    # a better approach
+    with Thorlabs.FW("COM1") as wheel: # connection is closed automatically when leaving the with-block
+        wheel.set_position(1)
+
+Because the devices are automatically connected on creation. ``open`` method is almost never called explicitly.
+
+
+Operation
+--------------------------------------
+
+The devices are controlled by calling their methods; attributes and properties are very rarely used. Effort is made to maintain consistent naming conventions, e.g., most getter-methods will start with ``get_`` and setter methods with ``set_`` or ``setup_`` (depending on the complexity of the method). It is also common for setter methods to return the new value as a result, which is useful in CLI operation and debugging. Devices of the same kind have the same names for similar or identical functions: most stages have ``move_by``, ``jog`` and ``stop`` methods, and cameras have ``wait_for_frame`` and ``read_multiple_images`` methods. Whenever it makes sense, these methods will also have the same signatures.
+
+For simplicity of usage and construction, devices interfaces tend to be synchronous and single-threaded. Asynchronous operation is achieved by explicit usage of Python multi-threading.
+
+
+Getting more information
+--------------------------------------
+
+A lot of information about the devices can be gained just from their method names and descriptions. There are several ways of getting these:
+
+    - In many cases your IDE (PyCharm, Spyder, VS Code with installed Python extension) supports code inspection. In this case, the list of methods will usually pop up after you time the device object name and a dot (such as ``cam.``), and the method docstring will show up after you type the method name and parenthesis (such as ``cam.get_roi(``). However, sometimes it might take a while for these pop-ups to show up.
+    - You can use console, such as Jupyter QtConsole, Jupyter Notebook, or a similar console built into the IDE. Here the list of methods can be obtained using the autocomplete feature: type name of the class or object with a dot (such as ``cam.``) and then press ``Tab``. The list of all methods should appear. To get the description of a particular class or method, type it with a question mark (such as ``cam?`` or ``cam.get_roi?``) and execute the result (``Enter`` or ``Shift-Enter``, depending on the console). A description should appear with the argument names and the description.
+    - You can also use the auto-generated documentation within this manual through the search bar: simply type the name of the class or the method (such as ``AndorSDK3Camera`` or ``AndorSDK3Camera.get_roi``) and look through the results. However, the formatting of the auto-generated documentation might be a bit overwhelming.
+
+
+Universal settings access
+--------------------------------------
+
+All devices have ``get_settings`` and ``apply_settings`` methods which, correspondingly, return Python dictionaries with the most common settings or take these dictionaries and apply the contained settings. These can be used to easily store and re-apply device configuration within a script.
+
+Additionally, there is ``get_full_info`` method, which return as complete information as possible. It is particularly useful to check the device status and see if it is connected and working properly, and to save the devices configuration when, e.g., acquiring the data. Finally, the settings can also be accessed through ``.dv`` attribute, which provides dictionary-like interface::
+
+    >>> wheel = Thorlabs.FW("COM1")
+    >>> wheel.get_position()
+    1
+    >>> wheel.get_settings()
+    {'pcount': 6,
+    'pos': 1,
+    'sensors_mode': 'off',
+    'speed_mode': 'high',
+    'trigger_mode': 'in'}
+    >>> wheel.dv["pos"]
+    1
+    >>> wheel.apply_settings({"pos":2})
+    >>> wheel.get_position()
+    2
+    >>> wheel.dv["pos"] = 3
+    >>> wheel.get_position()
+    3
+    >>> wheel.close()
+
+
+Dependencies and external software
+--------------------------------------
+
+Many devices require external software not provided with this package. 
+
+The simpler devices using serial connection (either with an external USB-to-Serial adapter, or a similar built-in chip) only need the drivers (either standard adapter drivers, or, e.g., Thorlabs APT software). If they already show up as serial communication devices in the OS, no additional software is normally needed. Similarly, devices using Ethernet connection do not need any external drives, as long as they are properly connected to the network. Finally, devices using Visa connection require NI VISA Runtime, which is freely available from the `National Instruments website <https://www.ni.com/en-us/support/downloads/drivers/download.ni-visa.html>`_. See also `PyVISA <https://pyvisa.readthedocs.io/en/master/>`_ for details.
+
+Devices which require manufacturer DLLs are harder to set up. For most of them, at the very least, you need to install the manufacturer-provided software for communication. Frequently it already includes the necessary libraries, which means that nothing else is required. However, sometimes you would need to download either an additional SDK package, or DLLs directly from the website. Since these libraries take a lot of space and are often proprietary, they are not distributed with the pylablib.
+
+Note that DLLs can have 32-bit and 64-bit version, and it should agree with the Python version that you use. Unless you have a really good reason to do otherwise, it is strongly recommended to use 64-bit Python, which means that you would need 64-bit DLLs (which is the standard in most cases these days). To check your python version, you can read the prompt when running the Python console, or run ``python -c "import platform; print(platform.architecture()[0])"`` in the command line.
+
+In addition, you need to provide pylablib with the path to the DLLs. In many cases it checks the standard locations such as the default ``System32`` folder (used, e.g., in DCAM or IMAQ cameras) or defaults paths for manufacturer software (such as ``C:/Program Files/Andor SOLIS`` for Andor cameras). If the software path is different, or if you choose to obtain DLLs elsewhere, you can also explicitly provide path by setting the library parameter::
+
+    import pylablib as pll
+    pll.par["devices/dlls/andor_sdk3"] = "path/to/dlls"
+    from pylablib.devices import Andor
+    cam = Andor.AndorSDK3Camera()
+
+All of these requirements are described in detail for the specific devices.
+
+
+Advanced examples
+--------------------------------------
+
+Connecting to a Cryomagnetics LM500 level meter and reading out the level at the first channel::
+
+    from pylablib.devices import Cryomagnetics  # import the device library
+    with Cryomagnetics.LM500("COM1") as lm:
+        level = lm.get_level(1)  # read the level
+
+Stepping the M Squared laser wavelength and recording an image from the Andor IXON camera at each step::
+
+    from pylablib.aux_libs.devices import M2, Andor  # import the device libraries
+    with M2.M2ICE("192.168.0.1", 39933) as laser, Andor.AndorCamera() as cam:  # connect to the devices
+        # change some camera parameters
+        cam.set_shutter("open")
+        cam.set_exposure(50E-3)
+        cam.set_amp_mode(preamp=2)
+        cam.set_EMCCD_gain(128)
+        cam.setup_image_mode(vbin=2, hbin=2)
+        # setup acquisition mode
+        cam.set_acquisition_mode("cont")
+        cam.setup_cont_mode()
+        # start camera acquisition
+        cam.start_acquisition()
+        wavelength = 740E-9  # initial wavelength (in meters)
+        images = []
+        while wavelength < 770E-9:
+            laser.tune_wavelength_table(wavelength)  # tune the laser frequency (using coarse tuning)
+            time.sleep(0.5)  # wait until the laser stabilizes
+            cam.wait_for_frame()  # ensure that there's a frame in the camera queue
+            frame = cam.read_newest_image()
+            images.append(frame)
+            wavelength += 0.5E-9
+
+
+Available devices
+--------------------------------------
+
+- :ref:`Cameras <cameras>`
+    - :ref:`Andor SDK2 <cameras_andor_sdk2>` and :ref:`Andor SDK3 <cameras_andor_sdk3>`: variety of Andor (currently part of Oxford) cameras. Tested with Andor iXon, Luca, and Zyla).
+    - :ref:`DCAM <cameras_dcam>`: Hamamatsu cameras. Tested with Hamamatsu Orca Flash 4.0 and ImagEM.
+    - :ref:`NI IMAQ <cameras_imaq>`: National Instruments frame grabbers. Tested with NI PCI-1430 and PCI-1433 frame grabbers together with PhotonFocus MV-D1024E camera.
+    - :ref:`NI IMAQdx <cameras_imaqdx>`: National Instruments universal camera interface.
+    - :ref:`PCO cameras<cameras_pco>`. Tested with pco.edge cameras with CLHS and regular CameraLink interfaces.
+    - :ref:`Thorlabs Scientific Cameras interface <cameras_tlcam>`. Tested with Thorlabs Kiralux camera.
+    - :ref:`Uc480 interface <cameras_uc480>`: used in multiple cameras, including simple Thorlabs and IDS cameras. Tested with IDS SC2592R12M and Thorlabs DCC1545M.
+- 
+
+.. toctree::
+    :hidden:
+    
+    cameras
+
+.. --------------------------------------
+.. List of devices
+.. --------------------------------------
+
+.. ===================================    ==============================    =================================================================================    =======================================================================================
+.. Device                                 Kind                              Module                                                                               Comments
+.. ===================================    ==============================    =================================================================================    =======================================================================================
+.. Lighthouse Photonics SproutG           Laser                             :mod:`LighthousePhotonics <pylablib.devices.LighthousePhotonics.base>`
+.. LaserQuantum Finesse                   Laser                             :mod:`LaserQuantum <pylablib.devices.LaserQuantum.base>`
+.. HighFinesse WS/6 and WS/7              Wavemeter                         :mod:`HighFinesse <pylablib.devices.HighFinesse>`
+.. Photon Focus PFCam interface           Camera                            :mod:`PhotonFocus <pylablib.devices.PhotonFocus>`                                    Tested with MV-D1024E and CameraLink connection with NI PCIe-1433 frame grabber (via IMAQ)
+.. Ophir Vega                             Optical power meter               :mod:`Ophir <pylablib.devices.Ophir>`
+.. Thorlabs PM100D                        Optical power meter               :mod:`Thorlabs <pylablib.devices.Thorlabs>`
+.. Agilent AWG33220A                      Arbitrary waveform generator      :mod:`AgilentElectronics <pylablib.devices.GenericAWGs>`
+.. Agilent AWG33500                       Arbitrary waveform generator      :mod:`AgilentElectronics <pylablib.devices.GenericAWGs>`                             Tested with Agilent 33509B
+.. Rigol DG1000                           Arbitrary waveform generator      :mod:`AgilentElectronics <pylablib.devices.GenericAWGs>`                             Tested with DG1022
+.. Instek AFG-2225                        Arbitrary waveform generator      :mod:`AgilentElectronics <pylablib.devices.GenericAWGs>`                             Tested with Instek AFG-2225
+.. Thorlabs MDT693/4A                     High voltage source               :mod:`Thorlabs <pylablib.devices.Thorlabs>`
+.. Agilent AMP33502A                      DC amplifier                      :mod:`AgilentElectronics <pylablib.devices.AgilentElectronics>`
+.. Rigol DSA1030A                         Microwave spectrum analyzer       :mod:`Rigol <pylablib.devices.Rigol>`
+.. Agilent HP8712B, HP8722D               Vector network analyzers          :mod:`AgilentElectronics <pylablib.devices.AgilentElectronics>`
+.. Tektronix DPO2014, TDS2000             Oscilloscopes                     :mod:`Tektronix <pylablib.devices.Tektronix>`
+.. NI DAQ interface                       NI DAQ devices                    :mod:`NI <pylablib.devices.NI>`                                                      Wrapper around the `nidaqmx <https://nidaqmx-python.readthedocs.io/en/latest/>`_ package. Tested with NI USB-6008 and NI PCIe-6323
+.. Arcus PerforMax                        Translation stage                 :mod:`Arcus <pylablib.devices.Arcus>`                                                Tested with PMX-4EX-SA stage.
+.. SmarAct SCU3D                          Translation stage                 :mod:`SmarAct <pylablib.devices.SmarAct>`
+.. Attocube ANC300                        Piezo slider controller           :mod:`Attocube <pylablib.devices.Attocube>`                                          Tested with Ethernet and Serial port connection
+.. Attocube ANC350                        Piezo slider controller           :mod:`Attocube <pylablib.devices.Attocube>`                                          Tested with USB and Serial port connection
+.. Trinamic TMCM1110                      Stepper motor controller          :mod:`Trinamic <pylablib.devices.Trinamic>`
+.. Thorlabs motor controllers             DC servo motor controller         :mod:`Thorlabs <pylablib.devices.Thorlabs>`                                          Tested with KDC101 and K10CR1
+.. Thorlabs FW102/202                     Motorized filter wheel            :mod:`Thorlabs <pylablib.devices.Thorlabs>`
+.. Thorlabs MFF                           Motorized flip mount              :mod:`Thorlabs <pylablib.devices.Thorlabs>`
+.. Cryomagnetics LM500/510                Cryogenic level meter             :mod:`Cryomagnetics <pylablib.devices.Cryomagnetics>`
+.. Lakeshore 218                          Temperature controllers           :mod:`Lakeshore <pylablib.devices.Lakeshore>`
+.. MKS 9xx                                Pressure gauge                    :mod:`MKS <pylablib.devices.MKS>`
+.. Pfeiffer gauges                        Pressure gauge                    :mod:`Pfeiffer <pylablib.devices.Pfeiffer>`                                          Tested with TPG261 and DPG202
+.. ===================================    ==============================    =================================================================================    =======================================================================================
+
+
+
+
+
+
+
+.. --------------------------------------
+.. List of devices
+.. --------------------------------------
+
+.. ===================================    ==============================    =================================================================================    =======================================================================================
+.. Device                                 Kind                              Module                                                                               Comments
+.. ===================================    ==============================    =================================================================================    =======================================================================================
+.. Lighthouse Photonics SproutG           Laser                             :mod:`LighthousePhotonics <pylablib.devices.LighthousePhotonics.base>`
+.. LaserQuantum Finesse                   Laser                             :mod:`LaserQuantum <pylablib.devices.LaserQuantum.base>`
+.. HighFinesse WS/6 and WS/7              Wavemeter                         :mod:`HighFinesse <pylablib.devices.HighFinesse>`
+.. Andor SDK2 interface                   Camera                            :mod:`Andor <pylablib.devices.Andor>`                                                Tested with Andor IXON and Luca
+.. Andor SDK3 interface                   Camera                            :mod:`Andor <pylablib.devices.Andor>`                                                Tested with Andor Zyla
+.. Hamamatsu DCAM interface               Camera                            :mod:`DCAM <pylablib.devices.DCAM>`                                                  Tested with ORCA-Flash 4.0 (C11440-22CU)
+.. NI IMAQdx interface                    Camera                            :mod:`IMAQdx <pylablib.devices.IMAQdx.IMAQdx>`                                       Tested with Photon Focus HD1-D1312 with GigE connection
+.. NI IMAQ interface                      Camera                            :mod:`IMAQ <pylablib.devices.IMAQ.IMAQ>`                                             Tested with NI PCI-1430 frame grabber
+.. Photon Focus PFCam interface           Camera                            :mod:`PhotonFocus <pylablib.devices.PhotonFocus>`                                    Tested with MV-D1024E and CameraLink connection with NI PCIe-1433 frame grabber (via IMAQ)
+.. PCO SC2 interface                      Camera                            :mod:`PCO_SC2 <pylablib.devices.PCO_SC2>`                                            Tested with PCO.edge 5.5 CL and PCO.edge CLHS
+.. Thorlabs TLCamera interface            Camera                            :mod:`TLCamera <pylablib.devices.Thorlabs.TLCamera>`                                 Tested with Thorlabs Kiralux
+.. Uc480 camera interface                 Camera                            :mod:`uc480 <pylablib.devices.uc480.uc480>`                                          Tested with IDS SC2592R12M and Thorlabs DCC1545M
+.. Ophir Vega                             Optical power meter               :mod:`Ophir <pylablib.devices.Ophir>`
+.. Thorlabs PM100D                        Optical power meter               :mod:`Thorlabs <pylablib.devices.Thorlabs>`
+.. Agilent AWG33220A                      Arbitrary waveform generator      :mod:`AgilentElectronics <pylablib.devices.GenericAWGs>`
+.. Agilent AWG33500                       Arbitrary waveform generator      :mod:`AgilentElectronics <pylablib.devices.GenericAWGs>`                             Tested with Agilent 33509B
+.. Rigol DG1000                           Arbitrary waveform generator      :mod:`AgilentElectronics <pylablib.devices.GenericAWGs>`                             Tested with DG1022
+.. Instek AFG-2225                        Arbitrary waveform generator      :mod:`AgilentElectronics <pylablib.devices.GenericAWGs>`                             Tested with Instek AFG-2225
+.. Thorlabs MDT693/4A                     High voltage source               :mod:`Thorlabs <pylablib.devices.Thorlabs>`
+.. Agilent AMP33502A                      DC amplifier                      :mod:`AgilentElectronics <pylablib.devices.AgilentElectronics>`
+.. Rigol DSA1030A                         Microwave spectrum analyzer       :mod:`Rigol <pylablib.devices.Rigol>`
+.. Agilent HP8712B, HP8722D               Vector network analyzers          :mod:`AgilentElectronics <pylablib.devices.AgilentElectronics>`
+.. Tektronix DPO2014, TDS2000             Oscilloscopes                     :mod:`Tektronix <pylablib.devices.Tektronix>`
+.. NI DAQ interface                       NI DAQ devices                    :mod:`NI <pylablib.devices.NI>`                                                      Wrapper around the `nidaqmx <https://nidaqmx-python.readthedocs.io/en/latest/>`_ package. Tested with NI USB-6008 and NI PCIe-6323
+.. Arcus PerforMax                        Translation stage                 :mod:`Arcus <pylablib.devices.Arcus>`                                                Tested with PMX-4EX-SA stage.
+.. SmarAct SCU3D                          Translation stage                 :mod:`SmarAct <pylablib.devices.SmarAct>`
+.. Attocube ANC300                        Piezo slider controller           :mod:`Attocube <pylablib.devices.Attocube>`                                          Tested with Ethernet and Serial port connection
+.. Attocube ANC350                        Piezo slider controller           :mod:`Attocube <pylablib.devices.Attocube>`                                          Tested with USB and Serial port connection
+.. Trinamic TMCM1110                      Stepper motor controller          :mod:`Trinamic <pylablib.devices.Trinamic>`
+.. Thorlabs motor controllers             DC servo motor controller         :mod:`Thorlabs <pylablib.devices.Thorlabs>`                                          Tested with KDC101 and K10CR1
+.. Thorlabs FW102/202                     Motorized filter wheel            :mod:`Thorlabs <pylablib.devices.Thorlabs>`
+.. Thorlabs MFF                           Motorized flip mount              :mod:`Thorlabs <pylablib.devices.Thorlabs>`
+.. Cryomagnetics LM500/510                Cryogenic level meter             :mod:`Cryomagnetics <pylablib.devices.Cryomagnetics>`
+.. Lakeshore 218                          Temperature controllers           :mod:`Lakeshore <pylablib.devices.Lakeshore>`
+.. MKS 9xx                                Pressure gauge                    :mod:`MKS <pylablib.devices.MKS>`
+.. Pfeiffer gauges                        Pressure gauge                    :mod:`Pfeiffer <pylablib.devices.Pfeiffer>`                                          Tested with TPG261 and DPG202
+.. ===================================    ==============================    =================================================================================    =======================================================================================

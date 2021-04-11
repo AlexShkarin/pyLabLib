@@ -642,7 +642,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
         """
         Read multiple images specified by `rng` (by default, all un-read images).
         
-       If no new frames are available, return an empty list; if no acquisition is running, return ``None``.
+        If no new frames are available, return an empty list; if no acquisition is running, return ``None``.
         If ``peek==True``, return images but not mark them as read.
         `missing_frame` determines what to do with frames which are out of range (missing or lost):
         can be ``"none"`` (replacing them with ``None``), ``"zero"`` (replacing them with zero-filled frame), or ``"skip"`` (skipping them).

@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to pylablib's documentation!
+Welcome to pylablib documentation!
 ====================================
 
 .. toctree::
@@ -13,7 +13,7 @@ Welcome to pylablib's documentation!
    install
    dataproc
    utils
-   devices
+   devices/devices
    changelog
 
 
