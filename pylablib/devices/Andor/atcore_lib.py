@@ -50,8 +50,9 @@ class AndorSDK3Lib(object):
 
         solis_path=load_lib.get_program_files_folder("Andor SOLIS")
         sdk3_path=load_lib.get_program_files_folder("Andor SDK3")
-        error_message=( "The library is automatically supplied with Andor Solis software or Andor SDK3 software;\n"
-                        "Additional required libraries: atblkbx.dll, atcl_bitflow.dll, atdevapogee.dll, atdevregcam.dll, atusb_libusb.dll, atusb_libusb10.dll")
+        error_message=( "The library is automatically supplied with Andor Solis software or Andor SDK3 software;\n"+
+                        load_lib.par_error_message.format("andor_sdk3")+
+                        "\nAdditional required libraries: atblkbx.dll, atcl_bitflow.dll, atdevapogee.dll, atdevregcam.dll, atusb_libusb.dll, atusb_libusb10.dll")
         self.lib=load_lib.load_lib("atcore.dll",locations=("parameter/andor_sdk3",solis_path,sdk3_path,"global"),error_message=error_message,locally=True,call_conv="stdcall")
         lib=self.lib
         define_functions(lib)

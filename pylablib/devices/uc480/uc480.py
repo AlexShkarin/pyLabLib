@@ -527,6 +527,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         shape=(frame_info.dwImageHeight,frame_info.dwImageWidth)+((nchan,) if nchan>1 else ())
         frame=np.empty(shape=shape,dtype=self._np_dtypes[bpp//nchan])
         lib.is_CopyImageMem(self.hcam,buff[0],buff[1],frame.ctypes.data)
+        frame=self._convert_indexing(frame,"rct")
         return frame,frame_info
     def _read_frames(self, rng, return_info=False):
         data=[self._read_buffer(n) for n in range(rng[0],rng[1])]

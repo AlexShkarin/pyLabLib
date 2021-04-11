@@ -267,7 +267,7 @@ class PCOSC2Lib:
 
         camware_path=load_lib.get_program_files_folder("Digital Camera Toolbox/Camware4")
         sdk_path=load_lib.get_program_files_folder("PCO Digital Camera Toolbox/pco.sdk/bin") # TODO: check folder; bin/bin64; may also be in 32-bit program files folder
-        error_message="The library is supplied with pco.camware or pco.sdk software"      
+        error_message="The library is supplied with pco.camware or pco.sdk software\n"+load_lib.par_error_message.format("pco_sc2")
         self.lib=load_lib.load_lib("SC2_Cam.dll",locations=("parameter/pco_sc2",camware_path,sdk_path,"global"),error_message=error_message,call_conv="stdcall")
         lib=self.lib
         define_functions(lib)

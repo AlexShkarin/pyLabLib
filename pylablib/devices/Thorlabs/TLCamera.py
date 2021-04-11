@@ -362,6 +362,7 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
         self._buffer.wait_for_frame(idx=idx,timeout=timeout)
     def _read_frames(self, rng, return_info=False):
         data=[self._buffer.get_frame(n) for n in range(rng[0],rng[1])]
+        data=[self._convert_indexing(frame,"rct") for frame in data]
         return [d[0] for d in data],[self._parse_metadata(d[1]) for d in data]
 
     def _get_grab_acquisition_parameters(self, nframes, buff_size):

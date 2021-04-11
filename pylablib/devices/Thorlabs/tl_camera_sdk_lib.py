@@ -50,7 +50,7 @@ class ThorlabsTLCameraLib:
         if self._initialized:
             return
         thorcam_path=load_lib.get_program_files_folder("Thorlabs/Scientific Imaging/ThorCam")
-        error_message="The library is automatically supplied with Thorcam software"
+        error_message="The library is automatically supplied with Thorcam software\n"+load_lib.par_error_message.format("thorlabs_tlcam")
         self.lib=load_lib.load_lib("thorlabs_tsi_camera_sdk.dll",locations=("parameter/thorlabs_tlcam",thorcam_path,"global"),error_message=error_message,locally=True,call_conv="stdcall")
         lib=self.lib
         define_functions(lib)

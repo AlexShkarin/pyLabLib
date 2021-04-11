@@ -57,7 +57,7 @@ class IMAQLib:
     def initlib(self):
         if self._initialized:
             return
-        error_message="The library is automatically supplied with National Instruments NI-IMAQ software"
+        error_message="The library is automatically supplied with National Instruments NI-IMAQ software\n"+load_lib.par_error_message.format("niimaq")
         self.lib=load_lib.load_lib("imaq.dll",locations=("parameter/niimaq","global"),error_message=error_message,call_conv="stdcall")
         lib=self.lib
         define_functions(lib)

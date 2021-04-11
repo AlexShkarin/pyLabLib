@@ -185,14 +185,12 @@ class IMAQdxCamera(camera.IROICamera):
         self.frame_counter=0
         self.last_wait_frame=-1
         self.buffers_num=0
-        # self.post_open()
         self.v=dictionary.ItemAccessor(self.get_value,self.set_value)
 
         self._add_info_variable("device_info",self.get_device_info)
         self._add_info_variable("interface_name",lambda: self.name)
         self._add_status_variable("values",self.get_all_values,priority=-5)
         self._add_status_variable("buffer_size",lambda: self.buffers_num)
-        # self._add_status_variable("last_frame",self._last_buffer)
         self._add_status_variable("read_frames",lambda: self.frame_counter)
 
     _p_connection_mode=interface.EnumParameterClass("connection_mode",{
@@ -386,7 +384,8 @@ class IMAQdxCamera(camera.IROICamera):
         if size_bytes%dtype.itemsize:
             raise IMAQdxError("specified buffer size {} is not divisible by the element size {}".format(size_bytes,dtype.itemsize))
         arr=np.empty(size_bytes//dtype.itemsize,dtype)
-        return lib.IMAQdxGetImageData(self.sid,arr.ctypes.get_data(),size_bytes,mode,buffer_num)
+        lib.IMAQdxGetImageData(self.sid,arr.ctypes.get_data(),size_bytes,mode,buffer_num)
+        return self._convert_indexing(arr,"rct")
 
     def _read_frames(self, rng, return_info=False):
         indices=range(*rng)

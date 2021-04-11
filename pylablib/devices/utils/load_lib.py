@@ -36,7 +36,7 @@ def get_program_files_folder(subfolder=""):
 program_files_folder=get_program_files_folder()
 
 
-
+par_error_message="If you already have it, specify its path before opening the camera as pylablib.par['devices/dlls/{}']='path/to/dll/'"
 def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, error_message=None, check_order="location"):
     """
     Load DLL.
@@ -186,7 +186,7 @@ class LibraryController:
         """
         with self.lock:
             if opid in self.opened:
-                self.opened.pop(opid)
+                self.opened.remove(opid)
                 self.closed.add(opid)
             elif opid in self.closed:
                 return None,None

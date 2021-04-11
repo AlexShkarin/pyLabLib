@@ -61,7 +61,7 @@ class IMAQdxLib:
     def initlib(self):
         if self._initialized:
             return
-        error_message="The library is automatically supplied with National Instruments NI-IMAQdx software"
+        error_message="The library is automatically supplied with National Instruments NI-IMAQdx software\n"+load_lib.par_error_message.format("niimaqdx")
         self.lib=load_lib.load_lib("niimaqdx.dll",locations=("parameter/niimaqdx","global"),error_message=error_message,call_conv="stdcall")
         self.clib=load_lib.load_lib("niimaqdx.dll",locations=("parameter/niimaqdx","global"),error_message=error_message,call_conv="cdecl")
         lib=self.lib
