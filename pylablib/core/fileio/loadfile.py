@@ -6,10 +6,11 @@ from builtins import range
 
 from . import datafile, location, dict_entry, parse_csv, loadfile_utils
 from ..utils import funcargparse
+from ..utils.library_parameters import library_parameters
 
 import numpy as np
 
-_module_parameters={"fileio/loadfile/csv/out_type":"pandas"}
+library_parameters.update({"fileio/loadfile/csv/out_type":"pandas"})
 
 
 ##### File formats #####
@@ -75,7 +76,7 @@ class CSVTableInputFileFormat(ITextInputFileFormat):
     """
     def __init__(self, out_type="default", dtype="numeric", columns=None, delimiters=None, empty_entry_substitute=None, ignore_corrupted_lines=True, skip_lines=0):
         ITextInputFileFormat.__init__(self)
-        self.out_type=_module_parameters["fileio/loadfile/csv/out_type"] if out_type=="default" else out_type
+        self.out_type=library_parameters["fileio/loadfile/csv/out_type"] if out_type=="default" else out_type
         self.dtype=dtype
         self.columns=columns
         self.delimiters=delimiters or parse_csv._table_delimiters
@@ -162,7 +163,7 @@ class BinaryTableInputFileFormatter(IInputFileFormat):
     """
     def __init__(self, out_type="default", dtype="<f8", columns=None, packing="flatten", preamble=None, skip_bytes=0):
         IInputFileFormat.__init__(self)
-        self.out_type=_module_parameters["fileio/loadfile/csv/out_type"] if out_type=="default" else out_type
+        self.out_type=library_parameters["fileio/loadfile/csv/out_type"] if out_type=="default" else out_type
         self.preamble=preamble or {}
         self.dtype=self.preamble.get("dtype",dtype)
         try:

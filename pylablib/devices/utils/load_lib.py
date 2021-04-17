@@ -1,4 +1,5 @@
-from ...core.utils import files, dictionary, general
+from ...core.utils import files, general
+from ...core.utils.library_parameters import library_parameters
 
 import platform
 import ctypes
@@ -9,7 +10,6 @@ import contextlib
 import collections
 
 
-_module_parameters={"devices/dlls":dictionary.Dictionary()}
 
 def get_os_lib_folder():
     """Get default Windows DLL folder (``System32`` or ``SysWOW64``, depending on Python and Windows bitness)"""
@@ -36,7 +36,7 @@ def get_program_files_folder(subfolder=""):
 program_files_folder=get_program_files_folder()
 
 
-par_error_message="If you already have it, specify its path before opening the camera as pylablib.par['devices/dlls/{}']='path/to/dll/'"
+par_error_message="If you already have it, specify its path as pylablib.par['devices/dlls/{}']='path/to/dll/'"
 def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, error_message=None, check_order="location"):
     """
     Load DLL.
@@ -72,9 +72,8 @@ def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, erro
         else:
             if loc.startswith("parameter/"):
                 par_name=loc[len("parameter/"):]
-                dll_paths=_module_parameters["devices/dlls"]
-                if par_name in dll_paths:
-                    loc=dll_paths[par_name]
+                if ("devices/dlls",par_name) in library_parameters:
+                    loc=library_parameters["devices/dlls",par_name]
                 else:
                     continue
             if loc.lower().endswith(".dll"):
@@ -100,7 +99,7 @@ def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, erro
             if locally:
                 os.environ["PATH"]=old_env_path
     error_message="\n"+error_message if error_message else ""
-    raise OSError("can't import module {}".format(" or ".join(name))+error_message)
+    raise OSError("can't import library {}".format(" or ".join(name))+error_message)
 
 
 

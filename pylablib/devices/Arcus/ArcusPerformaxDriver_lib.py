@@ -23,8 +23,9 @@ class ArcusPerformaxLib:
     def initlib(self):
         if self._initialized:
             return
-        self._initialized=True
-        error_message="The library is can be downloaded on the manufacturer's website\n"+load_lib.par_error_message.format("arcus_performax")
+        error_message=( "The library is can be downloaded on the manufacturer's website;\n"+
+                        load_lib.par_error_message.format("arcus_performax")+
+                        "\nAdditional required libraries: SiUSBXp.dll (distributed together with the main library)")
         self.lib=load_lib.load_lib("PerformaxCom.dll",locations=("parameter/arcus_performax","global"),error_message=error_message,call_conv="cdecl",locally=True)
         lib=self.lib
         define_functions(lib)
@@ -51,6 +52,8 @@ class ArcusPerformaxLib:
             argprep={"dwNumBytesToWrite":(lambda Handle,wBuffer: len(wBuffer)),"rBuffer":strprep,"dwNumBytesToRead":strlen})
         #  AR_BOOL fnPerformaxComFlush(AR_HANDLE Handle)
         self.fnPerformaxComFlush=wrapper(lib.fnPerformaxComFlush)
+        
+        self._initialized=True
 
 
 

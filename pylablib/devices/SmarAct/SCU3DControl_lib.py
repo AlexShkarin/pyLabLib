@@ -29,7 +29,6 @@ class SCU3DControlLib:
     def initlib(self):
         if self._initialized:
             return
-        self._initialized=True
         self.lib=load_lib.load_lib("SCU3DControl.dll",locations=("parameter/smaract_scu3d","global"),call_conv="cdecl")
         lib=self.lib
         define_functions(lib)
@@ -109,6 +108,8 @@ class SCU3DControlLib:
         self.SA_GetAngle_S=wrapper(lib.SA_GetAngle_S)
         #  SA_STATUS SA_GetPhysicalPositionKnown_S(SA_INDEX deviceIndex, SA_INDEX channelIndex, ctypes.POINTER(ctypes.c_uint) known)
         self.SA_GetPhysicalPositionKnown_S=wrapper(lib.SA_GetPhysicalPositionKnown_S)
+        
+        self._initialized=True
 
     def SA_GetAvailableDevices(self):
         nmax=256

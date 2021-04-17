@@ -1,11 +1,11 @@
 import os
-from .core.utils import module as module_utils, library_parameters
+from .core.utils import module as module_utils
+from .core.utils.library_parameters import library_parameters as par
 
 from .core import *
 
 _load_path=os.path.abspath(os.curdir)
 
-par=library_parameters.LibraryParametersStorage(__name__)
 def reload_all(from_load_path=True, keep_parameters=True):
     """
     Reload all loaded modules.
@@ -23,13 +23,9 @@ def reload_all(from_load_path=True, keep_parameters=True):
             os.chdir(cur_dir)
     else:
         module_utils.reload_package_modules(__name__)
-    par.refresh()
     if keep_parameters:
-        for k,v in old_par.items():
-            try:
-                par[k]=v
-            except KeyError:
-                pass
+        del par[""]
+        par.update(old_par)
 
 def unload_all():
     """
