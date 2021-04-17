@@ -6,11 +6,11 @@
 Andor cameras
 =======================
 
-Andor implements two completely separate interfaces for different cameras. The older one, called SDK, or simply SDK, provides interface for the older cameras: iXon, iKon, iStart, iDus,, iVac, Luca, Newton. The details of this SDK are available in the `manual <https://andor.oxinst.com/downloads/uploads/Andor_Software_Development_Kit_2.pdf>`_.
+Andor implements two completely separate interfaces for different cameras. The older one, called SDK, or simply SDK, provides interface for the older cameras: iXon, iKon, iStart, iDus,, iVac, Luca, Newton. The details of this SDK are available in the `manual <https://andor.oxinst.com/downloads/uploads/Andor_Software_Development_Kit_2.pdf>`__.
 
-The newer SDK, called SDK3, covers newer cameras: Zyla, Neo, Apogee, Sona, Marana, and Balor. The `manual <https://andor.oxinst.com/downloads/uploads/Andor_SDK3_Manual.pdf>`_ describes the cameras and capabilities in more details.
+The newer SDK, called SDK3, covers newer cameras: Zyla, Neo, Apogee, Sona, Marana, and Balor. The `manual <https://andor.oxinst.com/downloads/uploads/Andor_SDK3_Manual.pdf>`__ describes the cameras and capabilities in more details.
 
-The required DLLs are distributed with `Andor Solis <https://andor.oxinst.com/products/solis-software/>`_ or the corresponding `Andor SKD <https://andor.oxinst.com/products/software-development-kit/>`_. In most cases, you will have Andor Solis installed to have the drivers and to communicate with the cameras to begin with.
+The required DLLs are distributed with `Andor Solis <https://andor.oxinst.com/products/solis-software/>`__ or the corresponding `Andor SKD <https://andor.oxinst.com/products/software-development-kit/>`__. In most cases, you will have Andor Solis installed to have the drivers and to communicate with the cameras to begin with.
 
 
 .. _cameras_andor_sdk2:
@@ -20,7 +20,7 @@ Andor SDK 2
 
 This is an older SDK, which mainly involves older cameras. It has been tested with Andor iXon and Andor Luca.
 
-The code is located in :mod:`pylablib.devices.Andor`, and the main camera class is :mod:`pylablib.devices.Andor.AndorSDK2Camera`.
+The code is located in :mod:`pylablib.devices.Andor`, and the main camera class is :class:`pylablib.devices.Andor.AndorSDK2Camera<.AndorSDK2.AndorSDK2Camera>`.
 
 DLL requirements
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -35,7 +35,7 @@ The required DLL can have different names depending on the Solis version and SDK
 Connection
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-The cameras are identified by their index, starting from zero. To get the total number of cameras, you can run :func:`Andor.get_cameras_number_SDK2`::
+The cameras are identified by their index, starting from zero. To get the total number of cameras, you can run :func:`Andor.get_cameras_number_SDK2<.AndorSDK2.get_cameras_number>`::
 
     >> from pylablib.devices import Andor
     >> Andor.get_cameras_number_SDK2()
@@ -58,10 +58,10 @@ The operation of these cameras is relatively standard. They support all the stan
 
         cam = Andor.AndorSDK2Camera(temperature=-50, fan_mode="on")
     
-    - Often cameras have a lot of different readout parameters: channel, amplifier, vertical and horizontal scan speed, etc. These parameters greatly affect the camera sensitivity and readout speed. By default, the parameter are typically set to the slowest mode. To get the list of all possible parameter combinations, you can use :meth:`AndorSDK2.get_all_amp_modes` and :meth:`AndorSDK2.get_max_vsspeed`. Afterwards, you can set them using :math:`AndorSDK2.set_amp_mode` and :meth:`AndorSDK2.set_vsspeed`.
+    - Often cameras have a lot of different readout parameters: channel, amplifier, vertical and horizontal scan speed, etc. These parameters greatly affect the camera sensitivity and readout speed. By default, the parameter are typically set to the slowest mode. To get the list of all possible parameter combinations, you can use :meth:`.AndorSDK2Camera.get_all_amp_modes` and :meth:`.AndorSDK2Camera.get_max_vsspeed`. Afterwards, you can set them using :meth:`.AndorSDK2Camera.set_amp_mode` and :meth:`.AndorSDK2Camera.set_vsspeed`.
     - The default shutter parameter is ``"closed"``, which preserves camera from possible high illumination, but can lead to confusion.
     - This SDK does not allow for specifying number of frames in the frames buffer. However, the parameters chosen by the SDK are usually reasonable (at least a second worth of acquisition).
-    - Some cameras (e.g., iXon) have lots of readout (full frame, ROI, full vertical binning, etc.) and acquisition modes (single, continuous, accumulating, kinetic cycle, etc.). They are described in details in the `manual <https://andor.oxinst.com/downloads/uploads/Andor_Software_Development_Kit_2.pdf>`_.
+    - Some cameras (e.g., iXon) have lots of readout (full frame, ROI, full vertical binning, etc.) and acquisition modes (single, continuous, accumulating, kinetic cycle, etc.). They are described in details in the `manual <https://andor.oxinst.com/downloads/uploads/Andor_Software_Development_Kit_2.pdf>`__.
 
 
 
@@ -74,7 +74,7 @@ Andor SDK 3
 
 This is a newer SDK, which covers the newer cameras. It has been tested with Andor Zyla.
 
-The code is located in :mod:`pylablib.devices.Andor`, and the main camera class is :mod:`pylablib.devices.Andor.AndorSDK3Camera`.
+The code is located in :mod:`pylablib.devices.Andor`, and the main camera class is :class:`pylablib.devices.Andor.AndorSDK3Camera<.AndorSDK3.AndorSDK3Camera>`.
 
 DLL requirements
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -89,7 +89,7 @@ This library requires several DLLs all located in the same folder: ``atcore.dll`
 Connection
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-The cameras are identified by their index, starting from zero. To get the total number of cameras, you can run :func:`Andor.get_cameras_number_SDK3`::
+The cameras are identified by their index, starting from zero. To get the total number of cameras, you can run :func:`Andor.get_cameras_number_SDK3<.AndorSDK3.get_cameras_number>`::
 
     >> from pylablib.devices import Andor
     >> Andor.get_cameras_number_SDK3()
@@ -102,7 +102,7 @@ The cameras are identified by their index, starting from zero. To get the total 
 Operation
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-The operation of these cameras is also relatively standard. They support all the standard methods for dealing with ROI and exposure, starting and stopping acquisition, and operating the frame reading loop. The SDK also provides a universal interface for getting and setting various camera parameters using their name. You can use :meth:`AndorSDK3Camera.get_value` and :meth:`AndorSDK3Camera.set_value` for that, as well as ``.v`` attribute which gives a dictionary-like access::
+The operation of these cameras is also relatively standard. They support all the standard methods for dealing with ROI and exposure, starting and stopping acquisition, and operating the frame reading loop. The SDK also provides a universal interface for getting and setting various camera parameters using their name. You can use :meth:`.AndorSDK3Camera.get_value` and :meth:`.AndorSDK3Camera.set_value` for that, as well as ``.v`` attribute which gives a dictionary-like access::
 
     >> cam = Andor.AndorSDK3Camera()
     >> cam.get_value("CameraAcquiring")  # check if the camera is acquiring
@@ -111,4 +111,4 @@ The operation of these cameras is also relatively standard. They support all the
     >> cam.v["ExposureTime"]  # get the exposure; could also use cam.get_value("ExposureTime")
     0.1
 
-Some values serve as commands; these can be invoked using :meth:`AndorSDK3Camera.command` method. To get a dictionary of all available values, you can call :meth:`AndorSDK3Camera.get_all_values`. Finally, you can check if the particular parameter is available by querying :meth:`AndorSDK3Camera.is_feature_available`, :meth:`AndorSDK3Camera.is_feature_readable`, and :meth:`AndorSDK3Camera.is_feature_writable`. The description of the features is given in `manual <https://andor.oxinst.com/downloads/uploads/Andor_SDK3_Manual.pdf>`_.
+Some values serve as commands; these can be invoked using :meth:`.AndorSDK3Camera.command` method. To get a dictionary of all available values, you can call :meth:`.AndorSDK3Camera.get_all_values`. Finally, you can check if the particular parameter is available by querying :meth:`.AndorSDK3Camera.is_feature_available`, :meth:`.AndorSDK3Camera.is_feature_readable`, and :meth:`.AndorSDK3Camera.is_feature_writable`. The description of the features is given in `manual <https://andor.oxinst.com/downloads/uploads/Andor_SDK3_Manual.pdf>`__.

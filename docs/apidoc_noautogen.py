@@ -18,7 +18,7 @@ dev_files=glob.glob(os.path.join(src,"devices","**/*.py"))
 autogen_files=[f for f in dev_files if is_autogen(f)]
 
 skip_files=[f+"/**" for f in exclude_folders]+autogen_files
-print("Skipping\n"+"\n".join(autogen_files))
+print("\n".join(["Skipping {}".format(f) for f in autogen_files]))
 skip_files=[os.path.join(src,f) for f in skip_files]
 
 os.environ["SPHINX_APIDOC_OPTIONS"]="members,inherited-members,undoc-members,show-inheritance"  # include inherited members into the docstring

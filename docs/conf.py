@@ -40,8 +40,11 @@ release = '1.0.0'
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = [
-    'sphinx.ext.autodoc',
+if os.path.exists(".apidoc") and len(os.listdir(".apidoc"))>0:
+    extensions = ['sphinx.ext.autodoc']
+else:
+    extensions = []
+extensions += [
     'sphinx.ext.intersphinx',
     'sphinx.ext.napoleon',
     'sphinx.ext.coverage',
@@ -53,9 +56,9 @@ autodoc_mock_imports = ['nidaqmx', 'pyvisa', 'serial', 'ft232', 'PyQt5', 'pywinu
 sys.modules['pyvisa']=mock.Mock(VisaIOError=object, __version__='1.9.0')
 sys.modules['serial']=mock.Mock(SerialException=object)
 sys.modules['ft232']=mock.Mock(Ft232Exception=object)
-autodoc_member_order = 'bysource'
+autodoc_member_order='bysource'
 
-# nitpicky = True
+nitpicky=True
 nitpick_ignore=[("py:class","callable"),
                 ("py:class","socket.socket"),
                 ("py:class","builtins.OSError"), ("py:class","builtins.RuntimeError"), ("py:class","usb.core.USBError"), ("py:class","pyvisa.errors.VisaIOError"),

@@ -8,12 +8,12 @@ IMAQ frame grabbers interface
 
 IMAQ is the interface from National Instruments, which is used in a variety of frame grabber. It has been tested with NI PCI-1430 and PCI-1433 frame grabbers together with PhotonFocus MV-D1024E camera.
 
-The code is located in :mod:`pylablib.devices.IMAQ`, and the main camera class is :mod:`pylablib.devices.IMAQ.IMAQCamera`.
+The code is located in :mod:`pylablib.devices.IMAQ`, and the main camera class is :class:`pylablib.devices.IMAQ.IMAQCamera<.IMAQ.IMAQCamera>`.
 
 DLL requirements
 -----------------------
 
-This interfaces requires ``imaq.dll``, which is installed with the freely available `Vision Acquisition Software <https://www.ni.com/en-us/support/downloads/drivers/download.vision-acquisition-software.html>`_, which also includes all the necessary drivers. After installation, the DLL is automatically added to the ``System32`` folder, where pylablib looks for it by default. If the DLL is located elsewhere, the path can be specified using the library parameter ``devices/dlls/niimaq``::
+This interfaces requires ``imaq.dll``, which is installed with the freely available `Vision Acquisition Software <https://www.ni.com/en-us/support/downloads/drivers/download.vision-acquisition-software.html>`__, which also includes all the necessary drivers. After installation, the DLL is automatically added to the ``System32`` folder, where pylablib looks for it by default. If the DLL is located elsewhere, the path can be specified using the library parameter ``devices/dlls/niimaq``::
 
     import pylablib as pll
     pll.par["devices/dlls/niimaq"] = "path/to/dlls"
@@ -24,7 +24,7 @@ This interfaces requires ``imaq.dll``, which is installed with the freely availa
 Connection
 -----------------------
 
-The cameras are identified by their name, which usually looks like ``"img0"``. To get the list of all cameras, you can use NI MAX (Measurement and Automation Explorer), or :func:`IMAQ.list_cameras`::
+The cameras are identified by their name, which usually looks like ``"img0"``. To get the list of all cameras, you can use NI MAX (Measurement and Automation Explorer), or :func:`.IMAQ.list_cameras`::
 
     >> from pylablib.devices import IMAQ
     >> IMAQ.list_cameras()
@@ -43,13 +43,13 @@ Unlike most cameras, the frame grabber interface only deals with the frame trans
     - External trigger controls frame *transfer*, not frame *acquisition*, which is controlled by the camera. By default (internal trigger), this rate is controller by the camera, so every frame gets transferred. However, is the external trigger is used and it is out of sync with the camera, it can result in duplicate or missing frames.
     - ROI is defined withing the transferred image, whose size itself is determined by the camera ROI. Hence, e.g., if the camera chip is 1024x1024px and its roi is 512x512, then the frame grabber ROI can go only up to 512x512. Any attempts to set it higher result in the frozen acquisition, as the frame grabber expects a larger frame than it receives, and waits forever to get the rest.
 
-The SDK also provides a universal interface for getting and setting various camera attributes using their name. You can use :meth:`IMAQCamera.get_attribute_value` and :meth:`IMAQCamera.set_attribute_value` for that::
+The SDK also provides a universal interface for getting and setting various camera attributes using their name. You can use :meth:`.IMAQCamera.get_attribute_value` and :meth:`.IMAQCamera.set_attribute_value` for that::
 
     >> cam = IMAQ.IMAQCamera()
     >> cam.get_value("FRAMEWAIT_MSEC")  # frame read request timeout
     1000
 
-To get a all available attributes as a dictionary, you can call :meth:`IMAQCamera.get_all_attributes`. Their meaning, as well as descriptions of trigger modes and other settings, is explained in the manual supplied with the `Vision Acquisition Software <https://www.ni.com/en-us/support/downloads/drivers/download.vision-acquisition-software.html>`_.
+To get a all available attributes as a dictionary, you can call :meth:`.IMAQCamera.get_all_attributes`. Their meaning, as well as descriptions of trigger modes and other settings, is explained in the manual supplied with the `Vision Acquisition Software <https://www.ni.com/en-us/support/downloads/drivers/download.vision-acquisition-software.html>`__.
 
 
 Communication with the camera and camera files
@@ -57,7 +57,7 @@ Communication with the camera and camera files
 
 The frame grabber needs some basic information about the camera (sensor size, bit depth, timeouts, aux lines mapping), which are contained in the camera files. These files can be assigned to cameras in the NI MAX, and are usually supplied by NI or by the camera manufacturer. In addition, NI MAX allows one to adjust some settings within these files, which are read-only within the NI IMAQ software. These include frame timeout and camera bit depth.
 
-The communication with the camera itself greatly varies between different cameras. Some will have additional connection to control the parameters. However, most use serial communication built into the CameraLink interface. This communication can be set up with :meth:`IMAQCamera.setup_serial_params` and used via :meth:`IMAQCamera.serial_read` and  :meth:`IMAQCamera.serial_write`. The communication protocols are camera-dependent. Yet some other cameras (e.g., Photon Focus) use proprietary communication protocol. In this case, the provide their own DLLs, which independently use NI-provided DLLs for serial communication (most notably, ``clallserial.dll``). In this case, one needs to maintain two independent connections: one directly to the NI frame grabber to obtain the frame data, and one to the manufacturer library to control the camera. This is the way it is implemented in PhotonFocus camera interface.
+The communication with the camera itself greatly varies between different cameras. Some will have additional connection to control the parameters. However, most use serial communication built into the CameraLink interface. This communication can be set up with :meth:`.IMAQCamera.setup_serial_params` and used via :meth:`.IMAQCamera.serial_read` and  :meth:`.IMAQCamera.serial_write`. The communication protocols are camera-dependent. Yet some other cameras (e.g., Photon Focus) use proprietary communication protocol. In this case, the provide their own DLLs, which independently use NI-provided DLLs for serial communication (most notably, ``clallserial.dll``). In this case, one needs to maintain two independent connections: one directly to the NI frame grabber to obtain the frame data, and one to the manufacturer library to control the camera. This is the way it is implemented in PhotonFocus camera interface.
 
 
 Known issues

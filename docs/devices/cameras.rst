@@ -187,14 +187,7 @@ Frame metainfo
 
 Currently supported cameras
 -------------------------------------------
-
-- :ref:`Andor SDK2 <cameras_andor_sdk2>` and :ref:`Andor SDK3 <cameras_andor_sdk3>`: variety of Andor (currently part of Oxford) cameras. Tested with Andor iXon, Luca, and Zyla).
-- :ref:`DCAM <cameras_dcam>`: Hamamatsu cameras. Tested with Hamamatsu Orca Flash 4.0 and ImagEM.
-- :ref:`NI IMAQ <cameras_imaq>`: National Instruments frame grabbers. Tested with NI PCI-1430 and PCI-1433 frame grabbers together with PhotonFocus MV-D1024E camera.
-- :ref:`NI IMAQdx <cameras_imaqdx>`: National Instruments universal camera interface.
-- :ref:`PCO cameras<cameras_pco>`. Tested with pco.edge cameras with CLHS and regular CameraLink interfaces.
-- :ref:`Thorlabs Scientific Cameras interface <cameras_tlcam>`. Tested with Thorlabs Kiralux camera.
-- :ref:`Uc480 interface <cameras_uc480>`: used in multiple cameras, including simple Thorlabs and IDS cameras. Tested with IDS SC2592R12M and Thorlabs DCC1545M.
+.. include:: cameras_list.txt
 
 
 
@@ -205,6 +198,6 @@ Currently supported cameras
     DCAM
     IMAQ
     IMAQdx
-    PCO
-    ThorlabsTLCam
+    PCO_SC2
+    Thorlabs_TLCamera
     uc480
