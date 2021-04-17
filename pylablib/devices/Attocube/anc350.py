@@ -9,6 +9,11 @@ import struct
 from .base import AttocubeError
 
 
+def get_usb_devices_number():
+    """Get the number of controllers connected via USB"""
+    devs=comm_backend.PyUSBDeviceBackend.list_resources(idVendor=0x16C0,idProduct=0x055B)
+    return len(devs)
+
 class ANC350(comm_backend.ICommBackendWrapper):
     """
     Attocube ANC350 controller.
@@ -20,7 +25,6 @@ class ANC350(comm_backend.ICommBackendWrapper):
     def __init__(self, conn=0, timeout=5.):
         if isinstance(conn,int):
             conn=(0x16C0,0x055B,conn,0x86,0x02,"libusb0") # default device IDs
-        comm_backend.ICommBackendWrapper.__init__(self,None)
         instr=comm_backend.new_backend(conn,backend="pyusb",timeout=timeout,check_read_size=False)
         self._corr_number=0
         self._tell_telegrams={}
@@ -45,6 +49,7 @@ class ANC350(comm_backend.ICommBackendWrapper):
         self._add_status_variable("status",self.get_all_status)
         self._add_status_variable("positions",self.get_all_positions)
         self._add_status_variable("target_positions",self.get_all_target_positions)
+        self._add_status_variable("sensor_voltage",self.get_sensor_voltage)
         self._add_status_variable("capacitance",lambda: self.get_all_capacitance(measure=True),priority=-5)
     _axes=[0,1,2]
     def _make_telegram(self, opcode, address, index=0, data=b"", add_corr=True):
@@ -183,9 +188,9 @@ class ANC350(comm_backend.ICommBackendWrapper):
         """Check if axis is enabled"""
         return bool(self.get_value(0x3030,axis))
     @interface.use_parameters
-    def enable_axis(self, axis):
+    def enable_axis(self, axis, enabled=True):
         """Enable specific axis"""
-        self.set_value(0x3030,axis,1)
+        self.set_value(0x3030,axis,1 if enabled else 0)
     @interface.use_parameters
     def disable_axis(self, axis):
         """Disable specific axis"""
@@ -257,6 +262,13 @@ class ANC350(comm_backend.ICommBackendWrapper):
             self.set_precision(precision)
         self.set_value(0x3036,axis,int(precision*1E9))
         return self.get_value(0x3037,axis)
+    def get_sensor_voltage(self):
+        """Get position sensor voltage in Volts"""
+        return self.get_value(0x0526,0)*1E-3
+    def set_sensor_voltage(self, voltage):
+        """Set position sensor voltage in Volts"""
+        self.set_value(0x0526,0,int(voltage*1E3))
+        return self.get_sensor_voltage()
 
     @interface.use_parameters
     def get_voltage(self, axis):

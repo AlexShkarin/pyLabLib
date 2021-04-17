@@ -11,11 +11,11 @@ class ArcusError(RuntimeError):
     """Generic Arcus error"""
 
 
-def get_device_info(devid):
+def get_usb_device_info(devid):
     """
     Get info for the given device index (starting from 0).
 
-    Return tuple ``()``.
+    Return tuple ``(index, serial, model, desc, vid, pid)``.
     """
     lib=ArcusPerformaxDriver_lib.lib
     lib.initlib()
@@ -23,16 +23,16 @@ def get_device_info(devid):
     if devid>=ndev:
         raise ArcusError("device with index {} doesn't exist; there are {} devices".format(devid,ndev))
     return tuple([devid]+[py3.as_str(lib.fnPerformaxComGetProductString(devid,i)) for i in range(5)])
-def list_performax_devices():
+def list_usb_performax_devices():
     """
     List all performax devices.
 
-    Return list of tuples ``()``, one per device.
+    Return list of tuples ``(index, serial, model, desc, vid, pid)``, one per device.
     """
     lib=ArcusPerformaxDriver_lib.lib
     lib.initlib()
     ndev=lib.fnPerformaxComGetNumDevices()
-    return [get_device_info(d) for d in range(ndev)]
+    return [get_usb_device_info(d) for d in range(ndev)]
 
 
 class GenericPerformaxStage(stage.IStage,interface.IDevice):
@@ -85,7 +85,7 @@ class GenericPerformaxStage(stage.IStage,interface.IDevice):
 
     def get_device_info(self):
         """Get the device info"""
-        return get_device_info(self.idx)
+        return get_usb_device_info(self.idx)
     def query(self, comm):
         """Send a query to the stage and return the reply"""
         self._check_handle()
@@ -104,7 +104,7 @@ class GenericPerformaxStage(stage.IStage,interface.IDevice):
 
 class Performax4EXStage(GenericPerformaxStage):
     """
-    Arcus Performax 4EX translation stage.
+    Arcus Performax 4EX/4ET translation stage.
 
     Args:
         idx(int): stage index
@@ -112,43 +112,60 @@ class Performax4EXStage(GenericPerformaxStage):
     """
     _axes=list("XYZU")
     _speed_comm="HS"
+    _split_comms=False
+    _individual_home=False
+    _analog_inputs=range(1,9)
     def __init__(self, idx=0, enable=True):
         super().__init__()
         self._add_parameter_class(interface.EnumParameterClass("axis",self._axes,value_case="upper"))
         self.enable_absolute_mode()
         if enable:
             self.enable_all()
-        self.enable_global_limit_errors(False)
-        self._add_settings_variable("global_limit_errors",self.global_limit_errors_enabled,self.enable_global_limit_errors)
+        self.enable_limit_errors(False)
+        self._add_settings_variable("limit_errors",self.limit_errors_enabled,self.enable_limit_errors)
+        self._add_info_variable("axes",self.get_all_axes)
         self._add_status_variable("position",self.get_position,mux=(self._axes,))
         self._add_status_variable("encoder",self.get_encoder,mux=(self._axes,))
-        self._add_settings_variable("enabled",self.is_enabled,self.enable,mux=(self._axes,))
+        self._add_status_variable("current_speed",self.get_current_axis_speed,mux=(self._axes,))
+        self._add_settings_variable("enabled",self.is_enabled,self.enable_axis,mux=(self._axes,))
         self._add_settings_variable("global_speed",self.get_global_speed,self.set_global_speed)
         self._add_settings_variable("axis_speed",self.get_axis_speed,self.set_axis_speed,mux=(self._axes,))
         self._add_status_variable("axis_status",self.get_status,mux=(self._axes,))
         self._add_status_variable("moving",self.is_moving,mux=(self._axes,))
         self._add_status_variable("digital_input",self.get_digital_input_register,priority=-2)
         self._add_settings_variable("digital_output",self.get_digital_output_register,priority=-2)
-        self._add_settings_variable("analog_input",self.get_analog_input,priority=-2,mux=(range(1,9),))
+        self._add_settings_variable("analog_input",self.get_analog_input,priority=-2,mux=(self._analog_inputs,))
 
     def enable_absolute_mode(self, enable=True):
         """Set absolute motion mode"""
         self.query("ABS" if enable else "REL")
-    def enable_global_limit_errors(self, enable=True):
+    def enable_limit_errors(self, enable=True, autoclear=True):
         """
-        Enable global limit errors.
+        Enable limit errors.
 
-        If on, reaching limit on one axis raises an error and stop other axes; otherwise, the limited axis still stops, but the other axes are unaffected.
+        If on, reaching limit switch on an axis puts it into an error state, which immediately stops this an all other axes;
+        any further motion command on this axis will raise an error (it is still possible to restart motion on other axes);
+        the axis motion can only be resumed by calling :meth:`clear_limit_error`.
+        If off, the limited axis still stops, but the other axes are unaffected.
+        If ``autoclear==True`` and ``enable==False``, also clear the current limit errors on all exs.
         """
         self.query("IERR={}".format(0 if enable else 1))
-    def global_limit_errors_enabled(self):
+        if not enable and autoclear:
+            self.clear_all_limit_errors()
+    def limit_errors_enabled(self):
         """
         Check if global limit errors are enabled.
 
-        If on, reaching limit on one axis raises an error and stop other axes; otherwise, the limited axis still stops, but the other axes are unaffected.
+        If on, reaching limit switch on an axis puts it into an error state, which immediately stops this an all other axes;
+        any further motion command on this axis will raise an error (it is still possible to restart motion on other axes);
+        the axis motion can only be resumed by calling :meth:`clear_limit_error`.
+        If off, the limited axis still stops, but the other axes are unaffected.
         """
         return not bool(int(self.query("IERR")))
     
+    def get_all_axes(self):
+        """Get the list of all available axes"""
+        return list(self._axes)
     def _axisn(self, axis):
         return self._axes.index(axis)+1
     @interface.use_parameters
@@ -156,7 +173,7 @@ class Performax4EXStage(GenericPerformaxStage):
         """Check if the axis output is enabled"""
         return bool(int(self.query("EO{}".format(self._axisn(axis)))))
     @interface.use_parameters
-    def enable(self, axis, enable=True):
+    def enable_axis(self, axis, enable=True):
         """
         Enable axis output.
 
@@ -167,7 +184,7 @@ class Performax4EXStage(GenericPerformaxStage):
         """Enable output on all axes"""
         self.query("EO={}".format(2**len(self._axes)-1 if enable else 0))
         for axis in self._axes:
-            self.enable(axis,enable=enable)
+            self.enable_axis(axis,enable=enable)
 
     @interface.use_parameters
     def get_position(self, axis):
@@ -211,13 +228,18 @@ class Performax4EXStage(GenericPerformaxStage):
         """
         self.query("J{}{}".format(axis,"+" if direction else "-"))
     @interface.use_parameters
-    def stop(self, axis):
-        """Stop motion of a given axis"""
-        self.query("STOP"+axis)
-    def stop_all(self):
+    def stop(self, axis, immediate=False):
+        """
+        Stop motion of a given axis.
+
+        If ``immediate==True`` make an abrupt stop; otherwise, slow down gradually.
+        """
+        comm="ABORT" if immediate else "STOP"
+        self.query("{}{}".format(comm,axis))
+    def stop_all(self, immediate=False):
         """Stop motion of all axes"""
         for axis in self._axes:
-            self.query("STOP"+axis)
+            self.stop(axis,immediate=immediate)
 
     _p_home_mode=interface.EnumParameterClass("home_mode",{"only_home_input":0,"only_limit_input":1,"home_and_zidx_input":2,"only_zidx_input":3,"only_home_input_lowspeed":4})
     @interface.use_parameters
@@ -225,10 +247,15 @@ class Performax4EXStage(GenericPerformaxStage):
         """
         Home the given axis using a given home mode.
 
+        `direction` can be ``"+"`` or ``"-"``
         The mode can be ``"only_home_input"``, ``"only_home_input_lowspeed"``, ``"only_limit_input"``, ``"only_zidx_input"``, or ``"home_and_zidx_input"``.
-        For meaning, see Arcus PMX-4EX manual.
+        For meaning, see Arcus PMX manual.
         """
-        self.query("H{}{}{}".format(axis,direction,home_mode))
+        if self._individual_home:
+            comm=["H","L","HZ","Z","HL"][home_mode]
+            self.query("{}{}{}".format(comm,axis,direction))
+        else:
+            self.query("H{}{}{}".format(axis,direction,home_mode))
 
     def get_global_speed(self):
         """Get the global speed setting (in Hz); overridden by a non-zero axis speed"""
@@ -244,6 +271,14 @@ class Performax4EXStage(GenericPerformaxStage):
     def set_axis_speed(self, axis, speed):
         """Set the individual axis speed setting (in Hz); 0 means that the global speed is used"""
         self.query("{}{}={:.0f}".format(self._speed_comm,axis,speed))
+    @interface.use_parameters
+    def get_current_axis_speed(self, axis):
+        """Get the instantaneous speed (in Hz)"""
+        if self._split_comms:
+            return int(self.query("PS{}".format(axis)))
+        else:
+            speeds=[int(x) for x in self.query("PS").split(":") if x]
+            return speeds[self._axisn(axis)-1]
 
     _status_bits={  "accel":0x001,"decel":0x002,"moving":0x004,
                     "alarm":0x008,
@@ -251,12 +286,15 @@ class Performax4EXStage(GenericPerformaxStage):
                     "err_plus_lim":0x080,"err_minus_lim":0x100,"err_alarm":0x200,
                     "TOC_timeout":0x800}
     def _get_full_status(self):
-        stat=self.query("MST")
-        return [int(x) for x in stat.split(":") if x]
+        if self._split_comms:
+            return [int(self.query("MST{}".format(x))) for x in self._axes]
+        else:
+            stat=self.query("MST")
+            return [int(x) for x in stat.split(":") if x]
     @interface.use_parameters
     def get_status_n(self, axis):
         """Get the axis status as an integer"""
-        return self._get_full_status()[self._axisn(axis)]
+        return self._get_full_status()[self._axisn(axis)-1]
     def get_status(self, axis):
         """Get the axis status as a set of string descriptors"""
         statn=self.get_status_n(axis)
@@ -291,9 +329,13 @@ class Performax4EXStage(GenericPerformaxStage):
     def clear_limit_error(self, axis):
         """Clear axis limit errors"""
         self.query("CLR"+axis)
+    def clear_all_limit_errors(self):
+        """Clear limit errors on all axes"""
+        for ax in self._axes:
+            self.clear_limit_error(ax)
 
     def get_analog_input(self, channel):
-        """Get voltage (in V) at a given input (1 through 8)"""
+        """Get voltage (in V) at a given input (starting with 1)"""
         return int(self.query("AI{}".format(channel)))*1E-3
     def get_digital_input(self, channel):
         """Get value (0 or 1) at a given digital input (1 through 8)"""
@@ -315,3 +357,20 @@ class Performax4EXStage(GenericPerformaxStage):
         """Set all 8 digital inputs as a single 8-bit integer"""
         self.query("DO={}".format(int(value)))
         return self.get_digital_output_register()
+
+
+
+
+class Performax2EXStage(Performax4EXStage):
+    """
+    Arcus Performax 2EX/2ED translation stage.
+
+    Args:
+        idx(int): stage index
+        enable: if ``True``, enable all axes on startup
+    """
+    _axes=list("XY")
+    _speed_comm="HSPD"
+    _split_comms=True
+    _individual_home=True
+    _analog_inputs=range(1,3)

@@ -58,6 +58,71 @@ Application notes and examples
 Here we talk more practically about performing tasks common to most stages.
 
 
+Motion
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The most standard motion methods are ``move_to``, which moves to a specified position, ``move_by``, which moves by a specified distance or number of steps, and ``jog``, which moves continuously in a given direction until stopped or run into a limit switch. If both ``move_to`` and ``move_by`` are present, they usually perform the same operation under the hood: ``stage.move_by(s)`` and ``stage.move_to(stage.get_position()+s)`` yield the same result.
+
+In almost all cases these commands are asynchronous, in the sense that they simply initialize the motion and continue immediately::
+
+    >> stage.move_by(1000)
+    >> stage.is_moving()  # the stage is moving, but the execution continues
+    True
+    >> time.sleep(1.)
+    >> stage.is_moving()  # after 1s the motion is done
+    False
+
+To stop immediately (which is usually only used with ``jog`` commands) you can use the ``stop`` method. In some cases, there are two different stop kinds: "soft" with a ramp-down, or "hard" which immediately ceases motion.
+
+
+Status and synchronization
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Since the motion commands are asynchronous, the devices provide two methods to synchronize it with the script execution. The first is ``is_moving`` which checks if the stage is currently in motion. The second is ``wait_move``, which pauses the execution until the stage motion is finished.
+
+In addition, many stages provide methods for additional information, e.g., ``get_status`` (which, usually, returns state of motion, limit switches, possible errors, etc.), or ``get_current_speed``.
+
+
+Position readout
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The the stage has position readout (either hardware sensor, or step counting), it is implemented with the ``get_position`` method. In most cases, it will be accompanied with the ``set_position_reference`` method, which lets one change the currently stored position, effectively adding an offset to all further position readings::
+
+    >> stage.get_position()
+    10000
+    >> stage.set_position_reference(20000)  # change current reference to 
+    >> stage.get_position()  # note that it reacts immediately, unlike move_to
+    20000
+    >> stage.move_to(21000)  # move by 1000 steps; equivalent to .move_by(1000), or .move_to(11000) before the reference change
+
+Note that it only changes the internal counter state, and does not cause any stage motion (which is performed by ``move_to``).
+
+
+Channel selection
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Many controllers support simultaneous control of several different motors. In this case, all of their methods take an additional ``axis`` or ``channel`` argument, which specify the exact motor. In cases where usually only one motor is controlled (e.g., TMCM1110 or Thorlabs KDC101), this parameters is set to the default value, and is closer to the end of the parameter list. If having multiple controlled stages is the default (e.g., Attocube ANC350 or Arcus Performax), this parameter is usually the first one, and it has to be specified. The channels are usually specified by their index starting from 0, although some stages adopt a different labeling (e.g., Arcus Performax lebels them as X, Y, Z, and U).
+
+
+Homing
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+As mentioned above, often stages require homing to get absolute position readings. It needs to be done every time the stage is power-cycled, but the homing parameters usually persist between different re-connections.
+
+If homing is implemented, it use done using the ``home`` method. In addition, there can also be an ``is_homed`` method, which checks if the homing has already been performed. If the method is present, then by default ``home`` will not execute if ``is_homed`` returns ``True``, unless forced.
+
+Some stages do not have an explicit homing method, but can be manually homed by, e.g., running the stage to the limit switch and setting the position reference to 0.
+
 
 Currently supported stages
 -------------------------------------------
+.. include:: stages_list.txt
+
+
+
+.. toctree::
+    :hidden:
+
+    Attocube
+    Thorlabs_kinesis
+    Arcus_performax

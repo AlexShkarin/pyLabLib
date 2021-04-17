@@ -85,7 +85,7 @@ Dependencies and external software
 
 Many devices require external software not provided with this package. 
 
-The simpler devices using serial connection (either with an external USB-to-Serial adapter, or a similar built-in chip) only need the drivers (either standard adapter drivers, or, e.g., Thorlabs APT software). If they already show up as serial communication devices in the OS, no additional software is normally needed. Similarly, devices using Ethernet connection do not need any external drives, as long as they are properly connected to the network. Finally, devices using Visa connection require NI VISA Runtime, which is freely available from the `National Instruments website <https://www.ni.com/en-us/support/downloads/drivers/download.ni-visa.html>`_. See also `PyVISA <https://pyvisa.readthedocs.io/en/master/>`_ for details.
+The simpler devices using serial connection (either with an external USB-to-Serial adapter, or a similar built-in chip) only need the drivers (either standard adapter drivers, or, e.g., Thorlabs APT software). If they already show up as serial communication devices in the OS, no additional software is normally needed. Similarly, devices using Ethernet connection do not need any external drives, as long as they are properly connected to the network. Finally, devices using Visa connection require NI VISA Runtime, which is freely available from the `National Instruments website <https://www.ni.com/en-us/support/downloads/drivers/download.ni-visa.html>`__. See also `PyVISA <https://pyvisa.readthedocs.io/en/master/>`__ for details.
 
 Devices which require manufacturer DLLs are harder to set up. For most of them, at the very least, you need to install the manufacturer-provided software for communication. Frequently it already includes the necessary libraries, which means that nothing else is required. However, sometimes you would need to download either an additional SDK package, or DLLs directly from the website. Since these libraries take a lot of space and are often proprietary, they are not distributed with the pylablib.
 
@@ -140,19 +140,15 @@ Available devices
 --------------------------------------
 
 - :ref:`Cameras <cameras>`
-    - :ref:`Andor SDK2 <cameras_andor_sdk2>` and :ref:`Andor SDK3 <cameras_andor_sdk3>`: variety of Andor (currently part of Oxford) cameras. Tested with Andor iXon, Luca, and Zyla).
-    - :ref:`DCAM <cameras_dcam>`: Hamamatsu cameras. Tested with Hamamatsu Orca Flash 4.0 and ImagEM.
-    - :ref:`NI IMAQ <cameras_imaq>`: National Instruments frame grabbers. Tested with NI PCI-1430 and PCI-1433 frame grabbers together with PhotonFocus MV-D1024E camera.
-    - :ref:`NI IMAQdx <cameras_imaqdx>`: National Instruments universal camera interface.
-    - :ref:`PCO cameras<cameras_pco>`. Tested with pco.edge cameras with CLHS and regular CameraLink interfaces.
-    - :ref:`Thorlabs Scientific Cameras interface <cameras_tlcam>`. Tested with Thorlabs Kiralux camera.
-    - :ref:`Uc480 interface <cameras_uc480>`: used in multiple cameras, including simple Thorlabs and IDS cameras. Tested with IDS SC2592R12M and Thorlabs DCC1545M.
-- 
+    .. include:: cameras_list.txt
+- :ref:`Stages <stages>`
+    .. include:: stages_list.txt
 
 .. toctree::
     :hidden:
     
     cameras
+    stages
 
 .. --------------------------------------
 .. List of devices

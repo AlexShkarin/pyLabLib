@@ -313,14 +313,14 @@ class KinesisDevice(BasicKinesisDevice):
         """
         self.send_comm_data(0x0410,struct.pack("<Hi",channel,self._p2d(position,"p",scale=scale)))
         return self._get_position(channel=channel)
-    def _move_by(self, distance=1, channel=1, scale=None):
+    def _move_by(self, distance=1, channel=1, scale=True):
         """
         Move by a given amount (positive or negative) from the current position.
         
         If ``scale==True``, assume that the distance is in the physical units (see class description); otherwise, assume it is in the device internal units (steps).
         """
         self.send_comm_data(0x0448,struct.pack("<Hi",channel,self._p2d(distance,"p",scale=scale)))
-    def _move_to(self, position, channel=1, scale=None):
+    def _move_to(self, position, channel=1, scale=True):
         """Move to `position` (positive or negative).
         
         If ``scale==True``, assume that the position is in the physical units (see class description); otherwise, assume it is in the device internal units (steps).
@@ -346,7 +346,7 @@ class KinesisDevice(BasicKinesisDevice):
         curr_status=self._get_status(channel=channel)
         return any([s in curr_status for s in self._moving_status])
     def _wait_move(self, channel=1, timeout=None):
-        """Wait until motion is done"""
+        """Wait until motion command is done"""
         return self._wait_for_status(self._moving_status,False,channel=channel,timeout=timeout)
 
     def _stop(self, channel=1, immediate=False, sync=True, timeout=None):
@@ -360,7 +360,7 @@ class KinesisDevice(BasicKinesisDevice):
         if sync:
             self._wait_for_stop(channel=channel,timeout=timeout)
     def _wait_for_stop(self, channel=1, timeout=None):
-        """Wait until stopping operation is done"""
+        """Wait until motion or homing is done"""
         return self._wait_for_status(self._moving_status+["homing"],False,channel=channel,timeout=timeout)
 
 

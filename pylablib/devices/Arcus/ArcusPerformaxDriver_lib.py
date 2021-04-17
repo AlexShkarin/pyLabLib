@@ -24,7 +24,8 @@ class ArcusPerformaxLib:
         if self._initialized:
             return
         self._initialized=True
-        self.lib=load_lib.load_lib("PerformaxCom.dll",locations=("parameter/arcus_performax","global"),call_conv="cdecl")
+        error_message="The library is can be downloaded on the manufacturer's website\n"+load_lib.par_error_message.format("arcus_performax")
+        self.lib=load_lib.load_lib("PerformaxCom.dll",locations=("parameter/arcus_performax","global"),error_message=error_message,call_conv="cdecl",locally=True)
         lib=self.lib
         define_functions(lib)
 
