@@ -164,21 +164,21 @@ class BinaryTableInputFileFormatter(IInputFileFormat):
         IInputFileFormat.__init__(self)
         self.out_type=_module_parameters["fileio/loadfile/csv/out_type"] if out_type=="default" else out_type
         self.preamble=preamble or {}
-        self.dtype=preamble.get("dtype",dtype)
+        self.dtype=self.preamble.get("dtype",dtype)
         try:
             self.columns_num=len(columns)
             self.columns=columns
         except TypeError:
             self.columns_num=columns
             self.columns=None
-        self.packing=preamble.get("packing",packing)
+        self.packing=self.preamble.get("packing",packing)
         self.skip_bytes=skip_bytes
-        self.preamble_columns_num=preamble.get("ncols",None)
+        self.preamble_columns_num=self.preamble.get("ncols",None)
         if self.columns_num is None:
             self.columns_num=self.preamble_columns_num
         elif self.preamble_columns_num is not None and self.preamble_columns_num!=self.columns_num:
             raise ValueError("supplied columns number {0} disagrees with extracted form preamble {1}".format(self.columns_num,self.preamble_columns_num))
-        self.preamble_rows_num=preamble.get("nrows",None)
+        self.preamble_rows_num=self.preamble.get("nrows",None)
     def read(self, location_file):
         with location_file.open("rb") as stream:
             if self.skip_bytes:

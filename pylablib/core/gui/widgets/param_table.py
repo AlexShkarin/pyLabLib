@@ -114,10 +114,10 @@ class ParamTable(QtWidgets.QWidget):
                 row,col,rowspan,colspan=0,location[0],1,1
             row,colspan,rowspan=0,1,1
             row_cnt,col_cnt=1,layout.count()
-        row=row_cnt if row is "next" else (row%row_cnt if row<0 else row)
+        row=row_cnt if row=="next" else (row%row_cnt if row<0 else row)
         if rowspan=="end":
             rowspan=max(row_cnt-row,1)
-        col=col_cnt if col is "next" else (col%col_cnt if col<0 else col)
+        col=col_cnt if col=="next" else (col%col_cnt if col<0 else col)
         if colspan=="end":
             colspan=max(col_cnt-col,1)
         return lname,(row,col,rowspan,colspan)

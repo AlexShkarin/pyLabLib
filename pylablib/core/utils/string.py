@@ -219,7 +219,7 @@ _soft_delimiters=" ,"
 _quotation_characters="\"'"
 
 _to_escape=_hard_delimiters+_quotation_characters
-_escape_special_rules={"\a":"a","\b":"b","\f":"f","\n":"n","\t":"t","\v":"v","\r":"r"}
+_escape_special_rules={"\a":"a","\b":"b","\f":"f","\n":"n","\t":"t","\v":"v","\r":"r","\\":"\\"}
 _unescape_special_rules=dict([(v,k) for (k,v) in _escape_special_rules.items()])
 
 _parenthesis_pairs={"(":")", "[":"]", "{":"}"}
