@@ -606,11 +606,6 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
         self.set_value("AOIHeight",max((vend-vstart)//vbin,minh))
         return self.get_roi()
     def get_roi_limits(self):
-        """
-        Get the minimal and maximal ROI parameters.
-
-        Return tuple ``(min_roi, max_roi)``, where each element is in turn 6-tuple describing the ROI.
-        """
         params=["AOILeft","AOITop","AOIWidth","AOIHeight","AOIHBin","AOIVBin"]
         minp,maxp=[list(p) for p in zip(*[self.get_value_range(p) for p in params])]
         bins=[self.get_value(p) for p in params[-2:]]
@@ -620,8 +615,8 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
         for i in range(4):
             minp[i]*=bins[i%2]
             maxp[i]*=bins[i%2]
-        min_roi=(0,0)+tuple(minp[2:])
-        max_roi=(maxp[2]-minp[2],maxp[3]-minp[3],maxp[2],maxp[3],maxp[4],maxp[5])
+        min_roi=(0,minp[2],0,minp[3])+tuple(minp[4:])
+        max_roi=(maxp[2]-minp[2],maxp[2],maxp[3]-minp[3],maxp[3],maxp[4],maxp[5])
         return (min_roi,max_roi)
     
     def _wait_for_next_frame(self, timeout=20., idx=None):

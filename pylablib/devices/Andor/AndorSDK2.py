@@ -916,9 +916,9 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
     def get_roi_limits(self):
         xdet,ydet=self.get_detector_size()
         roi=self.get_roi()
-        min_roi=(0,0,roi[4]*self._minh,roi[5]*self._minv,1,1)
+        min_roi=(0,roi[4]*self._minh,0,roi[5]*self._minv,1,1)
         maxbin=int(min(xdet//self._minh,ydet//self._minv,32)) if (self._minh and self._minv) else 32
-        max_roi=(xdet-min_roi[2],xdet-min_roi[3],xdet,ydet,maxbin,maxbin)
+        max_roi=(xdet-min_roi[1],xdet,ydet-min_roi[3],ydet,maxbin,maxbin)
         return (min_roi,max_roi)
 
     def _get_data_dimensions_rc(self):

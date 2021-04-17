@@ -365,18 +365,13 @@ class PhotonFocusIMAQCamera(IMAQCamera):
         self._update_imaq()
         return self.get_roi()
     def get_roi_limits(self):
-        """
-        Get the minimal and maximal ROI parameters.
-
-        Return tuple ``(min_roi, max_roi)``, where each element is in turn 4-tuple describing the ROI.
-        """
         params=["Window/X","Window/Y","Window/W","Window/H"]
         for p in params:
             self.properties[p].update_minmax()
         minp=tuple([(self.properties[p].min if p in self.properties else 0) for p in params])
         maxp=tuple([(self.properties[p].max if p in self.properties else 0) for p in params])
-        min_roi=(0,0)+minp[2:]
-        max_roi=maxp
+        min_roi=(0,minp[2],0,minp[3])
+        max_roi=(maxp[0],maxp[2],maxp[1],maxp[3])
         return (min_roi,max_roi)
 
     def _get_buffer_bpp(self):

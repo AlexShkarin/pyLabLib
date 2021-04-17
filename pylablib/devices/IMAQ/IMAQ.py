@@ -205,15 +205,10 @@ class IMAQCamera(camera.IROICamera):
             lib.imgSessionConfigureROI(self.sid,*fit_roi)
         return self.get_roi()
     def get_roi_limits(self):
-        """
-        Get the minimal and maximal ROI parameters.
-
-        Return tuple ``(min_roi, max_roi)``, where each element is in turn 4-tuple describing the ROI.
-        """
         minp=lib.imgSessionFitROI(self.sid,0,0,0,1,1)
         detsize=self.get_detector_size()
-        min_roi=(0,0)+minp[2:]
-        max_roi=(detsize[0]-minp[2],detsize[1]-minp[3])+detsize
+        min_roi=(0,minp[2],0,minp[3])
+        max_roi=(detsize[0]-minp[1],detsize[0],detsize[1]-minp[3],detsize[1])
         return (min_roi,max_roi)
 
     _trig_pol={ "high":niimaq_lib.IMG_TRIG_POL.IMG_TRIG_POLAR_ACTIVEH,

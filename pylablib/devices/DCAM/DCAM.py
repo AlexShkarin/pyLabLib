@@ -300,11 +300,11 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
         min_roi,max_roi=self.get_roi_limits()
         if hbin==3:
             hbin=2
-        hstart=(hstart//min_roi[2])*min_roi[2]
-        hend=(hend//min_roi[2])*min_roi[2]
-        self.set_value("SUBARRAY HSIZE",min_roi[2])
+        hstart=(hstart//min_roi[1])*min_roi[1]
+        hend=(hend//min_roi[1])*min_roi[1]
+        self.set_value("SUBARRAY HSIZE",min_roi[1])
         self.set_value("SUBARRAY HPOS",hstart)
-        self.set_value("SUBARRAY HSIZE",max(hend-hstart,min_roi[2]))
+        self.set_value("SUBARRAY HSIZE",max(hend-hstart,min_roi[1]))
         vstart=(vstart//min_roi[3])*min_roi[3]
         vend=(vend//min_roi[3])*min_roi[3]
         self.set_value("SUBARRAY VSIZE",min_roi[3])
@@ -313,16 +313,11 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
         self.set_value("BINNING",min(hbin,max_roi[4]))
         return self.get_roi()
     def get_roi_limits(self):
-        """
-        Get the minimal and maximal ROI parameters.
-
-        Return tuple ``(min_roi, max_roi)``, where each element is in turn 5-tuple describing the ROI.
-        """
         params=["SUBARRAY HPOS","SUBARRAY VPOS","SUBARRAY HSIZE","SUBARRAY VSIZE","BINNING"]
         minp=tuple([self.properties[p].vmin for p in params])
         maxp=tuple([self.properties[p].vmax for p in params])
-        min_roi=(0,0)+minp[2:]
-        max_roi=maxp
+        min_roi=(0,minp[2],0,minp[3],minp[4],minp[4])
+        max_roi=(maxp[0],maxp[2],maxp[1],maxp[3],maxp[4],maxp[4])
         return (min_roi,max_roi)
 
     @interface.use_parameters(mode="acq_mode")

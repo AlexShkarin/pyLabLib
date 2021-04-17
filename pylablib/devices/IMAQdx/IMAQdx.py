@@ -324,8 +324,8 @@ class IMAQdxCamera(camera.IROICamera):
         params=["OffsetX","OffsetY","Width","Height"]
         minp=tuple([(self.attributes[p].min if p in self.attributes else 0) for p in params])
         maxp=tuple([(self.attributes[p].max if p in self.attributes else 0) for p in params])
-        min_roi=(0,0)+minp[2:]
-        max_roi=maxp
+        min_roi=(0,minp[2],0,minp[3])
+        max_roi=(maxp[0],maxp[2],maxp[1],maxp[3])
         return (min_roi,max_roi)
     
 

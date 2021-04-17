@@ -310,18 +310,13 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
         lib.tl_camera_set_roi(self.handle,hstart,vstart,hend-1,vend-1)
         return self.get_roi()
     def get_roi_limits(self):
-        """
-        Get the minimal and maximal ROI parameters.
-
-        Return tuple ``(min_roi, max_roi)``, where each element is in turn 6-tuple describing the ROI.
-        """
         wdet,hdet=self.get_detector_size()
         hmin=lib.tl_camera_get_image_width_range(self.handle)[0]
         vmin=lib.tl_camera_get_image_height_range(self.handle)[0]
         hbin=lib.tl_camera_get_binx_range(self.handle)[1]
         vbin=lib.tl_camera_get_biny_range(self.handle)[1]
-        min_roi=(0,0,hmin,vmin,1,1)
-        max_roi=(wdet-hmin,wdet-vmin,wdet,hdet,hbin,vbin)
+        min_roi=(0,hmin,0,vmin,1,1)
+        max_roi=(wdet-hmin,wdet,hdet-vmin,hdet,hbin,vbin)
         return (min_roi,max_roi)
 
     def _get_data_dimensions_rc(self):

@@ -664,7 +664,7 @@ class IBinROICamera(ICamera):
         """
         Get the minimal and maximal ROI parameters.
 
-        Return tuple ``(min_roi, max_roi)``, where each element is in turn a 4-tuple describing the ROI (as described in :meth:`get_roi`).
+        Return tuple ``(min_roi, max_roi)``, where each element is in turn a 6-tuple describing the ROI (as described in :meth:`get_roi`).
         """
         w,h=self.get_detector_size()
         return (0,w,0,h,1,1),(0,w,0,h,1,1)

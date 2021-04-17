@@ -502,16 +502,11 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         lib.is_AOI(self.hcam,uc480_defs.IMAGE.IS_AOI_IMAGE_SET_AOI,uc480_defs.CIS_RECT,aoi)
         return self.get_roi()
     def get_roi_limits(self):
-        """
-        Get the minimal and maximal ROI parameters.
-
-        Return tuple ``(min_roi, max_roi)``, where each element is in turn 6-tuple describing the ROI.
-        """
         wdet,hdet=self.get_detector_size()
         hlims,vlims=self._get_roi_limits()
         hbin,vbin=self._truncate_roi_binning(wdet,hdet)
-        min_roi=(0,0,hlims[0],vlims[0],1,1)
-        max_roi=(wdet-hlims[0],wdet-vlims[0],wdet,hdet,hbin,vbin)
+        min_roi=(0,hlims[0],0,vlims[0],1,1)
+        max_roi=(wdet-hlims[0],wdet,hdet-vlims[0],hdet,hbin,vbin)
         return (min_roi,max_roi)
 
     def _get_data_dimensions_rc(self):

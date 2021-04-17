@@ -645,16 +645,11 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         vsymm=self._has_option(CAPS1.GENERALCAPS1_ROI_VERT_SYMM_TO_HORZ_AXIS) or self._is_pco_edge()
         return hsymm,vsymm
     def get_roi_limits(self):
-        """
-        Get the minimal and maximal ROI parameters.
-
-        Return tuple ``(min_roi, max_roi)``, where each element is in turn 6-tuple describing the ROI.
-        """
         xdet,ydet=self.get_detector_size()
         min_size=(self.v["sensor/strDescription/wMinSizeHorzDESC"],self.v["sensor/strDescription/wMinSizeVertDESC"])
         maxbin=self.v["sensor/strDescription/wMaxBinHorzDESC"],self.v["sensor/strDescription/wMaxBinVertDESC"]
-        min_roi=(0,0,min_size[0],min_size[1],1,1)
-        max_roi=(xdet-min_size[0],ydet-min_size[1],xdet,ydet,maxbin[0],maxbin[1])
+        min_roi=(0,min_size[0],0,min_size[1],1,1)
+        max_roi=(xdet-min_size[0],xdet,ydet-min_size[1],ydet,maxbin[0],maxbin[1])
         return (min_roi,max_roi)
     def enable_pixel_correction(self, enable=True):
         """Enable or disable hotpixel correction"""
