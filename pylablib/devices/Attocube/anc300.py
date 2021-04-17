@@ -21,13 +21,8 @@ class ANC300(comm_backend.ICommBackendWrapper):
         pwd(str): connection password for Ethernet connection (default is ``"123456"``)
     """
     def __init__(self, conn, backend="auto", pwd="123456"):
-        if backend=="auto":
-            backend=comm_backend.autodetect_backend(conn)
-        if backend=="network":
-            conn=comm_backend.NetworkDeviceBackend.combine_conn(conn,{"port":7230})
-        elif backend=="serial":
-            conn=comm_backend.SerialDeviceBackend.combine_conn(conn,("COM1",38400,8,"N",1,0))
-        instr=comm_backend.new_backend(conn,backend=backend,timeout=3.,term_write="\r\n")
+        defaults={"serial":("COM1",38400,8,"N",1,0), "network":{"port":7230}}
+        instr=comm_backend.new_backend(conn,backend=backend,timeout=3.,defaults=defaults,term_write="\r\n")
         self.pwd=pwd
         comm_backend.ICommBackendWrapper.__init__(self,instr)
         self.open()

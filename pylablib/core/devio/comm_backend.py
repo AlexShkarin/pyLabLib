@@ -1210,8 +1210,8 @@ try:
 
         
         @staticmethod
-        def list_resources(desc=False):
-            devs=list(usb.core.find(find_all=True))
+        def list_resources(desc=False, **kwargs):
+            devs=list(usb.core.find(find_all=True,**kwargs))
             if desc:
                 return devs
             indices={}
@@ -1260,22 +1260,36 @@ def autodetect_backend(conn, default="visa"):
     if _is_serial_addr(conn):
         return "serial"
     return default
-def new_backend(conn, timeout=None, backend="auto", **kwargs):
+def _as_backend(backend, conn=None):
+    if backend=="auto":
+        backend=autodetect_backend(conn)
+    if isinstance(backend,type) and issubclass(backend,IDeviceCommBackend):
+        return backend
+    funcargparse.check_parameter_range(backend,"backend",_backends)
+    return _backends[backend]
+def new_backend(conn, backend="auto", defaults=None, **kwargs):
     """
     Build new backend with the supplied parameters.
     
     Args:
-        conn: Connection parameters (depend on the backend).
-        timeout (float): Default timeout (in seconds).
-        backend (str): Backend type. Available backends are ``'auto'`` (try to autodetect), ``'visa'``, ``'serial'``, ``'ft232'``, ``'network'``, and ``"pyusb"``.
+        conn: Connection parameters (depend on the backend). Can be simply connection parameters (tuple or dict) for the given backend
+            (e.g., ``"192.168.0.1"`` or ``("COM1",19200)``), a tuple ``(backend, conn)`` which specifies both backend and connection
+            (in which case it overrides the supplied backend), or an already opened backend (in which case it is returned as is)
+        backend (str): Backend type. Available backends are ``'auto'`` (try to autodetect based on the connection),
+            ``'visa'``, ``'serial'``, ``'ft232'``, ``'network'``, and ``"pyusb"``. Can also be directly a backend class (more appropriate for custom backends)
+        defaults: if not ``None``, specifies a dictionary ``{backend: params}`` with default connection parameters (depending on the backend),
+            which are added to the connection parameters
         **kwargs: parameters sent to the backend.
     """
     if isinstance(conn,IDeviceCommBackend):
         return conn
-    if backend=="auto":
-        backend=autodetect_backend(conn)
-    funcargparse.check_parameter_range(backend,"backend",_backends)
-    return _backends[backend](conn,timeout=timeout,**kwargs)
+    if isinstance(conn,tuple) and conn and (conn[0] in _backends or (isinstance(conn[0],type) and issubclass(conn[0],IDeviceCommBackend))):
+        return new_backend(conn[1],backend=conn[0],**kwargs)
+    backend=_as_backend(backend,conn)
+    backend_name=getattr(backend,"_backend",None)
+    if defaults is not None and backend_name is not None and backend_name in defaults:
+        conn=backend.combine_conn(conn,defaults[backend_name])
+    return backend(conn,**kwargs)
 def backend_error(backend, conn=None):
     """
     Return error class corresponding to the current backend.
@@ -1283,10 +1297,20 @@ def backend_error(backend, conn=None):
     Like :func:`new_backend`, allows setting ``backend="auto"``, in which case `conn` is used to try and autodetect the backend kind
     (not completely reliable, should be avoided).
     """
-    if backend=="auto":
-        backend=autodetect_backend(conn)
-    funcargparse.check_parameter_range(backend,"backend",_backends)
-    return _backends[backend].Error
+    return _as_backend(backend,conn).Error
+def list_backend_resources(backend=None, desc=True):
+    """
+    List all resources for the given backend.
+
+    If `backend` is ``None``, return dictionary ``{backend: resources}`` for all available backends.
+    If ``desc==False``, return list of connections (usually strings or tuples), which can be used to connect to the device.
+    Otherwise, return a list of descriptions, which have more info, but can be backend-dependent.
+    """
+    if backend is None:
+        res={n:b.list_resources(desc=desc) for (n,b) in _backends.items()}
+        return {n:r for n,r in res.items() if r is not None}
+    else:
+        return _as_backend(backend).list_resources(desc=desc)
 
 
 

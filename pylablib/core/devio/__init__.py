@@ -1,4 +1,5 @@
 from . import comm_backend
+from .comm_backend import list_backend_resources
 
 from .interface import IDevice, EnumParameterClass, RangeParameterClass, use_parameters
 

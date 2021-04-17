@@ -14,8 +14,7 @@ class SproutG(comm_backend.ICommBackendWrapper):
         conn: serial connection parameters (usually port)
     """
     def __init__(self, conn):
-        conn=comm_backend.SerialDeviceBackend.combine_conn(conn,("COM1",19200))
-        instr=comm_backend.SerialDeviceBackend(conn,term_read="\r",term_write="\r\n")
+        instr=comm_backend.new_backend(conn,"serial",term_read="\r",term_write="\r\n",defaults={"serial":("COM1",19200)})
         instr.setup_cooldown(write=0.02)
         comm_backend.ICommBackendWrapper.__init__(self,instr)
         self._add_info_variable("device_info",self.get_device_info)

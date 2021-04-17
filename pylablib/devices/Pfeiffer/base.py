@@ -22,8 +22,7 @@ class TPG26x(comm_backend.ICommBackendWrapper):
         conn: serial connection parameters (usually port or a tuple containing port and baudrate)
     """
     def __init__(self, conn):
-        conn=comm_backend.SerialDeviceBackend.combine_conn(conn,("COM1",9600))
-        instr=comm_backend.SerialDeviceBackend(conn,term_write="",term_read="\r\n")
+        instr=comm_backend.new_backend(conn,"serial",term_read="\r\n",term_write="",defaults={"serial":("COM1",9600)})
         comm_backend.ICommBackendWrapper.__init__(self,instr)
         smux=([1,2],)
         self._add_status_variable("pressure",lambda channel: self.get_pressure(channel,status_error=False),ignore_error=(PfeifferError,),mux=smux,priority=5)
@@ -272,8 +271,7 @@ class DPG202(comm_backend.ICommBackendWrapper):
         conn: serial connection parameters (usually port or a tuple containing port and baudrate)
     """
     def __init__(self, conn):
-        conn=comm_backend.SerialDeviceBackend.combine_conn(conn,("COM1",9600))
-        instr=comm_backend.SerialDeviceBackend(conn,term_write="\r",term_read="\r",datatype="str")
+        instr=comm_backend.new_backend(conn,"serial",term_read="\r",term_write="\r",datatype="str",defaults={"serial":("COM1",9600)})
         comm_backend.ICommBackendWrapper.__init__(self,instr)
         self._add_info_variable("device_name",self.get_device_name)
         self._add_info_variable("software_version",self.get_software_version)

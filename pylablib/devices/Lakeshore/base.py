@@ -1,4 +1,4 @@
-from ...core.devio import comm_backend, SCPI, interface
+from ...core.devio import SCPI, interface
 from ...core.utils import funcargparse
 
 import collections
@@ -17,8 +17,7 @@ class Lakeshore218(SCPI.SCPIDevice):
     """
     _default_write_sync=True
     def __init__(self, conn):
-        conn=comm_backend.SerialDeviceBackend.combine_conn(conn,("COM1",9600,7,'E',1))
-        SCPI.SCPIDevice.__init__(self,conn,backend="serial",term_write="\r\n",term_read="\r\n")
+        SCPI.SCPIDevice.__init__(self,conn,backend="serial",term_write="\r\n",term_read="\r\n",backend_defaults={"serial":("COM1",9600,7,'E',1)})
         self._add_settings_variable("enabled",self.is_enabled,self.set_enabled,mux=(range(1,9),0))
         self._add_settings_variable("sensor_type",self.get_sensor_type,self.set_sensor_type,mux=("AB",0))
         self._add_status_variable("temperature",self.get_all_temperatures)

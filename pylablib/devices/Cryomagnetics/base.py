@@ -1,5 +1,5 @@
 from ...core.utils.py3 import textstring
-from ...core.devio import comm_backend, SCPI, interface
+from ...core.devio import SCPI, interface
 
 
 
@@ -14,8 +14,7 @@ class LM500(SCPI.SCPIDevice):
         conn: serial connection parameters (usually port or a tuple containing port and baudrate)
     """
     def __init__(self, conn):
-        conn=comm_backend.SerialDeviceBackend.combine_conn(conn,("COM1",9600))
-        SCPI.SCPIDevice.__init__(self,conn,backend="serial",term_read="\n",term_write="\n")
+        SCPI.SCPIDevice.__init__(self,conn,backend="serial",term_read="\n",term_write="\n",backend_defaults={"serial":("COM1",9600)})
         try:
             self.write("ERROR 0")
             self.write("REMOTE")

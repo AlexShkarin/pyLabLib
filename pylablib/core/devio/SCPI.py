@@ -22,6 +22,8 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
         term_write (str): Line terminator for writing operations.
         wait_callback (callable): A function to be called periodically (every 300ms by default) while waiting for operations to complete.
         backend (str): Connection backend (e.g., ``'serial'`` or ``'visa'``).
+        backend_defaults: if not ``None``, specifies a dictionary ``{backend: params}`` with default connection parameters (depending on the backend),
+            which are added to `conn`
         failsafe (bool): If ``True``, the device is working in a fail-safe mode:
             if an operation times out, attempt to repeat it several times before raising error.
             If ``None``, use the class value `_default_failsafe` (``False`` by default).
@@ -41,7 +43,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
     _default_failsafe=False # running in the failsafe mode by default
     _allow_concatenate_write=False # allow automatic concatenation of several write operations (see :meth:`using_write_buffer`)
     _concatenate_write_separator=";\n" # separator to join different commands in concatenated write operation (with :meth:`using_write_buffer`)
-    def __init__(self, conn, term_write=None, term_read=None, wait_callback=None, backend="visa", failsafe=None, timeout=None, backend_params=None):
+    def __init__(self, conn, term_write=None, term_read=None, wait_callback=None, backend="visa", backend_defaults=None, failsafe=None, timeout=None, backend_params=None):
         self._wait_sync_timeout=self._default_wait_sync_timeout
         failsafe=self._default_failsafe if failsafe is None else failsafe
         self._failsafe=failsafe
@@ -57,10 +59,11 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
             self._retry_times=0
         self._wait_callback=wait_callback
         self._wait_callback_timeout=self._default_wait_callback_timeout
-        instr=comm_backend.new_backend(conn,backend=backend,term_write=term_write,term_read=term_read,timeout=self._backend_timeout,**(backend_params or {}))
+        instr=comm_backend.new_backend(conn,backend=backend,term_write=term_write,term_read=term_read,timeout=self._backend_timeout,defaults=backend_defaults,**(backend_params or {}))
         instr.setup_cooldown(**self._default_operation_cooldown)
         comm_backend.ICommBackendWrapper.__init__(self,instr)
         self.conn=conn
+        self.backend_defaults=backend_defaults
         self.backend_params=backend_params or {}
         self.backend=instr._backend
         self.term_write=term_write
@@ -142,7 +145,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
         except self.instr.Error:
             pass
         if new_instrument:
-            self.instr=comm_backend.new_backend(self.conn,backend=self.backend,term_write=self.term_write,term_read=self.term_read,timeout=self._backend_timeout,**self.backend_params)
+            self.instr=comm_backend.new_backend(self.conn,backend=self.backend,term_write=self.term_write,term_read=self.term_read,timeout=self._backend_timeout,backend_defaults=self.backend_defaults,**self.backend_params)
         else:
             self.instr.open()
         

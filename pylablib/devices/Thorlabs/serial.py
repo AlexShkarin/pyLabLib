@@ -1,4 +1,4 @@
-from ...core.devio import SCPI, interface, comm_backend
+from ...core.devio import SCPI, interface
 
 
 
@@ -11,8 +11,7 @@ class ThorlabsInterface(SCPI.SCPIDevice):
     """
     _allow_concatenate_write=False
     def __init__(self, conn):
-        conn=comm_backend.SerialDeviceBackend.combine_conn(conn,("COM1",115200))
-        SCPI.SCPIDevice.__init__(self,conn,backend="serial",term_read=["\r","\n"],term_write="\r",timeout=5.)
+        SCPI.SCPIDevice.__init__(self,conn,backend="serial",term_read=["\r","\n"],term_write="\r",timeout=5.,backend_defaults={"serial":("COM1",115200)})
 
     def open(self):
         SCPI.SCPIDevice.open(self)
