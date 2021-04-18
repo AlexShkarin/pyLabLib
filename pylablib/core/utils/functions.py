@@ -110,6 +110,18 @@ class FunctionSignature(object):
                 if k in args_dict:
                     del args_dict[k]
         return args_dict
+    def arg_value(self, argname, args=None, kwargs=None):
+        """Get the value of the argument with the given name for given args and kwargs"""
+        if kwargs and argname in kwargs:
+            return kwargs[argname]
+        arg_names=self.arg_names if self.obj is None else self.arg_names[1:]
+        if args and argname in arg_names:
+            i=arg_names.index(argname)
+            if i<len(args):
+                return args[i]
+        if argname in self.defaults:
+            return self.defaults[argname]
+        raise TypeError("argument {} is not supplied".format(argname))
     
     def mandatory_args_num(self):
         """

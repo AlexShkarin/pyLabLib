@@ -1,5 +1,5 @@
 from ...core.devio import comm_backend, interface
-from ...core.utils import py3
+from ...core.utils import py3, general
 
 import numpy as np
 
@@ -10,6 +10,13 @@ import time
 from .base import AttocubeError
 
 
+def muxaxis(*args, **kwargs):
+    """Multiplex the function over its axis argument"""
+    if len(args)>0:
+        return muxaxis(**kwargs)(args[0])
+    def ax_func(self, *_, **__):
+        return self._axes
+    return general.muxcall("axis",all_arg_func=ax_func,mux_argnames=kwargs.get("mux_argnames",None),return_kind="dict",allow_partial=True)
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["serial","version"])
 class ANC300(comm_backend.ICommBackendWrapper):
     """
@@ -27,16 +34,17 @@ class ANC300(comm_backend.ICommBackendWrapper):
         comm_backend.ICommBackendWrapper.__init__(self,instr)
         self.open()
         self._correction={}
+        self._add_info_variable("axes",self.get_all_axes)
         self._add_info_variable("device_info",self.get_device_info)
-        self._add_info_variable("axes_serial",self.get_all_axes_serial)
-        self._add_status_variable("modes",self.get_all_modes)
-        self._add_settings_variable("voltages",self.get_all_voltages,self.set_all_voltages)
-        self._add_settings_variable("offsets",self.get_all_offsets,self.set_all_offsets)
-        self._add_settings_variable("frequencies",self.get_all_frequencies,self.set_all_frequencies)
-        self._add_status_variable("external_inputs",self.get_all_external_input_modes)
-        self._add_status_variable("voltage_output",self.get_all_outputs)
-        self._add_status_variable("capacitances",self.get_all_capacitances)
-        self._add_status_variable("trigger_inputs",self.get_all_trigger_inputs,priority=-5)
+        self._add_info_variable("axes_serial",self.get_axis_serial)
+        self._add_status_variable("modes",self.get_mode)
+        self._add_settings_variable("voltages",self.get_voltage,lambda v: self.set_voltage("all",v),ignore_error=AttocubeError)
+        self._add_settings_variable("offsets",self.get_offset,lambda v: self.set_offset("all",v),ignore_error=AttocubeError)
+        self._add_settings_variable("frequencies",self.get_frequency,lambda v: self.set_frequency("all",v),ignore_error=AttocubeError)
+        self._add_status_variable("external_inputs",self.get_external_input_modes)
+        self._add_status_variable("voltage_outputs",self.get_output)
+        self._add_status_variable("capacitances",self.get_capacitance)
+        self._add_status_variable("trigger_inputs",self.get_trigger_input,priority=-5)
 
     def open(self):
         """Open the connection to the stage"""
@@ -72,43 +80,36 @@ class ANC300(comm_backend.ICommBackendWrapper):
                 axes.append(ax)
             except AttocubeError:
                 pass
-        self.axes=list(axes)
+        self._axes=list(axes)
         return axes
-    def _get_all_axes_data(self, getter):
-        return dict([(a,getter(a)) for a in self.axes])
-    def _set_all_axes_data(self, setter, values):
-        if isinstance(values,(tuple,list)):
-            values=dict(zip([self.axes,values]))
-        for a,v in values.items():
-            setter(a,v)
+    def get_all_axes(self):
+        """Get the list of all available axes"""
+        return list(self._axes)
 
     def get_device_info(self):
         """Get the device info of the controller board: ``(serial, version)``"""
         return TDeviceInfo(self.query("getcser"),self.query("ver"))
-    def get_axis_serial(self, axis):
+    @muxaxis
+    def get_axis_serial(self, axis="all"):
         """Get serial number of the controller board"""
         return self.query("getser {}".format(axis))
-    def get_all_axes_serial(self):
-        return self._get_all_axes_data(self.get_axis_serial)
 
+    @muxaxis(mux_argnames="mode")
     def set_mode(self, axis="all", mode="stp"):
         """
         Set axis mode.
 
         `axis` is either an axis index (starting from 1), or ``"all"`` (all axes).
         `mode` can be ``"gnd"`` (ground), ``"stp"`` (step), ``"cap"`` (measure capacitance, then ground),
-        ``"off"`` (offset only, no stepping), ``"stp+"`` (offset with added stepping waveform), ``"stp-"`` (offset with subtracted stepping).
+        ``"offs"`` (offset only, no stepping), ``"stp+"`` (offset with added stepping waveform), ``"stp-"`` (offset with subtracted stepping).
         Note that not all modes are supported by all modules:
-        ANM150 doesn't support offset voltage (``"off"``, ``"stp+"``, ``"stp-"`` modes),
+        ANM150 doesn't support offset voltage (``"offs"``, ``"stp+"``, ``"stp-"`` modes),
         ANM200 doesn't support stepping (``"stp"``, ``"stp+"``, ``"stp-"`` modes).
         """
-        if axis=="all":
-            for ax in self.axes:
-                self.set_mode(ax,mode)
-        else:
-            self.query("setm {} {}".format(axis,mode))
+        self.query("setm {} {}".format(axis,mode))
         return self.get_mode(axis=axis)
-    def get_mode(self, axis):
+    @muxaxis
+    def get_mode(self, axis="all"):
         """
         Get axis mode.
 
@@ -119,38 +120,23 @@ class ANC300(comm_backend.ICommBackendWrapper):
         if reply.startswith("mode = "):
             return reply[7:].strip()
         raise AttocubeError("unexpected reply: {}".format(reply))
-    def get_all_modes(self):
-        """
-        Get the list all axis modes.
-
-        See :meth:`set_mode` for the description of the modes.
-        """
-        return self._get_all_axes_data(self.get_mode)
-    def is_enabled(self, axis):
+    @muxaxis
+    def is_enabled(self, axis="all"):
         """Check if the axis is enabled"""
         return self.get_mode(axis) in ["stp","stp+","stp-","off","in"]
-    def enable_axis(self, axis, mode="stp"):
+    def enable_axis(self, axis="all", mode="stp"):
         """Enable specific axis (set to step mode)"""
         self.set_mode(axis,mode=mode)
-    def disable_axis(self, axis):
+    def disable_axis(self, axis="all"):
         """Disable specific axis (set to ground mode)"""
         self.set_mode(axis,mode="gnd")
-    def enable_all(self, mode="stp"):
-        """Enable all axes (set to step mode)"""
-        self.set_mode("all",mode=mode)
-    def disable_all(self):
-        """Disable all axes (set to ground mode)"""
-        self.set_mode("all",mode="gnd")
+    @muxaxis
     def measure_capacitance(self, axis="all", wait=True):
         """
         Measure axis capacitance; finish in the GND mode.
         
         If ``wait==True``, wait until the capacitance measurement is finished (takes about a second per axis).
         """
-        if axis=="all":
-            for ax in self.axes:
-                self.measure_capacitance(ax,wait=wait)
-            return
         if self.get_mode(axis)!="gnd":
             self.set_mode(axis,mode="gnd")
             time.sleep(0.1)
@@ -170,35 +156,43 @@ class ANC300(comm_backend.ICommBackendWrapper):
         if not m:
             raise AttocubeError("unexpected reply: {}".format(reply))
         return float(m[1])
-    def get_voltage(self, axis):
+    @muxaxis
+    def get_voltage(self, axis="all"):
         """Get axis step amplitude in Volts"""
         reply=self.query("getv {}".format(axis))
         return self._parse_float_reply(reply,"voltage","V")
+    @muxaxis(mux_argnames="voltage")
     def set_voltage(self, axis, voltage):
         """Set axis step amplitude in Volts"""
         self.query("setv {} {}".format(axis,voltage))
         return self.get_voltage(axis)
-    def get_offset(self, axis):
+    @muxaxis
+    def get_offset(self, axis="all"):
         """Get axis offset voltage in Volts"""
         reply=self.query("geta {}".format(axis))
         return self._parse_float_reply(reply,"voltage","V")
+    @muxaxis(mux_argnames="voltage")
     def set_offset(self, axis, voltage):
         """Set axis offset voltage in Volts"""
         self.query("seta {} {}".format(axis,voltage))
         return self.get_offset(axis)
-    def get_output(self, axis):
+    @muxaxis
+    def get_output(self, axis="all"):
         """Get axis current output voltage in Volts"""
         reply=self.query("geto {}".format(axis))
         return self._parse_float_reply(reply,"voltage","V")
-    def get_frequency(self, axis):
+    @muxaxis
+    def get_frequency(self, axis="all"):
         """Get axis step frequency in Hz"""
         reply=self.query("getf {}".format(axis))
         return self._parse_float_reply(reply,"frequency","Hz")
+    @muxaxis(mux_argnames="freq")
     def set_frequency(self, axis, freq):
         """Set axis step frequency in Hz"""
         self.query("setf {} {}".format(axis,freq))
         return self.get_frequency(axis)
-    def get_capacitance(self, axis, measure=False):
+    @muxaxis
+    def get_capacitance(self, axis="all", measure=False):
         """
         Get capacitance measurement on the axis.
         
@@ -208,52 +202,7 @@ class ANC300(comm_backend.ICommBackendWrapper):
             self.measure_capacitance(axis,wait=True)
         reply=self.query("getc {}".format(axis))
         return self._parse_float_reply(reply,"capacitance","nF")*1E-9
-
-    def get_all_voltages(self):
-        """Get the list of all axes step voltages"""
-        return self._get_all_axes_data(self.get_voltage)
-    def get_all_offsets(self):
-        """Get the list of all axes offset voltages"""
-        return self._get_all_axes_data(self.get_offset)
-    def get_all_outputs(self):
-        """Get the list of all axes offset voltages"""
-        return self._get_all_axes_data(self.get_output)
-    def get_all_frequencies(self):
-        """Get the list of all axes step frequencies"""
-        return self._get_all_axes_data(self.get_frequency)
-    def get_all_capacitances(self, measure=False):
-        """
-        Get the list of all axes capacitances
-        
-        If ``measure==True``, re-measure axes capacitances (takes about a secon0d per axis); otherwise, get the last measurement values.
-        """
-        return self._get_all_axes_data(lambda axis: self.get_capacitance(axis,measure=measure))
     
-    def set_all_voltages(self, voltages):
-        """
-        Set all axes step voltages.
-        
-        `voltages` is a list of step voltage, whose length is equal to the number of active (connected) axes.
-        """
-        self._set_all_axes_data(self.set_voltage,voltages)
-        return self.get_all_voltages()
-    def set_all_offsets(self, offsets):
-        """
-        Set all axes offset voltages
-        
-        `offsets` is a list of offset voltags, whose length is equal to the number of active (connected) axes.
-        """
-        self._set_all_axes_data(self.set_offset,offsets)
-        return self.get_all_offsets()
-    def set_all_frequencies(self, frequencies):
-        """
-        Set all axes step frequencies
-        
-        `frequencies` is a list of step frequencies, whose length is equal to the number of active (connected) axes.
-        """
-        self._set_all_axes_data(self.set_frequency,frequencies)
-        return self.get_all_frequencies()
-
     _p_pattern_kind=interface.EnumParameterClass("pattern_kind",["up","down"])
     @interface.use_parameters(kind="pattern_kind")
     def get_voltage_pattern(self, axis, kind):
@@ -292,7 +241,8 @@ class ANC300(comm_backend.ICommBackendWrapper):
     def _parse_trigger_reply(self, reply):
         v=self._parse_string_reply(reply,"trigger")
         return "off" if v=="off" else int(v)
-    def get_trigger_input(self, axis):
+    @muxaxis
+    def get_trigger_input(self, axis="all"):
         """
         Get trigger input lines for the given axis.
 
@@ -301,6 +251,7 @@ class ANC300(comm_backend.ICommBackendWrapper):
         tup=self._parse_trigger_reply(self.query("gettu {}".format(axis)))
         tdown=self._parse_trigger_reply(self.query("gettd {}".format(axis)))
         return (tup,tdown)
+    @muxaxis(mux_argnames=("up","down"))
     def set_trigger_input(self, axis, up=None, down=None):
         """
         Set trigger input lines for the given axis.
@@ -312,10 +263,8 @@ class ANC300(comm_backend.ICommBackendWrapper):
         if down is not None:
             self.query("settd {} {}".format(axis,down))
         return self.get_trigger_input(axis)
-    def get_all_trigger_inputs(self):
-        """Get the list of all axes trigger inputs"""
-        return self._get_all_axes_data(self.get_trigger_input)
-    def get_external_input_modes(self, axis):
+    @muxaxis
+    def get_external_input_modes(self, axis="all"):
         """
         Get external BNC input modes.
 
@@ -326,6 +275,7 @@ class ANC300(comm_backend.ICommBackendWrapper):
         reply=self.query("getdci {}".format(axis))
         dcin=self._parse_string_reply(reply,"dcin")=="on"
         return acin,dcin
+    @muxaxis(mux_argnames=("acin","dcin"))
     def set_external_input_modes(self, axis, acin=None, dcin=None):
         """
         Enable or disable external BNC inputs.
@@ -337,9 +287,6 @@ class ANC300(comm_backend.ICommBackendWrapper):
         if dcin is not None:
             self.query("setdci {} {}".format(axis,"on" if dcin else "off"))
         return self.get_external_input_modes(axis)
-    def get_all_external_input_modes(self):
-        """Get the list of all external input modes for all axes"""
-        return self._get_all_axes_data(self.get_external_input_modes)
 
 
 
@@ -380,10 +327,7 @@ class ANC300(comm_backend.ICommBackendWrapper):
     def is_moving(self, axis):
         """Check if a given axis is moving"""
         return self.get_output(axis)!=0.
-    def stop(self, axis):
+    @muxaxis
+    def stop(self, axis="all"):
         """Stop motion of a given axis"""
         self.query("stop {}".format(axis))
-    def stop_all(self):
-        """Stop motion of all axes"""
-        for ax in self.axes:
-            self.stop(ax)

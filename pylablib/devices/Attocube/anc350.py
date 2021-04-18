@@ -14,6 +14,13 @@ def get_usb_devices_number():
     devs=comm_backend.PyUSBDeviceBackend.list_resources(idVendor=0x16C0,idProduct=0x055B)
     return len(devs)
 
+def muxaxis(*args, **kwargs):
+    """Multiplex the function over its axis argument"""
+    if len(args)>0:
+        return muxaxis(**kwargs)(args[0])
+    def ax_func(self, *_, **__):
+        return self._axes
+    return general.muxcall("axis",all_arg_func=ax_func,mux_argnames=kwargs.get("mux_argnames",None),return_kind="list",allow_partial=True)
 class ANC350(comm_backend.ICommBackendWrapper):
     """
     Attocube ANC350 controller.
@@ -30,11 +37,7 @@ class ANC350(comm_backend.ICommBackendWrapper):
         self._tell_telegrams={}
         comm_backend.ICommBackendWrapper.__init__(self,instr)
         self.open()
-        try:
-            with self.instr.using_timeout(0.2):
-                self.instr.flush_read()
-        except self.instr.Error:
-            pass
+        self.instr.flush_read()
         try:
             self.get_hardware_id()
         except instr.Error:
@@ -43,14 +46,14 @@ class ANC350(comm_backend.ICommBackendWrapper):
         self.set_value(0x000A,0,0) # sync request
         self.enable_updates(False)
         self._add_info_variable("hardware_id",self.get_hardware_id)
-        self._add_settings_variable("voltages",self.get_all_voltages,self.set_all_voltages)
-        self._add_settings_variable("offsets",self.get_all_offsets,self.set_all_offsets)
-        self._add_settings_variable("frequencies",self.get_all_frequencies,self.set_all_frequencies)
-        self._add_status_variable("status",self.get_all_status)
-        self._add_status_variable("positions",self.get_all_positions)
-        self._add_status_variable("target_positions",self.get_all_target_positions)
+        self._add_settings_variable("voltages",self.get_voltage,lambda v: self.set_voltage("all",v))
+        self._add_settings_variable("offsets",self.get_offset,lambda v: self.set_offset("all",v))
+        self._add_settings_variable("frequencies",self.get_frequency,lambda v: self.set_frequency("all",v))
+        self._add_status_variable("status",self.get_status)
+        self._add_status_variable("positions",self.get_position)
+        self._add_status_variable("target_positions",self.get_target_position)
         self._add_status_variable("sensor_voltage",self.get_sensor_voltage)
-        self._add_status_variable("capacitance",lambda: self.get_all_capacitance(measure=True),priority=-5)
+        self._add_status_variable("capacitance",lambda: self.get_capacitance(measure=True),priority=-5)
     _axes=[0,1,2]
     def _make_telegram(self, opcode, address, index=0, data=b"", add_corr=True):
         data=data[:(len(data)//4)*4]
@@ -179,37 +182,35 @@ class ANC350(comm_backend.ICommBackendWrapper):
             self.set_value(0x016F,0,0x1234)
     
     _p_axis=interface.EnumParameterClass("axis",_axes)
+    @muxaxis
     @interface.use_parameters
-    def is_connected(self, axis):
+    def is_connected(self, axis="all"):
         """Check if axis is connected"""
         return bool(self.get_value(0x3002,axis))
+    @muxaxis
     @interface.use_parameters
-    def is_enabled(self, axis):
+    def is_enabled(self, axis="all"):
         """Check if axis is enabled"""
         return bool(self.get_value(0x3030,axis))
+    @muxaxis(mux_argnames="enabled")
     @interface.use_parameters
-    def enable_axis(self, axis, enabled=True):
-        """Enable specific axis"""
+    def enable_axis(self, axis="all", enabled=True):
+        """Enable a specific axis or all axes"""
         self.set_value(0x3030,axis,1 if enabled else 0)
+    @muxaxis
     @interface.use_parameters
-    def disable_axis(self, axis):
-        """Disable specific axis"""
+    def disable_axis(self, axis="all"):
+        """Disable a specific axis or all axes"""
         self.set_value(0x3030,axis,0)
-    def enable_all(self):
-        """Enable all axes (set to step mode)"""
-        for ax in self._axes:
-            self.enable_axis(ax)
-    def disable_all(self):
-        """Disable all axes (set to ground mode)"""
-        for ax in self._axes:
-            self.disable_axis(ax)
     
+    @muxaxis
     @interface.use_parameters
-    def is_moving(self, axis):
+    def is_moving(self, axis="all"):
         """Move a given axis for a given number of steps"""
         return bool(self.get_value(0x302E,axis))
+    @muxaxis
     @interface.use_parameters
-    def check_limit(self, axis):
+    def check_limit(self, axis="all"):
         """
         Check if the ent of travel has been reached.
 
@@ -219,8 +220,9 @@ class ANC350(comm_backend.ICommBackendWrapper):
         flim=self.get_value(0x3039,axis)
         blim=self.get_value(0x303A,axis)
         return [None,"fwd","bwd","both"][flim+blim*2]
+    @muxaxis
     @interface.use_parameters
-    def get_status_n(self, axis):
+    def get_status_n(self, axis="all"):
         """
         Get numerical status of the axis.
 
@@ -228,8 +230,9 @@ class ANC350(comm_backend.ICommBackendWrapper):
         """
         return self.get_value(0x0404,axis)
     status_bits=[(0x001,"running"),(0x002,"limit"),(0x100,"sens_err"),(0x400,"sens_disconn"),(0x800,"ref_valid")]
+    @muxaxis
     @interface.use_parameters
-    def get_status(self, axis):
+    def get_status(self, axis="all"):
         """
         Get device status.
 
@@ -238,21 +241,25 @@ class ANC350(comm_backend.ICommBackendWrapper):
         """
         status_n=self.get_status_n(axis=axis)
         return [s for (m,s) in self.status_bits if status_n&m]
+    @muxaxis
     @interface.use_parameters
-    def get_target_position(self, axis):
+    def get_target_position(self, axis="all"):
         """Get the target position for the given axis (the position towards which it is moving)"""
         return self.get_value(0x0408,axis)*1E-9
+    @muxaxis
     @interface.use_parameters
-    def get_precision(self, axis):
+    def get_precision(self, axis="all"):
         """Get the axis precision in m (used for checking if the target is reached)"""
         return self.get_value(0x3036,axis)*1E-9
+    @muxaxis(mux_argnames="precision")
     @interface.use_parameters
-    def set_precision(self, axis, precision=1E-6):
+    def set_precision(self, axis="all", precision=1E-6):
         """Set the axis precision in m (used for checking if the target is reached)"""
         self.set_value(0x3036,axis,int(precision*1E9))
         return self.get_precision(axis)
+    @muxaxis
     @interface.use_parameters
-    def is_target_reached(self, axis, precision=None):
+    def is_target_reached(self, axis="all", precision=None):
         """
         Check if the target position is reached.
         
@@ -270,35 +277,42 @@ class ANC350(comm_backend.ICommBackendWrapper):
         self.set_value(0x0526,0,int(voltage*1E3))
         return self.get_sensor_voltage()
 
+    @muxaxis
     @interface.use_parameters
-    def get_voltage(self, axis):
+    def get_voltage(self, axis="all"):
         """Get axis step voltage in Volts"""
         return self.get_value(0x0400,axis)*1E-3
+    @muxaxis(mux_argnames="voltage")
     @interface.use_parameters
     def set_voltage(self, axis, voltage):
         """Set axis step voltage in Volts"""
         self.set_value(0x0400,axis,int(voltage*1E3))
         return self.get_voltage(axis)
+    @muxaxis
     @interface.use_parameters
-    def get_offset(self, axis):
+    def get_offset(self, axis="all"):
         """Get axis offset voltage in Volts"""
         return self.get_value(0x0514,axis)*1E-3
+    @muxaxis(mux_argnames="voltage")
     @interface.use_parameters
     def set_offset(self, axis, voltage):
         """Set axis offset voltage in Volts"""
         self.set_value(0x0514,axis,int(voltage*1E3))
         return self.get_offset(axis)
+    @muxaxis
     @interface.use_parameters
-    def get_frequency(self, axis):
+    def get_frequency(self, axis="all"):
         """Get axis step frequency in Hz"""
         return self.get_value(0x0401,axis)
+    @muxaxis(mux_argnames="freq")
     @interface.use_parameters
     def set_frequency(self, axis, freq):
         """Set axis step frequency in Hz"""
         self.set_value(0x0401,axis,int(freq))
         return self.get_frequency(axis)
+    @muxaxis
     @interface.use_parameters
-    def get_capacitance(self, axis, measure=False, delay=0.5):
+    def get_capacitance(self, axis="all", measure=False, delay=0.5):
         """
         Get axis capacitance in F.
 
@@ -309,63 +323,10 @@ class ANC350(comm_backend.ICommBackendWrapper):
             self.set_value(0x051E,axis,1)
             time.sleep(delay)
         return self.get_value(0x0569,axis)*1E-12
-    
-    def _get_all_axes_data(self, getter):
-        return dict([(a,getter(a)) for a in self._axes])
-    def get_all_voltages(self):
-        """Get the list of all axes step voltages"""
-        return self._get_all_axes_data(self.get_voltage)
-    def get_all_offsets(self):
-        """Get the list of all axes offset voltages"""
-        return self._get_all_axes_data(self.get_offset)
-    def get_all_frequencies(self):
-        """Get the list of all axes step frequencies"""
-        return self._get_all_axes_data(self.get_frequency)
-    def get_all_positions(self):
-        """Get the list of all axes positions"""
-        return self._get_all_axes_data(self.get_position)
-    def get_all_capacitance(self, measure=False, delay=0.5):
-        """Get the list of all axes target positions"""
-        return self._get_all_axes_data(lambda a: self.get_capacitance(a,measure=measure,delay=delay))
-    def get_all_target_positions(self):
-        """Get the list of all axes target positions"""
-        return self._get_all_axes_data(self.get_target_position)
-    def get_all_status(self):
-        """Get the list of all axes positions"""
-        return self._get_all_axes_data(self.get_status)
 
-    def _set_all_axes_data(self, setter, values):
-        if isinstance(values,(tuple,list)):
-            values=dict(zip([self._axes,values]))
-        for a,v in values.items():
-            setter(a,v)
-    def set_all_voltages(self, voltages):
-        """
-        Get all axes step voltages.
-        
-        `voltages` is a list of step voltage, whose length is equal to the number of active (connected) axes.
-        """
-        self._set_all_axes_data(self.set_voltage,voltages)
-        return self.get_all_voltages()
-    def set_all_offsets(self, offsets):
-        """
-        Get all axes offset voltages
-        
-        `offsets` is a list of offset voltags, whose length is equal to the number of active (connected) axes.
-        """
-        self._set_all_axes_data(self.set_offset,offsets)
-        return self.get_all_offsets()
-    def set_all_frequencies(self, frequencies):
-        """
-        Get all axes step frequencies
-        
-        `frequencies` is a list of step frequencies, whose length is equal to the number of active (connected) axes.
-        """
-        self._set_all_axes_data(self.set_frequency,frequencies)
-        return self.get_all_frequencies()
-
+    @muxaxis
     @interface.use_parameters
-    def get_position(self, axis):
+    def get_position(self, axis="all"):
         """Get axis position (in m)"""
         return self.get_value(0x0415,axis)*1E-9
     @interface.use_parameters
@@ -411,14 +372,11 @@ class ANC350(comm_backend.ICommBackendWrapper):
             time.sleep(period)
 
     
+    @muxaxis
     @interface.use_parameters
-    def stop(self, axis):
+    def stop(self, axis="all"):
         """Stop motion of a given axis"""
         self.set_value(0x0410,axis,0)
-    def stop_all(self):
-        """Stop motion of all axes"""
-        for axis in self._axes:
-            self.stop(axis)
     
     _p_direction=interface.EnumParameterClass("direction",[("+",True),(1,True),("-",False),(0,False)])
     @interface.use_parameters

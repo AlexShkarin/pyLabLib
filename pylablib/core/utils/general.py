@@ -8,6 +8,7 @@ from future.utils import viewitems, viewvalues
 import time
 import threading
 import os, signal
+import functools
 from . import functions
 
 
@@ -826,6 +827,68 @@ class AccessIterator:
         except IndexError:
             raise StopIteration()
     next=__next__
+
+
+
+def muxcall(argname, all_arg_value="all", all_arg_func=None, mux_argnames=None, return_kind="list", allow_partial=False):
+    """
+    Wrap a function such that it can become multiplexable over a given argument.
+
+    Args:
+        argname: name of the argument to loop over
+        all_arg_value: value of `argname` argument which indicates that the function should be multiplexed over all argument values
+        all_arg_func: function which takes the same arguments as the wrapped function and returns a list of values for `argname` to loop over
+        mux_argnames: names of additional arguments which, when supplied list or dict values, and when the `argname` value is a list,
+            specify different values for different calls
+        return_kind: method to combined multiple returned values; can be ``"list"``, ``"dict"`` (return dict ``{arg: result}``),
+            or ``"none"`` (simply return ``None``)
+        allow_partial: if ``True`` and some of `mux_argnames` argument do not specify value for the full range of `argname` value,
+            do not call the function for those unspecified values; otherwise (`allow_partial` is ``True``), the error wil be raised
+    """
+    if return_kind not in ["list","dict","none"]:
+        raise ValueError("unrecognized return type: {}; can be 'list', 'dict', or 'none'".format(return_kind))
+    if mux_argnames is None:
+        mux_argnames=()
+    elif not isinstance(mux_argnames,(tuple,list)):
+        mux_argnames=(mux_argnames,)
+    if all_arg_value is None:
+        all_arg_value=()
+    elif not isinstance(all_arg_value,(tuple,list)):
+        all_arg_value=(all_arg_value,)
+    def wrapper(func):
+        sig=functions.funcsig(func)
+        @functools.wraps(func)
+        def wrapped(*args, **kwargs):
+            all_args=sig.as_kwargs(args,kwargs,add_defaults=True)
+            marg=all_args[argname]
+            if marg in all_arg_value and all_arg_func is not None:
+                marg=all_arg_func(*args,**kwargs)
+            if isinstance(marg,list):
+                mux_args={}
+                for n in mux_argnames:
+                    a=all_args[n]
+                    if isinstance(a,list):
+                        mux_args[n]=dict(zip(marg,a))
+                    elif isinstance(a,dict):
+                        mux_args[n]=a
+                if allow_partial:
+                    marg=[a for a in marg if all(a in ma for ma in mux_args.values())]
+                res=[]
+                for a in marg:
+                    all_args[argname]=a
+                    for n,ma in mux_args.items():
+                        all_args[n]=ma[a]
+                    res.append(func(**all_args))
+                if return_kind=="dict":
+                    res=dict(zip(marg,res))
+                elif return_kind=="none":
+                    res=None
+            else:
+                all_args[argname]=marg
+                res=func(**all_args)
+            return res
+        return wrapped
+    return wrapper
 
 
 
