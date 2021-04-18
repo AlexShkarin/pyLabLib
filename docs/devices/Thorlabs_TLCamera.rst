@@ -28,9 +28,9 @@ The cameras are identified by their serial number. To list all of the connected 
 
     >> from pylablib.devices import Thorlabs
     >> Thorlabs.list_cameras_tlcam()
-    [???]
-    >> cam1 = Thorlabs.ThorlabsTLCamera()
-    >> cam2 = Thorlabs.ThorlabsTLCamera()
+    ['12001', '12002']
+    >> cam1 = Thorlabs.ThorlabsTLCamera(serial="12001")
+    >> cam2 = Thorlabs.ThorlabsTLCamera(serial="12002")
     >> cam1.close()
     >> cam2.close()
 

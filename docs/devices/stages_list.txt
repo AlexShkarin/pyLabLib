@@ -1,3 +1,4 @@
 - :ref:`Attocube ANC300 <stages_attocube_anc300>` and :ref:`Attocube ANC350 <stages_attocube_anc350>`: most common Attocube positioner controllers. Tested with Ethernet and USB connection for ANC300, and USB connection for ANC350.
 - :ref:`Thorlabs APT/Kinesis motors <stages_thorlabs_kinesis>`: basic Thorlabs motorized stages and optomechanics devices. Tested with KDC101 and K10CR1, as well as MFF101 and FW102 (described at a :ref:`different page <misc_thorlabs_optomechanics>`)
 - :ref:`Arcus Performax <stages_arcus_performax>`: fairly common single- and multi-axis motor controllers sold under different brands: Arcus, Nippon Pulse America, or Newmark Systems. Tested with PMX-4EX device with USB connection.
+- :ref:`Trinamic <stages_trinamic>`: universal motor controllers and drivers. Tested with a single-axis TMCM-1110 controller with USB connection.
