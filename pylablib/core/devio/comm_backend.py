@@ -592,7 +592,7 @@ try:
                 if not (skip_empty and remove_term and (not result)):
                     break
             return self._to_datatype(result)
-        def read(self, size=None, error_on_timeout=True):
+        def read(self, size=None):
             """
             Read data from the device.
             
@@ -600,7 +600,7 @@ try:
             """
             with self.single_op():
                 if size is None:
-                    result=self._read_terms(timeout=0,error_on_timeout=error_on_timeout)
+                    result=self._read_terms(timeout=0,error_on_timeout=False)
                 else:
                     result=self.instr.read(size=size)
                     if len(result)!=size:
@@ -807,7 +807,7 @@ try:
                 if not (skip_empty and remove_term and (not result)):
                     break
             return self._to_datatype(result)
-        def read(self, size=None, error_on_timeout=True):
+        def read(self, size=None):
             """
             Read data from the device.
             
@@ -815,7 +815,7 @@ try:
             """
             with self.single_op():
                 if size is None:
-                    result=self._read_terms(timeout=0,error_on_timeout=error_on_timeout)
+                    result=self._read_terms(timeout=0,error_on_timeout=False)
                 else:
                     result=self.instr.read(size=size)
                     if len(result)!=size:
@@ -1124,7 +1124,10 @@ try:
             singlechar_terms=all(len(t)==1 for t in terms)
             terms=[py3.as_builtin_bytes(t) for t in terms]
             while True:
-                c=self.instr.read(self.ep_read,1 if terms else read_block_size,timeout=self._timeout(timeout)).tobytes()
+                try:
+                    c=self.instr.read(self.ep_read,1 if terms else read_block_size,timeout=self._timeout(timeout)).tobytes()
+                except self.Error:
+                    c=b""
                 result=result+c
                 if c==b"":
                     if error_on_timeout and terms:
@@ -1157,14 +1160,14 @@ try:
                 if not (skip_empty and remove_term and (not result)):
                     break
             return self._to_datatype(result)
-        def read(self, size=None, max_read_size=65536, error_on_timeout=True):
+        def read(self, size=None, max_read_size=65536):
             """
             Read data from the device.
             
             If `size` is not None, read `size` bytes (usual timeout applies); otherwise, read all available data (return immediately).
             """
             if size is None:
-                result=self._read_terms(read_block_size=max_read_size,timeout=0,error_on_timeout=error_on_timeout)
+                result=self._read_terms(read_block_size=max_read_size,timeout=1E-3,error_on_timeout=False)
             else:
                 result=self.instr.read(self.ep_read,size,timeout=self._timeout()).tobytes()
                 if len(result)!=size and self.check_read_size:

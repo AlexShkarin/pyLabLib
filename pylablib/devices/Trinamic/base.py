@@ -24,6 +24,7 @@ class TMCM1110(comm_backend.ICommBackendWrapper):
         self._add_settings_variable("limit_switches_parameters",self.get_limit_switches_parameters,self.setup_limit_switches)
         self._add_status_variable("current_parameters",self.get_current_parameters)
         self._add_status_variable("velocity_factor",self.get_velocity_factor)
+        self._add_status_variable("acceleration_factor",self.get_acceleration_factor)
         self._add_status_variable("microstep_resolution",self.get_microstep_resolution)
         self._add_status_variable("current_speed",self.get_current_speed)
         self._add_status_variable("moving",self.is_moving)
@@ -191,20 +192,26 @@ class TMCM1110(comm_backend.ICommBackendWrapper):
 
     def get_velocity_parameters(self, addr=0):
         """
-        Return velocity parameters ``(speed, accel, pulse_divisor)``.
+        Return velocity parameters ``(speed, accel, pulse_divisor, ramp_divisor)``.
         
-        ``speed`` and ``accel`` denote, correspondingly, maximal (i.e., steady regime) moving speed and acceleration in internal units.
-        ``pulse_divisor`` is the driver pulse divisor, which defines how internal units tranlate into microsteps/s (see :meth:`get_velocity_factor`);
+        ``speed`` and ``accel`` denote, correspondingly, maximal (i.e., steady regime) moving speed and acceleration in *internal* units.
+        ``pulse_divisor`` is the driver pulse divisor, which defines how internal velocity units translate into microsteps/s (see :meth:`get_velocity_factor`);
         can only be a power of 2, higher values mean slower motion.
+        ``ramp_divisor`` is the driver ramp divisor, which, together with the pulse divisor,
+        defines how internal acceleration units translate into microsteps/s^2 (see :meth:`get_acceleration_factor`);
+        rounded to the nearest power of 2, higher values mean slower acceleration.
         """
-        return self.get_axis_parameter(4,addr=addr),self.get_axis_parameter(5,addr=addr),2**self.get_axis_parameter(154,addr=addr)
-    def setup_velocity(self, speed=None, accel=None, pulse_divisor=None, addr=0):
+        return self.get_axis_parameter(4,addr=addr),self.get_axis_parameter(5,addr=addr),2**self.get_axis_parameter(154,addr=addr),2**self.get_axis_parameter(153,addr=addr)
+    def setup_velocity(self, speed=None, accel=None, pulse_divisor=None, ramp_divisor=None, addr=0):
         """
-        Setup velocity parameters ``(max_speed, max_accel, pulse_divisor)``.
+        Setup velocity parameters ``(speed, accel, pulse_divisor, ramp_divisor)``.
         
-        ``max_speed`` and ``max_accel`` denote, correspondingly, maximal (i.e., steady regime) moving speed and acceleration in internal units.
-        ``pulse_divisor`` is the driver pulse divisor, which defines how internal units tranlate into microsteps/s (see :meth:`get_velocity_factor`);
+        ``speed`` and ``accel`` denote, correspondingly, maximal (i.e., steady regime) moving speed and acceleration in *internal* units.
+        ``pulse_divisor`` is the driver pulse divisor, which defines how internal velocity units translate into microsteps/s (see :meth:`get_velocity_factor`);
         rounded to the nearest power of 2, higher values mean slower motion.
+        ``ramp_divisor`` is the driver ramp divisor, which, together with the pulse divisor,
+        defines how internal acceleration units translate into microsteps/s^2 (see :meth:`get_acceleration_factor`);
+        rounded to the nearest power of 2, higher values mean slower acceleration.
         ``None`` values are left unchanged.
         """
         if speed is not None:
@@ -214,14 +221,20 @@ class TMCM1110(comm_backend.ICommBackendWrapper):
         if pulse_divisor is not None:
             lpulse_divisor=round(math.log2(pulse_divisor))
             self.set_axis_parameter(154,lpulse_divisor,addr=addr)
+        if ramp_divisor is not None:
+            lramp_divisor=round(math.log2(ramp_divisor))
+            self.set_axis_parameter(153,lramp_divisor,addr=addr)
         return self.get_velocity_parameters()
 
     def get_velocity_factor(self, addr=0):
-        """Get the ratio between the real speed (in microsteps/s) to the internal units"""
+        """Get the ratio between the real speed (in microsteps/s) and the internal units"""
         return 16E6/(2**self.get_axis_parameter(154,addr=addr)*2048*32)
+    def get_acceleration_factor(self, addr=0):
+        """Get the ratio between the real acceleration (in microsteps/s^2) and the internal units"""
+        return 16E6**2/2**(self.get_axis_parameter(153,addr=addr)+self.get_axis_parameter(154,addr=addr)+29)
 
     def get_current_speed(self, addr=0):
-        """Get the instantaneous speed"""
+        """Get the instantaneous speed in internal units"""
         return self.get_axis_parameter(3,addr=addr)
     def is_moving(self, addr=0):
         """Check if the motor is moving"""

@@ -629,14 +629,15 @@ class KinesisMotor(KinesisDevice):
 
     Implements FTDI chip connectivity via pyft232 (virtual serial interface).
 
-    The physical units are encoder steps for position (ratio to mm or degrees depends on the connected stage),
+    The physical units are encoder steps for position (ratio to m or degrees depends on the connected stage),
     steps/sec for velocity, and steps/sec^2 for acceleration.
 
     Args:
         conn(str): serial connection parameters (usually an 8-digit device serial number).
         scale: scale of the position, velocity, and acceleration units to the internals units;
-            can be ``None`` (attempt to autodetect motor and stage parameters),
-            a string with the name of the stage, e.g., ``"MTS50-Z8"`` or ``"DDR100"`` (use the stage name to extract the scale; determine velocity and acceleration from this scale and the motor model),
+            can be ``"stage"`` (attempt to autodetect motor and stage parameters),
+            a string with the name of the stage, e.g., ``"MTS50-Z8"`` or ``"DDR100"``
+            (use the stage name to extract the scale; determine velocity and acceleration from this scale and the motor model),
             ``"step"`` (use encoder/motor steps as units; determine velocity and acceleration from this scale and the motor model),
             a single number (use this as the ratio of internal steps to physical units; determine velocity and acceleration from this scale and the motor model),
             or a 3-tuple of numbers ``(position_scale, velocity_scale, acceleration_scale)`` which gives the ratio of internal units to physical units
@@ -644,7 +645,7 @@ class KinesisMotor(KinesisDevice):
             in the case of unrecognized devices, use internal units (same as setting ``scale=(1,1,1)``);
             if the scale can't be autodetected, it can be obtained from the APT manual knowing the device and the stage model
     """
-    def __init__(self, conn, scale=None):
+    def __init__(self, conn, scale="step"):
         KinesisDevice.__init__(self,conn)
         self.add_background_comm(0x0464) # move completed
         self.add_background_comm(0x0466) # move stopped
@@ -674,7 +675,7 @@ class KinesisMotor(KinesisDevice):
         return None
     def _get_stage(self, scale):
         model=self.get_device_info().model_no
-        if scale is None:
+        if scale=="stage":
             return self._autodetect_stage(model)
         return scale if isinstance(scale,py3.textstring) else None
     def _get_step_scale(self, model, stage):
@@ -685,17 +686,17 @@ class KinesisMotor(KinesisDevice):
         if stage=="STEP":
             return 1,"step"
         if stage in {"MTS25-Z8","MTS50-Z8","Z806","Z812","Z825"}:
-            return 34304,"mm"
+            return 34304E3,"m"
         if stage in {"Z606","Z612","Z625"}:
-            return 24600,"mm"
+            return 24600E3,"m"
         if stage in {"PRM1-Z8","PRM1TZ8"}:
-            return 1919.6418578623391,"mm" # that's what it says in the manual...
+            return 1919.6418578623391E3,"m" # that's what it says in the manual...
         if stage in {"CR1-Z7"}:
-            return 12288,"mm"
+            return 12288E3,"m"
         if stage in {"DDSM50","DDSM100"}:
-            return 2000,"mm"
+            return 2000E3,"m"
         if stage in {"DDS220","DDS300","DDS600","MLS203"}:
-            return 20000,"mm"
+            return 20000E3,"m"
         if stage=="DDR100":
             return 3276800/360,"deg"
         if stage=="DDR05":
@@ -706,30 +707,30 @@ class KinesisMotor(KinesisDevice):
             return 75091/0.99997,"deg"
         if model in ["TST001","MST601"] or model.startswith("BSC00") or model.startswith("BSC10"):
             if stage.startswith("ZST"):
-                return 125540.35,"mm"
+                return 125540.35E3,"m"
             if stage.startswith("ZFS"):
-                return 136533.33,"mm"
+                return 136533.33E3,"m"
             if stage=="DRV001":
-                return 51200,"mm"
+                return 51200E3,"m"
             if stage in {"DRV013","DRV014","NRT100","NRT150","LTS150","LTS300"}:
-                return 25600,"mm"
+                return 25600E3,"m"
             if stage in {"DRV113","DRV114"}:
-                return 20480,"mm"
+                return 20480E3,"m"
             if stage=="FW103":
                 return 25600/360,"deg"
             if stage=="NR360":
                 return 25600/(360/66),"deg"
         if model in ["TST101","KST101","MST602","K10CR1"] or model.startswith("BSC20"):
             if stage.startswith("ZST"):
-                return 2008645.63,"mm"
+                return 2008645.63E3,"m"
             if stage.startswith("ZFS"):
-                return 2184533.33,"mm"
+                return 2184533.33E3,"m"
             if stage=="DRV001":
-                return 819200,"mm"
+                return 819200E3,"m"
             if stage in {"DRV013","DRV014","NRT100","NRT150","LTS150","LTS300"}:
-                return 409600,"mm"
+                return 409600E3,"m"
             if stage in {"DRV113","DRV114"}:
-                return 327680,"mm"
+                return 327680E3,"m"
             if stage=="FW103":
                 return 409600/360,"deg"
             if stage=="NR360":
@@ -776,7 +777,7 @@ class KinesisMotor(KinesisDevice):
         Get units used for calculating scaled position, velocity and acceleration values.
 
         Can be ``"deg"`` (autodetected rotational stage: deg, deg/s and deg/s^2),
-        ``"mm"`` (autodetected translational stage: mm, mm/sec and mm/sec^2),
+        ``"m"`` (autodetected translational stage: m, m/sec and m/sec^2),
         ``"step"`` (autodetected driver but not detected step scale: steps, steps/sec and steps/sec^2)
         ``"user_step"`` (autodetected driver and user supplied step scale: user-supplied step scale for position,
         same units per sec or sec^2 for velocity and acceleration), ``'user"`` (all three scales are supplied by user),
