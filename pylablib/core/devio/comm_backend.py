@@ -1301,7 +1301,7 @@ def backend_error(backend, conn=None):
     (not completely reliable, should be avoided).
     """
     return _as_backend(backend,conn).Error
-def list_backend_resources(backend=None, desc=True):
+def list_backend_resources(backend=None, desc=False):
     """
     List all resources for the given backend.
 

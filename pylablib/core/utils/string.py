@@ -334,7 +334,7 @@ def to_string(value, location="element", value_formats=None, parenthesis_rules="
         return rep.format(float(value))
     if isinstance(value,bool):
         return str(value)
-    if isinstance(value,int) or isinstance(value,np.long) or isinstance(value,np.integer):
+    if isinstance(value,int) or isinstance(value,np.integer):
         rep="{:"+fmt.get(int,_default_formats[int])+"}"
         return rep.format(int(value))
     if isinstance(value,textstring):
@@ -370,7 +370,7 @@ def to_string(value, location="element", value_formats=None, parenthesis_rules="
     for ec in "\n\v\r":
         value=value.replace(ec,"\t")
     return value
-_conv_types=[float,int,np.floating,np.integer,textstring,complex,np.long,bool]
+_conv_types=[float,int,np.floating,np.integer,textstring,complex,bool]
 _cont_types=[list,tuple,set]
 def is_convertible(value):
     """

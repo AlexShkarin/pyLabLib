@@ -8,8 +8,6 @@ except ImportError:
     from shiboken2 import delete as qdelete
 
 
-from . import widgets as basic_widgets
-
 from . import value_handling
 from .value_handling import GUIValues
 
