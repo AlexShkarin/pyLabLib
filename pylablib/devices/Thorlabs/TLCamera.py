@@ -13,6 +13,7 @@ import ctypes
 import struct
 import threading
 import warnings
+import time
 
 
 class ThorlabsTLCameraTimeoutError(ThorlabsTLCameraError):
@@ -70,6 +71,7 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
         self._add_settings_variable("ext_trigger",self.get_ext_trigger_parameters,self.setup_ext_trigger)
         self._add_settings_variable("hotpixel_correction",self.get_pixel_correction_parameters,self.setup_pixel_correction)
         self._add_info_variable("timestamp_clock_frequency",self.get_timestamp_clock_frequency)
+        self._add_status_variable("frame_period",self.get_frame_period)
         
     def open(self):
         """Open connection to the camera"""
@@ -81,7 +83,7 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
                 elif self.serial not in lst:
                     raise ThorlabsTLCameraError("camera with serial number {} isn't present among available cameras: {}".format(self.serial,lst))
                 self.handle=lib.tl_camera_open_camera(self.serial)
-                lib.tl_camera_set_image_poll_timeout(self.handle,0)
+                lib.tl_camera_set_image_poll_timeout(self.handle,1000)
                 self._register_new_frame_callback()
                 self._tsclk=self.get_timestamp_clock_frequency()
                 self._opid=libctl.open().opid
@@ -90,7 +92,7 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
         if self.handle is not None:
             try:
                 try:
-                    self.stop_acquisition()
+                    self.clear_acquisition()
                 except ThorlabsTLCameraError:
                     pass
                 self._unregister_new_frame_callback()
@@ -124,8 +126,8 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
         """
         def __init__(self):
             self._frame_notifier=camera.FrameNotifier()
-            self.cleanup()
             self.lock=threading.RLock()
+            self.cleanup()
         def reset(self):
             """Reset buffer and internal counters"""
             self.buffer=[]
@@ -148,12 +150,13 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
                 data=np.ctypeslib.as_array(buffer,shape=self.frame_dim).copy()
                 metadata=ctypes.string_at(metadata,metadata_size)
                 with self.lock:
-                    self.buffer.append((data,metadata))
-                    if len(self.buffer)>self.buffsize:
-                        self.buffer=self.buffer[-self.buffsize:]
-                    acquired=self._frame_notifier.inc()
-                    if idx>acquired+self.missed:
-                        self.missed+=idx-(acquired+self.missed)
+                    if self.buffer is not None:
+                        self.buffer.append((data,metadata))
+                        if len(self.buffer)>self.buffsize:
+                            self.buffer=self.buffer[-self.buffsize:]
+                        acquired=self._frame_notifier.inc()
+                        if idx>acquired+self.missed:
+                            self.missed+=idx-(acquired+self.missed)
         def wait_for_frame(self, idx=None, timeout=None):
             """Wait for a new frame acquisition"""
             self._frame_notifier.wait(idx=idx,timeout=timeout)
@@ -168,7 +171,7 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
         def get_status(self):
             """Get buffer status ``(acquired, missed, stored)``"""
             with self.lock:
-                return self._frame_notifier.counter,self.missed,len(self.buffer)
+                return self._frame_notifier.counter,self.missed,len(self.buffer or [])
 
     def _get_acquired_frames(self):
         return self._buffer.get_status()[0]
@@ -256,6 +259,7 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
         super().setup_acquisition(nframes=nframes)
         self._buffer.setup(nframes+10,self._get_data_dimensions_rc())
     def clear_acquisition(self):
+        self.stop_acquisition()
         self._buffer.cleanup()
         super().clear_acquisition()
     def start_acquisition(self, frames_per_trigger="default", auto_start=True, nframes=None):
@@ -279,11 +283,13 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
         lib.tl_camera_set_frames_per_trigger_zero_for_unlimited(self.handle,frames_per_trigger or 0)
         self._frame_counter.reset(self._acq_params["nframes"])
         self._buffer.reset()
-        lib.tl_camera_arm(self.handle,self._acq_params["nframes"])
+        lib.tl_camera_arm(self.handle,max(self._acq_params["nframes"],10))
         if auto_start:
+            time.sleep(0.05)
             lib.tl_camera_issue_software_trigger(self.handle)
     def stop_acquisition(self):
         if self.acquisition_in_progress():
+            time.sleep(0.2) # seems to improve code stability (need to acquire several frames before disarming?)
             self._frame_counter.update_acquired_frames(self._get_acquired_frames())
             lib.tl_camera_disarm(self.handle)
     def acquisition_in_progress(self):
@@ -296,17 +302,33 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
         return width,height
     def get_roi(self):
         roi=lib.tl_camera_get_roi(self.handle)
-        binx=lib.tl_camera_get_binx(self.handle)
-        biny=lib.tl_camera_get_biny(self.handle)
-        return (roi[0],roi[2]+1,roi[1],roi[3]+1,binx,biny)
+        hbin=lib.tl_camera_get_binx(self.handle)
+        vbin=lib.tl_camera_get_biny(self.handle)
+        return (roi[0],roi[2]+1,roi[1],roi[3]+1,hbin,vbin)
     @camera.acqcleared
     def set_roi(self, hstart=0, hend=None, vstart=0, vend=None, hbin=1, vbin=1):
+        minroi,maxroi=self.get_roi_limits()
+        hbin=min(max(hbin,1),maxroi[4])
+        vbin=min(max(vbin,1),maxroi[5])
         lib.tl_camera_set_binx(self.handle,hbin)
         lib.tl_camera_set_biny(self.handle,vbin)
+        hbin=lib.tl_camera_get_binx(self.handle)
+        vbin=lib.tl_camera_get_biny(self.handle)
         if hend is None:
             hend=lib.tl_camera_get_image_width_range(self.handle)[1]
         if vend is None:
             vend=lib.tl_camera_get_image_height_range(self.handle)[1]
+        hend=min(hend,maxroi[1])
+        hstart=max(min(hstart,hend-minroi[1]*hbin),0)
+        hend=max(hend,hstart+minroi[1]*hbin)
+        vend=min(vend,maxroi[3])
+        vstart=max(min(vstart,vend-minroi[3]*hbin),0)
+        vend=max(vend,vstart+minroi[3]*hbin)
+        if hend-hstart==minroi[1] and vend-vstart==minroi[3]: # seems to not work for the absolute minimal roi
+            if vend<maxroi[3]:
+                vend+=1
+            else:
+                vstart-=1
         lib.tl_camera_set_roi(self.handle,hstart,vstart,hend-1,vend-1)
         return self.get_roi()
     def get_roi_limits(self):
@@ -357,7 +379,7 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
         self._buffer.wait_for_frame(idx=idx,timeout=timeout)
     def _read_frames(self, rng, return_info=False):
         data=[self._buffer.get_frame(n) for n in range(rng[0],rng[1])]
-        data=[self._convert_indexing(frame,"rct") for frame in data]
+        data=[(self._convert_indexing(d[0],"rct"),d[1]) for d in data]
         return [d[0] for d in data],[self._parse_metadata(d[1]) for d in data]
 
     def _get_grab_acquisition_parameters(self, nframes, buff_size):

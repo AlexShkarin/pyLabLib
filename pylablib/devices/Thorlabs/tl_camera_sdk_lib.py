@@ -6,6 +6,7 @@ from ...core.utils import ctypes_wrap, py3
 from ..utils import load_lib
 
 import ctypes
+import traceback
 
 
 class ThorlabsTLCameraError(RuntimeError):
@@ -51,7 +52,8 @@ class ThorlabsTLCameraLib:
             return
         thorcam_path=load_lib.get_program_files_folder("Thorlabs/Scientific Imaging/ThorCam")
         error_message="The library is automatically supplied with Thorcam software\n"+load_lib.par_error_message.format("thorlabs_tlcam")
-        self.lib=load_lib.load_lib("thorlabs_tsi_camera_sdk.dll",locations=("parameter/thorlabs_tlcam",thorcam_path,"global"),error_message=error_message,locally=True,call_conv="stdcall")
+        depends=["thorlabs_unified_sdk_kernel.dll","thorlabs_unified_sdk_main.dll","thorlabs_tsi_usb_driver.dll","thorlabs_tsi_usb_hotplug_monitor.dll","thorlabs_tsi_cs_camera_device.dll","tsi_sdk.dll","tsi_usb.dll"]
+        self.lib=load_lib.load_lib("thorlabs_tsi_camera_sdk.dll",locations=("parameter/thorlabs_tlcam",thorcam_path,"global"),depends=depends,error_message=error_message,call_conv="stdcall")
         lib=self.lib
         define_functions(lib)
 
@@ -68,7 +70,7 @@ class ThorlabsTLCameraLib:
         self.tl_camera_close_sdk=wrapper(lib.tl_camera_close_sdk)
         #  ctypes.c_int tl_camera_discover_available_cameras(ctypes.c_char_p serial_numbers, ctypes.c_int str_length)
         self.tl_camera_discover_available_cameras=wrapper(lib.tl_camera_discover_available_cameras, args=[], rvals=["serial_numbers"],
-            argprep={"serial_numbers":strprep, "str_length":max_strlen}, byref=[])
+            argprep={"serial_numbers":strprep,"str_length":max_strlen}, byref=[])
         #  ctypes.c_int tl_camera_open_camera(ctypes.c_char_p camera_serial_number, ctypes.POINTER(ctypes.c_void_p) tl_camera_handle)
         self.tl_camera_open_camera=wrapper(lib.tl_camera_open_camera)
         #  ctypes.c_int tl_camera_close_camera(ctypes.c_void_p tl_camera_handle)
@@ -276,13 +278,13 @@ class ThorlabsTLCameraLib:
         #  ctypes.c_int tl_camera_get_frame_available_callback(ctypes.c_void_p tl_camera_handle, ctypes.c_void_p handler)
         self.tl_camera_get_frame_available_callback=wrapper(lib.tl_camera_get_frame_available_callback)
         #  ctypes.c_int tl_camera_set_frame_available_callback(ctypes.c_void_p tl_camera_handle, TL_CAMERA_FRAME_AVAILABLE_CALLBACK handler, ctypes.c_void_p context)
-        self.c_frame_available_callback=ctypes.WINFUNCTYPE(None,ctypes.c_void_p, ctypes.POINTER(ctypes.c_short), ctypes.c_int, ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p)
+        self.c_frame_available_callback=ctypes.WINFUNCTYPE(None, ctypes.c_void_p, ctypes.POINTER(ctypes.c_ushort), ctypes.c_int, ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p)
         self.tl_camera_set_frame_available_callback_lib=wrapper(lib.tl_camera_set_frame_available_callback)
         #  ctypes.c_int tl_camera_set_camera_connect_callback(TL_CAMERA_CONNECT_CALLBACK handler, ctypes.c_void_p context)
-        self.c_camera_connect_callback=ctypes.WINFUNCTYPE(None,ctypes.c_char_p, ctypes.c_int, ctypes.c_void_p)
+        self.c_camera_connect_callback=ctypes.WINFUNCTYPE(None, ctypes.c_char_p, ctypes.c_int, ctypes.c_void_p)
         self.tl_camera_set_camera_connect_callback_lib=wrapper(lib.tl_camera_set_camera_connect_callback)
         #  ctypes.c_int tl_camera_set_camera_disconnect_callback(TL_CAMERA_DISCONNECT_CALLBACK handler, ctypes.c_void_p context)
-        self.c_camera_disconnect_callback=ctypes.WINFUNCTYPE(None,ctypes.c_char_p, ctypes.c_void_p)
+        self.c_camera_disconnect_callback=ctypes.WINFUNCTYPE(None, ctypes.c_char_p, ctypes.c_void_p)
         self.tl_camera_set_camera_disconnect_callback_lib=wrapper(lib.tl_camera_set_camera_disconnect_callback)
         
         #  ctypes.c_int tl_camera_convert_gain_to_decibels(ctypes.c_void_p tl_camera_handle, ctypes.c_int index_of_gain_value, ctypes.POINTER(ctypes.c_double) gain_dB)
@@ -300,12 +302,14 @@ class ThorlabsTLCameraLib:
 
 
     def _wrap_callback(self, callback, callback_type, wrap=True):
+        if callback is None:
+            return None
         if wrap:
             def wrapped_callback(*args):
                 try:
                     callback(*args)
                 except: # pylint: disable=bare-except
-                    pass
+                    traceback.print_exc()
             return callback_type(wrapped_callback)
         else:
             return callback_type(callback)

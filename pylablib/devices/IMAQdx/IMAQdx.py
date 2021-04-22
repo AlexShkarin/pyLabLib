@@ -207,6 +207,7 @@ class IMAQdxCamera(camera.IROICamera):
     def close(self):
         """Close connection to the camera"""
         if self.sid is not None:
+            self.clear_acquisition()
             lib.IMAQdxCloseCamera(self.sid)
             self.sid=None
     def reset(self):
@@ -342,6 +343,7 @@ class IMAQdxCamera(camera.IROICamera):
         super().setup_acquisition(mode=mode,nframes=nframes)
         lib.IMAQdxConfigureAcquisition(self.sid,mode=="sequence",nframes)
     def clear_acquisition(self):
+        self.stop_acquisition()
         lib.IMAQdxUnconfigureAcquisition(self.sid)
         super().clear_acquisition()
     def start_acquisition(self, *args, **kwargs):

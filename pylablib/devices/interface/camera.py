@@ -1,6 +1,6 @@
 from ...core.devio import interface
 from ...core.dataproc import image_utils
-from ...core.utils import function_utils, general_utils
+from ...core.utils import functions as function_utils, general as general_utils
 
 import numpy as np
 import collections

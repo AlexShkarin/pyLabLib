@@ -60,7 +60,7 @@ class AndorSDK2Lib(object):
         archbit=platform.architecture()[0][:2]
         error_message="The library is automatically supplied with Andor Solis software or Andor SDK2 software\n"+load_lib.par_error_message.format("andor_sdk2")
         lib_names=["atmcd{}d_legacy.dll".format(archbit),"atmcd{}d.dll".format(archbit)]
-        self.lib=load_lib.load_lib(lib_names,locations=("parameter/andor_sdk2",solis_path,sdk2_path,"global"),error_message=error_message,locally=True,call_conv="stdcall")
+        self.lib=load_lib.load_lib(lib_names,locations=("parameter/andor_sdk2",solis_path,sdk2_path,"global"),error_message=error_message,call_conv="stdcall")
         lib=self.lib
         define_functions(lib)
 

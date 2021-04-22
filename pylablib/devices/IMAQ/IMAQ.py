@@ -79,6 +79,7 @@ class IMAQCamera(camera.IROICamera):
     def close(self):
         """Close connection to the camera"""
         if self.sid is not None:
+            self.clear_acquisition()
             lib.imgClose(self.sid,1)
             self.sid=None
             lib.imgClose(self.ifid,1)
@@ -194,6 +195,7 @@ class IMAQCamera(camera.IROICamera):
     def get_roi(self):
         t,l,h,w=lib.imgSessionGetROI(self.sid)
         return l,l+w,t,t+h
+    @camera.acqcleared
     def set_roi(self, hstart=0, hend=None, vstart=0, vend=None):
         det_size=self.get_detector_size()
         if hend is None:
@@ -264,7 +266,7 @@ class IMAQCamera(camera.IROICamera):
         return sorted(list(self._triggers_in.items()))
     def _set_triggers_in_cfg(self, cfg):
         for (tt,tl),(tp,act,to) in cfg:
-            self.configure_trigger_in(tt,tl,tp,act,to)
+            self.configure_trigger_in(tt,tl,tp,act,to,reset_acquisition=False)
     def send_software_trigger(self):
         """Send software trigger signal"""
         self.set_attribute_value("SEND_SOFTWARE_TRIGGER",1)
@@ -635,7 +637,7 @@ class BufferManager:
         """
         Get frames data starting from `idx` and spanning `nframes` frames.
 
-        Return a list of tuples ``(nread,chunk_data)``, where ``nread`` is the number of frames in the chunk,
+        Return a list of tuples ``(nread, chunk_data)``, where ``nread`` is the number of frames in the chunk,
         and ``chunk_data`` is the raw buffer pointer as a ``ctypes.c_char_p`` object.
         """
         idx%=self.nframes
@@ -644,9 +646,8 @@ class BufferManager:
         read_chunks=[]
         while nframes>0:
             ch=self.chunks[ibuff]
-            chunk_frames=len(ch)//self.frame_size
+            chunk_frames=self.frames_per_chunk if ibuff<len(self.chunks)-1 else self.frames_per_chunk_last
             nread=min(nframes,chunk_frames-jbuff)
-            # chunk_data=ch[jbuff*self.frame_size:(jbuff+nread)*self.frame_size]
             chunk_data=ctypes.c_char_p(ctypes.addressof(ch)+jbuff*self.frame_size)
             read_chunks.append((nread,chunk_data))
             nframes-=nread
@@ -663,9 +664,11 @@ class BufferManager:
         if nchunks==1:
             self.frames_per_chunk=nframes
         self.chunks=[ctypes.create_string_buffer(self.frames_per_chunk*frame_size) for _ in range(nchunks)]
+        self.frames_per_chunk_last=nframes-self.frames_per_chunk*(nchunks-1)
     def deallocate(self):
         """Deallocate the buffers"""
         self.chunks=None
         self.frame_size=None
         self.nframes=None
         self.frames_per_chunk=None
+        self.frames_per_chunk_last=None

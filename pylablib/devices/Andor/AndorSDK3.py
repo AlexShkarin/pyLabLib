@@ -32,6 +32,7 @@ def get_cameras_number():
 
 
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["camera_model","serial_number","firmware_version","software_version"])
+TMissedFramesStatus=collections.namedtuple("TMissedFramesStatus",["skipped","overflows"])
 class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
     """
     Andor SDK3 camera.
@@ -47,11 +48,13 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
         self.idx=idx
         self.handle=None
         self._opid=None
-        self._buffer_overflow=10
+        self._buffer_padding=10
         self._buffer_mgr=self.BufferManager(self)
         self._reg_cb=None
         self.open()
         self.v=dictionary.ItemAccessor(self.get_value,self.set_value)
+        self._overflow_behavior="error"
+        self._overflows_counter=0
 
         self._device_var_ignore_error={"get":(AndorNotSupportedError,),"set":(AndorNotSupportedError,)}
         self._add_info_variable("idx",lambda: self.idx)
@@ -79,7 +82,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
     def close(self):
         """Close connection to the camera"""
         if self.handle is not None:
-            self.stop_acquisition()
+            self.clear_acquisition()
             self._unregister_events()
             lib.AT_Close(self.handle)
             libctl.close(self._opid)
@@ -346,7 +349,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
             self.buffers=None
             self.queued_buffers=0
             self.size=0
-            self.buffer_overflows=0
+            self.overflow_detected=False
             self.stop_requested=False
             self.cam=cam
             self._cnt_lock=threading.RLock()
@@ -372,10 +375,10 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
                     self.stop_loop()
                     self.buffers=None
                     self.size=0
-        def reset(self, buffer_overflows=0):
+        def reset(self):
             """Reset counter (on frame acquisition)"""
             self._frame_notifier.reset()
-            self.buffer_overflows=buffer_overflows
+            self.overflow_detected=False
         def _acq_loop(self):
             while not self.stop_requested:
                 try:
@@ -409,19 +412,22 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
         def wait_for_frame(self, idx=None, timeout=None):
             """Wait for a new frame acquisition"""
             self._frame_notifier.wait(idx=idx,timeout=timeout)
-        def overflow(self):
+        def on_overflow(self):
             """Process buffer overflow event"""
             with self._cnt_lock:
-                self.buffer_overflows+=1
-        def get_status(self):
-            """Get counter status: tuple ``(acquired, buffer_overflows)``"""
+                self.overflow_detected=True
+        def new_overflow(self):
             with self._cnt_lock:
-                return self._frame_notifier.counter,self.buffer_overflows,len(self.buffers or [])
+                return self.overflow_detected
+        def get_status(self):
+            """Get counter status: tuple ``(acquired, total_length)``"""
+            with self._cnt_lock:
+                return self._frame_notifier.counter,len(self.buffers or [])
     def _register_events(self):
         self._unregister_events()
         self.set_value("EventSelector","BufferOverflowEvent")
         self.set_value("EventEnable",True)
-        buff_cb=lib.AT_RegisterFeatureCallback(self.handle,"BufferOverflowEvent",lambda *args: self._buffer_mgr.overflow())
+        buff_cb=lib.AT_RegisterFeatureCallback(self.handle,"BufferOverflowEvent",lambda *args: self._buffer_mgr.on_overflow())
         self._reg_cb=buff_cb
         self._buffer_mgr.reset()
     def _unregister_events(self):
@@ -439,7 +445,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
         """
         self._deallocate_buffers()
         frame_size=self.get_value("ImageSizeBytes")
-        self._buffer_mgr.allocate_buffers(nframes+self._buffer_overflow,frame_size,queued_buffers=nframes)
+        self._buffer_mgr.allocate_buffers(nframes+self._buffer_padding,frame_size,queued_buffers=nframes)
     def _deallocate_buffers(self):
         """Remove the ring buffer and clean up the memory"""
         lib.flush_buffers(self.handle)
@@ -456,7 +462,9 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
         """
         super().setup_acquisition(mode=mode,nframes=nframes)
     def clear_acquisition(self):
+        self.stop_acquisition()
         self._deallocate_buffers()
+        self.reset_overflows_counter()
         super().clear_acquisition()
 
     def start_acquisition(self, *args, **kwargs):
@@ -498,12 +506,23 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
         """
         Get missed frames status.
 
-        Return tuple ``(skipped,  buffer_overflows)`` with the number skipped frames (sent from camera to the PC, but not read and overwritten)
+        Return tuple ``(skipped, overflows)`` with the number skipped frames (sent from camera to the PC, but not read and overwritten)
         and number of buffer overflows (events when the frame rate is too for the data transfer, so some unknown number of frames is skipped).
         """
         skipped_frames=self.get_frames_status().skipped
-        bovf=self._buffer_mgr.get_status()[1]
-        return skipped_frames,bovf
+        return TMissedFramesStatus(skipped_frames,self._overflows_counter)
+    def reset_overflows_counter(self):
+        """Reset buffer overflows counter"""
+        self._overflows_counter=0
+    _p_overflow_behavior=interface.EnumParameterClass("overflow_behavior",["error","restart","ignore"],match_prefix=False)
+    @interface.use_parameters(behavior=_p_overflow_behavior)
+    def set_overflow_behavior(self, behavior):
+        """
+        Choose the camera behavior if buffer overflow is encountered when waiting for a new frame.
+
+        Can be ``"error"`` (raise ``AndorError``), ``"restart"`` (restart the acquisition), or ``"ignore"`` (ignore the overflow, which will cause the wait to time out).
+        """
+        self._overflow_behavior=behavior
 
 
     def _parse_metadata(self, cid, data):
@@ -590,16 +609,26 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
         By default, all non-supplied parameters take extreme values. Binning is the same for both axes.
         """
         det_size=self.get_detector_size()
-        hend=hend or det_size[0]
-        vend=vend or det_size[1]
+        hend=min(hend or det_size[0],det_size[0])
+        vend=min(vend or det_size[1],det_size[1])
+        hbin=max(hbin,1)
+        vbin=max(vbin,1)
+        self.set_value("AOILeft",1)
+        self.set_value("AOITop",1)
+        self.set_value("AOIHBin",1)
+        self.set_value("AOIVBin",1)
         minw=self.get_value_range("AOIWidth")[0]
         minh=self.get_value_range("AOIHeight")[0]
         self.set_value("AOIWidth",minw)
         self.set_value("AOIHeight",minh)
-        self.set_value("AOILeft",1)
-        self.set_value("AOITop",1)
         self.set_value("AOIHBin",hbin)
         self.set_value("AOIVBin",vbin)
+        hbin=self.get_value("AOIHBin")
+        vbin=self.get_value("AOIVBin")
+        minw=self.get_value_range("AOIWidth")[0]
+        minh=self.get_value_range("AOIHeight")[0]
+        hstart=min(hstart,det_size[0]-minw*hbin)
+        vstart=min(vstart,det_size[1]-minh*vbin)
         self.set_value("AOILeft",hstart+1)
         self.set_value("AOITop",vstart+1)
         self.set_value("AOIWidth",max((hend-hstart)//hbin,minw))
@@ -619,13 +648,22 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
         max_roi=(maxp[2]-minp[2],maxp[2],maxp[3]-minp[3],maxp[3],maxp[4],maxp[5])
         return (min_roi,max_roi)
     
+    def _check_buffer_overflow(self):
+        if self._buffer_mgr.new_overflow():
+            self._overflows_counter+=1
+            if self._overflow_behavior=="ignore":
+                return False
+            if self._overflow_behavior=="error":
+                self.stop_acquisition()
+                raise AndorError("buffer overflow")
+            self.start_acquisition()
+            return True
+        return False
     def _wait_for_next_frame(self, timeout=20., idx=None):
+        if self._check_buffer_overflow():
+            raise AndorTimeoutError("buffer overflow while waiting for a new frame")
         self._buffer_mgr.wait_for_frame(idx=idx,timeout=timeout)
     def _read_frames(self, rng, return_info=False):
-        # if self._buffer_mgr.new_overflow(): # TODO: add the buffer overflow management again
-        #     bovf=self._buffer_mgr.buffer_overflows
-        #     self.start_acquisition(*self._acq_mode)
-        #     self._buffer_mgr.buffer_overflows=bovf+1
         data=[self._parse_image(self._buffer_mgr.read(i)) for i in range(rng[0],rng[1])] # TODO: add more user-friendly metadata (+frame index)
         return [d[0] for d in data],[d[1] for d in data]
     def _zero_frame(self, n):

@@ -37,7 +37,7 @@ program_files_folder=get_program_files_folder()
 
 
 par_error_message="If you already have it, specify its path as pylablib.par['devices/dlls/{}']='path/to/dll/'"
-def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, error_message=None, check_order="location"):
+def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, depends=None, error_message=None, check_order="location"):
     """
     Load DLL.
 
@@ -47,6 +47,7 @@ def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, erro
             a location is a string which can be a path to the containing folder,
             ``"parameter/*"`` (the remaining part is a subpath inside ``"devices/dlls"`` library parameters; if this parameter is defined, it names folder or file for the dll),
             or ``"global"`` (load path as is; also searches in the standard OS specified locations determined by ``PATH`` variable, e.g., ``System32`` folder).
+        depends: if specified, it is a list of dependency libraries which need to be loaded first before the main DLL; they are assumed to be in the same location as the main file
         locally(bool): if ``True``, prepend path to the DLL containing folder to the environment ``PATH`` folders;
             this is usually required, if the loaded DLL imports other DLLs in the same folder
         call_conv(str): DLL call convention; can be either ``"cdecl"`` (corresponds to ``ctypes.cdll``) or ``"stdcall"`` (corresponds to ``ctypes.windll``)
@@ -86,15 +87,21 @@ def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, erro
             old_env_path=os.environ["PATH"]
             env_paths=old_env_path.split(";")
             if not any([files.paths_equal(loc_folder,ep) for ep in env_paths if ep]):
-                os.environ["PATH"]=files.normalize_path(loc_folder)+";"+os.environ["PATH"]+";"+files.normalize_path(loc_folder)+";"
+                os.environ["PATH"]=files.normalize_path(loc_folder)+";"+os.environ["PATH"]
             path=loc_name if folder=="" else "./"+loc_name
+            folder=loc_folder
+        depends=depends or []
+        paths=[os.path.join(folder,dn) for dn in depends]+[path]
         try:
-            if call_conv=="cdecl":
-                return ctypes.cdll.LoadLibrary(path)
-            elif call_conv=="stdcall":
-                return ctypes.windll.LoadLibrary(path)
-            else:
-                raise ValueError("unrecognized call convention: {}".format(call_conv))
+            dlls=[]
+            for p in paths:
+                if call_conv=="cdecl":
+                    dlls.append(ctypes.cdll.LoadLibrary(p))
+                elif call_conv=="stdcall":
+                    dlls.append(ctypes.windll.LoadLibrary(p))
+                else:
+                    raise ValueError("unrecognized call convention: {}".format(call_conv))
+            return dlls[-1]
         except OSError:
             if locally:
                 os.environ["PATH"]=old_env_path

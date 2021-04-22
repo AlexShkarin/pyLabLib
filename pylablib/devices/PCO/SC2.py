@@ -122,6 +122,7 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         self._add_status_variable("temperature_monitor",self.get_temperature)
         self._add_settings_variable("trigger_mode",self.get_trigger_mode,self.set_trigger_mode)
         self._add_settings_variable("frame_delay",self.get_frame_delay,self.set_frame_delay)
+        self._add_settings_variable("frame_period",self.get_frame_period,self.set_frame_period)
         self._add_status_variable("internal_buffer_status",self.get_internal_buffer_status)
         self._add_settings_variable("bit_alignment",self.get_bit_alignment,self.set_bit_alignment)
         self._add_settings_variable("hotpixel_correction",self.is_pixel_correction_enabled,self.enable_pixel_correction)
@@ -156,7 +157,7 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         """Close connection to the camera"""
         if self.handle is not None:
             try:
-                self.stop_acquisition()
+                self.clear_acquisition()
             except PCOSC2LibError:
                 pass
             lib.PCO_CloseCamera(self.handle)
@@ -332,7 +333,7 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         def wait(self, timeout):
             if not self.lock.acquire(timeout=(-1 if timeout is None else timeout)):
                 return False
-            wait_res=lib.WaitForSingleObject(self.event,(-1 if timeout is None else np.int(timeout*1000)))==0
+            wait_res=lib.WaitForSingleObject(self.event,(-1 if timeout is None else np.int32(timeout*1000)))==0
             self.lock.release()
             return wait_res
         def reset(self):
@@ -535,6 +536,9 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
     def acquisition_in_progress(self):
         """Check if the acquisition is in progress"""
         return bool(lib.PCO_GetRecordingState(self.handle))
+    def clear_acquisition(self):
+        self.stop_acquisition()
+        super().clear_acquisition()
 
     # ### Image settings and transfer controls ###
     def _get_data_dimensions_rc(self):

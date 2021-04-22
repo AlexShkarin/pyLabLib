@@ -78,6 +78,7 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
     def close(self):
         """Close connection to the camera"""
         if self.handle:
+            self.clear_acquisition()
             lib.dcamwait_close(self.dcamwait.hwait)
             lib.dcamdev_close(self.handle)
             libctl.close(self._opid)
@@ -332,6 +333,7 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
         if self._acq_params["nframes"]!=self._alloc_nframes:
             self._allocate_buffer(nframes)
     def clear_acquisition(self):
+        self.stop_acquisition()
         self._deallocate_buffer()
         super().clear_acquisition()
 

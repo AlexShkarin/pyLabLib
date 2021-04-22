@@ -26,7 +26,7 @@ class ArcusPerformaxLib:
         error_message=( "The library is can be downloaded on the manufacturer's website;\n"+
                         load_lib.par_error_message.format("arcus_performax")+
                         "\nAdditional required libraries: SiUSBXp.dll (distributed together with the main library)")
-        self.lib=load_lib.load_lib("PerformaxCom.dll",locations=("parameter/arcus_performax","global"),error_message=error_message,call_conv="cdecl",locally=True)
+        self.lib=load_lib.load_lib("PerformaxCom.dll",locations=("parameter/arcus_performax","global"),error_message=error_message,depends=["SiUSBXp.dll"],call_conv="cdecl")
         lib=self.lib
         define_functions(lib)
 

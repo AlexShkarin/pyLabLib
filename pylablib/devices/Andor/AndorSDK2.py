@@ -146,6 +146,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         self._add_settings_variable("read_parameters/image",self.get_image_mode_parameters,self.setup_image_mode)
         self._add_settings_variable("read_mode",self.get_read_mode,self.set_read_mode)
         self._update_device_variable_order("exposure","settings")
+        self._add_settings_variable("frame_period",self.get_frame_period,self.set_frame_period)
         
     def _initial_setup_temperature(self):
         if self._start_temperature=="off":
@@ -237,6 +238,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
     def close(self):
         """Close connection to the camera"""
         try:
+            self.clear_acquisition()
             try:
                 self._select_camera()
             except AndorError:
@@ -950,6 +952,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         super().setup_acquisition(mode=mode)
     @_camfunc
     def clear_acquisition(self):
+        self.stop_acquisition()
         lib.FreeInternalMemory()
         super().clear_acquisition()
     @_camfunc

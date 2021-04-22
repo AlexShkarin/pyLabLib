@@ -215,7 +215,7 @@ class IMAQdxLib:
         raise ValueError("unknown attribute type: {}".format(attr_type))
     def _to_attr_value(self, value, value_type=None):
         if value_type is None:
-            if isinstance(value,int) or isinstance(value,np.long) or isinstance(value,np.integer):
+            if isinstance(value,int) or isinstance(value,np.integer):
                 value_type=IMAQdxAttributeType.IMAQdxAttributeTypeI64
             elif isinstance(value,float) or isinstance(value,np.floating):
                 value_type=IMAQdxAttributeType.IMAQdxAttributeTypeF64

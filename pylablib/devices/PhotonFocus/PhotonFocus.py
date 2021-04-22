@@ -143,6 +143,7 @@ def query_camera_name(port):
         except PFCamLibError:
             pass
     return None
+TCameraInfo=collections.namedtuple("TCameraInfo",["manufacturer","port","version","type"])
 def list_cameras(supported=False):
     """
     List all cameras available through PFCam interface
@@ -154,7 +155,9 @@ def list_cameras(supported=False):
     ports=range(lib.pfPortInit())
     if supported:
         ports=[p for p in ports if query_camera_name(p) is not None]
-    return [(p,lib.pfPortInfo(p)) for p in ports]
+    infos=[lib.pfPortInfo(p) for p in ports]
+    infos=[TCameraInfo(py3.as_str(manu),py3.as_str(name),version,typ) for manu,name,version,typ in infos]
+    return list(zip(ports,infos))
 def get_cameras_number(supported=False):
     """Get the total number of connected PFCam cameras"""
     return len(list_cameras(supported=supported))

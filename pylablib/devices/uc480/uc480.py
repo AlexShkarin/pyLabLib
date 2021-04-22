@@ -63,10 +63,9 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
             self.is_dev_id=True
         self.hcam=None
         self._buffers=None
-        self._acq_in_progress=True
+        self._acq_in_progress=False
         self.open()
         self._all_color_modes=self._check_all_color_modes()
-        self._set_auto_mono_color_mode()
         if roi_binning_mode=="auto":
             if self.get_supported_binning_modes()==([1],[1]):
                 roi_binning_mode="subsample"
@@ -87,14 +86,17 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         self._add_status_variable("acq_frame_status",self.get_acquired_frame_status)
         self._add_info_variable("all_color_modes",self.get_all_color_modes)
         self._add_settings_variable("color_mode",self.get_color_mode,self.set_color_mode)
+        self._add_settings_variable("frame_period",self.get_frame_period,self.set_frame_period)
 
     def open(self):
         """Open connection to the camera"""
         if self.hcam is None:
-            self.hcam=lib.is_InitCamera(None,self.id|(uc480_defs.DEVENUM.IS_USE_DEVICE_ID if self.is_dev_id else 0))
+            self.hcam=lib.is_InitCamera(self.id|(uc480_defs.DEVENUM.IS_USE_DEVICE_ID if self.is_dev_id else 0),None)
+            self._set_auto_mono_color_mode()
     def close(self):
         """Close connection to the camera"""
         if self.hcam is not None:
+            self.clear_acquisition()
             lib.is_ExitCamera(self.hcam)
             self.hcam=None
         self.hcam=None
@@ -223,6 +225,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         For possible modes, see :meth:`get_all_color_modes`.
         """
         return lib.is_SetColorMode(self.hcam,uc480_defs.COLORMODE.IS_GET_COLOR_MODE)
+    @camera.acqcleared
     @interface.use_parameters(mode="color_mode")
     def set_color_mode(self, mode):
         """
@@ -281,7 +284,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         max_gain=lib.is_SetHWGainFactor(self.hcam,uc480_defs.GAINFACTOR.IS_INQUIRE_MASTER_GAIN_FACTOR+i,100)
         min_gain=100
         ivalue=max(min(ivalue,max_gain),min_gain)
-        lib.is_SetHWGainFactor(self.hcam,uc480_defs.GAINFACTOR.IS_SET_MASTER_GAIN_FACTOR+i,ivalue,check=True)
+        lib.is_SetHWGainFactor(self.hcam,uc480_defs.GAINFACTOR.IS_SET_MASTER_GAIN_FACTOR+i,ivalue)
     def set_gains(self, master=None, red=None, green=None, blue=None):
         """
         Set current gains.
@@ -297,7 +300,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         return bool(lib.is_SetGainBoost(self.hcam,uc480_defs.GAIN.IS_GET_SUPPORTED_GAINBOOST) and lib.is_SetGainBoost(self.hcam,uc480_defs.GAIN.IS_GET_GAINBOOST))
     def set_gain_boost(self, enabled):
         """Enable or disable gain boost"""
-        if lib.is_SetGainBoost(self.hcam,self.hcam,uc480_defs.GAIN.IS_GET_SUPPORTED_GAINBOOST):
+        if lib.is_SetGainBoost(self.hcam,uc480_defs.GAIN.IS_GET_SUPPORTED_GAINBOOST):
             lib.is_SetGainBoost(self.hcam,1 if enabled else 0,check=True)
         return self.get_gain_boost()
 
@@ -312,6 +315,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         super().setup_acquisition(nframes=nframes)
         self._allocate_buffers(n=nframes)
     def clear_acquisition(self):
+        self.stop_acquisition()
         self._deallocate_buffers()
         super().clear_acquisition()
     def start_acquisition(self, *args, **kwargs):
@@ -497,6 +501,9 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         """
         roi=hstart,hend,vstart,vend,hbin,vbin
         hstart,hend,vstart,vend,hbin,vbin=self._trunc_roi(*roi)
+        self._set_roi_binning(1,1) # in case current ROI is too small for the current binning
+        aoi=uc480_defs.IS_RECT(hstart,vstart,(hend-hstart),(vend-vstart))
+        lib.is_AOI(self.hcam,uc480_defs.IMAGE.IS_AOI_IMAGE_SET_AOI,uc480_defs.CIS_RECT,aoi)
         self._set_roi_binning(hbin,vbin)
         aoi=uc480_defs.IS_RECT(hstart//hbin,vstart//vbin,(hend-hstart)//hbin,(vend-vstart)//vbin)
         lib.is_AOI(self.hcam,uc480_defs.IMAGE.IS_AOI_IMAGE_SET_AOI,uc480_defs.CIS_RECT,aoi)
