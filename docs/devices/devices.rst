@@ -5,12 +5,40 @@ Devices
 
 The devices are represented as Python objects, in most cases, one per device.
 
+
+.. _devices_connection:
+
 Connection
 --------------------------------------
 
 The device identifier or address needs to be provided upon the device object creation, after which the devices automatically connect. Getting the address usually depends on the kind of device:
 
-    - Simple message-style devices, such as AWG, oscilloscopes, sensors and gauges, require an address, which depends on the exact connection protocol. For example, serial devices addresses look like ``"COM1"``, Visa addresses as ``"USB0::0x0699::0x039B::C020005::INSTR"``, and network addresses take IP and, possibly, port ``"192.168.0.3:7230"``. Sometimes they would also take additional parameters such as baud rate for serial devices, although the default values should fit in the majority of situations.
+    - Simple message-style devices, such as AWG, oscilloscopes, sensors and gauges, require an address, which depends on the exact connection protocol. For example, serial devices addresses look like ``"COM1"``, Visa addresses as ``"USB0::0x1313::0x8070::000000::INSTR"``, and network addresses take IP and, possibly, port ``"192.168.1.3:7230"``. To get the list of all connected devices, you can run :func:`.comm_backend.list_backend_resources`::
+
+        >> import pylablib as pll
+        >> pll.list_backend_resources("serial")  # list serial port resources
+        ['COM38', 'COM1', 'COM36', 'COM3']
+        >> pll.list_backend_resources("visa")  # note that, by default, visa also includes all the COM ports
+        ('USB0::0x1313::0x8070::000000::INSTR',
+        'ASRL1::INSTR',
+        'ASRL3::INSTR',
+        'ASRL10::INSTR',
+        'ASRL36::INSTR',
+        'ASRL38::INSTR')
+      
+      Network devices do not easily provide such functionality (also, there are, in principle, lots of devices connected to the networks), so you might need to learn the device IP elsewhere (usually, it is set on the device front panel or using some kind of configuration tool).
+
+      In most cases, the connection address is all you need. However, sometimes the connection might requirements some additional information. The most common situations are ports for the network connection and baud rates for the serial connections. Ports can be supplied either as a part of the string ``"192.168.1.3:7230"``, or as a tuple ``("192.168.1.3", 7230)``. The baud rates are, similarly, provided as a tuple: ``("COM1", 19200)``. By default, the devices would use the baud rate which is most common for them, but in some cases (e.g., if the device baud rate can be changed), you might need to provide it explicitly. If it is provided incorrectly, then no communication can be done, and any request will return a ``TimeoutError``::
+
+        >> from pylablib.devices import Ophir
+        >> meter = Ophir.VegaPowerMeter("COM3")  # for this power meter 9600 baud are used by default
+        >> meter.get_power()  # let us assume that the devices is currently set up with 38400 baud
+        ...
+        SerialException: timeout during read
+        >> meter.close()  # need to close the connection before reopening
+        >> meter = Ophir.VegaPowerMeter(("COM3",38400))  # explicitly specifying the correct baud rate
+        >> meter.get_power()
+        1E-6
 
     - More complicated devices using custom DLLs (usually cameras or translation stages) will have more unique methods of addressing individual devices: serial number, device index, device ID, etc. In most cases such devices come with ``list_devices`` or ``get_devices_number`` functions, which give the necessary information.
 
@@ -143,12 +171,16 @@ Available devices
     .. include:: cameras_list.txt
 - :ref:`Stages <stages>`
     .. include:: stages_list.txt
+- :ref:`Basic lasers <basic_lasers>`
+    - :ref:`Lighthouse Photonics SproutG <basic_lasers_lp_sprout>`
+    - :ref:`Laser Quantum Finesse <basic_lasers_lq_finesse>`
 
 .. toctree::
     :hidden:
     
     cameras
     stages
+    basic_lasers
 
 .. --------------------------------------
 .. List of devices

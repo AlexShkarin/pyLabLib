@@ -30,7 +30,7 @@ Of all of these modes only USB requires specialized drivers, and the other two a
 Connection
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-The device is identified by its communication address. It can be either a serial port (e.g., ``"COM5"``), or an IP address (e.g., ``"192.168.1.100"``). The backend is chosen automatically based on the connection appearance. Additionally, Ethernet connection requires a password; by default, the standard Attocube password ``"123456"`` is used, but if you specified a custom password, you need to provide it upon connection::
+The device is identified by its communication address. It can be either a serial port (e.g., ``"COM5"``), or an IP address (e.g., ``"192.168.1.100"``); see :ref:`connection description <devices_connection>` for more information. The backend is chosen automatically based on the connection parameter. Additionally, Ethernet connection requires a password; by default, the standard Attocube password ``"123456"`` is used, but if you specified a custom password, you need to provide it upon connection::
 
     >> from pylablib.devices import Attocube
     >> atc1 = Attocube.ANC300("COM5")  # USB or RS232 connection

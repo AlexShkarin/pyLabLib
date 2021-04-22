@@ -3,7 +3,7 @@
 .. note::
     General camera communication concepts are described on the corresponding :ref:`page <cameras>`
 
-Thorlabs Scientific Cameras interface [TODO: finish]
+Thorlabs Scientific Cameras interface
 ====================================================
 
 This is the interface used in Thorlabs scientific sCMOS cameras such as Kiralux or Zelux. It has been tested with Thorlabs Kiralux camera.
@@ -13,7 +13,7 @@ The code is located in :mod:`pylablib.devices.Thorlabs`, and the main camera cla
 DLL requirements
 -----------------------
 
-These cameras require ``thorlabs_tsi_camera_sdk.dll``, which is automatically installed with the freely available `Thorcam <https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam>`__ tools. By default, the library searches for DLLs in ``Thorlabs/Scientific Imaging/ThorCam`` folder in ``Program Files`` folder (or ``Program files (x86)``, if 32-bit version of Python is running), as well as in the folder containing the script. If the DLLs are located elsewhere, the path can be specified using the library parameter ``devices/dlls/thorlabs_tlcam``::
+These cameras require ``thorlabs_tsi_camera_sdk.dll``, as well as several additional DLLs: ``thorlabs_unified_sdk_kernel.dll``, ``thorlabs_unified_sdk_main.dll``, ``thorlabs_tsi_usb_driver.dll``, ``thorlabs_tsi_usb_hotplug_monitor.dll``, ``thorlabs_tsi_cs_camera_device.dll``, ``tsi_sdk.dll``, ``tsi_usb.dll``. All of them is automatically installed with the freely available `Thorcam <https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam>`__ tools. By default, the library searches for DLLs in ``Thorlabs/Scientific Imaging/ThorCam`` folder in ``Program Files`` folder (or ``Program files (x86)``, if 32-bit version of Python is running), as well as in the folder containing the script. If the DLLs are located elsewhere, the path can be specified using the library parameter ``devices/dlls/thorlabs_tlcam``::
 
     import pylablib as pll
     pll.par["devices/dlls/thorlabs_tlcam"] = "path/to/dlls"
@@ -40,3 +40,9 @@ Operation
 ------------------------
 
 The operation of these cameras is relatively standard. They support all the standard methods for dealing with ROI and exposure, starting and stopping acquisition, and operating the frame reading loop.
+
+.. warning::
+    The library appears to be not entirely stable: every time acquisition start is issued, there is small (0.1-1%) chance that it will not actually start, which results in timeout errors. Furthermore, there are occasional crashes on the SDK unloading (i.e., camera closing), especially when acquisition has been started and stopped multiple times. It is unclear, what is the cause of this behavior, but it seems to originate from the manufacturer's DLL (bare-bones example and the native Python library reproduce this behavior). Hence, it might be different with different DLL versions.
+
+.. note::
+    The DLL prints some debug information in the console when camera list is requested and when the camera is opened. At the moment, it is unclear how to get rid of it.

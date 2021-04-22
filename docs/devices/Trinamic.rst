@@ -20,7 +20,7 @@ USB connection needs drivers, which are supplied with the freely-available `TMCL
 Connection
 -----------------------
 
-Since the devices are identified as virtual COM ports, all you need to know is their COM-port address (e.g., ``COM5``)::
+Since the devices are identified as virtual COM ports, they use the standard :ref:`connection method <devices_connection>`, and all you need to know is their COM-port address (e.g., ``COM5``)::
 
     >> from pylablib.devices import Trinamic
     >> stage1 = Trinamic.TMCM1110("COM5")

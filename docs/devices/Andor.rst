@@ -102,13 +102,17 @@ The cameras are identified by their index, starting from zero. To get the total 
 Operation
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-The operation of these cameras is also relatively standard. They support all the standard methods for dealing with ROI and exposure, starting and stopping acquisition, and operating the frame reading loop. The SDK also provides a universal interface for getting and setting various camera parameters using their name. You can use :meth:`.AndorSDK3Camera.get_value` and :meth:`.AndorSDK3Camera.set_value` for that, as well as ``.v`` attribute which gives a dictionary-like access::
+The operation of these cameras is also relatively standard. They support all the standard methods for dealing with ROI and exposure, starting and stopping acquisition, and operating the frame reading loop. However, there's a couple of differences from the standard libraries worth highlighting:
 
-    >> cam = Andor.AndorSDK3Camera()
-    >> cam.get_value("CameraAcquiring")  # check if the camera is acquiring
-    0
-    >> cam.set_value("ExposureTime", 0.1)  # set the exposure to 100ms
-    >> cam.v["ExposureTime"]  # get the exposure; could also use cam.get_value("ExposureTime")
-    0.1
+    - The SDK also provides a universal interface for getting and setting various camera parameters using their name. You can use :meth:`.AndorSDK3Camera.get_value` and :meth:`.AndorSDK3Camera.set_value` for that, as well as ``.v`` attribute which gives a dictionary-like access::
 
-Some values serve as commands; these can be invoked using :meth:`.AndorSDK3Camera.command` method. To get a dictionary of all available values, you can call :meth:`.AndorSDK3Camera.get_all_values`. Finally, you can check if the particular parameter is available by querying :meth:`.AndorSDK3Camera.is_feature_available`, :meth:`.AndorSDK3Camera.is_feature_readable`, and :meth:`.AndorSDK3Camera.is_feature_writable`. The description of the features is given in `manual <https://andor.oxinst.com/downloads/uploads/Andor_SDK3_Manual.pdf>`__.
+        >> cam = Andor.AndorSDK3Camera()
+        >> cam.get_value("CameraAcquiring")  # check if the camera is acquiring
+        0
+        >> cam.set_value("ExposureTime", 0.1)  # set the exposure to 100ms
+        >> cam.v["ExposureTime"]  # get the exposure; could also use cam.get_value("ExposureTime")
+        0.1
+
+      Some values serve as commands; these can be invoked using :meth:`.AndorSDK3Camera.command` method. To get a dictionary of all available values, you can call :meth:`.AndorSDK3Camera.get_all_values`. Finally, you can check if the particular parameter is available by querying :meth:`.AndorSDK3Camera.is_feature_available`, :meth:`.AndorSDK3Camera.is_feature_readable`, and :meth:`.AndorSDK3Camera.is_feature_writable`. The description of the features is given in `manual <https://andor.oxinst.com/downloads/uploads/Andor_SDK3_Manual.pdf>`__.
+    
+    - USB cameras can, in principle, generate data at higher rate than about 320Mb/s that the USB3 bus supports. For example, Andor Zyla with 16 bit readout has a single full frame size of 8Mb, which puts the maximal USB throughput at about 40FPS. At the same time, the camera itself is capable of reading up to 100FPS at the full frame. Hence, it is possible to overflow the camera internal buffer (size on the order of 1Gb) regardless of the PC performance. If this happens, the acquisition process halts and needs to be restarted. To check for the number of buffer overflows, you can use :meth:`.AndorSDK3Camera.get_missed_frames_status`, and to reset this counter, :meth:`.AndorSDK3Camera.reset_overflows_counter` (it also automatically resets on acquisition clearing, but not stopping). In addition, the class can implement different strategies when encountering overflow while waiting for a new frame. It is set using :meth:`.AndorSDK3Camera.set_overflow_behavior`, and it can be ``"error"`` (raise :exc:`AndorError`, which is the default behavior), ``"restart"`` (restart the acquisition and immediately raise timeout error), or ``"ignore"`` (ignore the overflow, which will eventually lead to a timeout error, as the new frames are no longer generated).

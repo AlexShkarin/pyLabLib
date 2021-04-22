@@ -103,7 +103,7 @@ Axis selection
 
 Many controllers support simultaneous control of several different motors. In this case, all of their methods take an additional ``axis`` (in most cases) or ``channel`` argument, which specify the exact motor. In cases where usually only one motor is controlled (e.g., TMCM1110 or Thorlabs KDC101), this parameters is set to the default value, and is closer to the end of the parameter list. If having multiple controlled stages is the default (e.g., Attocube ANC350 or Arcus Performax), this parameter is usually the first one, and it has to be specified. In this cases, the methods frequently allow to set this parameter to ``"all"``, which means that the action is performed for all axes, or the results is returned for all axes (usually in a form of a list or a dictionary).
 
-The channels are usually specified by their index starting from 0 or 1, although some stages adopt a different labeling (e.g., Arcus Performax lebels them as X, Y, Z, and U). The exact specification is given in the specific class description.
+The channels are usually specified by their index starting from 0 or 1, although some stages adopt a different labeling (e.g., Arcus Performax labels them as X, Y, Z, and U). The exact specification is given in the specific class description.
 
 
 Homing

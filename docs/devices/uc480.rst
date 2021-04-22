@@ -24,7 +24,7 @@ These cameras require ``uc480.dll``, which is automatically installed with the f
 Connection
 -----------------------
 
-The cameras are identified by their camera ID or device ID. Camera ID corresponds to the connection order of the cameras: it is guaranteed to be unique, but can change if the cameras are reconnected in different order. On the other hand, device ID is tied to the camera, but it is 0 by default for all cameras, and needs to be manually changed. Alternatively, one can use other characteristics (model or serial number) as a unique identifier. To list all of the connected cameras together with their basic information, you can run :func:`.uc480.list_cameras`::
+The cameras are identified by their camera ID or device ID (both starting from 1). Camera ID corresponds to the connection order of the cameras: it is guaranteed to be unique, but can change if the cameras are reconnected in different order. On the other hand, device ID is tied to the camera, but it is 0 by default for all cameras, and needs to be manually changed. Alternatively, one can use other characteristics (model or serial number) as a unique identifier. To list all of the connected cameras together with their basic information, you can run :func:`.uc480.list_cameras`::
 
     >> from pylablib.devices import uc480
     >> uc480.list_cameras()
