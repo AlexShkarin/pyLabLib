@@ -445,7 +445,7 @@ class StandardIndicatorHandler(IIndicatorHandler):
         self.widget=widget
         self.get_indicator_kind=get_method_kind(getattr(self.widget,"get_indicator",None))
         self.get_all_indicators_kind="simple" if hasattr(self.widget,"get_all_indicators") else None
-        self.set_indicator_kind=get_method_kind(getattr(self.widget,"get_indicator",None),add_args=1)
+        self.set_indicator_kind=get_method_kind(getattr(self.widget,"set_indicator",None),add_args=1)
         self.set_all_indicators_kind="simple" if hasattr(self.widget,"set_all_indicators") else None
         self.default_name=default_name
     def get_value(self, name=None):
@@ -720,7 +720,16 @@ class GUIValues:
             if values:
                 return values
         raise KeyError("missing handler '{}'".format(name))
-    get_all_values=get_value
+    def get_all_values(self, name=None, include=None):
+        """
+        Get all values in the given sub-branch.
+
+        Same as :meth:`get_value`, but returns an empty dictionary if the `name` is missing.
+        """
+        try:
+            return self.get_value(name,include=include)
+        except KeyError:
+            return dictionary.Dictionary()
     @gui_thread_method
     def set_value(self, name, value, include=None):
         """
@@ -733,12 +742,14 @@ class GUIValues:
         if path: # path is in handlers and handlers are not empty
             if include is None or "/".join(path) in include:
                 return self.handlers[path].set_value(value,subpath or None)
-        elif name in self.handlers:
+        elif name in self.handlers:  # assigning to a branch
             subtree=self.handlers[name]
             for n,v in dictionary.as_dictionary(value).iternodes(to_visit="all",topdown=True,include_path=True):
                 if subtree.has_entry(n,kind="leaf"):
                     if (include is None) or ("/".join(n) in include):
                         subtree[n].set_value(v)
+            return
+        elif not dictionary.as_dict(value):  # assign empty values
             return
         raise KeyError("missing handler '{}'".format(name))
     def set_all_values(self, value, root="", include=None):
@@ -759,7 +770,7 @@ class GUIValues:
                 if ind_name not in ind_set:
                     raise KeyError("missing indicator handler '{}' for with sub-name '{}'".format(name,ind_name))
                 return ind_set[ind_name].get_value(subpath or None)
-        elif name in self.indicator_handlers:
+        elif name in self.indicator_handlers:  # getting branch values
             values=dictionary.Dictionary()
             subtree=self.indicator_handlers[name]
             for n in subtree.paths():
@@ -770,14 +781,25 @@ class GUIValues:
             if values:
                 return values
         raise KeyError("missing indicator handler '{}'".format(name))
-    get_all_indicators=get_indicator
+    def get_all_indicators(self, name=None, ind_name="__default__", include=None):
+        """
+        Get all indicator values in the given sub-branch.
+
+        Same as :meth:`get_indicator`, but returns an empty dictionary if the `name` is missing.
+        """
+        try:
+            return self.get_indicator(name,ind_name=ind_name,include=include)
+        except KeyError:
+            return dictionary.Dictionary()
     @gui_thread_method
-    def set_indicator(self, name, value, ind_name=None, include=None):
+    def set_indicator(self, name, value, ind_name=None, include=None, ignore_missing=True):
         """
         Set indicator value with a given name.
 
         `ind_name` can distinguish different sub-indicators with the same name, if the same value has multiple indicators.
         By default, set all sub-indicators to the given value.
+        If ``ignore_missing==True`` and the given indicator and sub-indicator names are missing, raise an error;
+        otherwise, do nothing.
         """
         name=name or ""
         path,subpath=self.indicator_handlers.get_max_prefix(name,kind="leaf")
@@ -790,9 +812,9 @@ class GUIValues:
                     return
                 elif ind_name in ind_set:
                     return ind_set[ind_name].set_value(value,subpath or None)
-                else:
+                elif not ignore_missing:
                     raise KeyError("missing handler '{}' for indicator with sub-name '{}'".format(name,ind_name))
-        elif name in self.indicator_handlers:
+        elif name in self.indicator_handlers:  # assigning to a branch
             subtree=self.indicator_handlers[name]
             for n,v in dictionary.as_dictionary(value).iternodes(to_visit="all",topdown=True,include_path=True):
                 if subtree.has_entry(n,kind="leaf"):
@@ -804,9 +826,10 @@ class GUIValues:
                         elif ind_name in ind_set:
                             ind_set[ind_name].set_value(v)
             return
-        raise KeyError("missing handler '{}'".format(name))
-    def set_all_indicators(self, value, root="", ind_name=None, include=None):
-        return self.set_indicator(root,value,ind_name=ind_name,include=include)
+        elif not ignore_missing:
+            raise KeyError("missing handler '{}'".format(name))
+    def set_all_indicators(self, value, root="", ind_name=None, include=None, ignore_missing=True):
+        return self.set_indicator(root,value,ind_name=ind_name,include=include,ignore_missing=ignore_missing)
     @gui_thread_method
     def update_indicators(self, root="", include=None):
         """

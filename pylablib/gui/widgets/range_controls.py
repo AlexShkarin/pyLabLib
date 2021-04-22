@@ -98,7 +98,7 @@ class RangeCtl(QtWidgets.QWidget):
             self.e_step.setObjectName("e_step")
             self.gridLayout.addWidget(self.e_step, row, 1, 1, 1)
             self.e_step.value_changed.connect(self._step_changed)
-            self.e_step.set_number_limit(0,None)
+            self.e_step.set_limiter((0,None))
             row+=1
         else:
             self.e_step=None
@@ -281,7 +281,7 @@ class ROICtl(QtWidgets.QWidget):
             v.set_limiter((None,None,"coerce","int"))
             v.set_value(0)
         for v in [self.x_max,self.x_bin,self.y_max]:
-            v.set_number_format("int")
+            v.set_formatter("int")
             v.set_limiter((None,None,"coerce","int"))
             v.set_value(1)
         for v in [self.x_min,self.x_max,self.x_bin,self.y_min,self.y_max]:
@@ -475,12 +475,12 @@ class BinROICtl(ROICtl):
         self.gridLayout.setColumnStretch(3,1)
         self.validate=validate
         for v in [self.x_min,self.y_min]:
-            v.set_number_format("int")
-            v.set_number_limit(value_type="int")
+            v.set_formatter("int")
+            v.set_limiter((None,None,"coerce","int"))
             v.set_value(0)
         for v in [self.x_max,self.x_bin,self.y_max,self.y_bin]:
-            v.set_number_format("int")
-            v.set_number_limit(value_type="int")
+            v.set_formatter("int")
+            v.set_limiter((None,None,"coerce","int"))
             v.set_value(1)
         for v in [self.x_min,self.x_max,self.x_bin,self.y_min,self.y_max,self.y_bin]:
             v.setMinimumWidth(40)
@@ -506,11 +506,11 @@ class BinROICtl(ROICtl):
         if maxsize!="keep":
             self.maxsize=maxsize
         for v in [self.x_min,self.x_max]:
-            v.set_number_limit(self.xlim[0],self.xlim[1],"coerce","int")
+            v.set_limiter((self.xlim[0],self.xlim[1],"coerce","int"))
         for v in [self.y_min,self.y_max]:
-            v.set_number_limit(self.ylim[0],self.ylim[1],"coerce","int")
+            v.set_limiter((self.ylim[0],self.ylim[1],"coerce","int"))
         for v in [self.x_bin,self.y_bin]:
-            v.set_number_limit(1,self.maxbin,"coerce","int")
+            v.set_limiter((1,self.maxbin,"coerce","int"))
         self._show_values(*self.get_value())
 
     def get_value(self):

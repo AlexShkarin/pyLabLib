@@ -22,8 +22,8 @@ class ScriptThread(controller.QTaskThread):
 
     Args:
         name (str): thread name
-        setupargs: args supplied to :meth:`setup_script` method
-        setupkwargs: keyword args supplied to :meth:`setup_script` method
+        args: args supplied to :meth:`setup_script` method
+        kwargs: keyword args supplied to :meth:`setup_script` method
         announcement_pool: :class:`.SignalPool` for this thread (by default, use the default common pool)
 
     Attributes:
@@ -57,7 +57,7 @@ class ScriptThread(controller.QTaskThread):
         if controller.QTaskThread.process_interrupt(self,tag,value):
             return True
         if tag=="control.start":
-            self.c.start_script()
+            self.ca.start_script()
             if self.executing:
                 self.stop_request=True
             return True

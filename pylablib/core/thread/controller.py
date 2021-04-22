@@ -1251,11 +1251,11 @@ class QTaskThread(QMultiRepeatingThread):
 
     Attributes:
         ca: asynchronous command accessor, which makes calls more function-like;
-            ``ctl.c.comm(*args,**kwarg)`` is equivalent to ``ctl.call_command("comm",args,kwargs,sync=False)``
+            ``ctl.ca.comm(*args,**kwarg)`` is equivalent to ``ctl.call_command("comm",args,kwargs,sync=False)``
         cs: synchronous command accessor, which makes calls more function-like;
-            ``ctl.q.comm(*args,**kwarg)`` is equivalent to ``ctl.call_command("comm",args,kwargs,sync=True)``
+            ``ctl.cs.comm(*args,**kwarg)`` is equivalent to ``ctl.call_command("comm",args,kwargs,sync=True)``
         css: synchronous command accessor which is made 'exception-safe' via :func:`exsafe` wrapper (i.e., safe to directly connect to slots)
-            ``ctl.qi.comm(*args,**kwarg)`` is equivalent to ``with exint(): ctl.call_command("comm",args,kwargs,sync=True)``
+            ``ctl.csi.comm(*args,**kwarg)`` is equivalent to ``with exint(): ctl.call_command("comm",args,kwargs,sync=True)``
         csi: synchronous command accessor which ignores and silences any exceptions (including missing /stopped controller)
             useful for sending queries during thread finalizing / application shutdown, when it's not guaranteed that the command recipient is running
             (commands already ignore any errors, unless their results are specifically requested);
@@ -1345,7 +1345,7 @@ class QTaskThread(QMultiRepeatingThread):
         Local call method.
         """
         status_str="status/"+kind if kind else "status"
-        self[status_str]=status
+        self.v[status_str]=status
         if notify:
             self.send_announcement("any",status_str,status)
         if text:

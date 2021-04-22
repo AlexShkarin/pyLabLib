@@ -17,7 +17,7 @@ class LinePlotter(pyqtgraph.PlotWidget):
         parent: parent widget
     """
     def __init__(self, parent=None):
-        super(LinePlotter, self).__init__(parent)
+        super().__init__(parent)
         self.data={}
         self._traces={}
         self.trace_names=[]

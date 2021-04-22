@@ -40,7 +40,7 @@ class ImagePlotterCtl(QtWidgets.QWidget):
         parent: parent widget
     """
     def __init__(self, parent=None):
-        QtWidgets.QWidget.__init__(parent)
+        super().__init__(parent)
 
     def setupUi(self, name, plotter, gui_values=None, gui_values_root=None, save_values=("colormap","img_lim_preset")):
         """
@@ -75,7 +75,7 @@ class ImagePlotterCtl(QtWidgets.QWidget):
         self.settings_table.add_num_edit("minlim",value=self.img_lim[0],limiter=self.img_lim+("coerce","int"),formatter=("int"),label="Minimal intensity:",add_indicator=True)
         self.settings_table.add_num_edit("maxlim",value=self.img_lim[1],limiter=self.img_lim+("coerce","int"),formatter=("int"),label="Maximal intensity:",add_indicator=True)
         self._preset_layout=QtWidgets.QHBoxLayout()
-        row_loc=self.settings_table._normalize_location((None,0,1,self.settings_table.layout().columnCount()))
+        _,row_loc=self.settings_table._normalize_location((None,0,1,self.settings_table.layout().columnCount()))
         self.settings_table.layout().addLayout(self._preset_layout,*row_loc)
         hbtn=self.settings_table.add_button("save_preset","Save preset")
         hbtn.value_changed().connect(self._save_img_lim_preset)
@@ -116,8 +116,8 @@ class ImagePlotterCtl(QtWidgets.QWidget):
         else:
             return
         minl,maxl=self.img_lim
-        self.settings_table.w["minlim"].set_number_limit(minl,maxl,"coerce","int")
-        self.settings_table.w["maxlim"].set_number_limit(minl,maxl,"coerce","int")
+        self.settings_table.w["minlim"].set_limiter((minl,maxl,"coerce","int"))
+        self.settings_table.w["maxlim"].set_limiter((minl,maxl,"coerce","int"))
     @controller.exsafeSlot()
     def _save_img_lim_preset(self):
         self.img_lim_preset=self.settings_table.v["minlim"],self.settings_table.v["maxlim"]
@@ -128,12 +128,12 @@ class ImagePlotterCtl(QtWidgets.QWidget):
     def _setup_gui_state(self):
         """Enable or disable controls based on which actions are enabled"""
         show_histogram=self.settings_table.v["show_histogram"]
-        self.settings_table.lock("auto_histogram_range",not show_histogram)
+        self.settings_table.set_enabled("auto_histogram_range",show_histogram)
         show_lines=self.settings_table.v["show_lines"]
         for n in ["vlinepos","hlinepos","show_linecuts"]:
-            self.settings_table.lock(n,not show_lines)
+            self.settings_table.set_enabled(n,show_lines)
         show_linecuts=self.settings_table.v["show_linecuts"]
-        self.settings_table.lock("linecut_width",not (show_lines and show_linecuts))
+        self.settings_table.set_enabled("linecut_width",show_lines and show_linecuts)
 
     def get_all_values(self):
         """Get all control values"""
@@ -203,7 +203,7 @@ class ImagePlotter(QtWidgets.QWidget):
         parent: parent widget
     """
     def __init__(self, parent=None):
-        QtWidgets.QWidget.__init__(parent)
+        super().__init__(parent)
         self.ctl=None
 
     class Rectangle(object):
@@ -302,7 +302,7 @@ class ImagePlotter(QtWidgets.QWidget):
                 "hlinepos":0,
                 "linecut_width":0,
                 "update_image":True})
-    @controller.exsafeSlot("bool")
+    @controller.exsafeSlot(object)
     def _set_image_update(self, do_update):
         self.do_image_update=do_update
     

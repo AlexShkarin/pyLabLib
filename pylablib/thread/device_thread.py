@@ -64,7 +64,7 @@ class DeviceThread(controller.QTaskThread):
         self.qdi=self.DeviceMethodAccessor(self,ignore_errors=True)
         
     def finalize_task(self):
-        self.close_device()
+        self.close()
         rpyc_serv=self.rpyc_serv
         self.device=None
         self.rpyc_serv=None
@@ -149,7 +149,7 @@ class DeviceThread(controller.QTaskThread):
             self.connect_device()
         if self.device is not None:
             if not self.device.is_opened():
-                self.device_open()
+                self.open_device()
             if self.device.is_opened():
                 self.update_status("connection","opened","Connected")
                 self._tried_device_connect=0
@@ -165,7 +165,7 @@ class DeviceThread(controller.QTaskThread):
         """
         if self.device is not None and self.device.is_opened():
             self.update_status("connection","closing","Disconnecting...")
-            self.device_close()
+            self.close_device()
             self.update_status("connection","closed","Disconnected")
 
     def get_settings(self):
@@ -190,7 +190,7 @@ class DeviceThread(controller.QTaskThread):
 
         A function for a job which is setup in :meth:`DeviceThread.setup_full_info_job`. Normally doesn't need to be called explicitly.
         """
-        self["full_info"]=self.rpyc_obtain(self.device.get_full_info(include=self.full_info_variables))
+        self.v["full_info"]=self.rpyc_obtain(self.device.get_full_info(include=self.full_info_variables))
     def get_full_info(self):
         """
         Get full device info.
@@ -199,7 +199,7 @@ class DeviceThread(controller.QTaskThread):
         otherwise, request a new version from the device.
         """
         if self.device:
-            return self["full_info"] if self._full_info_job else self.rpyc_obtain(self.device.get_full_info(include=self.full_info_variables))
+            return self.v["full_info"] if self._full_info_job else self.rpyc_obtain(self.device.get_full_info(include=self.full_info_variables))
         else:
             return {}
     def _device_method(self, name, args, kwargs):

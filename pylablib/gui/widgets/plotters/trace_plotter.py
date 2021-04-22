@@ -12,7 +12,7 @@ from ....core.thread import controller
 from ....core.gui import value_handling
 from ....core.utils import funcargparse, dictionary
 from ....core.dataproc import utils as trace_utils
-from ..helpers import TableAccumulator, TableAccumulatorThread
+from ....thread.stream.table_accum import TableAccumulator, TableAccumulatorThread
 
 import pyqtgraph
 
@@ -30,7 +30,7 @@ class TracePlotterCtl(QtWidgets.QWidget):
         parent: parent widget
     """
     def __init__(self, parent=None):
-        QtWidgets.QWidget.__init__(parent)
+        super().__init__(parent)
 
     def setupUi(self, name, plotter, gui_values=None, gui_values_root=None):
         """
@@ -128,7 +128,7 @@ class TracePlotter(QtWidgets.QWidget):
         parent: parent widget
     """
     def __init__(self, parent=None):
-        super(TracePlotter, self).__init__(parent)
+        super().__init__(parent)
 
     def setupUi(self, name, add_end_marker=False, update_only_on_visible=True):
         """

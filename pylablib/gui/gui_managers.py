@@ -1,7 +1,8 @@
-from pylablib.core.gui.qt.thread import controller
-from pylablib.core.gui.qt import utils
-from pylablib.core.utils import dictionary
-from pylablib.aux_libs.gui.widgets import image_plotter, trace_plotter, line_plotter, param_table
+from ..core.thread import controller
+from ..core.gui import utils
+from ..core.gui.widgets import param_table
+from ..core.utils import dictionary
+from .widgets.plotters import image_plotter, line_plotter
 
 from ..core.gui import QtWidgets, QtCore
 
@@ -33,6 +34,9 @@ class IBox:
     def set_all_values(self, params):
         """Set all GUI values"""
         pass
+    def get_all_indicators(self):
+        """Get all GUI indicators as a dictionary"""
+        return {}
 
 
 class ParamTableBox(IBox):
@@ -69,6 +73,8 @@ class ParamTableBox(IBox):
         return self.table.get_all_values()
     def set_all_values(self, params):
         self.table.set_all_values(params)
+    def get_all_indicators(self):
+        return self.table.get_all_indicators()
 
 
 
@@ -145,6 +151,9 @@ class BoxManager:
         for (n,t) in self.boxes.items():
             if n in params:
                 t.set_all_values(params[n])
+    def get_all_indicators(self):
+        """Get all GUI indicators as a dictionary"""
+        return dictionary.Dictionary({n:t.get_all_indicators() for (n,t) in self.boxes.items()})
 
 
 
@@ -178,6 +187,9 @@ class ITab:
     def set_all_values(self, params):
         """Set all GUI values"""
         pass
+    def get_all_indicators(self):
+        """Get all GUI indicators as a dictionary"""
+        return {}
 
 
 class BoxTab(ITab):
@@ -200,6 +212,8 @@ class BoxTab(ITab):
         return self.boxes.get_all_values()
     def set_all_values(self, params):
         self.boxes.set_all_values(params)
+    def get_all_indicators(self):
+        return self.boxes.get_all_indicators()
 
 
 class IAutoupdateTab(ITab):
@@ -252,18 +266,18 @@ class ImageTab(IAutoupdateTab):
     """
     Image plotter tab.
 
-    The tab which contains :class:`.ImageView` and :class:`.ImageViewController` widgets to show images.
+    The tab which contains :class:`.ImageView` and :class:`.ImagePlotterCtl` widgets to show images.
     The image can be changed in a thread-safe manner, and updated automatically or explicitly.
     """
     def __init__(self, frame, name):
         IAutoupdateTab.__init__(self,frame,name)
         self.layout=QtWidgets.QHBoxLayout(frame)
         self.layout.setContentsMargins(0,0,0,0)
-        self.imview=image_plotter.ImageView(frame)
+        self.imview=image_plotter.ImagePlotter(frame)
         self.imview.setupUi(name=name+"_image_view",img_size=(1,1))
         self.layout.addWidget(self.imview)
-        self.imctl=image_plotter.ImageViewController(frame)
-        self.imctl.setupUi(name=name+"_image_view_ctl",view=self.imview)
+        self.imctl=image_plotter.ImagePlotterCtl(frame)
+        self.imctl.setupUi(name=name+"_image_view_ctl",plotter=self.imview)
         self.imctl.setMinimumSize(200,0)
         self.imctl.setMaximumSize(200,2**16)
         self.side_layout=QtWidgets.QVBoxLayout()
@@ -291,6 +305,8 @@ class ImageTab(IAutoupdateTab):
         return self.imctl.get_all_values()
     def set_all_values(self, params):
         self.imctl.set_all_values(params)
+    def get_all_indicators(self):
+        return self.imctl.get_all_indicators()
 
 
 
@@ -402,3 +418,6 @@ class TabManager:
         for (n,t) in self.tabs.items():
             if n in params:
                 t.set_all_values(params[n])
+    def get_all_indicators(self):
+        """Get all GUI indicators as a dictionary"""
+        return dictionary.Dictionary({n:t.get_all_indicators() for (n,t) in self.tabs.items()})

@@ -34,7 +34,7 @@ class ParamTable(QtWidgets.QWidget):
         parent: parent widget
     """
     def __init__(self, parent=None):
-        super(ParamTable, self).__init__(parent)
+        super().__init__(parent)
         self.params={}
         self.h=dictionary.ItemAccessor(self.get_handler)
         self.w=dictionary.ItemAccessor(self.get_widget)
@@ -526,7 +526,10 @@ class ParamTable(QtWidgets.QWidget):
     def get_value(self, name=None):
         """Get value of a widget with the given name"""
         return self.gui_values.get_value((self.gui_values_root,name or ""),include=self.params)
-    get_all_values=get_value
+    @controller.gui_thread_method
+    def get_all_values(self, name=None):
+        """Get value of all widget in the given branch"""
+        return self.gui_values.get_all_values((self.gui_values_root,name or ""),include=self.params)
     @controller.gui_thread_method
     def set_value(self, name, value, force=False):
         """
@@ -535,7 +538,7 @@ class ParamTable(QtWidgets.QWidget):
         If ``force==True``, force widget value (e.g., ignoring restriction on not changing values of focused widgets)
         """
         par=self.params[name]
-        if force or par.value_handler.is_set_allowed(allow_focus=self.change_focused_control):
+        if force or par.value_handler.can_set_value(allow_focus=self.change_focused_control):
             return self.gui_values.set_value((self.gui_values_root,name),value)
     @controller.gui_thread_method
     def set_all_values(self, value, force=False):
@@ -559,11 +562,15 @@ class ParamTable(QtWidgets.QWidget):
     def get_indicator(self, name=None):
         """Get indicator value for a widget with the given name"""
         return self.gui_values.get_indicator((self.gui_values_root,name or ""),include=self.params)
-    get_all_indicators=get_indicator
     @controller.gui_thread_method
-    def set_indicator(self, name, value):
-        """Set indicator value for a widget with the given name"""
-        return self.gui_values.set_indicator((self.gui_values_root,name or ""),value,include=self.params)
+    def get_all_indicators(self, name=None):
+        """Get indicator values of all widget in the given branch"""
+        return self.gui_values.get_all_indicators((self.gui_values_root,name or ""),include=self.params)
+    @controller.gui_thread_method
+    def set_indicator(self, name, value, ignore_missing=True):
+        """Set indicator value for a widget or a branch with the given name"""
+        return self.gui_values.set_indicator((self.gui_values_root,name or ""),value,include=self.params,ignore_missing=ignore_missing)
+    set_all_indicators=set_indicator
     @controller.gui_thread_method
     def update_indicators(self):
         """Update all indicators to represent current values"""
@@ -623,4 +630,4 @@ class StatusTable(ParamTable):
             else:
                 text=value
             self.v[name]=text
-        threadprop.current_controller().subscribe(update_text,srcs=srcs,dsts="any",tags=tags,filt=filt,limit_queue=10)
+        threadprop.current_controller().subscribe_sync(update_text,srcs=srcs,dsts="any",tags=tags,filt=filt,limit_queue=10)
