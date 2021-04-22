@@ -1,4 +1,5 @@
 from pylablib.devices import Andor
+from pylablib.devices import DCAM
 from pylablib.devices import PhotonFocus
 from pylablib.devices import PCO
 from pylablib.devices import uc480
@@ -31,12 +32,35 @@ def gen_rois(sz, bins=((),)):
 
 
 
+class TestAndorSDK2(ROICameraTester):
+    """Testing class for Andor SDK2 camera interface"""
+    devname="andor_sdk2"
+    devcls=Andor.AndorSDK2Camera
+    get_set_all_exclude=["acq_parameters/cont"]
+    grab_size=10
+    rois=gen_rois(128,((1,1),(1,2),(2,2),((0,0),False),((3,3),False),((10,10),False),((100,100),False)))
+
+
+
+
+
 class TestAndorSDK3(ROICameraTester):
     """Testing class for Andor SDK3 camera interface"""
     devname="andor_sdk3"
     devcls=Andor.AndorSDK3Camera
     grab_size=10
     rois=gen_rois(128,((1,1),(1,2),(2,2),((0,0),False),((3,3),False),((10,10),False),((100,100),False)))
+
+
+
+
+
+class TestDCAM(ROICameraTester):
+    """Testing class for DCAM camera interface"""
+    devname="dcam"
+    devcls=DCAM.DCAMCamera
+    grab_size=10
+    rois=gen_rois(128,((1,1),((1,2),None),(2,2),((0,0),False),((3,3),False),((10,10),False),((100,100),False)))
 
 
 
@@ -54,7 +78,8 @@ class TestPhotonFocusIMAQ(ROICameraTester):
         assert np.all(slines[1:,1]-slines[:-1,1]==1)
     
     @pytest.mark.devchange(5)
-    def test_acq(self, device):
+    def test_large_acq(self, device):
+        """Test large fast acquisition"""
         for roi,ngrab,nbuff in [((0,None,0,None),100,50),((0,32,0,32),10**5,5000)]:
             device.set_roi(*roi)
             device.set_exposure(0)

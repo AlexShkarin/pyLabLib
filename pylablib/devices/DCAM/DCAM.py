@@ -37,7 +37,7 @@ def get_cameras_number():
 
 
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["vendor","model","serial_number","camera_version"])
-TFrameInfo=collections.namedtuple("TFrameInfo",["framestamp","timestamp_us","camerastamp","left","top","pixeltype"])
+TFrameInfo=collections.namedtuple("TFrameInfo",["frame_index","framestamp","timestamp_us","camerastamp","position","pixeltype"])
 class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
     Error=DCAMError
     TimeoutError=DCAMTimeoutError
@@ -296,16 +296,24 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
         Binning is the same for both axes, so value of `vbin` is ignored (it is left for compatibility).
         """
         self.set_value("SUBARRAY MODE",2)
-        hend=hend or self.properties["SUBARRAY HSIZE"].vmax
-        vend=vend or self.properties["SUBARRAY VSIZE"].vmax
+        hmax=self.properties["SUBARRAY HSIZE"].vmax
+        hend=max(0,min(hend,hmax)) if hend else hmax
+        vmax=self.properties["SUBARRAY VSIZE"].vmax
+        vend=max(0,min(vend,vmax)) if vend else vmax
         min_roi,max_roi=self.get_roi_limits()
-        if hbin==3:
+        if hbin<=1:  # TODO: other bin values?
+            hbin=1
+        elif hbin in {2,3}:
             hbin=2
+        else:
+            hbin=4
+        hstart=max(0,min(hstart,hend-min_roi[1]))
         hstart=(hstart//min_roi[1])*min_roi[1]
         hend=(hend//min_roi[1])*min_roi[1]
         self.set_value("SUBARRAY HSIZE",min_roi[1])
         self.set_value("SUBARRAY HPOS",hstart)
         self.set_value("SUBARRAY HSIZE",max(hend-hstart,min_roi[1]))
+        vstart=max(0,min(vstart,vend-min_roi[3]))
         vstart=(vstart//min_roi[3])*min_roi[3]
         vend=(vend//min_roi[3])*min_roi[3]
         self.set_value("SUBARRAY VSIZE",min_roi[3])
@@ -402,12 +410,12 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
         describing frame index, timestamp, camera stamp, frame location on the sensor, and pixel type.
         Does not advance the read frames counter.
         """
-        sframe=self._read_buffer(buffer)
-        info=TFrameInfo(sframe.framestamp,sframe.timestamp[0]*10**6+sframe.timestamp[1],sframe.camerastamp,sframe.left,sframe.top,sframe.type)
+        sframe=self._read_buffer(buffer%self._alloc_nframes)
+        info=TFrameInfo(buffer,sframe.framestamp,sframe.timestamp[0]*10**6+sframe.timestamp[1],sframe.camerastamp,(sframe.left,sframe.top),sframe.type)
         data=self._buffer_to_array(sframe)
         return data,info
     def _read_frames(self, rng, return_info=False):
-        data=[self._get_single_frame(n%self._alloc_nframes) for n in range(rng[0],rng[1])]
+        data=[self._get_single_frame(n) for n in range(rng[0],rng[1])]
         return [d[0] for d in data],[d[1] for d in data]
     def _zero_frame(self, n):
         dim=self.get_data_dimensions()
@@ -423,7 +431,7 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
         `missing_frame` determines what to do with frames which are out of range (missing or lost):
         can be ``"none"`` (replacing them with ``None``), ``"zero"`` (replacing them with zero-filled frame), or ``"skip"`` (skipping them).
         If ``return_info==True``, return tuple ``(frames, infos)``, where ``infos`` is a list of :class:`TFrameInfo` instances
-        describing frame index and timestamp, camera stamp, frame location on the sensor, and pixel type;
+        describing frame index, framestamp and timestamp, camera stamp, frame location on the sensor, and pixel type;
         if some frames are missing and ``missing_frame!="skip"``, the corresponding frame info is ``None``.
         """
         return super().read_multiple_images(rng=rng,peek=peek,missing_frame=missing_frame,return_info=return_info)

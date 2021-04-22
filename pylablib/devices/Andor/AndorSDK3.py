@@ -33,6 +33,8 @@ def get_cameras_number():
 
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["camera_model","serial_number","firmware_version","software_version"])
 TMissedFramesStatus=collections.namedtuple("TMissedFramesStatus",["skipped","overflows"])
+TMetaData=collections.namedtuple("TMetaData",["timestamp_dev","size","pixeltype","stride"])
+TFrameInfo=collections.namedtuple("TFrameInfo",["frame_index","metadata"])
 class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
     """
     Andor SDK3 camera.
@@ -65,6 +67,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
         self._add_settings_variable("temperature",self.get_temperature_setpoint,self.set_temperature)
         self._add_status_variable("temperature_monitor",self.get_temperature)
         self._add_settings_variable("cooler",self.is_cooler_on,self.set_cooler)
+        self._add_settings_variable("metadata_enabled",self.is_metadata_enabled,self.enable_metadata)
         self._add_settings_variable("frame_period",self.get_frame_period,self.set_frame_period)
         self._add_status_variable("missed_frames",self.get_missed_frames_status)
 
@@ -340,7 +343,13 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
     def get_frame_timings(self):
         return self._TAcqTimings(self.get_exposure(),self.get_frame_period())
 
-
+    def is_metadata_enabled(self):
+        """Check if the metadata enabled"""
+        return self.get_value("MetadataEnable",default=False)
+    def enable_metadata(self, enable=True):
+        """Enable or disable metadata streaming"""
+        self.set_value("MetadataEnable",enable,not_implemented_error=False)
+        return self.is_metadata_enabled()
     
     ### Frame management ###
     class BufferManager:
@@ -525,13 +534,17 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
         self._overflow_behavior=behavior
 
 
-    def _parse_metadata(self, cid, data):
+    def _parse_metadata_section(self, cid, data):
         if cid==1:
             return struct.unpack("<Q",data)[0]
         if cid==7:
-            data=struct.unpack("<HHHBB",data)
+            data=struct.unpack("<HBBHH",data)
             return (data[0],data[1],data[3],data[4])
         return data
+    def _parse_metadata(self, metadata):
+        c1=metadata.get(1,None)
+        c7=metadata.get(7,(None,)*4)
+        return TMetaData(c1,(c7[2],c7[3]),c7[1],c7[0])
     def _parse_image(self, img):
         if img is None:
             return None
@@ -551,7 +564,8 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
             metadata=chunks
         else:
             metadata={}
-        metadata={cid:self._parse_metadata(cid,data) for (cid,data) in metadata.items()}
+        metadata={cid:self._parse_metadata_section(cid,data) for (cid,data) in metadata.items()}
+        metadata=self._parse_metadata(metadata)
         bpp=self.get_value("BytesPerPixel")
         if bpp not in [1,1.5,2,4]:
             raise ValueError("unexpected pixel byte size: {}".format(bpp))
@@ -664,8 +678,8 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
             raise AndorTimeoutError("buffer overflow while waiting for a new frame")
         self._buffer_mgr.wait_for_frame(idx=idx,timeout=timeout)
     def _read_frames(self, rng, return_info=False):
-        data=[self._parse_image(self._buffer_mgr.read(i)) for i in range(rng[0],rng[1])] # TODO: add more user-friendly metadata (+frame index)
-        return [d[0] for d in data],[d[1] for d in data]
+        data=[self._parse_image(self._buffer_mgr.read(i)) for i in range(*rng)]
+        return [d[0] for d in data],[TFrameInfo(n,d[1]) for (n,d) in zip(range(*rng),data)]
     def _zero_frame(self, n):
         dim=self.get_data_dimensions()
         bpp=self.get_value("BytesPerPixel")
@@ -674,12 +688,13 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
     def read_multiple_images(self, rng=None, peek=False, missing_frame="skip", return_info=False):
         """
         Read multiple images specified by `rng` (by default, all un-read images).
-        
+
         If no new frames are available, return an empty list; if no acquisition is running, return ``None``.
         If ``peek==True``, return images but not mark them as read.
         `missing_frame` determines what to do with frames which are out of range (missing or lost):
         can be ``"none"`` (replacing them with ``None``), ``"zero"`` (replacing them with zero-filled frame), or ``"skip"`` (skipping them).
-        If ``return_info==True``, return raw metadata along with images.
-        Metadata is a dictionary ``{section: data}``, where ``section`` is the section number (usually 1 or 7), and ``data`` is the corresponding binary data string.
+        If ``return_info==True``, return tuple ``(frames, infos)``, where ``infos`` is a list of :class:`TFrameInfo` instances
+        describing frame index and frame metadata, which contains timestamp, image size, pixel format, and row stride;
+        if some frames are missing and ``missing_frame!="skip"``, the corresponding frame info is ``None``.
         """
         return super().read_multiple_images(rng=rng,peek=peek,missing_frame=missing_frame,return_info=return_info)

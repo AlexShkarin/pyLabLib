@@ -38,7 +38,6 @@ def get_cameras_number():
 
 
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["serial_number","interface"])
-TFrameInfo=collections.namedtuple("TFrameInfo",["frame_index"])
 class IMAQCamera(camera.IROICamera):
     """
     Generic IMAQ camera interface.
@@ -73,9 +72,10 @@ class IMAQCamera(camera.IROICamera):
 
     def open(self):
         """Open connection to the camera"""
-        self.ifid=lib.imgInterfaceOpen(self.name)
-        self.sid=lib.imgSessionOpen(self.ifid)
-        self._check_attributes()
+        if self.sid is None:
+            self.ifid=lib.imgInterfaceOpen(self.name)
+            self.sid=lib.imgSessionOpen(self.ifid)
+            self._check_attributes()
     def close(self):
         """Close connection to the camera"""
         if self.sid is not None:
@@ -572,10 +572,10 @@ class IMAQCamera(camera.IROICamera):
                 frame_info=[]
                 idx=first_frame
                 for d in parsed_data:
-                    frame_info.append(TFrameInfo(idx))
+                    frame_info.append(self._TFrameInfo(idx))
                     idx+=len(d)
             else:
-                frame_info=[TFrameInfo(first_frame+n) for n in range(len(parsed_data))]
+                frame_info=[self._TFrameInfo(first_frame+n) for n in range(len(parsed_data))]
         if skipped_frames and missing_frame!="skip":
             if fastbuff: # only missing_frame=="zero" is possible
                 parsed_data=[np.zeros((skipped_frames,)+dim,dtype=dt)]+parsed_data

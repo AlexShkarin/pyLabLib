@@ -46,6 +46,8 @@ def get_cameras_number():
 
 
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["model","name","serial_number","firmware_version"])
+TMetaData=collections.namedtuple("TMetaData",["framestamp","pixelclock","pixeltype","offset"])
+TFrameInfo=collections.namedtuple("TFrameInfo",["frame_index","metadata"])
 class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
     """
     Thorlabs TSI camera.
@@ -371,18 +373,33 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
             metadata["ifmt"]=tagvals["IFMT"]
         if "IOFF" in tagvals:
             metadata["ioff"]=tagvals["IOFF"]
-        return metadata
+        return TMetaData(*[metadata.get(k) for k in ["fcnt","pck","ifmt","ioff"]])
     
     def _zero_frame(self, n):
         return np.zeros((n,)+self._buffer.frame_dim,dtype=self._default_image_dtype)
     def _wait_for_next_frame(self, timeout=20., idx=None):
         self._buffer.wait_for_frame(idx=idx,timeout=timeout)
     def _read_frames(self, rng, return_info=False):
-        data=[self._buffer.get_frame(n) for n in range(rng[0],rng[1])]
-        data=[(self._convert_indexing(d[0],"rct"),d[1]) for d in data]
-        return [d[0] for d in data],[self._parse_metadata(d[1]) for d in data]
+        data=[self._buffer.get_frame(n) for n in range(*rng)]
+        frames=[self._convert_indexing(d[0],"rct") for d in data]
+        infos=[TFrameInfo(n,self._parse_metadata(d[1])) for n,d in zip(range(*rng),data)]
+        return frames,infos
 
     def _get_grab_acquisition_parameters(self, nframes, buff_size):
         if buff_size is None:
             buff_size=self._default_acq_params.get("nframes",100)
         return {"nframes":buff_size,"frames_per_trigger":None,"auto_start":True}
+
+    def read_multiple_images(self, rng=None, peek=False, missing_frame="skip", return_info=False):
+        """
+        Read multiple images specified by `rng` (by default, all un-read images).
+
+        If no new frames are available, return an empty list; if no acquisition is running, return ``None``.
+        If ``peek==True``, return images but not mark them as read.
+        `missing_frame` determines what to do with frames which are out of range (missing or lost):
+        can be ``"none"`` (replacing them with ``None``), ``"zero"`` (replacing them with zero-filled frame), or ``"skip"`` (skipping them).
+        If ``return_info==True``, return tuple ``(frames, infos)``, where ``infos`` is a list of :class:`TFrameInfo` instances
+        describing frame index and frame metadata, which contains framestamp, pixel clock, pixel format, and pixel offset;
+        if some frames are missing and ``missing_frame!="skip"``, the corresponding frame info is ``None``.
+        """
+        return super().read_multiple_images(rng=rng,peek=peek,missing_frame=missing_frame,return_info=return_info)

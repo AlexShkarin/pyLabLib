@@ -11,6 +11,7 @@ import threading
 
 
 TFramesStatus=collections.namedtuple("TFramesStatus",["acquired","unread","skipped","buffer_size"])
+TFrameInfo=collections.namedtuple("TFrameInfo",["frame_index"])
 class ICamera(interface.IDevice):
     """
     Generic camera class.
@@ -290,6 +291,7 @@ class ICamera(interface.IDevice):
     def _zero_frame(self, n):
         """Return `n` zero frames (as a list or 3D numpy array) for padding the :meth:`read_multiple_images` output when ``missing_frame=="zero"``"""
         return np.zeros((n,)+self.get_data_dimensions(),dtype=self._default_image_dtype)
+    _TFrameInfo=TFrameInfo
     _p_missing_frame=interface.EnumParameterClass("missing_frame",["none","zero","skip"])
     @interface.use_parameters
     def read_multiple_images(self, rng=None, peek=False, missing_frame="skip", return_info=False):
@@ -300,7 +302,7 @@ class ICamera(interface.IDevice):
         If ``peek==True``, return images but not mark them as read.
         `missing_frame` determines what to do with frames which are out of range (missing or lost):
         can be ``"none"`` (replacing them with ``None``), ``"zero"`` (replacing them with zero-filled frame), or ``"skip"`` (skipping them).
-        If ``return_info==True``, return tuple ``(frames, infos)``, where ``infos`` is a list of frame info tuples (camera-dependent);
+        If ``return_info==True``, return tuple ``(frames, infos)``, where ``infos`` is a list of frame info tuples (camera-dependent, by default, only the frame index);
         if some frames are missing and ``missing_frame!="skip"``, the corresponding frame info is ``None``.
         """
         rng,skipped_frames=self._trim_images_range(rng)
@@ -323,7 +325,7 @@ class ICamera(interface.IDevice):
 
         If no un-read frames are available, return ``None``.
         If ``peek==True``, return the image but not mark it as read.
-        If ``return_info==True``, return tuple ``(frame, info)``, where ``info`` is an info tuples (camera-dependent).
+        If ``return_info==True``, return tuple ``(frame, info)``, where ``info`` is an info tuples (camera-dependent, see :meth:`read_multiple_images`).
         """
         rng=self.get_new_images_range()
         if rng is None or rng[0]==rng[1]:

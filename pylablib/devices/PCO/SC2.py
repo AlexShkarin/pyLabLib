@@ -85,6 +85,7 @@ def reset_api():
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["model","interface","sensor","serial_number"])
 TCameraStatus=collections.namedtuple("TCameraStatus",["status","warnings","errors"])
 TInternalBufferStatus=collections.namedtuple("TInternalBufferStatus",["scheduled","scheduled_max"])
+TFrameInfo=collections.namedtuple("TFrameInfo",["frame_index","raw_metadata"])
 class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
     """
     PCO SC2 camera.
@@ -725,25 +726,23 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         self._arm()
         return self.get_bit_alignment()
     def set_metadata_mode(self, mode=True):
-        """
-        Set metadata mode
-        """
+        """Set metadata mode"""
         self._check_option(CAPS1.GENERALCAPS1_METADATA)
         lib.PCO_SetMetaDataMode(self.handle,1 if mode else 0)
         self._arm()
         return self.get_metadata_mode()
     def get_metadata_mode(self):
         """
-        Get metadata mode
+        Get metadata mode.
         
         Return tuple ``(enabled, size, version)``
         """
         self._check_option(CAPS1.GENERALCAPS1_METADATA)
-        return lib.PCO_GetMetaDataMode(self.handle)
+        return tuple(lib.PCO_GetMetaDataMode(self.handle))
     def _get_metadata_size(self):
         if self._has_option(CAPS1.GENERALCAPS1_METADATA):
             mm=self.get_metadata_mode()
-            return (mm.size*2 if mm.mode else 0)
+            return (mm[1]*2 if mm[0] else 0)
         else:
             return 0
 
@@ -754,8 +753,8 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         npx=dim[0]*dim[1]
         frame=np.frombuffer(buff.buff,dtype="<u2",count=npx).copy().reshape(dim)
         frame=self._convert_indexing(frame,"rct")
-        metadata=buff.buff[-buff.metadata_size:] if buff.metadata_size>0 else None
-        return frame,metadata
+        raw_metadata=buff.buff[-buff.metadata_size:] if buff.metadata_size>0 else None  # TODO: parse metadata
+        return frame,TFrameInfo(idx,raw_metadata)
     def _read_frames(self, rng, return_info=False):
         dim=self._get_data_dimensions_rc()
         data=[self._read_buffer(n,dim) for n in range(rng[0],rng[1])]
@@ -773,8 +772,8 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
 
 
 
-TFrameInfo=collections.namedtuple("TFrameInfo",["framestamp"])
-def get_frame_info(frame):
+TStatusLine=collections.namedtuple("TStatusLine",["framestamp"])
+def get_status_line(frame):
     """
     Get frame info from the binary status line.
 
@@ -785,4 +784,4 @@ def get_frame_info(frame):
     sline=frame[0,:14]
     sline=(sline&0x0F)+(sline>>4)*10
     framestamp=sline[0]*10**6+sline[1]*10**4+sline[2]*10**2+sline[3]
-    return TFrameInfo(framestamp-1)
+    return TStatusLine(framestamp-1)

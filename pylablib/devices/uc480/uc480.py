@@ -36,6 +36,7 @@ def find_by_serial(serial_number):
 
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["model","manufacturer","serial_number","usb_version","date","dll_version","camera_type"])
 TAcquiredFramesStatus=collections.namedtuple("TAcquiredFramesStatus",["acquired","transfer_missed"])
+TFrameInfo=collections.namedtuple("TFrameInfo",["frame_index","framestamp","timestamp","timestamp_dev","size","io_status","flags"])
 class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
     """
     Thorlabs uc480 camera.
@@ -530,6 +531,10 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         frame=np.empty(shape=shape,dtype=self._np_dtypes[bpp//nchan])
         lib.is_CopyImageMem(self.hcam,buff[0],buff[1],frame.ctypes.data)
         frame=self._convert_indexing(frame,"rct")
+        ts=frame_info.TimestampSystem
+        ts=(ts.wYear,ts.wMonth,ts.wDay,ts.wHour,ts.wMinute,ts.wSecond,ts.wMilliseconds)
+        size=(frame_info.dwImageWidth,frame_info.dwImageHeight)
+        frame_info=TFrameInfo(n,frame_info.u64FrameNumber,ts,frame_info.u64TimestampDevice,size,frame_info.dwIoStatus,frame_info.dwFlags)
         return frame,frame_info
     def _read_frames(self, rng, return_info=False):
         data=[self._read_buffer(n) for n in range(rng[0],rng[1])]
@@ -543,3 +548,17 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         if buff_size is None:
             buff_size=self._default_acq_params.get("nframes",100)
         return {"nframes":buff_size}
+
+    def read_multiple_images(self, rng=None, peek=False, missing_frame="skip", return_info=False):
+        """
+        Read multiple images specified by `rng` (by default, all un-read images).
+
+        If no new frames are available, return an empty list; if no acquisition is running, return ``None``.
+        If ``peek==True``, return images but not mark them as read.
+        `missing_frame` determines what to do with frames which are out of range (missing or lost):
+        can be ``"none"`` (replacing them with ``None``), ``"zero"`` (replacing them with zero-filled frame), or ``"skip"`` (skipping them).
+        If ``return_info==True``, return tuple ``(frames, infos)``, where ``infos`` is a list of :class:`TFrameInfo` instances
+        describing frame index, framestamp and timestamp (global and device), frame size, digital input state, and additional flags;
+        if some frames are missing and ``missing_frame!="skip"``, the corresponding frame info is ``None``.
+        """
+        return super().read_multiple_images(rng=rng,peek=peek,missing_frame=missing_frame,return_info=return_info)

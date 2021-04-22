@@ -226,27 +226,29 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
 
     def open(self):
         """Open connection to the camera"""
-        ncams=get_cameras_number()
-        if self.idx>=ncams:
-            raise AndorError("camera index {} is not available ({} cameras exist)".format(self.idx,ncams))
-        self.handle=lib.GetCameraHandle(self.idx)
-        with _camsel_lock:
-            self._select_camera()
-            lib.Initialize(py3.as_builtin_bytes(self.ini_path))
-            self._opid=libctl.open().opid
-        self._setup_default_settings()
+        if self.handle is None:
+            ncams=get_cameras_number()
+            if self.idx>=ncams:
+                raise AndorError("camera index {} is not available ({} cameras exist)".format(self.idx,ncams))
+            self.handle=lib.GetCameraHandle(self.idx)
+            with _camsel_lock:
+                self._select_camera()
+                lib.Initialize(py3.as_builtin_bytes(self.ini_path))
+                self._opid=libctl.open().opid
+            self._setup_default_settings()
     def close(self):
         """Close connection to the camera"""
-        try:
-            self.clear_acquisition()
+        if self.handle is not None:
             try:
-                self._select_camera()
-            except AndorError:
-                return
-        finally:
-            self.handle=None
-            libctl.close(self._opid)
-            self._opid=None
+                self.clear_acquisition()
+                try:
+                    self._select_camera()
+                except AndorError:
+                    return
+            finally:
+                self.handle=None
+                libctl.close(self._opid)
+                self._opid=None
     def is_opened(self):
         """Check if the device is connected"""
         return self.handle is not None
@@ -882,11 +884,24 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         vend=min(vdet,vend)
         if (hstart,hend,vstart,vend)!=(0,hdet,0,vdet):
             if not self._check_option("read",AC_READMODE.AC_READMODE_SUBIMAGE): return
+        _,maxroi=self.get_roi_limits()
+        hbin=min(max(hbin,1),maxroi[4])
+        vbin=min(max(vbin,1),maxroi[5])
         hend-=(hend-hstart)%hbin # make size divisible by bin
         hend=max(hend,hstart+hbin*self._minh)
+        if hend>hdet:
+            hend=hdet
+            hstart=hdet-hbin*self._minh
         vend-=(vend-vstart)%vbin
         vend=max(vend,vstart+vbin*self._minv)
-        lib.SetImage(hbin,vbin,hstart+1,hend,vstart+1,vend)
+        if vend>vdet:
+            vend=vdet
+            vstart=vdet-vbin*self._minv
+        try:
+            lib.SetImage(hbin,vbin,hstart+1,hend,vstart+1,vend)
+        except AndorSDK2LibError:
+            hbin=vbin=1
+            lib.SetImage(hbin,vbin,hstart+1,hend,vstart+1,vend)
         return (hstart,hend,vstart,vend,hbin,vbin)
     @_camfunc(getpar="read_params/image")
     def get_image_mode_parameters(self):
@@ -917,8 +932,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         return smax
     def get_roi_limits(self):
         xdet,ydet=self.get_detector_size()
-        roi=self.get_roi()
-        min_roi=(0,roi[4]*self._minh,0,roi[5]*self._minv,1,1)
+        min_roi=(0,self._minh,0,self._minv,1,1)
         maxbin=int(min(xdet//self._minh,ydet//self._minv,32)) if (self._minh and self._minv) else 32
         max_roi=(xdet-min_roi[1],xdet,ydet-min_roi[3],ydet,maxbin,maxbin)
         return (min_roi,max_roi)
@@ -1014,8 +1028,8 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         dt=np.dtype(self._default_image_dtype)
         get_method=lib.GetImages16 if dt.itemsize<=2 else lib.GetImages
         data,_,_=get_method(rng[0]+1,rng[1],dim[0]*dim[1]*(rng[1]-rng[0]))
-        data=self._convert_indexing(data.reshape((-1,dim[0],dim[1])),"rcb")
-        return list(data),[None]*len(data)
+        data=self._convert_indexing(data.reshape((-1,dim[0],dim[1])),"rcb",axes=(1,2))
+        return list(data),[self._TFrameInfo(n) for n in range(*rng)]
 
     def _get_grab_acquisition_parameters(self, nframes, buff_size):
         return {"mode":"cont"}

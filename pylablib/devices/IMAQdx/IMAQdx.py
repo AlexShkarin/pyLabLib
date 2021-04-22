@@ -392,4 +392,4 @@ class IMAQdxCamera(camera.IROICamera):
     def _read_frames(self, rng, return_info=False):
         indices=range(*rng)
         frames=[self._read_data_raw(b) for b in indices]
-        return frames,list(indices)
+        return frames,[self._TFrameInfo(n) for n in range(*rng)]

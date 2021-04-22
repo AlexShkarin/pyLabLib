@@ -49,20 +49,20 @@ def convert_image_indexing(img, src, dst, axes=(0,1)):
         return _flip(img,axes[0]) if src[:2]=="rc" else _flip(img,axes[1])
     if src[2]==dst[2]: # same row direction, different order
         if src[2]=="t":
-            return img.swapaxes(0,1)
+            return img.swapaxes(*axes)
         if src=="rcb":
-            return _flip(_flip(img,axes[0]).swapaxes(0,1),axes[1])
+            return _flip(_flip(img,axes[0]).swapaxes(*axes),axes[1])
         else:
-            return _flip(_flip(img,axes[1]).swapaxes(0,1),axes[0])
+            return _flip(_flip(img,axes[1]).swapaxes(*axes),axes[0])
     # different row direction, different order
     if src=="rcb": # dst=="xyt"
-        return _flip(img,axes[0]).swapaxes(0,1)
+        return _flip(img,axes[0]).swapaxes(*axes)
     if src=="rct": # dst=="xyb"
-        return _flip(img.swapaxes(0,1),axes[1])
+        return _flip(img.swapaxes(*axes),axes[1])
     if src=="xyb": # dst=="rct"
-        return _flip(img,axes[1]).swapaxes(0,1)
+        return _flip(img,axes[1]).swapaxes(*axes)
     if src=="xyt": # dst=="rcb"
-        return _flip(img.swapaxes(0,1),axes[0])
+        return _flip(img.swapaxes(*axes),axes[0])
     
 
 class ROI(object):

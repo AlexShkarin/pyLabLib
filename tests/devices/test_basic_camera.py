@@ -45,6 +45,13 @@ class CameraTester(DeviceTester):
         for _ in range(stress_factor):
             device.grab(self.grab_size)
 
+    @pytest.mark.devchange(1)
+    def test_frame_info(self, device):
+        """Test frame info consistency"""
+        frames,infos=device.grab(self.grab_size,return_info=True)
+        assert len(frames)==self.grab_size
+        assert len(frames)==len(infos)
+        assert [i.frame_index for i in infos]==list(range(self.grab_size))
     def check_acq_params(self, device, setup, running, new_images=None):
         if new_images is None:
             new_images=running

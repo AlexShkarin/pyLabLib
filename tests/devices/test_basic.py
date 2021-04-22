@@ -9,12 +9,17 @@ class DeviceTester:
     open_rep=0
     test_open_rep=2
     include=-10
+    get_set_all_exclude=()
 
     def test_open_close(self, device):
         assert device.is_opened()
         for _ in range(self.test_open_rep):
             device.close()
             assert not device.is_opened()
+            device.close()
+            assert not device.is_opened()
+            device.open()
+            assert device.is_opened()
             device.open()
             assert device.is_opened()
     def test_opened(self, device):
@@ -31,7 +36,11 @@ class DeviceTester:
         settings=device.get_settings(self.include)
         print(device,settings)
         device.apply_settings(settings)
-        assert device.get_settings(self.include)==settings
+        new_settings=device.get_settings(self.include)
+        for k in self.get_set_all_exclude:
+            del settings[k]
+            del new_settings[k]
+        assert new_settings==settings
 
     def check_get_par(self, device, name, par_name=None):
         """
