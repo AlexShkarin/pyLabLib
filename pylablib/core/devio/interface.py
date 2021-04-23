@@ -551,7 +551,9 @@ def use_parameters(*args, **kwargs):
         default_none={n for n,v in sig.defaults.items() if v is None}
         @functools.wraps(func)
         def wrapped(*args, **kwargs):
-            device=args[0] if args and sig.arg_names and sig.arg_names[0]=="self" else None
+            device=None
+            if sig.arg_names and sig.arg_names[0]=="self":
+                device=args[0] if args else kwargs["self"]
             obj_params=getattr(device,"_parameters",{})
             all_args=sig.as_kwargs(args,kwargs,add_defaults=True)
             if "*" in all_args:

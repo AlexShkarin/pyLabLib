@@ -1,10 +1,12 @@
-from ...core.devio import comm_backend, interface
+from ...core.devio import comm_backend, interface, DeviceError, DeviceBackendError
 from ...core.utils import py3, units
 
 import collections
 
-class OphirError(RuntimeError):
+class OphirError(DeviceError):
     """Generic Ophir device error"""
+class OphirBackendError(OphirError,DeviceBackendError):
+    """Generic Ophir backend communication error"""
 
 class OphirDevice(comm_backend.ICommBackendWrapper):
     """
@@ -13,8 +15,9 @@ class OphirDevice(comm_backend.ICommBackendWrapper):
     Args:
         conn: serial connection parameters (usually port or a tuple containing port and baudrate)
     """
+    Error=OphirError
     def __init__(self, conn):
-        instr=comm_backend.new_backend(conn,"serial",term_read="\r\n",term_write="\r\n",defaults={"serial":("COM1",9600)})
+        instr=comm_backend.new_backend(conn,"serial",term_read="\r\n",term_write="\r\n",defaults={"serial":("COM1",9600)},reraise_error=OphirBackendError)
         comm_backend.ICommBackendWrapper.__init__(self,instr)
     
     def _parse_response(self, comm, resp):

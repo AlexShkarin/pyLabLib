@@ -36,6 +36,7 @@ def get_program_files_folder(subfolder=""):
 program_files_folder=get_program_files_folder()
 
 
+_load_lock=threading.RLock()
 par_error_message="If you already have it, specify its path as pylablib.par['devices/dlls/{}']='path/to/dll/'"
 def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, depends=None, error_message=None, check_order="location"):
     """
@@ -82,29 +83,31 @@ def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, depe
             else:
                 folder=loc
         path=os.path.join(folder,n)
-        if locally:
-            loc_folder,loc_name=os.path.split(path)
-            old_env_path=os.environ["PATH"]
-            env_paths=old_env_path.split(";")
-            if not any([files.paths_equal(loc_folder,ep) for ep in env_paths if ep]):
-                os.environ["PATH"]=files.normalize_path(loc_folder)+";"+os.environ["PATH"]
-            path=loc_name if folder=="" else "./"+loc_name
-            folder=loc_folder
-        depends=depends or []
-        paths=[os.path.join(folder,dn) for dn in depends]+[path]
-        try:
-            dlls=[]
-            for p in paths:
-                if call_conv=="cdecl":
-                    dlls.append(ctypes.cdll.LoadLibrary(p))
-                elif call_conv=="stdcall":
-                    dlls.append(ctypes.windll.LoadLibrary(p))
-                else:
-                    raise ValueError("unrecognized call convention: {}".format(call_conv))
-            return dlls[-1]
-        except OSError:
+        lock=_load_lock if locally else general.DummyResource()
+        with lock:
             if locally:
-                os.environ["PATH"]=old_env_path
+                loc_folder,loc_name=os.path.split(path)
+                old_env_path=os.environ["PATH"]
+                env_paths=old_env_path.split(";")
+                if not any([files.paths_equal(loc_folder,ep) for ep in env_paths if ep]):
+                    os.environ["PATH"]=files.normalize_path(loc_folder)+";"+os.environ["PATH"]
+                path=loc_name if folder=="" else "./"+loc_name
+                folder=loc_folder
+            depends=depends or []
+            paths=[os.path.join(folder,dn) for dn in depends]+[path]
+            try:
+                dlls=[]
+                for p in paths:
+                    if call_conv=="cdecl":
+                        dlls.append(ctypes.cdll.LoadLibrary(p))
+                    elif call_conv=="stdcall":
+                        dlls.append(ctypes.windll.LoadLibrary(p))
+                    else:
+                        raise ValueError("unrecognized call convention: {}".format(call_conv))
+                return dlls[-1]
+            except OSError:
+                if locally:
+                    os.environ["PATH"]=old_env_path
     error_message="\n"+error_message if error_message else ""
     raise OSError("can't import library {}".format(" or ".join(name))+error_message)
 

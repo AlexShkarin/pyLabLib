@@ -1,29 +1,49 @@
-from . import SCU3DControl_lib
+from .SCU3DControl_lib import lib, SmarActError, EConfiguration
 from ...core.utils import general
 from ...core.devio import interface
 
+from ..utils import load_lib
+
 import time
 
-class SmarActError(RuntimeError):
-    """Generic SmarAct error"""
+
+class LibraryController(load_lib.LibraryController):
+    def _do_init(self):
+        lib.SA_InitDevices(EConfiguration.SA_SYNCHRONOUS_COMMUNICATION)
+    def _do_uninit(self):
+        try:
+            self.lib.SA_ReleaseDevices()
+        except SmarActError:
+            pass
+libctl=LibraryController(lib)
+
+
+def get_devices_number():
+    """Get number of connected SCU3D controller"""
+    with libctl.temp_open():
+        try:
+            return lib.SA_GetNumberOfDevices()
+        except SmarActError:
+            return 0
+
 
 class SCU3D(interface.IDevice):
     """
-    SmarAct SCU3D translation stage.
+    SmarAct SCU3D translation stage controller.
 
     Args:
         idx(int): stage index
         axis_mapping(str): 3-symbol string specifying indices of x, y and z axes (can be any permutation of ``"xyz"``)
         axis_dir(str): 3-symbol string specifying default directions of the axes (each symbol be ``"+"`` or ``"-"``)
     """
+    Error=SmarActError
     def __init__(self, idx=0, axis_mapping="xyz", axis_dir="+++"):
         interface.IDevice.__init__(self)
-        self.lib=SCU3DControl_lib.lib
-        self.lib.initlib()
         self.connected=False
         self.idx=idx
         self.axis_mapping=axis_mapping
         self.axis_dir=axis_dir
+        self._opid=None
         self.open()
         self._add_settings_variable("axis_mapping",self.get_axis_mapping,self.set_axis_mapping)
         self._add_settings_variable("axis_dir",self.get_axis_dir,self.set_axis_dir)
@@ -32,16 +52,20 @@ class SCU3D(interface.IDevice):
 
     def open(self):
         """Open the connection to the stage"""
-        if not self.connected:
-            self.lib.SA_InitDevices(SCU3DControl_lib.EConfiguration.SA_SYNCHRONOUS_COMMUNICATION)
-            self.connected=True
+        if self._opid is None:
+            with libctl.temp_open():
+                nstages=get_devices_number()
+                if self.idx>=nstages:
+                    raise SmarActError("stage index {} is not available ({} stage exist)".format(self.idx,nstages))
+                lib.SA_InitDevices(EConfiguration.SA_SYNCHRONOUS_COMMUNICATION)
+                self._opid=libctl.open().opid
     def close(self):
         """Close the connection to the stage"""
-        if self.connected:
-            self.lib.SA_ReleaseDevices()
-            self.connected=False
+        if self._opid is not None:
+            libctl.close(self._opid)
+            self._opid=None
     def is_opened(self):
-        return self.connected
+        return self._opid is not None
 
     def get_axis_mapping(self):
         """Get axis mapping (a permutation of ``"xyz"`` describing the correspondence between these axes and channel numbers)"""
@@ -71,7 +95,7 @@ class SCU3D(interface.IDevice):
         """
         axis=self._get_axis(axis)
         axis_dir=-1 if self.axis_dir[axis]=="-" else 1
-        self.lib.SA_MoveStep_S(self.idx,axis,int(steps)*axis_dir,int(voltage*10),int(frequency))
+        lib.SA_MoveStep_S(self.idx,axis,int(steps)*axis_dir,int(voltage*10),int(frequency))
     _move_presets=[ (1,25.3,1E3), (1,28,1E3), (1,32,1E3), (1,38,1E3), (1,47,1E3),
                     (1,60.5,1E3), (1,80.8,1E3), (2,65.6,1E3), (2,88.4,1E3), (4,88.4,1E3),
                     (7,100.,1E3), (14,100.,1E3), (28,100.,1E3), (56,100.,1.1E3), (100,100.,2.2E3), 
@@ -104,7 +128,7 @@ class SCU3D(interface.IDevice):
         ``"holding"`` (closed-loop position holding), ``"calibrating"`` (sensort calibration),
         or ``"moving_to_reference"`` (calibrating position sensor).
         """
-        status=self.lib.SA_GetStatus_S(self.idx,self._get_axis(axis))
+        status=lib.SA_GetStatus_S(self.idx,self._get_axis(axis))
         return self._chan_status[status]
     def wait_for_status(self, axis, status="stopped", timeout=3.):
         """

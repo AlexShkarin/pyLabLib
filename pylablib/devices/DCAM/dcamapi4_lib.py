@@ -8,12 +8,13 @@ from .dcamapi4_defs import DCAMERR, drDCAMERR, define_functions
 from .dcamapi4_defs import DCAMCAP_STATUS, DCAMWAIT_EVENT, DCAM_IDSTR  # pylint: disable=unused-import
 
 from ...core.utils import ctypes_wrap
+from ...core.devio import DeviceError
 from ..utils import load_lib
 import ctypes
 
 
 
-class DCAMError(RuntimeError):
+class DCAMError(DeviceError):
     """Generic DCAM error"""
 class DCAMLibError(DCAMError):
     """Generic DCAM library error"""

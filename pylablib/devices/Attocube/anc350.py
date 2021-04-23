@@ -6,7 +6,7 @@ import collections
 import time
 import struct
 
-from .base import AttocubeError
+from .base import AttocubeError, AttocubeBackendError
 
 
 def get_usb_devices_number():
@@ -29,10 +29,11 @@ class ANC350(comm_backend.ICommBackendWrapper):
         conn: connection parameters - index of the Attocube ANC350 in the system (for a single controller leave 0)
         timeout(float): default operation timeout
     """
+    Error=AttocubeError
     def __init__(self, conn=0, timeout=5.):
         if isinstance(conn,int):
             conn=(0x16C0,0x055B,conn,0x86,0x02,"libusb0") # default device IDs
-        instr=comm_backend.new_backend(conn,backend="pyusb",timeout=timeout,check_read_size=False)
+        instr=comm_backend.new_backend(conn,backend="pyusb",timeout=timeout,check_read_size=False,reraise_error=AttocubeBackendError)
         self._corr_number=0
         self._tell_telegrams={}
         comm_backend.ICommBackendWrapper.__init__(self,instr)
@@ -42,7 +43,7 @@ class ANC350(comm_backend.ICommBackendWrapper):
             self.get_hardware_id()
         except instr.Error:
             self.close()
-            raise comm_backend.IBackendOpenError("error connecting to the ANC350 controller")
+            raise AttocubeError("error connecting to the ANC350 controller")
         self.set_value(0x000A,0,0) # sync request
         self.enable_updates(False)
         self._add_info_variable("hardware_id",self.get_hardware_id)

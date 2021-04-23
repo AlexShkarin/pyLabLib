@@ -1,8 +1,9 @@
 from ...core.devio import SCPI, interface
+from .base import ThorlabsError, ThorlabsBackendError
 
 
 
-class ThorlabsInterface(SCPI.SCPIDevice):
+class ThorlabsSerialInterface(SCPI.SCPIDevice):
     """
     Generic Thorlabs device interface using Serial communication.
 
@@ -10,6 +11,8 @@ class ThorlabsInterface(SCPI.SCPIDevice):
         conn: serial connection parameters (usually port or a tuple containing port and baudrate)
     """
     _allow_concatenate_write=False
+    Error=ThorlabsError
+    BackendError=ThorlabsBackendError
     def __init__(self, conn):
         SCPI.SCPIDevice.__init__(self,conn,backend="serial",term_read=["\r","\n"],term_write="\r",timeout=5.,backend_defaults={"serial":("COM1",115200)})
 
@@ -17,6 +20,8 @@ class ThorlabsInterface(SCPI.SCPIDevice):
         SCPI.SCPIDevice.open(self)
         self.instr.flush_read()
     
+    def _check_reply(self, reply, msg=None):
+        return reply.find(b"CMD_")<0 and reply.find(b"Error")<0
     def _instr_write(self, msg):
         self.instr.flush_read()
         return self.instr.write(msg,read_echo=True)
@@ -34,7 +39,7 @@ class ThorlabsInterface(SCPI.SCPIDevice):
         return data
 
 
-class FW(ThorlabsInterface):
+class FW(ThorlabsSerialInterface):
     """
     Thorlabs FW102/212 motorized filter wheels.
 
@@ -43,7 +48,7 @@ class FW(ThorlabsInterface):
         respect_bound(bool): if ``True``, avoid crossing the boundary between the first and the last position in the wheel
     """
     def __init__(self, conn, respect_bound=True):
-        ThorlabsInterface.__init__(self,conn)
+        ThorlabsSerialInterface.__init__(self,conn)
         self._add_settings_variable("pos",self.get_position,self.set_position)
         self._add_settings_variable("pcount",self.get_pcount,self.set_pcount)
         self._add_settings_variable("speed_mode",self.get_speed_mode,self.set_speed_mode)
@@ -123,7 +128,7 @@ class FW(ThorlabsInterface):
 
 
 
-class MDT69xA(ThorlabsInterface):
+class MDT69xA(ThorlabsSerialInterface):
     """
     Thorlabs MDT693A/4A high-voltage source.
 
@@ -134,14 +139,14 @@ class MDT69xA(ThorlabsInterface):
         conn: serial connection parameters (usually port or a tuple containing port and baudrate)
     """
     def __init__(self, conn):
-        ThorlabsInterface.__init__(self,conn)
+        ThorlabsSerialInterface.__init__(self,conn)
         self._add_settings_variable("voltage",self.get_voltage,self.set_voltage,mux=("xyz",1))
         self._add_status_variable("voltage_range",self.get_voltage_range)
         try:
             self.get_id(timeout=2.)
-        except self.instr.Error as e:
+        except self.instr.Error:
             self.close()
-            raise self.instr.BackendOpenError(e)
+            raise
 
     _id_comm="I"
     _p_channel=interface.EnumParameterClass("channel",["x","y","z"])

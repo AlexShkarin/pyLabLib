@@ -1,14 +1,14 @@
-from ...core.devio import comm_backend
+from ...core.devio import comm_backend, DeviceError, DeviceBackendError
 from ...core.utils import py3
 
 import re
 import collections
 
 
-class LaserQuantumError(RuntimeError):
-    """
-    Laser Quantum devices reading error.
-    """
+class LaserQuantumError(DeviceError):
+    """Generic Laser Quantum devices error"""
+class LaserQuantumBackendError(LaserQuantumError,DeviceBackendError):
+    """Generic Laser Quantum backend communication error"""
 
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["serial","software_version","cal_date"])
 TWorkHours=collections.namedtuple("TWorkHours",["psu","laser_enabled","laser_threshold"])
@@ -20,8 +20,9 @@ class Finesse(comm_backend.ICommBackendWrapper):
     Args:
         conn: serial connection parameters (usually port)
     """
+    Error=LaserQuantumError
     def __init__(self, conn):
-        instr=comm_backend.new_backend(conn,"serial",term_read="\n",term_write="\r\n",defaults={"serial":("COM1",19200)})
+        instr=comm_backend.new_backend(conn,"serial",term_read="\n",term_write="\r\n",defaults={"serial":("COM1",19200)},reraise_error=LaserQuantumBackendError)
         instr.setup_cooldown(write=0.01)
         comm_backend.ICommBackendWrapper.__init__(self,instr)
         self._add_info_variable("device_info",self.get_device_info)

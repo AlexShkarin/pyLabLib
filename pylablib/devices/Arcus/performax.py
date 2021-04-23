@@ -1,4 +1,4 @@
-from . import ArcusPerformaxDriver_lib
+from .ArcusPerformaxDriver_lib import lib, ArcusError, ArcusPerformaxLibError
 from ...core.utils import py3, general
 from ...core.devio import interface
 from ..interface import stage
@@ -7,8 +7,6 @@ import time
 
 
 
-class ArcusError(RuntimeError):
-    """Generic Arcus error"""
 
 
 def get_usb_device_info(devid):
@@ -17,7 +15,6 @@ def get_usb_device_info(devid):
 
     Return tuple ``(index, serial, model, desc, vid, pid)``.
     """
-    lib=ArcusPerformaxDriver_lib.lib
     lib.initlib()
     ndev=lib.fnPerformaxComGetNumDevices()
     if devid>=ndev:
@@ -29,7 +26,6 @@ def list_usb_performax_devices():
 
     Return list of tuples ``(index, serial, model, desc, vid, pid)``, one per device.
     """
-    lib=ArcusPerformaxDriver_lib.lib
     lib.initlib()
     ndev=lib.fnPerformaxComGetNumDevices()
     return [get_usb_device_info(d) for d in range(ndev)]
@@ -43,11 +39,11 @@ class GenericPerformaxStage(stage.IStage,interface.IDevice):
         idx(int): stage index
     """
     _default_operation_cooldown=0.01
+    Error=ArcusError
     def __init__(self, idx=0):
         super().__init__()
         self._operation_cooldown=self._default_operation_cooldown
-        self.lib=ArcusPerformaxDriver_lib.lib
-        self.lib.initlib()
+        lib.initlib()
         self.idx=idx
         self.handle=None
         self.open()
@@ -57,13 +53,13 @@ class GenericPerformaxStage(stage.IStage,interface.IDevice):
     def open(self):
         """Open the connection to the stage"""
         self.close()
-        self.lib.fnPerformaxComSetTimeouts(5000,5000)
+        lib.fnPerformaxComSetTimeouts(5000,5000)
         for _ in range(5):
             try:
-                self.handle=self.lib.fnPerformaxComOpen(self.idx)
-                self.lib.fnPerformaxComFlush(self.handle)
+                self.handle=lib.fnPerformaxComOpen(self.idx)
+                lib.fnPerformaxComFlush(self.handle)
                 return
-            except ArcusPerformaxDriver_lib.ArcusPerformaxLibError:
+            except ArcusPerformaxLibError:
                 time.sleep(0.3)
         raise ArcusError("can't connect to the stage with index {}".format(self.idx))
     def close(self):
@@ -71,10 +67,10 @@ class GenericPerformaxStage(stage.IStage,interface.IDevice):
         if self.handle:
             for _ in range(5):
                 try:
-                    self.lib.fnPerformaxComClose(self.handle)
+                    lib.fnPerformaxComClose(self.handle)
                     self.handle=None
                     return
-                except ArcusPerformaxDriver_lib.ArcusPerformaxLibError:
+                except ArcusPerformaxLibError:
                     time.sleep(0.3)
             raise ArcusError("can't disconnect from the stage with index {}".format(self.idx))
     def is_opened(self):
@@ -92,11 +88,11 @@ class GenericPerformaxStage(stage.IStage,interface.IDevice):
         time.sleep(self._operation_cooldown)
         scomm=py3.as_builtin_bytes(comm)+b"\x00"
         try:
-            reply=py3.as_str(self.lib.fnPerformaxComSendRecv(self.handle,scomm))
+            reply=py3.as_str(lib.fnPerformaxComSendRecv(self.handle,scomm))
             if reply.startswith("?"):
                 raise ArcusError("device returned error: {}".format(reply[1:]))
             return reply
-        except ArcusPerformaxDriver_lib.ArcusPerformaxLibError:
+        except ArcusPerformaxLibError:
             raise ArcusError("error sending device query {}".format(comm))
 
 
@@ -123,7 +119,7 @@ class Performax4EXStage(GenericPerformaxStage):
     _individual_home=False
     _analog_inputs=range(1,9)
     def __init__(self, idx=0, enable=True):
-        super().__init__()
+        super().__init__(idx=idx)
         self._add_parameter_class(interface.EnumParameterClass("axis",self._axes,value_case="upper"))
         self.enable_absolute_mode()
         if enable:
@@ -234,8 +230,9 @@ class Performax4EXStage(GenericPerformaxStage):
         The motion continues until it is explicitly stopped, or until a limit is hit.
         """
         self.query("J{}{}".format(axis,"+" if direction else "-"))
+    @muxaxis
     @interface.use_parameters
-    def stop(self, axis, immediate=False):
+    def stop(self, axis="all", immediate=False):
         """
         Stop motion of a given axis.
 
@@ -243,10 +240,6 @@ class Performax4EXStage(GenericPerformaxStage):
         """
         comm="ABORT" if immediate else "STOP"
         self.query("{}{}".format(comm,axis))
-    def stop_all(self, immediate=False):
-        """Stop motion of all axes"""
-        for axis in self._axes:
-            self.stop(axis,immediate=immediate)
 
     _p_home_mode=interface.EnumParameterClass("home_mode",{"only_home_input":0,"only_limit_input":1,"home_and_zidx_input":2,"only_zidx_input":3,"only_home_input_lowspeed":4})
     @interface.use_parameters

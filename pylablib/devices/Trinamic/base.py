@@ -1,4 +1,4 @@
-from ...core.devio import comm_backend, interface
+from ...core.devio import comm_backend, interface, DeviceError, DeviceBackendError
 
 from builtins import bytes
 import collections
@@ -6,8 +6,10 @@ import time
 import struct
 import math
 
-class TrinamicError(RuntimeError):
+class TrinamicError(DeviceError):
     """Generic Trinamic error"""
+class TrinamicBackendError(TrinamicError,DeviceBackendError):
+    """Generic Trinamic backend communication error"""
 
 class TMCM1110(comm_backend.ICommBackendWrapper):
     """
@@ -16,8 +18,9 @@ class TMCM1110(comm_backend.ICommBackendWrapper):
     Args:
         conn: serial connection parameters (usually port or a tuple containing port and baudrate)
     """
+    Error=TrinamicError
     def __init__(self, conn):
-        instr=comm_backend.new_backend(conn,"serial",term_read="",term_write="",timeout=3.,defaults={"serial":("COM1",9600)})
+        instr=comm_backend.new_backend(conn,"serial",term_read="",term_write="",timeout=3.,defaults={"serial":("COM1",9600)},reraise_error=TrinamicBackendError)
         comm_backend.ICommBackendWrapper.__init__(self,instr)
         self._add_status_variable("position",self.get_position)
         self._add_settings_variable("velocity_parameters",self.get_velocity_parameters,self.setup_velocity)

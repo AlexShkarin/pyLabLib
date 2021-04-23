@@ -28,13 +28,13 @@ The device identifier or address needs to be provided upon the device object cre
       
       Network devices do not easily provide such functionality (also, there are, in principle, lots of devices connected to the networks), so you might need to learn the device IP elsewhere (usually, it is set on the device front panel or using some kind of configuration tool).
 
-      In most cases, the connection address is all you need. However, sometimes the connection might requirements some additional information. The most common situations are ports for the network connection and baud rates for the serial connections. Ports can be supplied either as a part of the string ``"192.168.1.3:7230"``, or as a tuple ``("192.168.1.3", 7230)``. The baud rates are, similarly, provided as a tuple: ``("COM1", 19200)``. By default, the devices would use the baud rate which is most common for them, but in some cases (e.g., if the device baud rate can be changed), you might need to provide it explicitly. If it is provided incorrectly, then no communication can be done, and any request will return a ``TimeoutError``::
+      In most cases, the connection address is all you need. However, sometimes the connection might requirements some additional information. The most common situations are ports for the network connection and baud rates for the serial connections. Ports can be supplied either as a part of the string ``"192.168.1.3:7230"``, or as a tuple ``("192.168.1.3", 7230)``. The baud rates are, similarly, provided as a tuple: ``("COM1", 19200)``. By default, the devices would use the baud rate which is most common for them, but in some cases (e.g., if the device baud rate can be changed), you might need to provide it explicitly. If it is provided incorrectly, then no communication can be done, and any request will return a timeout error::
 
         >> from pylablib.devices import Ophir
         >> meter = Ophir.VegaPowerMeter("COM3")  # for this power meter 9600 baud are used by default
         >> meter.get_power()  # let us assume that the devices is currently set up with 38400 baud
         ...
-        SerialException: timeout during read
+        OphirBackendError: backend exception: 'timeout during read'
         >> meter.close()  # need to close the connection before reopening
         >> meter = Ophir.VegaPowerMeter(("COM3",38400))  # explicitly specifying the correct baud rate
         >> meter.get_power()
@@ -69,6 +69,33 @@ Operation
 The devices are controlled by calling their methods; attributes and properties are very rarely used. Effort is made to maintain consistent naming conventions, e.g., most getter-methods will start with ``get_`` and setter methods with ``set_`` or ``setup_`` (depending on the complexity of the method). It is also common for setter methods to return the new value as a result, which is useful in CLI operation and debugging. Devices of the same kind have the same names for similar or identical functions: most stages have ``move_by``, ``jog`` and ``stop`` methods, and cameras have ``wait_for_frame`` and ``read_multiple_images`` methods. Whenever it makes sense, these methods will also have the same signatures.
 
 For simplicity of usage and construction, devices interfaces tend to be synchronous and single-threaded. Asynchronous operation is achieved by explicit usage of Python multi-threading.
+
+
+Error handling
+--------------------------------------
+
+Errors raised by the devices are usually specific to the device and manufacturer, e.g., :exc:`.AttocubeError` or :exc:`.TrinamicError`. These can be obtained from the module containing the device class, or from the class itself as ``Error`` attribute::
+
+    >> from pylablib.devices import Attocube
+    >> atc = Attocube.ANC300("192.168.1.1")
+    >> atc.disable_axis(1)
+    >> atc.move_by(1,10)  # move on A disabled axis raises an error for ANC300
+    ...
+    AttocubeError: Axis in wrong mode
+    >> try:
+    ..     atc.move_by(1,10)
+    .. except atc.Error:  # could also write   "except Attocube.AttocubeError"
+    ..     print("Can not move")
+    Can not move
+
+All of the device errors inherit from :exc:`.DeviceError`, which in turn is a subclass of :exc:`RuntimeError`. Therefore, one can also use those exception classes instead::
+
+    >> import pylablib as pll
+    >> try:
+    ..     atc.move_by(1,10)
+    .. except pll.DeviceError:
+    ..     print("Can not move")
+    Can not move
 
 
 Getting more information

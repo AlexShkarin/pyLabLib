@@ -1,8 +1,13 @@
-from ...core.devio import comm_backend
+from ...core.devio import comm_backend, DeviceError, DeviceBackendError
 from ...core.utils import py3, funcargparse
 
 import collections
 
+
+class LighthousePhotonicsError(DeviceError):
+    """Generic Lighthouse Photonics devices error"""
+class LighthousePhotonicsBackendError(LighthousePhotonicsError,DeviceBackendError):
+    """Generic Lighthouse Photonics backend communication error"""
 
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["product","version","serial","configuration"])
 TWorkHours=collections.namedtuple("TWorkHours",["controller","laser"])
@@ -13,8 +18,9 @@ class SproutG(comm_backend.ICommBackendWrapper):
     Args:
         conn: serial connection parameters (usually port)
     """
+    Error=LighthousePhotonicsError
     def __init__(self, conn):
-        instr=comm_backend.new_backend(conn,"serial",term_read="\r",term_write="\r\n",defaults={"serial":("COM1",19200)})
+        instr=comm_backend.new_backend(conn,"serial",term_read="\r",term_write="\r\n",defaults={"serial":("COM1",19200)},reraise_error=LighthousePhotonicsBackendError)
         instr.setup_cooldown(write=0.02)
         comm_backend.ICommBackendWrapper.__init__(self,instr)
         self._add_info_variable("device_info",self.get_device_info)
@@ -31,11 +37,11 @@ class SproutG(comm_backend.ICommBackendWrapper):
         resp=py3.as_str(resp).strip()
         if comm[-1]=="?":
             if not resp.startswith(comm[:-1]+"="):
-                raise RuntimeError("Command {} returned unexpected response: {}".format(comm,resp))
+                raise LighthousePhotonicsError("Command {} returned unexpected response: {}".format(comm,resp))
             return resp[len(comm):]
         else:
             if resp!="0":
-                raise RuntimeError("Command {} returned unexpected response: {}".format(comm,resp))
+                raise LighthousePhotonicsError("Command {} returned unexpected response: {}".format(comm,resp))
             return resp
     def query(self, comm):
         """Send a query to the device and parse the reply"""

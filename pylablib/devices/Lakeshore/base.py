@@ -1,8 +1,13 @@
-from ...core.devio import SCPI, interface
+from ...core.devio import SCPI, interface, DeviceError, DeviceBackendError
 from ...core.utils import funcargparse
 
 import collections
 
+
+class LakeshoreError(DeviceError):
+    """Generic Lakeshore devices error"""
+class LakeshoreBackendError(LakeshoreError,DeviceBackendError):
+    """Generic Lakeshore backend communication error"""
 
 TLakeshore218AnalogSettings=collections.namedtuple("TAnalogSettings",["bipolar","mode","channel","source","high_value","low_value","man_value"])
 TLakeshore218FilterSettings=collections.namedtuple("TFilterSettings",["enabled","points","window"])
@@ -16,6 +21,8 @@ class Lakeshore218(SCPI.SCPIDevice):
         conn: serial connection parameters (usually port or a tuple containing port and baudrate)
     """
     _default_write_sync=True
+    Error=LakeshoreError
+    BackendError=LakeshoreBackendError
     def __init__(self, conn):
         SCPI.SCPIDevice.__init__(self,conn,backend="serial",term_write="\r\n",term_read="\r\n",backend_defaults={"serial":("COM1",9600,7,'E',1)})
         self._add_settings_variable("enabled",self.is_enabled,self.set_enabled,mux=(range(1,9),0))
@@ -27,9 +34,9 @@ class Lakeshore218(SCPI.SCPIDevice):
         self._add_settings_variable("filter_settings",self.get_filter_settings,self.setup_filter,priority=-3,mux=(range(1,9),0))
         try:
             self.get_id(timeout=2.)
-        except self.instr.Error as e:
+        except self.instr.Error:
             self.close()
-            raise self.instr.BackendOpenError(e)
+            raise
     _float_fmt="{:.3f}"
 
     _p_channel=interface.RangeParameterClass("channel",1,8)
@@ -144,7 +151,7 @@ class Lakeshore218(SCPI.SCPIDevice):
         return self.get_filter_settings(channel)
 
 
-class Lakeshore370(SCPI.SCPIDevice):
+class Lakeshore370(SCPI.SCPIDevice):  # TODO: finish / check
     """
     Lakeshore 370 temperature controller.
 
@@ -153,13 +160,15 @@ class Lakeshore370(SCPI.SCPIDevice):
     Args:
         conn: serial connection parameters (usually port or a tuple containing port and baudrate)
     """
+    Error=LakeshoreError
+    BackendError=LakeshoreBackendError
     def __init__(self, conn):
         SCPI.SCPIDevice.__init__(self,conn)
         try:
             self.get_id(timeout=2.)
-        except self.instr.Error as e:
+        except self.instr.Error:
             self.close()
-            raise self.instr.BackendOpenError(e)
+            raise
     
     def get_resistance(self, channel):
         """Get resistance readings (in Ohm) on a given channel"""

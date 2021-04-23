@@ -1,15 +1,18 @@
 from ...core.utils import ctypes_wrap
+from ...core.devio import DeviceError
 from .ArcusPerformaxDriver_defs import define_functions
 from ..utils import load_lib
 
 
-class ArcusPerformaxLibError(RuntimeError):
+class ArcusError(DeviceError):
+    """Generic Arcus error"""
+class ArcusPerformaxLibError(ArcusError):
     """Generic Arcus Performax library error"""
     def __init__(self, func, arguments):
         self.func=func
         self.arguments=arguments
         self.msg="function '{}' return an error".format(func)
-        RuntimeError.__init__(self,self.msg)
+        ArcusError.__init__(self,self.msg)
 def errchecker(result, func, arguments):
     if not result:
         raise ArcusPerformaxLibError(func.__name__,arguments)

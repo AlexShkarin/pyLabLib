@@ -780,7 +780,7 @@ def get_status_line(frame):
     Assume that the status line is present; if it isn't, the returned frame info will be a random noise.
     """
     if frame.ndim==3:
-        return [get_frame_info(f) for f in frame]
+        return [get_status_line(f) for f in frame]
     sline=frame[0,:14]
     sline=(sline&0x0F)+(sline>>4)*10
     framestamp=sline[0]*10**6+sline[1]*10**4+sline[2]*10**2+sline[3]

@@ -1,14 +1,14 @@
 from ...core.utils import py3
-from ...core.devio import comm_backend, interface
+from ...core.devio import comm_backend, interface, DeviceError, DeviceBackendError
 
 import collections
 
 
 
-class PfeifferError(RuntimeError):
-    """
-    Pfeiffer devices reading error.
-    """
+class PfeifferError(DeviceError):
+    """Generic Pfeiffer device error"""
+class PfeifferBackendError(PfeifferError,DeviceBackendError):
+    """Generic Pfeiffer backend communication error"""
 
 
 
@@ -21,8 +21,9 @@ class TPG26x(comm_backend.ICommBackendWrapper):
     Args:
         conn: serial connection parameters (usually port or a tuple containing port and baudrate)
     """
+    Error=PfeifferError
     def __init__(self, conn):
-        instr=comm_backend.new_backend(conn,"serial",term_read="\r\n",term_write="",defaults={"serial":("COM1",9600)})
+        instr=comm_backend.new_backend(conn,"serial",term_read="\r\n",term_write="",defaults={"serial":("COM1",9600)},reraise_error=PfeifferBackendError)
         comm_backend.ICommBackendWrapper.__init__(self,instr)
         smux=([1,2],)
         self._add_status_variable("pressure",lambda channel: self.get_pressure(channel,status_error=False),ignore_error=(PfeifferError,),mux=smux,priority=5)
@@ -38,9 +39,9 @@ class TPG26x(comm_backend.ICommBackendWrapper):
         self._add_status_variable("gauge_control_settings",self.get_gauge_control_settings,mux=smux,priority=-2)
         try:
             self.query("BAU")
-        except self.instr.Error as e:
+        except self.instr.Error:
             self.close()
-            raise self.instr.BackendOpenError(e)
+            raise
     
     def comm(self, msg):
         """Send a command to the device"""
@@ -270,8 +271,9 @@ class DPG202(comm_backend.ICommBackendWrapper):
     Args:
         conn: serial connection parameters (usually port or a tuple containing port and baudrate)
     """
+    Error=PfeifferError
     def __init__(self, conn):
-        instr=comm_backend.new_backend(conn,"serial",term_read="\r",term_write="\r",datatype="str",defaults={"serial":("COM1",9600)})
+        instr=comm_backend.new_backend(conn,"serial",term_read="\r",term_write="\r",datatype="str",defaults={"serial":("COM1",9600)},reraise_error=PfeifferBackendError)
         comm_backend.ICommBackendWrapper.__init__(self,instr)
         self._add_info_variable("device_name",self.get_device_name)
         self._add_info_variable("software_version",self.get_software_version)
@@ -279,9 +281,9 @@ class DPG202(comm_backend.ICommBackendWrapper):
         self._add_status_variable("pressure",self.get_pressure,ignore_error=(PfeifferError,),priority=5)
         try:
             self.get_device_name()
-        except self.instr.Error as e:
+        except self.instr.Error:
             self.close()
-            raise self.instr.BackendOpenError(e)
+            raise
 
     _data_types={"boolean_old":0,"u_integer":1,"u_real":2,"string":4,"boolean_new":6,"u_short_int":7,"u_expo_new":10,"long_string":11} # data type indices
     _data_lengths={0:6,1:6,2:6,4:6,6:1,7:3,10:6,11:16} # data lengths

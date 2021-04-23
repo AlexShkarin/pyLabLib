@@ -2,13 +2,14 @@ from . import pfcam_defs  # pylint: disable=unused-import
 from .pfcam_defs import define_functions
 
 from ...core.utils import ctypes_wrap, py3
+from ...core.devio import DeviceError
 from ..utils import load_lib
 
 import ctypes
 import enum
 
 
-class PFCamError(RuntimeError):
+class PFCamError(DeviceError):
     """Generic PFCam error"""
 class PFCamLibError(PFCamError):
     """Generic PFCam library error"""

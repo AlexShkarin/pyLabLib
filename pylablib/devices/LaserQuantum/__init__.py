@@ -1,1 +1,1 @@
-from .base import Finesse
+from .base import Finesse, LaserQuantumError

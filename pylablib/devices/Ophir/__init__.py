@@ -1,1 +1,1 @@
-from .base import OphirDevice, VegaPowerMeter
+from .base import OphirDevice, VegaPowerMeter, OphirError

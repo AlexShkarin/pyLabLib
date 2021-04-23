@@ -1,4 +1,5 @@
 from ..utils.py3 import textstring, as_str
+from .base import DeviceError
 from . import data_format
 from . import comm_backend
 from ..utils import general as general_utils
@@ -43,7 +44,9 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
     _default_failsafe=False # running in the failsafe mode by default
     _allow_concatenate_write=False # allow automatic concatenation of several write operations (see :meth:`using_write_buffer`)
     _concatenate_write_separator=";\n" # separator to join different commands in concatenated write operation (with :meth:`using_write_buffer`)
-    def __init__(self, conn, term_write=None, term_read=None, wait_callback=None, backend="visa", backend_defaults=None, failsafe=None, timeout=None, backend_params=None):
+    Error=DeviceError
+    BackendError=None
+    def __init__(self, conn, term_write=None, term_read=None, wait_callback=None, backend="auto", backend_defaults=None, failsafe=None, timeout=None, backend_params=None):
         self._wait_sync_timeout=self._default_wait_sync_timeout
         failsafe=self._default_failsafe if failsafe is None else failsafe
         self._failsafe=failsafe
@@ -59,7 +62,9 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
             self._retry_times=0
         self._wait_callback=wait_callback
         self._wait_callback_timeout=self._default_wait_callback_timeout
-        instr=comm_backend.new_backend(conn,backend=backend,term_write=term_write,term_read=term_read,timeout=self._backend_timeout,defaults=backend_defaults,**(backend_params or {}))
+        instr=comm_backend.new_backend(conn,backend=backend,term_write=term_write,term_read=term_read,timeout=self._backend_timeout,defaults=backend_defaults,reraise_error=self.BackendError,**(backend_params or {}))
+        if self.BackendError is None:
+            self.BackendError=instr.Error
         instr.setup_cooldown(**self._default_operation_cooldown)
         comm_backend.ICommBackendWrapper.__init__(self,instr)
         self.conn=conn
@@ -397,7 +402,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
         if wait_sync:
             sync_msg=self.read()
             if sync_msg!="1":
-                raise RuntimeError("unexpected reply to '{}' command: '{}'".format(self._wait_sync_comm,sync_msg))
+                raise DeviceError("unexpected reply to '{}' command: '{}'".format(self._wait_sync_comm,sync_msg))
     def _parse_msg(self, msg, data_type="string"):
         if data_type in ["r","raw"]:
             return msg
@@ -405,7 +410,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
         if isinstance(data_type,list):
             split_msg=[m.strip() for m in msg.split(",")]
             if len(split_msg)!=len(data_type):
-                raise ValueError("message '{}' length {} is different from the format length {}".format(msg,len(split_msg),len(data_type)))
+                raise DeviceError("message '{}' length {} is different from the format length {}".format(msg,len(split_msg),len(data_type)))
             return [self._parse_msg(v,dt) for v,dt in zip(split_msg,data_type)]
         if data_type in ["s","string"]:
             return msg
@@ -420,7 +425,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
             elif len(msg)==2:
                 return float(msg[0]),msg[1]
             else:
-                raise ValueError("empty response")
+                raise DeviceError("empty response")
         elif data_type in ["b","bool"]:
             msg=msg.lower()
             msg=msg.split()[-1]
@@ -437,6 +442,15 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
             return data_type(msg)
         else:
             raise ValueError("unrecognized data_type: {0}".format(data_type))
+    def _check_reply(self, reply, msg=None):
+        """
+        Check the raw reply returned by the device.
+
+        Called automatically in ``read`` and ``ask`` methods.
+        If specified, `msg` is the message sent to the device
+        Return ``True`` if the reply is valid and ``False`` otherwise (can also raise an exception from here).
+        """
+        return True
     def read(self, data_type="string", timeout=None):
         """
         Read data from the device.
@@ -450,6 +464,8 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
         `timeout` overrides the default value.
         """
         msg=self._read_retry(raw=(data_type=="raw"),timeout=timeout)
+        if not self._check_reply(msg):
+            raise self.Error("device sent unexpected reply: {}".format(msg))
         return self._parse_msg(msg,data_type)
     def ask(self, msg, data_type="string", delay=0., timeout=None, read_echo=False):
         """
@@ -465,6 +481,8 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
                     reply=self._read_retry(raw=(data_type=="raw"),timeout=timeout)
                 else:
                     reply=self._ask_retry(msg,delay,raw=(data_type=="raw"),timeout=timeout)
+                if not self._check_reply(reply,msg):
+                    raise self.Error("query {} returned unexpected reply: {}".format(msg,reply))
                 return self._parse_msg(reply,data_type=data_type)
             if not self._failsafe:
                 t.reraise()
@@ -503,7 +521,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
         header=b""
         header+=self._read_retry(raw=True,size=2,timeout=timeout)
         if header[:1]!=b"#":
-            raise ValueError("malformed data")
+            raise DeviceError("malformatted data")
         len_size=int(header[1:2])
         header+=self._read_retry(raw=True,size=len_size,timeout=timeout)
         length=int(header[2:])
@@ -525,7 +543,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
         if include_header:
             if data[:1]!=b"#": # range access to accommodate for bytes type in Py3
                 if not fmt.is_ascii():
-                    raise ValueError("malformed data")
+                    raise ValueError("malformatted data")
                 length=None
             else:
                 len_size=int(data[1:2]) # range access to accommodate for bytes type in Py3

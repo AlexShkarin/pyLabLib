@@ -345,7 +345,7 @@ class IMAQCamera(camera.IROICamera):
             return lib.imgSessionSerialWrite(self.sid,msg,int(timeout*1000))
         except IMAQLibError as e:
             if e.code==niimaq_lib.IMG_ERR_CODE.IMG_ERR_SERIAL_WRITE_TIMEOUT:
-                raise IMAQTimeoutError()
+                raise IMAQTimeoutError
             else:
                 raise
     def serial_read(self, n, timeout=3., datatype=None):
@@ -364,7 +364,7 @@ class IMAQCamera(camera.IROICamera):
             return msg if datatype=="bytes" else py3.as_str(msg)
         except IMAQLibError as e:
             if e.code==niimaq_lib.IMG_ERR_CODE.IMG_ERR_SERIAL_READ_TIMEOUT:
-                raise IMAQTimeoutError()
+                raise IMAQTimeoutError
             else:
                 raise
     def serial_readline(self, timeout=3., datatype=None, maxn=1024):

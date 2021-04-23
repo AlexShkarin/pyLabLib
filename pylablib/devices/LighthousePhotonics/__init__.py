@@ -1,1 +1,1 @@
-from .base import SproutG
+from .base import SproutG, LighthousePhotonicsError

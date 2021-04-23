@@ -3,6 +3,7 @@ from .pfcam_lib import lib, PFCamError, PFCamLibError
 
 from ..IMAQ.IMAQ import IMAQCamera, IMAQError
 from ...core.utils import py3, dictionary
+from ...core.devio import DeviceError
 from ..interface import camera
 from ..utils import load_lib
 
@@ -177,6 +178,7 @@ class PhotonFocusIMAQCamera(IMAQCamera):
         imaq_name: IMAQ interface name (can be learned by :func:`.IMAQ.list_cameras`; usually, but not always, starts with ``"img"``)
         pfcam_port: port number for pfcam interface (can be learned by :func:`list_cameras`; port number is the first element of the camera data tuple)
     """
+    Error=DeviceError
     def __init__(self, imaq_name="img0", pfcam_port=0):
         self.pfcam_port=pfcam_port
         self.pfcam_opened=False

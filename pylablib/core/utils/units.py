@@ -39,7 +39,7 @@ def convert_length_units(value, value_unit="m", result_unit="m", case_sensitive=
     elif string_utils.string_equal(value_unit,"fm",case_sensitive=case_sensitive):
         value_m=value*1E-15
     else:
-        raise IOError("unrecognized length unit: {0}".format(value_unit))
+        raise ValueError("unrecognized length unit: {0}".format(value_unit))
     if string_utils.string_equal(result_unit,"m",case_sensitive=case_sensitive):
         return value_m
     elif string_utils.string_equal(result_unit,"mm",case_sensitive=case_sensitive):
@@ -53,7 +53,7 @@ def convert_length_units(value, value_unit="m", result_unit="m", case_sensitive=
     elif string_utils.string_equal(result_unit,"fm",case_sensitive=case_sensitive):
         return value_m*1E15
     else:
-        raise IOError("unrecognized length unit: {0}".format(result_unit))
+        raise ValueError("unrecognized length unit: {0}".format(result_unit))
     
 def convert_time_units(value, value_unit="s", result_unit="s", case_sensitive=True):
     """
@@ -77,7 +77,7 @@ def convert_time_units(value, value_unit="s", result_unit="s", case_sensitive=Tr
     elif string_utils.string_equal(value_unit,"as",case_sensitive=case_sensitive):
         value_s=value*1E-18
     else:
-        raise IOError("unrecognized length unit: {0}".format(value_unit))
+        raise ValueError("unrecognized length unit: {0}".format(value_unit))
     if string_utils.string_equal(result_unit,"s",case_sensitive=case_sensitive):
         return value_s
     elif string_utils.string_equal(result_unit,"ms",case_sensitive=case_sensitive):
@@ -93,7 +93,7 @@ def convert_time_units(value, value_unit="s", result_unit="s", case_sensitive=Tr
     elif string_utils.string_equal(result_unit,"as",case_sensitive=case_sensitive):
         return value_s*1E18
     else:
-        raise IOError("unrecognized length unit: {0}".format(result_unit))
+        raise ValueError("unrecognized length unit: {0}".format(result_unit))
         
 def convert_frequency_units(value, value_unit="Hz", result_unit="Hz", case_sensitive=True):
     """
@@ -111,7 +111,7 @@ def convert_frequency_units(value, value_unit="Hz", result_unit="Hz", case_sensi
     elif string_utils.string_equal(value_unit,"GHz",case_sensitive=case_sensitive):
         value_Hz=value*1E9
     else:
-        raise IOError("unrecognized frequency unit: {0}".format(value_unit))
+        raise ValueError("unrecognized frequency unit: {0}".format(value_unit))
     if string_utils.string_equal(result_unit,"Hz",case_sensitive=case_sensitive):
         return value_Hz
     elif string_utils.string_equal(result_unit,"kHz",case_sensitive=case_sensitive):
@@ -121,7 +121,7 @@ def convert_frequency_units(value, value_unit="Hz", result_unit="Hz", case_sensi
     elif string_utils.string_equal(result_unit,"GHz",case_sensitive=case_sensitive):
         return value_Hz/1E9
     else:
-        raise IOError("unrecognized frequency unit: {0}".format(result_unit))
+        raise ValueError("unrecognized frequency unit: {0}".format(result_unit))
         
 def convert_power_units(value, value_unit="dBm", result_unit="dBm", case_sensitive=True, impedance=50.):
     """
@@ -156,7 +156,7 @@ def convert_power_units(value, value_unit="dBm", result_unit="dBm", case_sensiti
         elif string_utils.string_equal(value_unit,"uV",case_sensitive=case_sensitive):
             value_dBm=20.*np.log10(value)-90.-W2V_dB
         else:
-            raise IOError("unrecognized power unit: {0}".format(value_unit))
+            raise ValueError("unrecognized power unit: {0}".format(value_unit))
     if string_utils.string_equal(result_unit,"dBm",case_sensitive=case_sensitive):
         return value_dBm if s>0 else np.nan
     elif string_utils.string_equal(result_unit,"dBmV",case_sensitive=case_sensitive):
@@ -176,4 +176,4 @@ def convert_power_units(value, value_unit="dBm", result_unit="dBm", case_sensiti
     elif string_utils.string_equal(result_unit,"uV",case_sensitive=case_sensitive):
         return 10.**((value_dBm+90.+W2V_dB)/20.) if s>0 else np.nan
     else:
-        raise IOError("unrecognized power unit: {0}".format(result_unit))
+        raise ValueError("unrecognized power unit: {0}".format(result_unit))

@@ -2,12 +2,17 @@ from ...core.utils import ctypes_wrap
 from .SCU3DControl_defs import Error, drError
 from .SCU3DControl_defs import EConfiguration  # pylint: disable=unused-import
 from .SCU3DControl_defs import define_functions
+
+from ...core.devio import DeviceError
 from ..utils import load_lib
 
 import ctypes
 
 
-class SCU3DControlLibError(RuntimeError):
+
+class SmarActError(DeviceError):
+    """Generic SmarAct error"""
+class SCU3DControlLibError(SmarActError):
     """Generic Arcus Performax library error"""
     def __init__(self, func, arguments, code):
         self.func=func
@@ -15,7 +20,7 @@ class SCU3DControlLibError(RuntimeError):
         self.code=code
         self.name=drError.get(code,"UNKNOWN")
         self.msg="function '{}' return an error {}({})".format(func,self.code,self.name)
-        RuntimeError.__init__(self,self.msg)
+        SmarActError.__init__(self,self.msg)
 def errchecker(result, func, arguments):
     if result!=Error.SA_OK:
         raise SCU3DControlLibError(func.__name__,arguments,result)

@@ -7,7 +7,7 @@ import re
 import collections
 import time
 
-from .base import AttocubeError
+from .base import AttocubeError, AttocubeBackendError
 
 
 def muxaxis(*args, **kwargs):
@@ -27,9 +27,10 @@ class ANC300(comm_backend.ICommBackendWrapper):
         backend(str): communication backend; by default, try to determine from the communication parameters
         pwd(str): connection password for Ethernet connection (default is ``"123456"``)
     """
+    Error=AttocubeError
     def __init__(self, conn, backend="auto", pwd="123456"):
         defaults={"serial":("COM1",38400,8,"N",1,0), "network":{"port":7230}}
-        instr=comm_backend.new_backend(conn,backend=backend,timeout=3.,defaults=defaults,term_write="\r\n")
+        instr=comm_backend.new_backend(conn,backend=backend,timeout=3.,defaults=defaults,term_write="\r\n",reraise_error=AttocubeBackendError)
         self.pwd=pwd
         comm_backend.ICommBackendWrapper.__init__(self,instr)
         self.open()

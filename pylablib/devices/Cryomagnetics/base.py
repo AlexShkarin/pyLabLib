@@ -1,7 +1,11 @@
 from ...core.utils.py3 import textstring
-from ...core.devio import SCPI, interface
+from ...core.devio import SCPI, interface, DeviceError, DeviceBackendError
 
 
+class CryomagneticsError(DeviceError):
+    """Generic Cryomagnetics devices error"""
+class CryomagneticsBackendError(CryomagneticsError,DeviceBackendError):
+    """Generic Cryomagnetics backend communication error"""
 
 class LM500(SCPI.SCPIDevice):
     """
@@ -13,6 +17,8 @@ class LM500(SCPI.SCPIDevice):
     Args:
         conn: serial connection parameters (usually port or a tuple containing port and baudrate)
     """
+    Error=CryomagneticsError
+    BackendError=CryomagneticsError
     def __init__(self, conn):
         SCPI.SCPIDevice.__init__(self,conn,backend="serial",term_read="\n",term_write="\n",backend_defaults={"serial":("COM1",9600)})
         try:

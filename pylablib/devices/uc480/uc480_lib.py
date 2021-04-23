@@ -5,12 +5,13 @@ from .uc480_defs import define_functions
 
 from ...core.utils import ctypes_wrap
 from ..utils import load_lib
+from ...core.devio import DeviceError
 
 import ctypes
 import platform
 
 
-class uc480Error(RuntimeError):
+class uc480Error(DeviceError):
     """Generic uc480 error"""
 class uc480LibError(uc480Error):
     """Generic uc480 library error"""

@@ -1,4 +1,6 @@
-class AndorError(RuntimeError):
+from ...core.devio import DeviceError
+
+class AndorError(DeviceError):
     """Generic Andor error"""
 class AndorTimeoutError(AndorError):
     """Andor timeout error"""

@@ -1,11 +1,15 @@
 import numpy as np
 
-from ...core.devio import SCPI, data_format, interface
+from ...core.devio import SCPI, data_format, interface, DeviceError, DeviceBackendError
 from ...core.utils import funcargparse
 
 import collections
 
 
+class TektronixError(DeviceError):
+    """Generic Tektronix devices error"""
+class TektronixBackendError(TektronixError,DeviceBackendError):
+    """Generic Tektronix backend communication error"""
 
 TTriggerParameters=collections.namedtuple("TTriggerParameters",["source","level","coupling","slope"])
 class ITektronixScope(SCPI.SCPIDevice):
@@ -22,6 +26,8 @@ class ITektronixScope(SCPI.SCPIDevice):
     # horizontal offset method; either ``"delay"`` (use ``"HORizontal:DELay:TIMe"``), ``"pos"`` (use ``"HORizontal:POSition"``, and set ``"HORizontal:DELay:MODe"`` accordingly),
     # or ``"pos_only"`` (use ``"HORizontal:POSition"``, don't set ``"HORizontal:DELay:MODe"`` in case it's not available)
     _hor_offset_method="pos_only"
+    Error=TektronixError
+    BackendError=TektronixBackendError
     def __init__(self, addr):
         SCPI.SCPIDevice.__init__(self,addr)
         _main_channels=[(i,"ch{}".format(i)) for i in self._main_channels_idx]

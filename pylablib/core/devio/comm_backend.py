@@ -5,14 +5,36 @@ Routines for defining a unified interface across multiple backends.
 from ..utils import funcargparse, general, net, py3, module
 from builtins import range,zip
 from . import interface
+from .base import DeviceError
 
 import time
 import re
 import contextlib
 import warnings
+import functools
 
 
 ### Generic backend interface ###
+
+
+class DeviceBackendError(DeviceError):
+    """Generic exception relaying a backend error"""
+    def __init__(self, exc):
+        msg="backend exception: {}".format(repr(exc))
+        super().__init__(msg)
+        self.backend_exc=exc
+
+def reraise(func):
+    """Wrapper for a backend method which intercepts backend exceptions and re-emits them as a subclass of :exc:`DeviceBackendError` defined in the class"""
+    @functools.wraps(func)
+    def wrapped(self, *args, **kwargs):
+        if self.Error is None or self.BackendError is None:
+            return func(self,*args,**kwargs)
+        try:
+            return func(self,*args,**kwargs)
+        except self.BackendError as exc:
+            raise self.Error(exc) from exc
+    return wrapped
 
 class IDeviceCommBackend:
     """
@@ -27,18 +49,23 @@ class IDeviceCommBackend:
         term_read (str): Line terminator for reading operations.
         datatype (str): Type of the returned data; can be ``"bytes"`` (return ``bytes`` object), ``"str"`` (return ``str`` object),
             or ``"auto"`` (default Python result: ``str`` in Python 2 and ``bytes`` in Python 3)
+        reraise_error: if not ``None``, specifies an error to be re-raised on any backend exception (by default, use backend-specific error);
+            should be a subclass of :exc:`DeviceBackendError`.
     """
-    Error=RuntimeError
+    Error=DeviceBackendError
+    BackendError=None
     """Base class for the errors raised by the backend operations"""
     
     _default_operation_cooldown={"default":0.}
-    def __init__(self, conn, timeout=None, term_write=None, term_read=None, datatype="auto"):  # pylint: disable=unused-argument
+    def __init__(self, conn, timeout=None, term_write=None, term_read=None, datatype="auto", reraise_error=None):  # pylint: disable=unused-argument
         funcargparse.check_parameter_range(datatype,"datatype",{"auto","str","bytes"})
         self.datatype=datatype
         self.conn=conn
         self.term_write=term_write
         self.term_read=term_read
         self._operation_cooldown=dict(self._default_operation_cooldown)
+        if reraise_error is not None:
+            self.Error=reraise_error
 
     _conn_params=["addr"]
     _default_conn=[None]
@@ -216,20 +243,14 @@ def remove_longest_term(msg, terms):
 
 _backends={}
 
-class IBackendOpenError(IOError):
-    pass
-
 try:
     try:
         import pyvisa as visa
     except ImportError:
         import visa
 
-    class VisaBackendOpenError(IBackendOpenError,visa.VisaIOError):
-        """Visa backend opening error"""
-        def __init__(self, e):
-            IBackendOpenError.__init__(self)
-            visa.VisaIOError.__init__(self,e.error_code)
+    class DeviceVisaError(DeviceBackendError):
+        """Visa backend operation error"""
 
     class VisaDeviceBackend(IDeviceCommBackend):
         """
@@ -245,17 +266,22 @@ try:
             do_lock (bool): If ``True``, employ locking operations; otherwise, locking function does nothing.
             datatype (str): Type of the returned data; can be ``"bytes"`` (return `bytes` object), ``"str"`` (return `str` object),
                 or ``"auto"`` (default Python result: `str` in Python 2 and `bytes` in Python 3)
+            reraise_error: if not ``None``, specifies an error to be re-raised on any backend exception (by default, use backend-specific error);
+                should be a subclass of :exc:`DeviceBackendError`.
         """
         _backend="visa"
-        Error=visa.VisaIOError
+        BackendError=visa.VisaIOError
         """Base class for the errors raised by the backend operations"""
-        BackendOpenError=VisaBackendOpenError
+        Error=DeviceVisaError
         
         if module.cmp_versions(visa.__version__,"1.6")=="<": # older pyvisa versions have a slightly different interface
+            @reraise
             def _set_timeout(self, timeout):
                 self.instr.timeout=timeout
+            @reraise
             def _get_timeout(self):
                 return self.instr.timeout
+            @reraise
             def _open_resource(self, conn):
                 if not self.term_write.endswith(self.term_read):
                     raise NotImplementedError("PyVisa version <1.6 doesn't support different terminators for reading and writing; update to a newer version by running 'pip install --upgrade pyvisa'")
@@ -270,13 +296,17 @@ try:
                 raise NotImplementedError("PyVisa version <1.6 doesn't support locking; update to a newer version by running 'pip install --upgrade pyvisa'")
             def _lock_context(self, timeout=None):
                 raise NotImplementedError("PyVisa version <1.6 doesn't support locking; update to a newer version by running 'pip install --upgrade pyvisa'")
+            @reraise
             def _read_term(self):
                 return py3.as_builtin_bytes(self.instr.term_chars)
         else:
+            @reraise
             def _set_timeout(self, timeout):
                 self.instr.timeout=timeout*1000. # in newer versions timeout is in ms
+            @reraise
             def _get_timeout(self):
                 return self.instr.timeout/1000. # in newer versions timeout is in ms
+            @reraise
             def _open_resource(self, conn):
                 instr=visa.ResourceManager().open_resource(conn)
                 instr.read_termination=self.term_read
@@ -284,18 +314,26 @@ try:
                 self.term_read=self.term_write=""
                 return instr
             _lock_default=False ## TODO: figure out GPIB locking issue
+            @reraise
             def _lock(self, timeout=None):
                 self.instr.lock(timeout=timeout*1000. if timeout is not None else None)
+            @reraise
             def _unlock(self):
                 self.instr.unlock()
+            @reraise
             def _lock_context(self, timeout=None):
                 return self.instr.lock_context(timeout=timeout*1000. if timeout is not None else None)
+            @reraise
             def _read_term(self):
                 return py3.as_builtin_bytes(self.instr.read_termination)
             @staticmethod
             def list_resources(desc=False):
-                return visa.ResourceManager().list_resources_info() if desc else visa.ResourceManager().list_resources()
+                try:
+                    return visa.ResourceManager().list_resources_info() if desc else visa.ResourceManager().list_resources()
+                except VisaDeviceBackend.BackendError as e:
+                    raise VisaDeviceBackend.Error(e) from e
         if module.cmp_versions(visa.__version__,"1.9")=="<": # older pyvisa versions have a slightly different interface
+            @reraise
             def _read_raw(self, size=None):
                 chunk_size=self.instr.chunk_size
                 data=bytearray()
@@ -306,8 +344,10 @@ try:
                         data.extend(chunk)
                 return bytes(data)
         else:
+            @reraise
             def _read_raw(self, size):
                 return self.instr.read_bytes(size)
+        @reraise
         def _read_all(self):
             data=bytearray()
             with self.using_timeout(1E-3):
@@ -321,26 +361,28 @@ try:
                         else:
                             raise
         
-        def __init__(self, conn, timeout=10., term_write=None, term_read=None, do_lock=None, datatype="auto"):
+        def __init__(self, conn, timeout=10., term_write=None, term_read=None, do_lock=None, datatype="auto", reraise_error=None):
             if term_write is None:
                 term_write=b"\r\n"
             if term_read is None:
                 term_read=b"\n"
-            IDeviceCommBackend.__init__(self,conn,term_write=term_write,term_read=term_read,datatype=datatype)
+            IDeviceCommBackend.__init__(self,conn,term_write=term_write,term_read=term_read,datatype=datatype,reraise_error=reraise_error)
             try:
                 self.instr=self._open_resource(self.conn)
                 self.opened=True
                 self._do_lock=do_lock if do_lock is not None else self._lock_default
                 self.cooldown("open")
                 self.set_timeout(timeout)
-            except self.Error as e:
-                raise VisaBackendOpenError(e)
-            
+            except self.BackendError as e:
+                raise self.Error(e) from e
+
+        @reraise
         def open(self):
             """Open the connection"""
             self.instr.open()
             self.opened=True
             self.cooldown("open")
+        @reraise
         def close(self):
             """Close the connection"""
             self.instr.close()
@@ -373,6 +415,7 @@ try:
             """Get operations timeout (in seconds)"""
             return self._get_timeout()
         
+        @reraise
         def readline(self, remove_term=True, timeout=None, skip_empty=True):
             """
             Read a single line from the device.
@@ -403,6 +446,7 @@ try:
             self.cooldown("read")
             return self._to_datatype(result)
         
+        @reraise
         def write(self, data, flush=True, read_echo=False, read_echo_delay=0, read_echo_lines=1):
             """
             Write data to the device.
@@ -421,6 +465,7 @@ try:
                 for _ in range(read_echo_lines):
                     self.readline()
 
+        @reraise
         def __repr__(self):
             return "VisaDeviceBackend("+self.instr.__repr__()+")"
                 
@@ -439,11 +484,8 @@ try:
     except ImportError:
         serial_list_ports=None
 
-    class SerialBackendOpenError(IBackendOpenError,serial.SerialException):
-        """Serial backend opening error"""
-        def __init__(self, e):
-            IBackendOpenError.__init__(self)
-            serial.SerialException.__init__(self,*e.args)
+    class DeviceSerialError(DeviceBackendError):
+        """Serial backend operation error"""
 
     class SerialDeviceBackend(IDeviceCommBackend):
         """
@@ -465,16 +507,18 @@ try:
             no_dtr (bool): If ``True``, turn off DTR status line before opening (e.g., turns off reset-on-connection for Arduino controllers).
             datatype (str): Type of the returned data; can be ``"bytes"`` (return `bytes` object), ``"str"`` (return `str` object),
                 or ``"auto"`` (default Python result: `str` in Python 2 and `bytes` in Python 3)
+            reraise_error: if not ``None``, specifies an error to be re-raised on any backend exception (by default, use backend-specific error);
+                should be a subclass of :exc:`DeviceBackendError`.
         """
         _backend="serial"
-        Error=serial.SerialException
+        BackendError=serial.SerialException
         """Base class for the errors raised by the backend operations"""
-        BackendOpenError=SerialBackendOpenError
+        Error=DeviceSerialError
         
         _conn_params=["port","baudrate","bytesize","parity","stopbits","xonxoff","rtscts","dsrdtr"]
         _default_conn=["COM1",19200,8,"N",1,0,0,0]
 
-        def __init__(self, conn, timeout=10., term_write=None, term_read=None, connect_on_operation=False, open_retry_times=3, no_dtr=False, datatype="auto"):
+        def __init__(self, conn, timeout=10., term_write=None, term_read=None, connect_on_operation=False, open_retry_times=3, no_dtr=False, datatype="auto", reraise_error=None):
             conn_dict=self.combine_conn(conn,self._default_conn)
             if term_write is None:
                 term_write=b"\r\n"
@@ -482,7 +526,7 @@ try:
                 term_read=b"\n"
             if isinstance(term_read,py3.anystring):
                 term_read=[term_read]
-            IDeviceCommBackend.__init__(self,conn_dict.copy(),term_write=term_write,term_read=term_read,datatype=datatype)
+            IDeviceCommBackend.__init__(self,conn_dict.copy(),term_write=term_write,term_read=term_read,datatype=datatype,reraise_error=reraise_error)
             port=conn_dict.pop("port")
             try:
                 self.instr=serial.serial_for_url(port,do_not_open=True,**conn_dict)
@@ -490,7 +534,7 @@ try:
                 if no_dtr:
                     try:
                         self.instr.setDTR(0)
-                    except self.Error:
+                    except self.BackendError:
                         warnings.warn("Cannot set DTR for an unconnected device")
                 if not connect_on_operation:
                     self.instr.open()
@@ -499,11 +543,13 @@ try:
                 self._open_retry_times=open_retry_times
                 self.cooldown("open")
                 self.set_timeout(timeout)
-            except self.Error as e:
-                raise SerialBackendOpenError(e)
-            
+            except self.BackendError as e:
+                raise self.Error(e) from e
+        
+        @reraise
         def _do_open(self):
             general.retry_wait(self.instr.open, self._open_retry_times, 0.3)
+        @reraise
         def _do_close(self):
             #general.retry_wait(self.instr.flush, self._open_retry_times, 0.3)
             general.retry_wait(self.instr.close, self._open_retry_times, 0.3)
@@ -543,17 +589,18 @@ try:
             finally:
                 self._op_close()
             
-        
+        @reraise
         def set_timeout(self, timeout):
             """Set operations timeout (in seconds)"""
             if timeout is not None:
                 self.instr.timeout=timeout
                 self.cooldown("timeout")
+        @reraise
         def get_timeout(self):
             """Get operations timeout (in seconds)"""
             return self.instr.timeout
         
-        
+        @reraise
         def _read_terms(self, terms=(), timeout=None, error_on_timeout=True):
             result=b""
             singlechar_terms=all(len(t)==1 for t in terms)
@@ -592,6 +639,7 @@ try:
                 if not (skip_empty and remove_term and (not result)):
                     break
             return self._to_datatype(result)
+        @reraise
         def read(self, size=None):
             """
             Read data from the device.
@@ -624,6 +672,7 @@ try:
             if remove_term and term:
                 result=remove_longest_term(result,term)
             return self._to_datatype(result)
+        @reraise
         def write(self, data, flush=True, read_echo=False, read_echo_delay=0, read_echo_lines=1):
             """
             Write data to the device.
@@ -646,13 +695,17 @@ try:
                     for _ in range(read_echo_lines):
                         self.readline()
 
+        @reraise
         def __repr__(self):
             return "SerialDeviceBackend("+self.instr.__repr__()+")"
 
         @staticmethod
         def list_resources(desc=False):
             if serial_list_ports is not None:
-                return [(p if desc else p[0]) for p in serial_list_ports.comports()]
+                try:
+                    return [(p if desc else p[0]) for p in serial_list_ports.comports()]
+                except SerialDeviceBackend.BackendError as e:
+                    raise SerialDeviceBackend.Error(e) from e
 
         
     _backends["serial"]=SerialDeviceBackend
@@ -665,15 +718,8 @@ except (ImportError, AttributeError):
 try:
     import ft232
 
-    class FT232BackendOpenError(IBackendOpenError,ft232.Ft232Exception):
-        """FT232 backend opening error"""
-        def __init__(self, e):
-            IBackendOpenError.__init__(self)
-            msgs=ft232.Ft232Exception.errors
-            code=msgs.index(e.msg) if e.msg in msgs else 1
-            ft232.Ft232Exception.__init__(self,code)
-        def __str__(self):
-            return self.msg
+    class DeviceFT232Error(DeviceBackendError):
+        """FT232 backend operation error"""
 
     class FT232DeviceBackend(IDeviceCommBackend):
         """
@@ -695,16 +741,18 @@ try:
             no_dtr (bool): If ``True``, turn off DTR status line before opening (e.g., turns off reset-on-connection for Arduino controllers).
             datatype (str): Type of the returned data; can be ``"bytes"`` (return `bytes` object), ``"str"`` (return `str` object),
                 or ``"auto"`` (default Python result: `str` in Python 2 and `bytes` in Python 3)
+            reraise_error: if not ``None``, specifies an error to be re-raised on any backend exception (by default, use backend-specific error);
+                should be a subclass of :exc:`DeviceBackendError`.
         """
         _backend="ft232"
-        Error=ft232.Ft232Exception
+        BackendError=ft232.Ft232Exception
         """Base class for the errors raised by the backend operations"""
-        BackendOpenError=FT232BackendOpenError
+        Error=DeviceFT232Error
         
         _conn_params=["port","baudrate","bytesize","parity","stopbits","xonxoff","rtscts"]
         _default_conn=[None,9600,8,"N",1,0,0]
 
-        def __init__(self, conn, timeout=10., term_write=None, term_read=None, open_retry_times=3, datatype="auto"):
+        def __init__(self, conn, timeout=10., term_write=None, term_read=None, open_retry_times=3, datatype="auto", reraise_error=None):
             conn_dict=self.combine_conn(conn,self._default_conn)
             if term_write is None:
                 term_write=b"\r\n"
@@ -714,7 +762,7 @@ try:
                 term_read=[term_read]
             conn_dict=conn_dict.copy()
             conn_dict["port"]=str(conn_dict["port"])
-            IDeviceCommBackend.__init__(self,conn_dict.copy(),term_write=term_write,term_read=term_read,datatype=datatype)
+            IDeviceCommBackend.__init__(self,conn_dict.copy(),term_write=term_write,term_read=term_read,datatype=datatype,reraise_error=reraise_error)
             port=conn_dict.pop("port")
             self.opened=False
             try:
@@ -724,9 +772,10 @@ try:
                 self.cooldown("open")
                 self.set_timeout(timeout)
                 self._conn_params=(port,conn_dict,timeout)
-            except self.Error as e:
-                raise FT232BackendOpenError(e)
+            except self.BackendError as e:
+                raise self.Error(e) from e
             
+        @reraise
         def _do_open(self):
             if self.is_opened():
                 return
@@ -735,6 +784,7 @@ try:
                 self.set_timeout(self._conn_params[2])
                 self.opened=True
             general.retry_wait(reopen, self._open_retry_times, 0.3)
+        @reraise
         def _do_close(self):
             if self.is_opened():
                 general.retry_wait(self.instr.close, self._open_retry_times, 0.3)
@@ -757,6 +807,7 @@ try:
             yield
             
         
+        @reraise
         def set_timeout(self, timeout):
             """Set operations timeout (in seconds)"""
             if timeout is not None:
@@ -764,11 +815,13 @@ try:
                     timeout=1E-3 # 0 is infinite timeout
                 self.instr.timeout=timeout
                 self.cooldown("timeout")
+        @reraise
         def get_timeout(self):
             """Get operations timeout (in seconds)"""
             return self.instr.timeout
         
         
+        @reraise
         def _read_terms(self, terms=(), timeout=None, error_on_timeout=True):
             result=b""
             singlechar_terms=all(len(t)==1 for t in terms)
@@ -780,7 +833,7 @@ try:
                         result=result+c
                         if c==b"":
                             if error_on_timeout and terms:
-                                raise self.Error(4)
+                                raise self.Error("timeout during read")
                             return result
                         if singlechar_terms:
                             if c in terms:
@@ -807,6 +860,7 @@ try:
                 if not (skip_empty and remove_term and (not result)):
                     break
             return self._to_datatype(result)
+        @reraise
         def read(self, size=None):
             """
             Read data from the device.
@@ -819,7 +873,7 @@ try:
                 else:
                     result=self.instr.read(size=size)
                     if len(result)!=size:
-                        raise self.Error(4)
+                        raise self.Error("read returned less data than expected")
                 self.cooldown("read")
                 return self._to_datatype(result)
         def read_multichar_term(self, term, remove_term=True, timeout=None, error_on_timeout=True):
@@ -839,6 +893,7 @@ try:
             if remove_term and term:
                 result=remove_longest_term(result,term)
             return self._to_datatype(result)
+        @reraise
         def write(self, data, flush=True, read_echo=False, read_echo_delay=0, read_echo_lines=1):
             """
             Write data to the device.
@@ -861,6 +916,7 @@ try:
                     for _ in range(read_echo_lines):
                         self.readline()
 
+        @reraise
         def __repr__(self):
             return "FT232DeviceBackend("+self.instr.__repr__()+")"
 
@@ -873,8 +929,11 @@ try:
             return s
         @staticmethod
         def list_resources(desc=False):
-            devices=[FT232DeviceBackend._as_str(d) for d in ft232.list_devices()]
-            return [d if desc else d[0] for d in devices]
+            try:
+                devices=[FT232DeviceBackend._as_str(d) for d in ft232.list_devices()]
+                return [d if desc else d[0] for d in devices]
+            except FT232DeviceBackend.BackendError as e:
+                raise FT232DeviceBackend.Error(e) from e
         
         
     _backends["ft232"]=FT232DeviceBackend
@@ -883,11 +942,8 @@ except (ImportError,NameError,OSError):
 
 
 
-class NetworkBackendOpenError(IBackendOpenError,net.socket.error):
-    """Network backend opening error"""
-    def __init__(self, e):
-        IBackendOpenError.__init__(self)
-        net.socket.error.__init__(self,*e.args)
+class DeviceNetworkError(DeviceBackendError):
+    """Network backend operation error"""
 
 class NetworkDeviceBackend(IDeviceCommBackend):
     """
@@ -902,6 +958,8 @@ class NetworkDeviceBackend(IDeviceCommBackend):
         term_read (str): List of possible single-char terminator for reading operations (specifies when :func:`readline` stops).
         datatype (str): Type of the returned data; can be ``"bytes"`` (return `bytes` object), ``"str"`` (return `str` object),
             or ``"auto"`` (default Python result: `str` in Python 2 and `bytes` in Python 3)
+        reraise_error: if not ``None``, specifies an error to be re-raised on any backend exception (by default, use backend-specific error);
+            should be a subclass of :exc:`DeviceBackendError`.
         
     Note:
         If `term_read` is a string, its behavior is different from the VISA backend:
@@ -909,11 +967,11 @@ class NetworkDeviceBackend(IDeviceCommBackend):
         If multi-char terminator is required, `term_read` should be a single-element list instead of a string.
     """
     _backend="network"
-    Error=net.socket.error
+    BackendError=net.socket.error
     """Base class for the errors raised by the backend operations"""
-    BackendOpenError=NetworkBackendOpenError
+    Error=DeviceNetworkError
 
-    def __init__(self, conn, timeout=10., term_write=None, term_read=None, datatype="auto"):
+    def __init__(self, conn, timeout=10., term_write=None, term_read=None, datatype="auto", reraise_error=None):
         if term_write is None:
             term_write="\r\n"
         if term_read is None:
@@ -922,14 +980,14 @@ class NetworkDeviceBackend(IDeviceCommBackend):
             term_read=[term_read]
         conn=self._conn_to_dict(conn)
         self._split_addr(conn)
-        IDeviceCommBackend.__init__(self,conn,term_write=term_write,term_read=term_read,datatype=datatype)
+        IDeviceCommBackend.__init__(self,conn,term_write=term_write,term_read=term_read,datatype=datatype,reraise_error=reraise_error)
         try:
             self.socket=None
             self.open()
             self.cooldown("open")
             self.set_timeout(timeout)
-        except self.Error as e:
-            raise NetworkBackendOpenError(e)
+        except self.BackendError as e:
+            raise self.Error(e) from e
     
     _conn_params=["addr","port"]
     _default_conn=["127.0.0.1",80]
@@ -941,27 +999,33 @@ class NetworkDeviceBackend(IDeviceCommBackend):
             conn["addr"],conn["port"]=addr_split[0],int(addr_split[1])
         elif len(addr_split)>2:
             raise ValueError("invalid device address: {}".format(conn))
+    @reraise
     def open(self):
         """Open the connection"""
         self.close()
         self.socket=net.ClientSocket(send_method="fixedlen",recv_method="fixedlen")
         self.socket.connect(self.conn["addr"],self.conn["port"])
+    @reraise
     def close(self):
         """Close the connection"""
         if self.socket is not None:
             self.socket.close()
             self.socket=None
+    @reraise
     def is_opened(self):
         return bool(self.socket)
         
+    @reraise
     def set_timeout(self, timeout):
         """Set operations timeout (in seconds)"""
         self.socket.set_timeout(timeout)
+    @reraise
     def get_timeout(self):
         """Get operations timeout (in seconds)"""
         return self.socket.get_timeout()
     
-    
+
+    @reraise
     def readline(self, remove_term=True, timeout=None, skip_empty=True):
         """
         Read a single line from the device.
@@ -980,6 +1044,7 @@ class NetworkDeviceBackend(IDeviceCommBackend):
             if not (skip_empty and remove_term and (not result)):
                 break
         return self._to_datatype(result)
+    @reraise
     def read(self, size=None):
         """
         Read data from the device.
@@ -992,6 +1057,7 @@ class NetworkDeviceBackend(IDeviceCommBackend):
             data=self.socket.recv_fixedlen(size)
         self.cooldown("read")
         return self._to_datatype(data)
+    @reraise
     def read_multichar_term(self, term, remove_term=True, timeout=None):
         """
         Read a single line with multiple possible terminators.
@@ -1009,6 +1075,7 @@ class NetworkDeviceBackend(IDeviceCommBackend):
         if remove_term and term:
             result=remove_longest_term(result,term)
         return self._to_datatype(result)
+    @reraise
     def write(self, data, flush=True, read_echo=False, read_echo_delay=0, read_echo_lines=1):
         """
         Write data to the device.
@@ -1024,6 +1091,7 @@ class NetworkDeviceBackend(IDeviceCommBackend):
             for _ in range(read_echo_lines):
                 self.readline()
 
+    @reraise
     def __repr__(self):
         return "NetworkDeviceBackend("+self.socket.__repr__()+")"
     
@@ -1039,11 +1107,8 @@ try:
     import usb.backend.libusb1
     import usb.backend.openusb
 
-    class PyUSBBackendOpenError(IBackendOpenError,usb.USBError):
-        """USB backend opening error"""
-        def __init__(self, e):
-            IBackendOpenError.__init__(self)
-            usb.USBError.__init__(self,*e.args)
+    class DeviceUSBError(DeviceBackendError):
+        """USB backend operation error"""
 
     class PyUSBDeviceBackend(IDeviceCommBackend):
         """
@@ -1063,42 +1128,47 @@ try:
             term_read (str): List of possible single-char terminator for reading operations (specifies when :func:`readline` stops).
             datatype (str): Type of the returned data; can be ``"bytes"`` (return `bytes` object), ``"str"`` (return `str` object),
                 or ``"auto"`` (default Python result: `str` in Python 2 and `bytes` in Python 3)
+            reraise_error: if not ``None``, specifies an error to be re-raised on any backend exception (by default, use backend-specific error);
+                should be a subclass of :exc:`DeviceBackendError`.
         """
         _backend="pyusb"
-        Error=usb.USBError
+        BackendError=usb.USBError
         """Base class for the errors raised by the backend operations"""
-        BackendOpenError=PyUSBBackendOpenError
+        Error=DeviceUSBError
         
         _conn_params=["vendorID","productID","index","endpoint_read","endpoint_write","backend"]
         _default_conn=[0x0000,0x0000,0,0x00,0x01,"libusb1"]
         _usb_backends={"libusb0":usb.backend.libusb0, "libusb1":usb.backend.libusb1, "openusb":usb.backend.openusb}
 
-        def __init__(self, conn, timeout=10., term_write=None, term_read=None, check_read_size=True, datatype="auto"):
+        def __init__(self, conn, timeout=10., term_write=None, term_read=None, check_read_size=True, datatype="auto", reraise_error=None):
             conn_dict=self.combine_conn(conn,self._default_conn)
             funcargparse.check_parameter_range(conn_dict["backend"],"usb_backend",self._usb_backends)
             if isinstance(term_read,py3.anystring):
                 term_read=[term_read]
-            IDeviceCommBackend.__init__(self,conn_dict.copy(),term_write=term_write,term_read=term_read,datatype=datatype)
+            IDeviceCommBackend.__init__(self,conn_dict.copy(),term_write=term_write,term_read=term_read,datatype=datatype,reraise_error=reraise_error)
             self.timeout=timeout
             self.check_read_size=check_read_size
             try:
                 self.open()
-            except self.Error as e:
-                raise PyUSBBackendOpenError(e)
+            except self.BackendError as e:
+                raise self.Error(e) from e
             self.cooldown("open")
             
+        @reraise
         def open(self):
             """Open the connection"""
             idx=self.conn["index"]
             backend=self._usb_backends[self.conn["backend"]].get_backend()
             all_devs=list(usb.core.find(idVendor=self.conn["vendorID"],idProduct=self.conn["productID"],backend=backend,find_all=True))
             if len(all_devs)<idx+1:
-                raise PyUSBBackendOpenError("can't find device with index {}; {} devices found".format(idx,len(all_devs)))
+                raise self.Error("can't find device with VID=0x{:04x} PID=0x{:04x} index {}; {} devices found".format(
+                        self.conn["vendorID"],self.conn["productID"],idx,len(all_devs)))
             self.instr=all_devs[idx]
             self.ep_read=self.conn["endpoint_read"]
             self.ep_write=self.conn["endpoint_write"]
             self.cooldown("open")
             self.opened=True
+        @reraise
         def close(self):
             """Close the connection"""
             self.instr.finalize()
@@ -1119,6 +1189,7 @@ try:
             return None if timeout is None else int(timeout*1000)
         
         
+        @reraise
         def _read_terms(self, terms=(), read_block_size=65536, timeout=None, error_on_timeout=True):
             result=b""
             singlechar_terms=all(len(t)==1 for t in terms)
@@ -1126,7 +1197,7 @@ try:
             while True:
                 try:
                     c=self.instr.read(self.ep_read,1 if terms else read_block_size,timeout=self._timeout(timeout)).tobytes()
-                except self.Error:
+                except self.BackendError:
                     c=b""
                 result=result+c
                 if c==b"":
@@ -1160,6 +1231,7 @@ try:
                 if not (skip_empty and remove_term and (not result)):
                     break
             return self._to_datatype(result)
+        @reraise
         def read(self, size=None, max_read_size=65536):
             """
             Read data from the device.
@@ -1191,6 +1263,7 @@ try:
             if remove_term and term:
                 result=remove_longest_term(result,term)
             return self._to_datatype(result)
+        @reraise
         def write(self, data, read_echo=False, read_echo_delay=0, read_echo_lines=1):
             """
             Write data to the device.
@@ -1208,13 +1281,17 @@ try:
                 for _ in range(read_echo_lines):
                     self.readline()
 
+        @reraise
         def __repr__(self):
             return "PyUSBDeviceBackend("+self.instr.__repr__()+")"
 
         
         @staticmethod
         def list_resources(desc=False, **kwargs):
-            devs=list(usb.core.find(find_all=True,**kwargs))
+            try:
+                devs=list(usb.core.find(find_all=True,**kwargs))
+            except PyUSBDeviceBackend.BackendError as e:
+                raise PyUSBDeviceBackend.Error from e
             if desc:
                 return devs
             indices={}
@@ -1328,7 +1405,7 @@ class ICommBackendWrapper(interface.IDevice):
         instr: Backend (assumed to be already opened).
     """
     def __init__(self, instr):
-        interface.IDevice.__init__(self)
+        super().__init__()
         self.instr=instr
         
     def open(self):

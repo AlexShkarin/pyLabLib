@@ -1,5 +1,6 @@
 from ...core.devio import interface, comm_backend
 from ...core.utils import general, funcargparse, py3
+from .base import ThorlabsError, ThorlabsTimeoutError, ThorlabsBackendError
 
 import struct
 import warnings
@@ -8,17 +9,6 @@ import re
 import time
 
 import collections
-
-
-
-
-
-
-
-class KinesisError(RuntimeError):
-    """Generic Kinesis device error."""
-class KinesisTimeoutError(KinesisError):
-    """Kinesis timeout error."""
 
 
 
@@ -44,10 +34,11 @@ class BasicKinesisDevice(comm_backend.ICommBackendWrapper):
     Args:
         conn: serial connection parameters (usually an 8-digit device serial number).
     """
+    Error=ThorlabsError
     def __init__(self, conn, timeout=3.):
         conn=comm_backend.FT232DeviceBackend.combine_conn(conn,(None,115200))
         self.conn=conn
-        instr=comm_backend.FT232DeviceBackend(conn,term_write=b"",term_read=b"",timeout=timeout)
+        instr=comm_backend.FT232DeviceBackend(conn,term_write=b"",term_read=b"",timeout=timeout,reraise_error=ThorlabsBackendError)
         instr.setup_cooldown(write=0.003)
         comm_backend.ICommBackendWrapper.__init__(self,instr)
         self._add_info_variable("device_info",self.get_device_info)
@@ -112,7 +103,7 @@ class BasicKinesisDevice(comm_backend.ICommBackendWrapper):
                 self._bg_msg_counters[messageID]=(cnt+1,comm)
             else:
                 if expected_id is not None and messageID!=expected_id:
-                    raise KinesisError("unexpected command received: expected 0x{:04x}, got 0x{:04x}".format(expected_id,messageID))
+                    raise ThorlabsError("unexpected command received: expected 0x{:04x}, got 0x{:04x}".format(expected_id,messageID))
                 return comm
     def query(self, messageID, param1=0, param2=0, source=0x01, dest=0x50, replyID=-1):
         """
@@ -244,7 +235,7 @@ class KinesisDevice(BasicKinesisDevice):
             if (not enabled) and all([s not in curr_status for s in status]):
                 return
             if ctd.passed():
-                raise KinesisTimeoutError
+                raise ThorlabsTimeoutError
             time.sleep(period)
 
     def _home(self, channel=1, sync=True, force=False, timeout=None):
@@ -572,7 +563,7 @@ class MFF(KinesisDevice):
             return 1
         if status&0x2F0: # moving
             return None
-        raise KinesisError("error getting MFF position: status {:08x}".format(status))
+        raise ThorlabsError("error getting MFF position: status {:08x}".format(status))
 
     _p_io_oper_mode=interface.EnumParameterClass("io_oper_mode",{"in_toggle":1,"in_position":2,"out_position":3,"out_motion":4})
     _p_io_sig_mode=interface.EnumParameterClass("io_sig_mode",{"in_button":0x01,"in_voltage":0x02,"in_button_inf":0x05,"in_voltage_inv":0x06,
