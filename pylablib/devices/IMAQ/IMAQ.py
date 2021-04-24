@@ -64,12 +64,13 @@ class IMAQCamera(camera.IROICamera):
         self.open()
 
         self._add_info_variable("device_info",self.get_device_info)
-        self._add_info_variable("interface_name",lambda: self.name)
         self._add_info_variable("attributes",self.get_all_attributes,priority=-5)
         self._add_settings_variable("triggers_in_cfg",self._get_triggers_in_cfg,self._set_triggers_in_cfg)
         self._add_settings_variable("triggers_out_cfg",self._get_triggers_out_cfg,self._set_triggers_out_cfg)
 
 
+    def _get_connection_parameters(self):
+        return self.name
     def open(self):
         """Open connection to the camera"""
         if self.sid is None:

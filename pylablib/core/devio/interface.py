@@ -17,7 +17,8 @@ class IDevice:
         self._device_var_ignore_error={"get":(),"set":()}
         self._device_vars=dict([(ik,{}) for ik in _device_var_kinds])
         self._device_vars_order=dict([(ik,[]) for ik in _device_var_kinds])
-        self._add_status_variable("cls",lambda: self.__class__.__name__)
+        self._add_info_variable("cls",lambda: self.__class__.__name__)
+        self._add_info_variable("conn",self._get_connection_parameters,ignore_error=NotImplementedError)
         self.dv=dictionary.ItemAccessor(getter=self.get_device_variable,setter=self.set_device_variable)
         self._setup_parameter_classes()
 
@@ -35,6 +36,9 @@ class IDevice:
     def __exit__(self, *args, **vargs):
         self.close()
         return False
+    
+    def _get_connection_parameters(self):
+        raise NotImplementedError("IDevice._get_connection_parameters")
     
     def _setup_parameter_classes(self):
         """Collect all class-wide parameter classes into a local dictionary"""

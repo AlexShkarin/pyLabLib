@@ -59,7 +59,6 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
         self._overflows_counter=0
 
         self._device_var_ignore_error={"get":(AndorNotSupportedError,),"set":(AndorNotSupportedError,)}
-        self._add_info_variable("idx",lambda: self.idx)
         self._add_info_variable("device_info",self.get_device_info)
         self._add_info_variable("values",self.get_all_values,priority=-5)
         self._add_settings_variable("trigger_mode",self.get_trigger_mode,self.set_trigger_mode)
@@ -73,6 +72,8 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
 
 
 
+    def _get_connection_parameters(self):
+        return self.idx
     def open(self):
         """Open connection to the camera"""
         self.close()

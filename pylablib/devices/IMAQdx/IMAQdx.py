@@ -188,7 +188,6 @@ class IMAQdxCamera(camera.IROICamera):
         self.v=dictionary.ItemAccessor(self.get_value,self.set_value)
 
         self._add_info_variable("device_info",self.get_device_info)
-        self._add_info_variable("interface_name",lambda: self.name)
         self._add_status_variable("values",self.get_all_values,priority=-5)
         self._add_status_variable("buffer_size",lambda: self.buffers_num)
         self._add_status_variable("read_frames",lambda: self.frame_counter)
@@ -200,6 +199,8 @@ class IMAQdxCamera(camera.IROICamera):
         "simple":IMAQdxAttributeVisibility.IMAQdxAttributeVisibilitySimple,
         "intermediate":IMAQdxAttributeVisibility.IMAQdxAttributeVisibilityIntermediate,
         "advanced":IMAQdxAttributeVisibility.IMAQdxAttributeVisibilityAdvanced})
+    def _get_connection_parameters(self):
+        return self.name
     def open(self):
         """Open connection to the camera"""
         mode=self._p_connection_mode(self.mode)

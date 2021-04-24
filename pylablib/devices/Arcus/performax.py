@@ -50,6 +50,8 @@ class GenericPerformaxStage(stage.IStage,interface.IDevice):
         self._add_info_variable("device_info",self.get_device_info)
 
 
+    def _get_connection_parameters(self):
+        return self.idx
     def open(self):
         """Open the connection to the stage"""
         self.close()

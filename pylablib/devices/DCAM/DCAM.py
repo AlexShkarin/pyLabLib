@@ -53,7 +53,6 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
         self.v=dictionary.ItemAccessor(self.get_value,self.set_value)
 
         self._add_info_variable("device_info",self.get_device_info)
-        self._add_info_variable("idx",lambda: self.idx)
         self._add_status_variable("properties",self.get_all_properties,priority=-5)
         self._add_settings_variable("trigger_mode",self.get_trigger_mode,self.set_trigger_mode)
         self._add_settings_variable("ext_trigger",self.get_ext_trigger_parameters,self.setup_ext_trigger)
@@ -62,6 +61,8 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
         self._add_status_variable("acq_status",self.get_status)
         self._add_status_variable("transfer_info",self.get_transfer_info)
         
+    def _get_connection_parameters(self):
+        return self.idx
     def open(self):
         """Open connection to the camera"""
         ncams=get_cameras_number()

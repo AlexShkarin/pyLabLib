@@ -1407,6 +1407,7 @@ class ICommBackendWrapper(interface.IDevice):
     def __init__(self, instr):
         super().__init__()
         self.instr=instr
+        self._connection_parameters=self.instr.conn
         
     def open(self):
         """Open the backend"""
@@ -1417,6 +1418,8 @@ class ICommBackendWrapper(interface.IDevice):
     def is_opened(self):
         """Check if the device is connected"""
         return bool(self.instr)
+    def _get_connection_parameters(self):
+        return self._connection_parameters
     
     def lock(self, timeout=None):
         """Lock the access to the device from other threads/processes (isn't necessarily implemented)"""

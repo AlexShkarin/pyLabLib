@@ -67,7 +67,6 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
         self._tsclk=None
         self.open()
         
-        self._add_info_variable("serial",lambda: self.serial)
         self._add_info_variable("device_info",self.get_device_info)
         self._add_settings_variable("trigger_mode",self.get_trigger_mode,self.set_trigger_mode)
         self._add_settings_variable("ext_trigger",self.get_ext_trigger_parameters,self.setup_ext_trigger)
@@ -75,6 +74,8 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
         self._add_info_variable("timestamp_clock_frequency",self.get_timestamp_clock_frequency)
         self._add_status_variable("frame_period",self.get_frame_period)
         
+    def _get_connection_parameters(self):
+        return self.serial
     def open(self):
         """Open connection to the camera"""
         if self.handle is None:

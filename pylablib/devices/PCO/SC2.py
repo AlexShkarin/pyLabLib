@@ -116,7 +116,6 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         self.open()
 
         self._device_var_ignore_error={"get":(PCOSC2NotSupportedError,),"set":()}
-        self._add_info_variable("connection",lambda:(self.interface,self.idx))
         self._add_info_variable("device_info",self.get_device_info)
         self._add_info_variable("capabilities",self.get_capabilities)
         self._add_info_variable("full_data",self.get_full_camera_data,priority=-8)
@@ -136,6 +135,8 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         self._add_info_variable("conversion_factor",self.get_conversion_factor)
         self._add_status_variable("camera_status",self.get_camera_status)
 
+    def _get_connection_parameters(self):
+        return self.idx,self.interface
     _p_open_interface=interface.EnumParameterClass("open_interface",_cam_interface_names_inv)
     def open(self):
         """Open connection to the camera"""

@@ -112,7 +112,6 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         self.open()
         
         self._device_var_ignore_error={"get":(AndorNotSupportedError,),"set":(AndorNotSupportedError,)}
-        self._add_info_variable("idx",lambda: self.idx)
         self._add_info_variable("device_info",self.get_device_info)
         self._add_info_variable("capabilities",self.get_capabilities,priority=-5)
         self._add_info_variable("amp_modes",self.get_all_amp_modes,ignore_error=AndorSDK2LibError,priority=-5)
@@ -224,6 +223,8 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
             raise AndorNotSupportedError("option {}.{} is not supported by {}".format(kind,option,self.device_info.head_model))
         return has_option
 
+    def _get_connection_parameters(self):
+        return self.idx,self.ini_path
     def open(self):
         """Open connection to the camera"""
         if self.handle is None:

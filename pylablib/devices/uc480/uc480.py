@@ -34,7 +34,7 @@ def find_by_serial(serial_number):
     raise ValueError("can't find camera with serial number {}".format(serial_number))
 
 
-TDeviceInfo=collections.namedtuple("TDeviceInfo",["model","manufacturer","serial_number","usb_version","date","dll_version","camera_type"])
+TDeviceInfo=collections.namedtuple("TDeviceInfo",["cam_id","model","manufacturer","serial_number","usb_version","date","dll_version","camera_type"])
 TAcquiredFramesStatus=collections.namedtuple("TAcquiredFramesStatus",["acquired","transfer_missed"])
 TFrameInfo=collections.namedtuple("TFrameInfo",["frame_index","framestamp","timestamp","timestamp_dev","size","io_status","flags"])
 class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
@@ -45,8 +45,8 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         cam_id(int): camera ID; use 0 to get the first available camera
         roi_binning_mode: determines whether binning in ROI refers to binning or subsampling;
             can be ``"bin"``, ``"subsample"``, or ``"auto"`` (since most cameras only support one, it will pick the one which has non-trivial value, or ``"bin"`` if both are available).
-        dev_id(int): if ``None`` use `cam_id` as a camera id (``dwCameraID`` field of the camera info returned by :func:`list_cameras`);
-            otherwise, ignore value of `cam_id` and use `dev_id` as device id (``dwDeviceID`` field of the camera info).
+        dev_id(int): if ``None`` use `cam_id` as a camera id (``cam_id`` field of the camera info returned by :func:`list_cameras`);
+            otherwise, ignore value of `cam_id` and use `dev_id` as device id (``dev_id`` field of the camera info).
             The first method requires assigning camera IDs beforehand (otherwise IDs might overlap, in which case only one camera can be accessed),
             but the assigned IDs are permanent; the second method always has unique IDs, but they might change if the cameras are disconnected and reconnected.
             For a more reliable assignment, one can use :func:`find_by_serial` function to find device ID based on the camera serial number.
@@ -89,6 +89,8 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         self._add_settings_variable("color_mode",self.get_color_mode,self.set_color_mode)
         self._add_settings_variable("frame_period",self.get_frame_period,self.set_frame_period)
 
+    def _get_connection_parameters(self):
+        return (self.id,"dev_id" if self.is_dev_id else "cam_id")
     def open(self):
         """Open connection to the camera"""
         if self.hcam is None:
@@ -115,8 +117,16 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         cam_info=lib.is_GetCameraInfo(self.hcam)
         dll_ver=lib.is_GetDLLVersion()
         dll_ver="{}.{}.{}".format((dll_ver>>24),(dll_ver>>16)&0xFF,dll_ver&0xFFFF)
-        return TDeviceInfo(py3.as_str(sen_info.strSensorName),py3.as_str(cam_info.ID),py3.as_str(cam_info.SerNo),py3.as_str(cam_info.Version),
+        cam_id=self.get_camera_id()
+        return TDeviceInfo(cam_id,py3.as_str(sen_info.strSensorName),py3.as_str(cam_info.ID),py3.as_str(cam_info.SerNo),py3.as_str(cam_info.Version),
             py3.as_str(cam_info.Date),dll_ver,cam_info.Type)
+    def get_camera_id(self):
+        """Get the current camera id"""
+        return lib.is_SetCameraID(self.hcam,uc480_defs.CAMID.IS_GET_CAMERA_ID)
+    def set_camera_id(self, cam_id):
+        """Set the new camera id (stored in non-volatile memory, i.e., survives power cycling)"""
+        lib.is_SetCameraID(self.hcam,cam_id)
+        return self.get_camera_id()
     def _get_sensor_info(self):
         return lib.is_GetSensorInfo(self.hcam)
 
