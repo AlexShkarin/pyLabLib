@@ -893,6 +893,14 @@ class QThreadController(QtCore.QObject):
         Local call method.
         """
         self._get_exec_note(point).fail()
+    def get_exec_counter(self, point):
+        """
+        Get the counter (number of notifications) for the given point.
+
+        See :meth:`sync_exec_point` for details.
+        External call.
+        """
+        return self._get_exec_note(point).wait(-1)-1
     def sync_exec_point(self, point, timeout=None, counter=1):
         """
         Wait for the given execution point.
@@ -903,7 +911,7 @@ class QThreadController(QtCore.QObject):
         Return actual number of notifier calls up to date.
         External call method.
         """
-        return self._get_exec_note(point).wait(timeout=timeout,state=counter)
+        return self._get_exec_note(point).wait(timeout=timeout,state=counter)-1
     def add_stop_notifier(self, func, call_if_stopped=True):
         """
         Add stop notifier: a function which is called when the thread is about to be stopped (left the main message loop).

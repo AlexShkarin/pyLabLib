@@ -115,20 +115,22 @@ class ICamera(interface.IDevice):
         Context manager which temporarily pauses acquisition during execution of ``with`` block.
 
         Useful for applying certain settings which can't be changed during the acquisition.
+        If ``clear==True``, clear acquisition in addition to pausing (by default, use the class default specified as ``_clear_pausing_acquisition`` attribute).
+        Yields tuple ``(acq_in_progress, acq_params)``, which indicates whether acquisition is currently in progress, and what are the current acquisition parameters.
         """
         if clear is None:
             clear=self._clear_pausing_acquisition
         acq_in_progress=self.acquisition_in_progress()
+        acq_params=self.get_acquisition_parameters()
         self.stop_acquisition()
         if clear:
-            acq_params=self.get_acquisition_parameters()
             self.clear_acquisition()
         try:
-            yield
+            yield acq_in_progress, acq_params
         finally:
-            if clear and acq_params:
-                self.setup_acquisition(**acq_params)
-            if acq_in_progress:
+            if clear and acq_params and not self.get_acquisition_parameters():
+                self.setup_acquisition()
+            if acq_in_progress and not self.acquisition_in_progress():
                 self.start_acquisition()
 
     ### Camera info ###
@@ -227,8 +229,8 @@ class ICamera(interface.IDevice):
         ``"xyt"`` (first index column, second index row, rows counted from the top), or ``"xyb"`` (same as ``"xyt"``, rows counted from the bottom)
         """
         return self._image_indexing
-    _p_indexing=interface.EnumParameterClass("indexing",["rct","rcb","xyt","xyb"])
-    @interface.use_parameters
+    _p_indexing=interface.EnumParameterClass("frame_indexing",["rct","rcb","xyt","xyb"])
+    @interface.use_parameters(indexing="frame_indexing")
     def set_image_indexing(self, indexing):
         """
         Set up indexing for the returned images.

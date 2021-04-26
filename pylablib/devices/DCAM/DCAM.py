@@ -65,6 +65,8 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
         return self.idx
     def open(self):
         """Open connection to the camera"""
+        if self.handle is not None:
+            return
         ncams=get_cameras_number()
         if self.idx>=ncams:
             raise DCAMError("camera index {} is not available ({} cameras exist)".format(self.idx,ncams))

@@ -159,9 +159,9 @@ class IMAQdxLib:
         #  ctypes.c_int IMAQdxReadRegister(IMAQdxSession id, uInt32 offset, ctypes.POINTER(uInt32) value)
         self.IMAQdxReadRegister=wrapper(lib.IMAQdxReadRegister, rvals=["value"])
         #  ctypes.c_int IMAQdxWriteMemory(IMAQdxSession id, uInt32 offset, ctypes.c_char_p values, uInt32 count)
-        self.IMAQdxWriteMemory=wrapper(lib.IMAQdxWriteMemory, args=["id", "offset", "values"], argprep={"count": lambda values: len(values)})
+        self.IMAQdxWriteMemory=wrapper(lib.IMAQdxWriteMemory, args=["id", "offset", "values"], argprep={"count": lambda values: len(values)})  # pylint: disable=unnecessary-lambda
         #  ctypes.c_int IMAQdxReadMemory(IMAQdxSession id, uInt32 offset, ctypes.c_char_p values, uInt32 count)
-        self.IMAQdxReadMemory=wrapper(lib.IMAQdxReadMemory, args=["id", "offset", "count"], argprep={"values": lambda count: ctypes.create_string_buffer(count)})
+        self.IMAQdxReadMemory=wrapper(lib.IMAQdxReadMemory, args=["id", "offset", "count"], argprep={"values": lambda count: ctypes.create_string_buffer(count)})  # pylint: disable=unnecessary-lambda
         #  ctypes.c_int IMAQdxWriteAttributes(IMAQdxSession id, ctypes.c_char_p filename)
         self.IMAQdxWriteAttributes=wrapper(lib.IMAQdxWriteAttributes)
         #  ctypes.c_int IMAQdxReadAttributes(IMAQdxSession id, ctypes.c_char_p filename)

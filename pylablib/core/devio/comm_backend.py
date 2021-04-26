@@ -313,7 +313,7 @@ try:
                 instr.write_termination=self.term_write
                 self.term_read=self.term_write=""
                 return instr
-            _lock_default=False ## TODO: figure out GPIB locking issue
+            _lock_default=False
             @reraise
             def _lock(self, timeout=None):
                 self.instr.lock(timeout=timeout*1000. if timeout is not None else None)

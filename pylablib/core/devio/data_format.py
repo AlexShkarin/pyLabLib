@@ -131,7 +131,7 @@ class DataFormat:
         return "{0}('{1}')".format(self.__class__.__name__,self.__str__())
     
     def convert_from_str(self, data):
-        """Convert the string data into an array."""
+        """Convert the string data into an array"""
         if self.is_ascii():
             if isinstance(data,py3.bytestring):
                 data=[e.strip() for e in re.split(br"\s*,\s*|\s+",data)]
@@ -139,7 +139,7 @@ class DataFormat:
                 data=[e.strip() for e in re.split(r"\s*,\s*|\s+",data)]
             return np.array([float(e) for e in data if e])
         else:
-            return np.fromstring(data,dtype=self.to_desc("numpy"))
+            return np.require(np.frombuffer(data,dtype=self.to_desc("numpy")),requirements="W")
     def convert_to_str(self, data, ascii_format=".5f"):
         """
         Convert the array into a string data.

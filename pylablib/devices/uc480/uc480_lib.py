@@ -402,7 +402,7 @@ class uc480Lib:
             return None
         size_arg=func.argnames[-1]
         bare_func=ctypes_wrap.CFunctionWrapper(errcheck=errcheck())(func, args=["hCam","nCommand","param"], rvals=[],
-            argprep={"pParam":lambda param: ctypes.pointer(param), size_arg: lambda param: ctypes.sizeof(param)})
+            argprep={"pParam":lambda param: ctypes.pointer(param), size_arg: lambda param: ctypes.sizeof(param)})  # pylint: disable=unnecessary-lambda
         def wrapped_func(hCam, nCommand, dtype, value=None):
             value=self._prep_arg(dtype,value)
             bare_func(hCam,nCommand,value)

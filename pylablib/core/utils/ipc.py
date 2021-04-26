@@ -243,9 +243,9 @@ class SharedMemIPCTable(object):
         if kind=="pickle":
             return pickle.loads(sval)
         elif kind.startswith("nps_"):
-            return np.fromstring(sval,dtype=kind[4:])[0]
+            return np.frombuffer(sval,dtype=kind[4:])[0]
         elif kind.startswith("npa_"):
-            return np.fromstring(sval,dtype=kind[4:])
+            return np.require(np.frombuffer(sval,dtype=kind[4:]),requirements="W")
         return default
     __getitem__=get_variable
 

@@ -157,15 +157,15 @@ class PFCamLib:
         #  ctypes.c_int pfDevice_GetProperty(ctypes.c_int port, ctypes.c_ulong p, ctypes.POINTER(PFValue) value)
         lib.pfDevice_GetProperty.argtypes=[ctypes.c_int, ctypes.c_ulong, ctypes.POINTER(PFValue)]
         self.pfDevice_GetProperty_lib=wrapper(lib.pfDevice_GetProperty, args="all", rvals=[],
-            argprep={"value": lambda value: ctypes.pointer(value)}, byref=[])
+            argprep={"value": lambda value: ctypes.pointer(value)}, byref=[])  # pylint: disable=unnecessary-lambda
         #  ctypes.c_int pfDevice_SetProperty(ctypes.c_int port, ctypes.c_ulong p, ctypes.POINTER(PFValue) value)
         lib.pfDevice_SetProperty.argtypes=[ctypes.c_int, ctypes.c_ulong, ctypes.POINTER(PFValue)]
         self.pfDevice_SetProperty_lib=wrapper(lib.pfDevice_SetProperty, args="all", rvals=[],
-            argprep={"value": lambda value: ctypes.pointer(value)}, byref=[])
+            argprep={"value": lambda value: ctypes.pointer(value)}, byref=[])  # pylint: disable=unnecessary-lambda
         #  ctypes.c_int pfValue_ToString(ctypes.POINTER(PFValue) val, ctypes.c_char_p outs, ctypes.c_int len)
         lib.pfValue_ToString.argtypes=[ctypes.POINTER(PFValue), ctypes.c_char_p, ctypes.c_int]
         self.pfValue_ToString=wrapper(lib.pfValue_ToString, args="all", rvals=["outs"],
-            argprep={"outs":strprep, "len":PFCAM_MAX_API_STRING_LENGTH, "val": lambda val: ctypes.pointer(val)}, byref=[])
+            argprep={"outs":strprep, "len":PFCAM_MAX_API_STRING_LENGTH, "val": lambda val: ctypes.pointer(val)}, byref=[])  # pylint: disable=unnecessary-lambda
 
         self._initialized=True
 

@@ -334,7 +334,7 @@ def buffconv(size_arg_pos, dtype):
     def conv(buff, *args, **kwargs):  # pylint: disable=unused-argument
         n=args[size_arg_pos]
         data=ctypes.string_at(buff,n*dformat.size)
-        return np.fromstring(data,dtype=dformat.to_desc("numpy"))
+        return np.require(np.frombuffer(data,dtype=dformat.to_desc("numpy")),requirements="W")
     return conv
 
 

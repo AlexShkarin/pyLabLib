@@ -343,7 +343,7 @@ class PCOSC2Lib:
             argprep={"dwSetup":(DWORD*4), "wLen":4}, rconv={"dwSetup": lambda v:v[:4]}, byref=["wType","wLen"])
         #  ctypes.c_int PCO_SetCameraSetup(HANDLE ph, WORD wType, ctypes.POINTER(DWORD) dwSetup, WORD wLen)
         self.PCO_SetCameraSetup=wrapper(lib.PCO_SetCameraSetup, args=["ph","dwSetup"],
-            argprep={"dwSetup": lambda dwSetup: build_arr(DWORD,4)(dwSetup), "wLen":4}, rconv={"dwSetup": lambda v:v[:4]}, byref=["wType","wLen"])
+            argprep={"dwSetup": lambda dwSetup: build_arr(DWORD,4)(dwSetup), "wLen":4}, rconv={"dwSetup": lambda v:v[:4]}, byref=["wType","wLen"])  # pylint: disable=unnecessary-lambda
         #  ctypes.c_int PCO_GetSensorStruct(HANDLE ph, ctypes.POINTER(PCO_Sensor) strSensor)
         self.PCO_GetSensorStruct=wrapper(lib.PCO_GetSensorStruct,
             argprep={"strSensor":CPCO_Sensor.prep_struct}, rconv={"strSensor":CPCO_Sensor.tup_struct})
@@ -432,7 +432,7 @@ class PCOSC2Lib:
         self.PCO_SetCDIMode=wrapper(lib.PCO_SetCDIMode)
         #  ctypes.c_int PCO_ControlCommandCall(HANDLE ph, ctypes.c_void_p buf_in, ctypes.c_uint size_in, ctypes.c_void_p buf_out, ctypes.c_uint size_out)
         self.PCO_ControlCommandCall=wrapper(lib.PCO_ControlCommandCall, args=["ph","buf_in","size_out"], rvals=["buf_out"],
-            argprep={"size_in":lambda buf_in:len(buf_in), "buf_out": lambda size_out: ctypes.create_string_buffer(size_out)}, byref=[])
+            argprep={"size_in":lambda buf_in:len(buf_in), "buf_out": lambda size_out: ctypes.create_string_buffer(size_out)}, byref=[])  # pylint: disable=unnecessary-lambda
 
         
         #  ctypes.c_int PCO_GetTimingStruct(HANDLE ph, ctypes.POINTER(PCO_Timing) strTiming)
@@ -454,7 +454,7 @@ class PCOSC2Lib:
             argprep={"dwDelay": countprep, "dwExposure":countprep}, rconv={"dwDelay": countconv, "dwExposure":countconv}, byref=["wTimeBaseDelay","wTimeBaseExposure"])
         #  ctypes.c_int PCO_SetDelayExposureTimeTable(HANDLE ph, ctypes.POINTER(DWORD) dwDelay, ctypes.POINTER(DWORD) dwExposure, WORD wTimeBaseDelay, WORD wTimeBaseExposure, WORD wCount)
         self.PCO_SetDelayExposureTimeTable=wrapper(lib.PCO_SetDelayExposureTimeTable, args="all",
-            argprep={"dwDelay":lambda dwDelay: build_arr(DWORD)(dwDelay), "dwExposure":lambda dwExposure: build_arr(DWORD)(dwExposure),
+            argprep={"dwDelay":lambda dwDelay: build_arr(DWORD)(dwDelay), "dwExposure":lambda dwExposure: build_arr(DWORD)(dwExposure),  # pylint: disable=unnecessary-lambda
             "wCount":lambda dwDelay,dwExposure: max(len(dwDelay),len(dwExposure))})
         #  ctypes.c_int PCO_GetFrameRate(HANDLE ph, ctypes.POINTER(WORD) wFrameRateStatus, ctypes.POINTER(DWORD) dwFrameRate, ctypes.POINTER(DWORD) dwFrameRateExposure)
         self.PCO_GetFrameRate=wrapper(lib.PCO_GetFrameRate)
@@ -557,7 +557,7 @@ class PCOSC2Lib:
             argprep={"dwRamSegSize":(DWORD*4)}, rconv={"dwRamSegSize": lambda v:v[:4]}, byref=[])
         #  ctypes.c_int PCO_SetCameraRamSegmentSize(HANDLE ph, ctypes.POINTER(DWORD) dwRamSegSize)
         self.PCO_SetCameraRamSegmentSize=wrapper(lib.PCO_SetCameraRamSegmentSize, args="all",
-            argprep={"dwRamSegSize": lambda dwRamSegSize: build_arr(DWORD,4)(dwRamSegSize)}, rconv={"dwRamSegSize": lambda v:v[:4]}, byref=[])
+            argprep={"dwRamSegSize": lambda dwRamSegSize: build_arr(DWORD,4)(dwRamSegSize)}, rconv={"dwRamSegSize": lambda v:v[:4]}, byref=[])  # pylint: disable=unnecessary-lambda
         #  ctypes.c_int PCO_ClearRamSegment(HANDLE ph)
         self.PCO_ClearRamSegment=wrapper(lib.PCO_ClearRamSegment)
         #  ctypes.c_int PCO_GetActiveRamSegment(HANDLE ph, ctypes.POINTER(WORD) wActSeg)

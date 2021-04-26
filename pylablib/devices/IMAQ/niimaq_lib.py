@@ -89,7 +89,7 @@ class IMAQLib:
 
         #  Int32 imgSessionSerialWrite(SESSION_ID sid, ctypes.c_char_p buffer, ctypes.POINTER(uInt32) bufSize, uInt32 timeout)
         self.imgSessionSerialWrite=wrapper(lib.imgSessionSerialWrite, ["sid","buffer","timeout"],
-            argprep={"bufSize":lambda buffer:len(buffer)}, byref=["bufSize"])
+            argprep={"bufSize":lambda buffer:len(buffer)}, byref=["bufSize"])  # pylint: disable=unnecessary-lambda
         #  Int32 imgSessionSerialRead(SESSION_ID sid, ctypes.c_char_p buffer, ctypes.POINTER(uInt32) bufSize, uInt32 timeout)
         self.imgSessionSerialRead=wrapper(lib.imgSessionSerialRead, ["sid","bufSize","timeout"], ["buffer","bufSize"],
             argprep={"buffer":lambda bufSize:ctypes.create_string_buffer(bufSize+1)}, byref=["bufSize"])
@@ -130,7 +130,7 @@ class IMAQLib:
         self.imgSetBufferElement2.errcheck=errcheck(lib=self)
 
         #  Int32 imgRingSetup(SESSION_ID sid, uInt32 numberBuffer, ctypes.POINTER(ctypes.c_void_p) bufferList, uInt32 skipCount, uInt32 startnow)
-        self.imgRingSetup=wrapper(lib.imgRingSetup) # TODO: check rvals
+        self.imgRingSetup=wrapper(lib.imgRingSetup)
         #  Int32 imgSequenceSetup(SESSION_ID sid, uInt32 numberBuffer, ctypes.POINTER(ctypes.c_void_p) bufferList, ctypes.POINTER(uInt32) skipCount, uInt32 startnow, uInt32 async)
         self.imgSequenceSetup=wrapper(lib.imgSequenceSetup,alias={"async":"run_async"})
         #  Int32 imgSessionStartAcquisition(SESSION_ID sid)

@@ -100,13 +100,13 @@ class QMultiThreadNotifier(object):
         """Notify all waiting threads"""
         with self._lock:
             self._cnt+=1
-            cnt=self._cnt
+            ncnt=self._cnt+1
             notifiers=[]
             for k in list(self._notifiers):
                 if k<=self._cnt:
                     notifiers+=self._notifiers.pop(k)
         for n in notifiers:
-            n.notify(cnt)
+            n.notify(ncnt)
     def fail(self):
         """
         Mark notifier as fails

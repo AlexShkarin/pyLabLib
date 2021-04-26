@@ -140,6 +140,7 @@ class Dictionary:
                 self._data=root
         else:
             self._data={}
+        self.ptr=ItemAccessor(getter=self.branch_pointer)
     
     def _make_similar_dict(self, root=None, copy=True):
         return Dictionary(root=root,copy=copy,case_normalization=self._case_normalization)
@@ -681,9 +682,7 @@ class Dictionary:
     
     def get_path(self): return [] # for compatibility with pointer
     def branch_pointer(self, branch=""):
-        """
-        Get a :class:`DictionaryPointer` of a given branch.
-        """
+        """Get a :class:`DictionaryPointer` of a given branch"""
         return DictionaryPointer(self,branch,case_normalization=self._case_normalization,copy=False)
     def _fast_build_branch_pointer(self, norm_path, node):
         return DictionaryPointer._fast_build(self,norm_path,node,case_normalization=self._case_normalization,copy=False)
