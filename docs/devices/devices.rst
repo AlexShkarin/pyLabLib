@@ -68,7 +68,10 @@ Operation
 
 The devices are controlled by calling their methods; attributes and properties are very rarely used. Effort is made to maintain consistent naming conventions, e.g., most getter-methods will start with ``get_`` and setter methods with ``set_`` or ``setup_`` (depending on the complexity of the method). It is also common for setter methods to return the new value as a result, which is useful in CLI operation and debugging. Devices of the same kind have the same names for similar or identical functions: most stages have ``move_by``, ``jog`` and ``stop`` methods, and cameras have ``wait_for_frame`` and ``read_multiple_images`` methods. Whenever it makes sense, these methods will also have the same signatures.
 
-For simplicity of usage and construction, devices interfaces tend to be synchronous and single-threaded. Asynchronous operation is achieved by explicit usage of Python multi-threading.
+Multi-threading
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For simplicity of usage and construction, devices interfaces are designed to be synchronous and single-threaded. Asynchronous operation can be achieved by explicit usage of Python multi-threading. Furthermore, it is not recommended to use the same device simultaneously from two separate threads; however, non-simultaneous calling device methods from different threads (e.g., using locks) and simultaneous usage of several separate devices of the same class is supported.
 
 
 Error handling

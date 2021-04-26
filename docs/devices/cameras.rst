@@ -183,6 +183,7 @@ The trigger is usually set up using ``set_trigger_mode`` method, although it mig
 Frame metainfo
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+Many cameras supply additional information together with the frames. Most frequently it includes the internal framestamp and timestamp (which are useful for tracking missing frames), but sometimes it also includes additional information such as frame size or location, status, or auxiliary input bits. To get this information, you can supply the argument ``return_info=True`` to the ``read_multiple_images`` method. In this case, instead of a single list of frames, it will return a tuple of two lists, where the second list contains this metainfo. Each frame's metainfo is represented by a named tuple, whose structure differs for different cameras.
 
 
 Currently supported cameras

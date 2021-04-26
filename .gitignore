@@ -1,6 +1,10 @@
 tools/
 legacy/
 examples/
+dlls/
+tests/devices/devlists
+
+local_python_interp_cmd.bat
 
 docs/_build
 docs/_static

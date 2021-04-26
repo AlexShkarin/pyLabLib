@@ -37,10 +37,12 @@ def pytest_collection_modifyitems(config, items):
             if skip:
                 item.add_marker(pytest.mark.skip("skipping non-device test"))
 
-
+@pytest.fixture(scope="class")
+def library_parameters():
+    pass
 
 @pytest.fixture(scope="class")
-def device(request):
+def device(request, library_parameters):
     devcls=request.cls.devcls
     devargs=getattr(request.cls,"devargs",())
     open_retry=getattr(request.cls,"open_retry",0)

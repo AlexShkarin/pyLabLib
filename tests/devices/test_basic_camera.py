@@ -21,7 +21,7 @@ class CameraTester(DeviceTester):
     In addition to the basic device tests, also performs basic camera testing.
     """
     grab_size=10
-    @pytest.mark.devchange(1)
+    @pytest.mark.devchange(2)
     def test_snap_grab(self, device):
         """Test snapping and grabbing functions"""
         device.set_roi()
@@ -29,17 +29,16 @@ class CameraTester(DeviceTester):
         assert isinstance(img,np.ndarray)
         assert img.ndim==2
         assert img.shape==device.get_data_dimensions()
+        img*=2
         imgs=device.grab(self.grab_size)
         assert isinstance(imgs,list)
         assert isinstance(imgs[0],np.ndarray)
         assert imgs[0].ndim==2
         assert imgs[0].shape==device.get_data_dimensions()
-    @pytest.mark.devchange(1)
     def test_multisnap(self, device, stress_factor):
         """Test snapping and grabbing functions"""
         for _ in range(5*stress_factor):
             device.snap()
-    @pytest.mark.devchange(1)
     def test_multigrab(self, device, stress_factor):
         """Test snapping and grabbing functions"""
         for _ in range(stress_factor):

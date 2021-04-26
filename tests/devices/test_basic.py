@@ -30,15 +30,16 @@ class DeviceTester:
         """Test info getting errors"""
         info=device.get_full_info(self.include)
         print(device,info)
-    @pytest.mark.devchange(1)
+    @pytest.mark.devchange(2)
     def test_get_set_all(self, device):
         """Test getting and re-applying settings error"""
         settings=device.get_settings(self.include)
         print(device,settings)
+        for k in self.get_set_all_exclude:
+            del settings[k]
         device.apply_settings(settings)
         new_settings=device.get_settings(self.include)
         for k in self.get_set_all_exclude:
-            del settings[k]
             del new_settings[k]
         assert new_settings==settings
 
