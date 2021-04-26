@@ -71,6 +71,7 @@ class PM100(SCPI.SCPIDevice):
         Can be ``"power"``, ``"energy"``, ``"voltage"``, ``"current"``, or ``"frequency"``.
         """
         return self.ask(":CONFIGURE?")
+    @interface.use_parameters
     def set_sensor_mode(self, sensor_mode="power"):
         """
         Set current sensor mode.

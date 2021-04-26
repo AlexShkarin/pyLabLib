@@ -25,18 +25,19 @@ class TPG26x(comm_backend.ICommBackendWrapper):
     def __init__(self, conn):
         instr=comm_backend.new_backend(conn,"serial",term_read="\r\n",term_write="",defaults={"serial":("COM1",9600)},reraise_error=PfeifferBackendError)
         comm_backend.ICommBackendWrapper.__init__(self,instr)
-        smux=([1,2],)
-        self._add_status_variable("pressure",lambda channel: self.get_pressure(channel,status_error=False),ignore_error=(PfeifferError,),mux=smux,priority=5)
-        self._add_status_variable("channel_status",self.get_channel_status,mux=smux,priority=5)
+        gmux=([1,2],)
+        smux=([1,2],1)
+        self._add_status_variable("pressure",lambda channel: self.get_pressure(channel,status_error=False),ignore_error=(PfeifferError,),mux=gmux,priority=5)
+        self._add_status_variable("channel_status",self.get_channel_status,mux=gmux,priority=5)
         self._add_status_variable("units",self.get_units)
         self._add_status_variable("enabled",self.is_enabled,priority=2)
         self._add_status_variable("switch_status",self.get_switch_status)
-        self._add_info_variable("gauge_kind",self.get_gauge_kind,mux=smux)
+        self._add_info_variable("gauge_kind",self.get_gauge_kind,mux=gmux)
         self._add_settings_variable("display_channel",self.get_display_channel,self.set_display_channel)
         self._add_settings_variable("measurement_filter",self.get_measurement_filter,self.set_measurement_filter,mux=smux)
         self._add_settings_variable("calibration_factor",self.get_calibration_factor,self.set_calibration_factor,mux=smux,priority=-2)
         self._add_status_variable("switch_settings",self.get_switch_settings,mux=([1,2,3,4],),priority=-2)
-        self._add_status_variable("gauge_control_settings",self.get_gauge_control_settings,mux=smux,priority=-2)
+        self._add_status_variable("gauge_control_settings",self.get_gauge_control_settings,mux=gmux,priority=-2)
         try:
             self.query("BAU")
         except self.instr.Error:
@@ -114,7 +115,6 @@ class TPG26x(comm_backend.ICommBackendWrapper):
     def get_display_resolution(self):
         """Get controller display resolution (number of digits)"""
         return self.query("DCD","int")
-    @interface.use_parameters
     def set_display_resolution(self, resolution=2):
         """Set controller display resolution (number of digits)"""
         return self.query("DCD,{}".format(resolution),"int")
@@ -125,7 +125,7 @@ class TPG26x(comm_backend.ICommBackendWrapper):
         """
         Check if the gauge at the given channel is enabled.
         
-        IF the gauge cannot be turned on/off (e.g., not connected), return ``None``.
+        If the gauge cannot be turned on/off (e.g., not connected), return ``None``.
         """
         return self.query("SEN",["int","int"])[channel-1]
     @interface.use_parameters(_returns="gauge_enabled")
@@ -180,7 +180,7 @@ class TPG26x(comm_backend.ICommBackendWrapper):
         return self.query("CAL","float")[channel-1]
     @interface.use_parameters
     def set_calibration_factor(self, coefficient, channel=1):
-        """Set gauge measurement filter (``"fast"``, ``"medium"``, or ``"slow"``)"""
+        """Set gauge calibration factor"""
         curr_coefficient=self.query("CAL","float")
         curr_coefficient[channel-1]=coefficient
         return self.query("CAL,{},{}".format(*curr_coefficient),"float")[channel-1]

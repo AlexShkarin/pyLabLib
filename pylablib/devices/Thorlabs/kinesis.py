@@ -2,6 +2,8 @@ from ...core.devio import interface, comm_backend
 from ...core.utils import general, funcargparse, py3
 from .base import ThorlabsError, ThorlabsTimeoutError, ThorlabsBackendError
 
+from ..interface.stage import IStage
+
 import struct
 import warnings
 
@@ -189,9 +191,9 @@ TJogParams=collections.namedtuple("TJogParams",["mode","step_size","min_velocity
 TGenMoveParams=collections.namedtuple("TGenMoveParams",["backlash_distance"])
 THomeParams=collections.namedtuple("THomeParams",["home_direction","limit_switch","velocity","offset_distance"])
 TLimitSwitchParams=collections.namedtuple("TLimitSwitchParams",["hw_kind_cw","hw_kind_ccw","hw_swapped","sw_position_cw","sw_position_ccw","sw_kind"])
-class KinesisDevice(BasicKinesisDevice):
+class KinesisDevice(BasicKinesisDevice,IStage):
     def __init__(self, conn, timeout=3.):
-        BasicKinesisDevice.__init__(self,conn,timeout=timeout)
+        super().__init__(conn,timeout=timeout)
         self._forward_positive=False
     def _get_status_n(self, channel=1):
         """
@@ -238,7 +240,7 @@ class KinesisDevice(BasicKinesisDevice):
                 raise ThorlabsTimeoutError
             time.sleep(period)
 
-    def _home(self, channel=1, sync=True, force=False, timeout=None):
+    def _home(self, sync=True, force=False, channel=1, timeout=None):
         """
         Home the device.
 
@@ -317,7 +319,6 @@ class KinesisDevice(BasicKinesisDevice):
         If ``scale==True``, assume that the position is in the physical units (see class description); otherwise, assume it is in the device internal units (steps).
         """
         self.send_comm_data(0x0453,struct.pack("<Hi",channel,self._p2d(position,"p",scale=scale)))
-    _p_direction=interface.EnumParameterClass("direction",[("+",True),(1,True),("-",False),(0,False)])
     @interface.use_parameters
     def _jog(self, direction, channel=1, kind="continuous"):
         """
@@ -340,7 +341,7 @@ class KinesisDevice(BasicKinesisDevice):
         """Wait until motion command is done"""
         return self._wait_for_status(self._moving_status,False,channel=channel,timeout=timeout)
 
-    def _stop(self, channel=1, immediate=False, sync=True, timeout=None):
+    def _stop(self, immediate=False, sync=True, channel=1, timeout=None):
         """
         Stop the motion.
 
@@ -367,7 +368,7 @@ class KinesisDevice(BasicKinesisDevice):
         acceleration=self._d2p(acceleration,"a",scale=scale)
         max_velocity=self._d2p(max_velocity,"v",scale=scale)
         return TVelocityParams(min_velocity,acceleration,max_velocity)
-    def _setup_velocity(self, channel=1, min_velocity=None, acceleration=None, max_velocity=None, scale=True):
+    def _setup_velocity(self, min_velocity=None, acceleration=None, max_velocity=None, channel=1, scale=True):
         """
         Set velocity parameters.
         
@@ -399,14 +400,14 @@ class KinesisDevice(BasicKinesisDevice):
         max_velocity=self._d2p(max_velocity,"v",scale=scale)
         return TJogParams(mode,step_size,min_velocity,acceleration,max_velocity,stop_mode)
     @interface.use_parameters(mode="jog_mode",stop_mode="jog_stop_mode")
-    def _setup_jog(self, channel=1, mode=None, step_size=None, min_velocity=None, acceleration=None, max_velocity=None, stop_mode=None, scale=True):
+    def _setup_jog(self, mode=None, step_size=None, min_velocity=None, acceleration=None, max_velocity=None, stop_mode=None, channel=1, scale=True):
         """
         Set jog parameters.
         
         If any parameter is ``None``, use the current value.
         If ``scale==True``, assume that the specified values are in the physical units (see class description); otherwise, assume it is in the device internal units.
         """
-        current_parameters=self._call_without_parameters(self._get_jog_parameters,channel=channel,scale=False)
+        current_parameters=self._wap._get_jog_parameters(channel=channel,scale=False)
         mode=current_parameters.mode if mode is None else mode
         step_size=current_parameters.step_size if step_size is None else self._p2d(step_size,"p",scale=scale)
         min_velocity=current_parameters.min_velocity if min_velocity is None else self._p2d(min_velocity,"v",scale=scale)
@@ -440,8 +441,7 @@ class KinesisDevice(BasicKinesisDevice):
         backlash_distance,=struct.unpack("<i",data[2:6])
         backlash_distance=self._d2p(backlash_distance,"p",scale=scale)
         return TGenMoveParams(backlash_distance)
-    @interface.use_parameters(mode="jog_mode",stop_mode="jog_stop_mode")
-    def _setup_gen_move(self, channel=1, backlash_distance=None, scale=True):
+    def _setup_gen_move(self, backlash_distance=None, channel=1, scale=True):
         """
         Set jog parameters.
         
@@ -469,14 +469,14 @@ class KinesisDevice(BasicKinesisDevice):
         offset_distance=self._d2p(offset_distance,"p",scale=scale)
         return THomeParams(home_direction,limit_switch,velocity,offset_distance)
     @interface.use_parameters
-    def _setup_homing(self, channel=1, home_direction=None, limit_switch=None, velocity=None, offset_distance=None, scale=True):
+    def _setup_homing(self, home_direction=None, limit_switch=None, velocity=None, offset_distance=None, channel=1, scale=True):
         """
         Set homing parameters.
         
         If any parameter is ``None``, use the current value.
         If ``scale==True``, assume that the specified values are in the physical units (see class description); otherwise, assume it is in the device internal units.
         """
-        current_parameters=self._call_without_parameters(self._get_homing_parameters,channel=channel,scale=False)
+        current_parameters=self._wap._get_homing_parameters(channel=channel,scale=False)
         home_direction=current_parameters.home_direction if home_direction is None else home_direction
         limit_switch=current_parameters.limit_switch if limit_switch is None else limit_switch
         velocity=current_parameters.velocity if velocity is None else self._p2d(velocity,"v",scale=scale)
@@ -504,16 +504,19 @@ class KinesisDevice(BasicKinesisDevice):
         sw_position_ccw=self._d2p(sw_position_ccw,"p",scale=scale)
         return TLimitSwitchParams(hw_kind_cw&0x7F,hw_kind_ccw&0x7F,swapped_cw,sw_position_cw,sw_position_ccw,sw_kind&0x7F)
     @interface.use_parameters(hw_kind_cw="hw_limit_kind",hw_kind_ccw="hw_limit_kind",sw_kind="sw_limit_kind")
-    def _setup_limit_switch(self, channel=1, hw_kind_cw=None, hw_kind_ccw=None, sw_position_cw=None, sw_position_ccw=None, sw_kind=None, scale=True):
+    def _setup_limit_switch(self, hw_kind_cw=None, hw_kind_ccw=None, hw_swapped=None, sw_position_cw=None, sw_position_ccw=None, sw_kind=None, channel=1, scale=True):
         """
         Set home parameters.
         
         If any parameter is ``None``, use the current value.
         If ``scale==True``, assume that the specified values are in the physical units (see class description); otherwise, assume it is in the device internal units (Steps).
         """
-        current_parameters=self._call_without_parameters(self._get_limit_switch_parameters,channel=channel,scale=False)
+        current_parameters=self._wap._get_limit_switch_parameters(channel=channel,scale=False)
         hw_kind_cw=current_parameters.hw_kind_cw if hw_kind_cw is None else hw_kind_cw
         hw_kind_ccw=current_parameters.hw_kind_ccw if hw_kind_ccw is None else hw_kind_ccw
+        if hw_swapped is not None:
+            hw_kind_cw=(hw_kind_cw&0x7F)|(0x80 if hw_swapped else 0x00)
+            hw_kind_ccw=(hw_kind_ccw&0x7F)|(0x80 if hw_swapped else 0x00)
         sw_position_cw=current_parameters.sw_position_cw if sw_position_cw is None else self._p2d(sw_position_cw,"p",scale=scale)
         sw_position_ccw=current_parameters.sw_position_ccw if sw_position_ccw is None else self._p2d(sw_position_ccw,"p",scale=scale)
         sw_kind=current_parameters.sw_kind if sw_kind is None else sw_kind
@@ -583,7 +586,7 @@ class MFF(KinesisDevice):
         transit_time,_,io1_oper_mode,io1_sig_mode,io1_pulse_width,io2_oper_mode,io2_sig_mode,io2_pulse_width=struct.unpack("<iiHHiHHi",data[2:26])
         return TFlipperParameters(transit_time*1E-3,io1_oper_mode,io1_sig_mode,io1_pulse_width*1E-3,io2_oper_mode,io2_sig_mode,io2_pulse_width*1E-3)
     @interface.use_parameters(io1_oper_mode="io_oper_mode",io1_sig_mode="io_sig_mode",io2_oper_mode="io_oper_mode",io2_sig_mode="io_sig_mode")
-    def setup_flipper(self, channel=1, transit_time=None, io1_oper_mode=None, io1_sig_mode=None, io1_pulse_width=None, io2_oper_mode=None, io2_sig_mode=None, io2_pulse_width=None):
+    def setup_flipper(self, transit_time=None, io1_oper_mode=None, io1_sig_mode=None, io1_pulse_width=None, io2_oper_mode=None, io2_sig_mode=None, io2_pulse_width=None, channel=1):
         """
         Set flipper parameters.
         
@@ -594,7 +597,7 @@ class MFF(KinesisDevice):
         If any parameter is ``None``, use the current value.
         For detailed mode description, see the flip mirror or APT manual.
         """
-        current_parameters=self._call_without_parameters(self.get_flipper_parameters,channel=channel)
+        current_parameters=self._wap.get_flipper_parameters(channel=channel)
         transit_time=current_parameters.transit_time if transit_time is None else transit_time
         transit_time=int(transit_time*1E3)
         transit_time_adc=int(1E7*transit_time**-1.591)

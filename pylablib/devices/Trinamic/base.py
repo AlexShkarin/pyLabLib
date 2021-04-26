@@ -1,5 +1,7 @@
 from ...core.devio import comm_backend, interface, DeviceError, DeviceBackendError
 
+from ..interface import stage
+
 from builtins import bytes
 import collections
 import time
@@ -11,7 +13,7 @@ class TrinamicError(DeviceError):
 class TrinamicBackendError(TrinamicError,DeviceBackendError):
     """Generic Trinamic backend communication error"""
 
-class TMCM1110(comm_backend.ICommBackendWrapper):
+class TMCM1110(comm_backend.ICommBackendWrapper,stage.IStage):
     """
     Trinamic stepper motor controller TMCM-1110 controlled using TMCL Firmware.
 
@@ -21,7 +23,7 @@ class TMCM1110(comm_backend.ICommBackendWrapper):
     Error=TrinamicError
     def __init__(self, conn):
         instr=comm_backend.new_backend(conn,"serial",term_read="",term_write="",timeout=3.,defaults={"serial":("COM1",9600)},reraise_error=TrinamicBackendError)
-        comm_backend.ICommBackendWrapper.__init__(self,instr)
+        super().__init__(instr)
         self._add_status_variable("position",self.get_position)
         self._add_settings_variable("velocity_parameters",self.get_velocity_parameters,self.setup_velocity)
         self._add_settings_variable("limit_switches_parameters",self.get_limit_switches_parameters,self.setup_limit_switches)
@@ -124,7 +126,6 @@ class TMCM1110(comm_backend.ICommBackendWrapper):
         """Set the current axis position as a reference (the actual motor position stays the same)"""
         self.set_axis_parameter(1,pos,addr=addr)
         return self.get_position(addr=addr)
-    _p_direction=interface.EnumParameterClass("direction",[("+",True),(1,True),("-",False),(0,False)])
     @interface.use_parameters
     def jog(self, direction, speed=None, addr=0):
         """

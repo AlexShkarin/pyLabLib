@@ -3,6 +3,7 @@
 from ..utils import functions, dictionary, general, py3, funcargparse
 import functools
 import contextlib
+import collections
 
 _device_var_kinds=["settings","status","info"]
 
@@ -21,6 +22,9 @@ class IDevice:
         self._add_info_variable("conn",self._get_connection_parameters,ignore_error=NotImplementedError)
         self.dv=dictionary.ItemAccessor(getter=self.get_device_variable,setter=self.set_device_variable)
         self._setup_parameter_classes()
+        self._wap=self.NoParameterCaller(self,"wap")
+        self._wip=self.NoParameterCaller(self,"wip")
+        self._wop=self.NoParameterCaller(self,"wop")
 
     def open(self):
         """Open the connection"""
@@ -67,12 +71,27 @@ class IDevice:
         if pc.name not in self._parameters:
             raise ValueError("parameter {} does not exist".format(pc.name))
         self._parameters[pc.name]=pc
-    def _call_without_parameters(self, method, *args, **kwargs):
-        """Call a given method without making parameter substitutions"""
-        if hasattr(method,"_unwrapped_method"):
-            return method._unwrapped_method(self,*args,**kwargs)
+    def _call_without_parameters(self, name, kind, args, kwargs):
+        """
+        Call a method with the given name without making parameter substitutions.
+        
+        `kind` can be ``"wip"`` (no input parameter substitutions), ``"wip"`` (no input parameter substitutions),
+        or ``"wap"`` (no parameter substitutions at all).
+        """
+        funcargparse.check_parameter_range(kind,"kind",["wap","wip","wop"])
+        method=getattr(self,name)
+        wpmethod="_{}_method".format(kind)
+        if hasattr(method,wpmethod):
+            return getattr(method,wpmethod)(self,*args,**kwargs) # supply self, since the unwrapped methods are unbound
         else:
             return method(*args,**kwargs)
+    class NoParameterCaller:
+        """Class to simplify caliing functions without a parameter"""
+        def __init__(self, device, kind):
+            self.device=device
+            self.kind=kind
+        def __getattr__(self, name):
+            return lambda *args,**kwargs: self.device._call_without_parameters(name,self.kind,args,kwargs)
     @staticmethod
     def _multiplex_func(func, choices, arg_pos=0, multiarg=True):
         def func_mux(args=None):
@@ -535,6 +554,10 @@ class CombinedParameterClass(IParameterClass):
 
 
 
+TRawParameterValue=collections.namedtuple("TRawParameterValue",["value"])
+def pval(value):
+    """Mark that the value has already been treated by the parameter class"""
+    return TRawParameterValue(value)
 
 def use_parameters(*args, **kwargs):
     """
@@ -553,8 +576,7 @@ def use_parameters(*args, **kwargs):
     def wrapper(func):
         sig=functions.funcsig(func)
         default_none={n for n,v in sig.defaults.items() if v is None}
-        @functools.wraps(func)
-        def wrapped(*args, **kwargs):
+        def parse_args(args, kwargs):
             device=None
             if sig.arg_names and sig.arg_names[0]=="self":
                 device=args[0] if args else kwargs["self"]
@@ -565,13 +587,21 @@ def use_parameters(*args, **kwargs):
             for n in all_args:
                 if n in default_none and all_args[n] is None: # allow None if it is the method's default
                     continue
+                if isinstance(all_args[n],TRawParameterValue): # marked as raw value
+                    all_args[n]=all_args[n].value
+                    continue
                 if n in params:
                     if params[n] is not None:
                         par=obj_params.get(params[n],params[n])
                         all_args[n]=par(all_args[n],device=device)
                 elif obj_params.get(n) is not None:
                     all_args[n]=obj_params[n](all_args[n],device=device)
-            res=func(**all_args)
+            return all_args
+        def parse_reply(res, args, kwargs):
+            device=None
+            if sig.arg_names and sig.arg_names[0]=="self":
+                device=args[0] if args else kwargs["self"]
+            obj_params=getattr(device,"_parameters",{})
             if returns is not None:
                 if isinstance(returns,(tuple,list)):
                     if len(returns)!=len(res):
@@ -583,6 +613,19 @@ def use_parameters(*args, **kwargs):
                     par=obj_params.get(returns,returns)
                     res=par.i(res,device=device)
             return res
-        wrapped._unwrapped_method=func
+        @functools.wraps(func)
+        def wrapped(*args, **kwargs):
+            all_args=parse_args(args,kwargs)
+            res=func(**all_args)
+            return parse_reply(res,args,kwargs)
+        def wrapped_wip(*args, **kwargs):
+            res=func(*args,**kwargs)
+            return parse_reply(res,args,kwargs)
+        def wrapped_wop(*args, **kwargs):
+            all_args=parse_args(args,kwargs)
+            return func(**all_args)
+        wrapped._wap_method=func
+        wrapped._wip_method=wrapped_wip
+        wrapped._wop_method=wrapped_wop
         return wrapped
     return wrapper

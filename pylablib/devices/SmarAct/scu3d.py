@@ -1,9 +1,11 @@
 from .SCU3DControl_lib import lib, SmarActError, EConfiguration
 from ...core.utils import general
 from ...core.devio import interface
+from ..interface import stage
 
 from ..utils import load_lib
 
+import collections
 import time
 
 
@@ -18,6 +20,32 @@ class LibraryController(load_lib.LibraryController):
 libctl=LibraryController(lib)
 
 
+TDeviceInfo=collections.namedtuple("TDeviceInfo",["device_id","firmware_version","dll_version"])
+def _parse_version(v):
+        return "{}.{}.{}.{}".format(*[(v>>(n*8))&0xFF for n in range(4)][::-1])
+def get_device_info(idx):
+    """
+    Get info of the devices with the given index.
+
+    Return tuple ``(device_id, firmware_version, dll_version)``.
+    """
+    with libctl.temp_open():
+        try:
+            device_id=lib.SA_GetDeviceID(idx)
+            dll_version=_parse_version(lib.SA_GetDLLVersion())
+            firmware_version=_parse_version(lib.SA_GetDeviceFirmwareVersion(idx))
+            return TDeviceInfo(device_id,dll_version,firmware_version)
+        except SmarActError:
+            return None
+def list_devices():
+    """List all connected devices"""
+    with libctl.temp_open():
+        try:
+            n=lib.SA_GetNumberOfDevices()
+            infos=[get_device_info(i) for i in range(n)]
+            return [i for i in infos if i is not None]
+        except SmarActError:
+            return []
 def get_devices_number():
     """Get number of connected SCU3D controller"""
     with libctl.temp_open():
@@ -26,30 +54,29 @@ def get_devices_number():
         except SmarActError:
             return 0
 
-
-class SCU3D(interface.IDevice):
+class SCU3D(stage.IMultiaxisStage):
     """
     SmarAct SCU3D translation stage controller.
 
     Args:
         idx(int): stage index
-        axis_mapping(str): 3-symbol string specifying indices of x, y and z axes (can be any permutation of ``"xyz"``)
         axis_dir(str): 3-symbol string specifying default directions of the axes (each symbol be ``"+"`` or ``"-"``)
     """
     Error=SmarActError
-    def __init__(self, idx=0, axis_mapping="xyz", axis_dir="+++"):
-        interface.IDevice.__init__(self)
-        self.connected=False
+    _axes=list("xyz")
+    def __init__(self, idx=0, axis_dir="+++"):
+        super().__init__()
         self.idx=idx
-        self.axis_mapping=axis_mapping
-        self.axis_dir=axis_dir
+        self.axis_dir=list(axis_dir)
         self._opid=None
         self.open()
-        self._add_settings_variable("axis_mapping",self.get_axis_mapping,self.set_axis_mapping)
+        self._add_info_variable("device_info",self.get_device_info)
         self._add_settings_variable("axis_dir",self.get_axis_dir,self.set_axis_dir)
-        self._add_status_variable("axis_status",self.get_status,mux=("xyz",))
-        self._add_status_variable("moving",self.is_moving,mux=("xyz",))
+        self._add_status_variable("axis_status",self.get_status)
+        self._add_status_variable("moving",self.is_moving)
 
+    def _get_connection_parameters(self):
+        return self.idx
     def open(self):
         """Open the connection to the stage"""
         if self._opid is None:
@@ -57,7 +84,6 @@ class SCU3D(interface.IDevice):
                 nstages=get_devices_number()
                 if self.idx>=nstages:
                     raise SmarActError("stage index {} is not available ({} stage exist)".format(self.idx,nstages))
-                lib.SA_InitDevices(EConfiguration.SA_SYNCHRONOUS_COMMUNICATION)
                 self._opid=libctl.open().opid
     def close(self):
         """Close the connection to the stage"""
@@ -67,25 +93,27 @@ class SCU3D(interface.IDevice):
     def is_opened(self):
         return self._opid is not None
 
-    def get_axis_mapping(self):
-        """Get axis mapping (a permutation of ``"xyz"`` describing the correspondence between these axes and channel numbers)"""
-        return self.axis_mapping
-    def set_axis_mapping(self, mapping):
-        """Set axis mapping (a permutation of ``"xyz"`` describing the correspondence between these axes and channel numbers)"""
-        self.axis_mapping=mapping
-        return self.get_axis_mapping()
+    def _parse_version(self, v):
+        return "{}.{}.{}.{}".format(*[(v>>(n*8))&0xFF for n in range(4)][::-1])
+    def get_device_info(self):
+        """
+        Get info of the devices with the given index.
+
+        Return tuple ``(device_id, firmware_version, dll_version)``.
+        """
+        return get_device_info(self.idx)
+
     def get_axis_dir(self):
         """Get axis direction convention (a string of 3 symbols which are either ``"+"`` or ``"-"`` determining if the axis direction is flipped)"""
-        return self.axis_dir
+        return list(self.axis_dir)
     def set_axis_dir(self, axis_dir):
         """Set axis direction convention (a string of 3 symbols which are either ``"+"`` or ``"-"`` determining if the axis direction is flipped)"""
-        self.axis_dir=axis_dir
+        self.axis_dir=list(axis_dir)
         return self.get_axis_dir()
 
-    def _get_axis(self, axis):
-        if axis in list(self.axis_mapping):
-            return self.axis_mapping.find(axis)
-        return axis
+    def _axisn(self, axis):
+        return self._axes.index(axis)
+    @interface.use_parameters
     def move_macrostep(self, axis, steps, voltage, frequency):
         """
         Move along a given axis by a single "macrostep", which consists of several regular steps.
@@ -93,9 +121,9 @@ class SCU3D(interface.IDevice):
         `voltage` (in Volts) and `frequency` (in Hz) specify the motion parameters.
         This simulates the controller operation, where one "step" at large step sizes consists of several small steps.
         """
-        axis=self._get_axis(axis)
-        axis_dir=-1 if self.axis_dir[axis]=="-" else 1
-        lib.SA_MoveStep_S(self.idx,axis,int(steps)*axis_dir,int(voltage*10),int(frequency))
+        axisn=self._axisn(axis)
+        axis_dir=-1 if self.axis_dir[axisn]=="-" else 1
+        lib.SA_MoveStep_S(self.idx,axisn,int(steps)*axis_dir,int(voltage*10),int(frequency))
     _move_presets=[ (1,25.3,1E3), (1,28,1E3), (1,32,1E3), (1,38,1E3), (1,47,1E3),
                     (1,60.5,1E3), (1,80.8,1E3), (2,65.6,1E3), (2,88.4,1E3), (4,88.4,1E3),
                     (7,100.,1E3), (14,100.,1E3), (28,100.,1E3), (56,100.,1.1E3), (100,100.,2.2E3), 
@@ -119,7 +147,12 @@ class SCU3D(interface.IDevice):
                     4:"holding",
                     5:"calibrating",
                     6:"moving_to_reference"}
-    def get_status(self, axis):
+    _p_channel_status=interface.EnumParameterClass("channel_status",general.invert_dict(_chan_status))
+    def _get_status_n(self, axis):
+        return lib.SA_GetStatus_S(self.idx,self._axisn(axis))
+    @stage.muxaxis
+    @interface.use_parameters(_returns="channel_status")
+    def get_status(self, axis="all"):
         """
         Get the axis status.
         
@@ -128,9 +161,9 @@ class SCU3D(interface.IDevice):
         ``"holding"`` (closed-loop position holding), ``"calibrating"`` (sensort calibration),
         or ``"moving_to_reference"`` (calibrating position sensor).
         """
-        status=lib.SA_GetStatus_S(self.idx,self._get_axis(axis))
-        return self._chan_status[status]
-    def wait_for_status(self, axis, status="stopped", timeout=3.):
+        return self._get_status_n(axis)
+    @interface.use_parameters(status="channel_status")
+    def wait_for_status(self, axis, status="stopped", timeout=30.):
         """
         Wait until the axis reaches a given status.
 
@@ -138,14 +171,22 @@ class SCU3D(interface.IDevice):
         """
         countdown=general.Countdown(timeout)
         while True:
-            cur_status=self.get_status(axis)
+            cur_status=self._get_status_n(axis)
             if cur_status==status:
                 return
             if countdown.passed():
                 raise SmarActError("status waiting timed out")
             time.sleep(1E-2)
-    def wait_move(self, axis, timeout=3.):
-        """Wait for a given axis to stop moving."""
-    def is_moving(self, axis):
+    def wait_move(self, axis, timeout=30.):
+        """Wait for a given axis to stop moving"""
+        return self.wait_for_status(axis,timeout=timeout)
+    @stage.muxaxis
+    def is_moving(self, axis="all"):
         """Check if a given axis is moving"""
         return self.get_status(axis)=="moving"
+
+    @stage.muxaxis
+    @interface.use_parameters
+    def stop(self, axis="all"):
+        """Stop motion at a given axis"""
+        lib.SA_Stop_S(self.idx,self._axisn(axis))

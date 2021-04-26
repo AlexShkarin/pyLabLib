@@ -160,7 +160,7 @@ class MDT69xA(ThorlabsSerialInterface):
     def set_voltage(self, voltage, channel="x"):
         """Set the output voltage in Volts at a given channel"""
         self.write(channel.upper()+"V{:.3f}".format(voltage))
-        return self.get_voltage(channel=channel)
+        return self._wip.get_voltage(channel=channel)
 
     def get_voltage_range(self):
         """Get the selected voltage range in Volts (75, 100 or 150)."""

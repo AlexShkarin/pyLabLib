@@ -525,7 +525,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
         """Reset buffer overflows counter"""
         self._overflows_counter=0
     _p_overflow_behavior=interface.EnumParameterClass("overflow_behavior",["error","restart","ignore"],match_prefix=False)
-    @interface.use_parameters(behavior=_p_overflow_behavior)
+    @interface.use_parameters(behavior="overflow_behavior")
     def set_overflow_behavior(self, behavior):
         """
         Choose the camera behavior if buffer overflow is encountered when waiting for a new frame.

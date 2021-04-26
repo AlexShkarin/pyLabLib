@@ -220,7 +220,7 @@ class VegaPowerMeter(OphirDevice):
         If the baudrate is different from the current one, close the device connection.
         The device object will need to be re-created with the newly specified baud rate.
         """
-        curr_baudrate=int(self.query("$BR0").split()[0])
+        curr_baudrate=self._wap.get_baudrate()
         self.query("$BR{}".format(baudrate))
         if curr_baudrate!=baudrate:
             self.close()

@@ -31,7 +31,7 @@ def list_usb_performax_devices():
     return [get_usb_device_info(d) for d in range(ndev)]
 
 
-class GenericPerformaxStage(stage.IStage,interface.IDevice):
+class GenericPerformaxStage(stage.IMultiaxisStage):
     """
     Generic Arcus Performax translation stage.
 
@@ -100,13 +100,6 @@ class GenericPerformaxStage(stage.IStage,interface.IDevice):
 
 
 
-def muxaxis(*args, **kwargs):
-    """Multiplex the function over its axis argument"""
-    if len(args)>0:
-        return muxaxis(**kwargs)(args[0])
-    def ax_func(self, *_, **__):
-        return self._axes
-    return general.muxcall("axis",all_arg_func=ax_func,mux_argnames=kwargs.get("mux_argnames",None),return_kind="list",allow_partial=True)
 class Performax4EXStage(GenericPerformaxStage):
     """
     Arcus Performax 4EX/4ET translation stage.
@@ -122,20 +115,18 @@ class Performax4EXStage(GenericPerformaxStage):
     _analog_inputs=range(1,9)
     def __init__(self, idx=0, enable=True):
         super().__init__(idx=idx)
-        self._add_parameter_class(interface.EnumParameterClass("axis",self._axes,value_case="upper"))
         self.enable_absolute_mode()
         if enable:
             self.enable_axis()
         self.enable_limit_errors(False)
         self._add_settings_variable("limit_errors_enabled",self.limit_errors_enabled,self.enable_limit_errors)
         self._add_status_variable("current_limit_errors",self.check_limit_error)
-        self._add_info_variable("axes",self.get_all_axes)
         self._add_status_variable("position",self.get_position)
         self._add_status_variable("encoder",self.get_encoder)
         self._add_status_variable("current_speed",self.get_current_axis_speed)
-        self._add_settings_variable("enabled",self.is_enabled,self.enable_axis)
+        self._add_settings_variable("enabled",self.is_enabled,lambda v: self.enable_axis("all",v))
         self._add_settings_variable("global_speed",self.get_global_speed,self.set_global_speed)
-        self._add_settings_variable("axis_speed",self.get_axis_speed,self.set_axis_speed)
+        self._add_settings_variable("axis_speed",self.get_axis_speed,lambda v: self.set_axis_speed("all",v))
         self._add_status_variable("axis_status",self.get_status)
         self._add_status_variable("moving",self.is_moving)
         self._add_status_variable("digital_input",self.get_digital_input_register,priority=-2)
@@ -169,17 +160,14 @@ class Performax4EXStage(GenericPerformaxStage):
         """
         return not bool(int(self.query("IERR")))
     
-    def get_all_axes(self):
-        """Get the list of all available axes"""
-        return list(self._axes)
     def _axisn(self, axis):
         return self._axes.index(axis)+1
-    @muxaxis
+    @stage.muxaxis
     @interface.use_parameters
     def is_enabled(self, axis="all"):
         """Check if the axis output is enabled"""
         return bool(int(self.query("EO{}".format(self._axisn(axis)))))
-    @muxaxis(mux_argnames="enable")
+    @stage.muxaxis(mux_argnames="enable")
     @interface.use_parameters
     def enable_axis(self, axis="all", enable=True):
         """
@@ -189,7 +177,7 @@ class Performax4EXStage(GenericPerformaxStage):
         """
         self.query("EO{}={}".format(self._axisn(axis),1 if enable else 0))
 
-    @muxaxis
+    @stage.muxaxis
     @interface.use_parameters
     def get_position(self, axis="all"):
         """Get the current axis pulse position"""
@@ -202,7 +190,7 @@ class Performax4EXStage(GenericPerformaxStage):
         Re-calibrate the pulse position counter so that the current position is set as `position` (0 by default).
         """
         self.query("P{}={:.0f}".format(axis,position))
-    @muxaxis
+    @stage.muxaxis
     @interface.use_parameters
     def get_encoder(self, axis="all"):
         """Get the current axis encoder value"""
@@ -222,7 +210,6 @@ class Performax4EXStage(GenericPerformaxStage):
     def move_by(self, axis, steps=1):
         """Move a given axis for a given number of steps"""
         self.move_to(axis,self.get_position(axis)+steps)
-    _p_direction=interface.EnumParameterClass("direction",[("+",True),(1,True),("-",False),(0,False)])
     @interface.use_parameters
     def jog(self, axis, direction):
         """
@@ -232,7 +219,7 @@ class Performax4EXStage(GenericPerformaxStage):
         The motion continues until it is explicitly stopped, or until a limit is hit.
         """
         self.query("J{}{}".format(axis,"+" if direction else "-"))
-    @muxaxis
+    @stage.muxaxis
     @interface.use_parameters
     def stop(self, axis="all", immediate=False):
         """
@@ -262,7 +249,7 @@ class Performax4EXStage(GenericPerformaxStage):
     def get_global_speed(self):
         """Get the global speed setting (in Hz); overridden by a non-zero axis speed"""
         return int(self.query(self._speed_comm))
-    @muxaxis
+    @stage.muxaxis
     @interface.use_parameters
     def get_axis_speed(self, axis="all"):
         """Get the individual axis speed setting (in Hz); 0 means that the global speed is used"""
@@ -270,12 +257,14 @@ class Performax4EXStage(GenericPerformaxStage):
     def set_global_speed(self, speed):
         """Set the global speed setting (in Hz); overridden by a non-zero axis speed"""
         self.query("{}={:.0f}".format(self._speed_comm,speed))
-    @muxaxis(mux_argnames="speed")
+        return self.get_global_speed()
+    @stage.muxaxis(mux_argnames="speed")
     @interface.use_parameters
     def set_axis_speed(self, axis, speed):
         """Set the individual axis speed setting (in Hz); 0 means that the global speed is used"""
         self.query("{}{}={:.0f}".format(self._speed_comm,axis,speed))
-    @muxaxis
+        return self._wap.get_axis_speed(axis)
+    @stage.muxaxis
     @interface.use_parameters
     def get_current_axis_speed(self, axis="all"):
         """Get the instantaneous speed (in Hz)"""
@@ -296,17 +285,17 @@ class Performax4EXStage(GenericPerformaxStage):
         else:
             stat=self.query("MST")
             return [int(x) for x in stat.split(":") if x]
-    @muxaxis
+    @stage.muxaxis
     @interface.use_parameters
     def get_status_n(self, axis="all"):
         """Get the axis status as an integer"""
         return self._get_full_status()[self._axisn(axis)-1]
-    @muxaxis
+    @stage.muxaxis
     def get_status(self, axis="all"):
         """Get the axis status as a set of string descriptors"""
         statn=self.get_status_n(axis)
         return [ k for k in self._status_bits if self._status_bits[k]&statn ]
-    @muxaxis
+    @stage.muxaxis
     def is_moving(self, axis="all"):
         """Check if a given axis is moving"""
         return bool(self.get_status_n(axis)&0x007)
@@ -320,7 +309,7 @@ class Performax4EXStage(GenericPerformaxStage):
                 raise ArcusError("waiting for motion on axis {} caused a timeout".format(axis))
             time.sleep(period)
 
-    @muxaxis
+    @stage.muxaxis
     def check_limit_error(self, axis="all"):
         """
         Check if the axis hit limit errors.
@@ -334,7 +323,7 @@ class Performax4EXStage(GenericPerformaxStage):
         if stat&self._status_bits["err_minus_lim"]:
             err=err+"-"
         return err
-    @muxaxis
+    @stage.muxaxis
     @interface.use_parameters
     def clear_limit_error(self, axis="all"):
         """Clear axis limit errors"""

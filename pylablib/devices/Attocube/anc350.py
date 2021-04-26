@@ -6,6 +6,7 @@ import collections
 import time
 import struct
 
+from ..interface import stage
 from .base import AttocubeError, AttocubeBackendError
 
 
@@ -14,14 +15,7 @@ def get_usb_devices_number():
     devs=comm_backend.PyUSBDeviceBackend.list_resources(idVendor=0x16C0,idProduct=0x055B)
     return len(devs)
 
-def muxaxis(*args, **kwargs):
-    """Multiplex the function over its axis argument"""
-    if len(args)>0:
-        return muxaxis(**kwargs)(args[0])
-    def ax_func(self, *_, **__):
-        return self._axes
-    return general.muxcall("axis",all_arg_func=ax_func,mux_argnames=kwargs.get("mux_argnames",None),return_kind="list",allow_partial=True)
-class ANC350(comm_backend.ICommBackendWrapper):
+class ANC350(comm_backend.ICommBackendWrapper,stage.IMultiaxisStage):
     """
     Attocube ANC350 controller.
 
@@ -30,13 +24,14 @@ class ANC350(comm_backend.ICommBackendWrapper):
         timeout(float): default operation timeout
     """
     Error=AttocubeError
+    _axes=[0,1,2]
     def __init__(self, conn=0, timeout=5.):
         if isinstance(conn,int):
             conn=(0x16C0,0x055B,conn,0x86,0x02,"libusb0") # default device IDs
         instr=comm_backend.new_backend(conn,backend="pyusb",timeout=timeout,check_read_size=False,reraise_error=AttocubeBackendError)
         self._corr_number=0
         self._tell_telegrams={}
-        comm_backend.ICommBackendWrapper.__init__(self,instr)
+        super().__init__(instr)
         self.open()
         self.instr.flush_read()
         try:
@@ -55,7 +50,6 @@ class ANC350(comm_backend.ICommBackendWrapper):
         self._add_status_variable("target_positions",self.get_target_position)
         self._add_status_variable("sensor_voltage",self.get_sensor_voltage)
         self._add_status_variable("capacitance",lambda: self.get_capacitance(measure=True),priority=-5)
-    _axes=[0,1,2]
     def _make_telegram(self, opcode, address, index=0, data=b"", add_corr=True):
         data=data[:(len(data)//4)*4]
         l=16+len(data)
@@ -182,34 +176,33 @@ class ANC350(comm_backend.ICommBackendWrapper):
         if persist:
             self.set_value(0x016F,0,0x1234)
     
-    _p_axis=interface.EnumParameterClass("axis",_axes)
-    @muxaxis
+    @stage.muxaxis
     @interface.use_parameters
     def is_connected(self, axis="all"):
         """Check if axis is connected"""
         return bool(self.get_value(0x3002,axis))
-    @muxaxis
+    @stage.muxaxis
     @interface.use_parameters
     def is_enabled(self, axis="all"):
         """Check if axis is enabled"""
         return bool(self.get_value(0x3030,axis))
-    @muxaxis(mux_argnames="enabled")
+    @stage.muxaxis(mux_argnames="enabled")
     @interface.use_parameters
     def enable_axis(self, axis="all", enabled=True):
         """Enable a specific axis or all axes"""
         self.set_value(0x3030,axis,1 if enabled else 0)
-    @muxaxis
+    @stage.muxaxis
     @interface.use_parameters
     def disable_axis(self, axis="all"):
         """Disable a specific axis or all axes"""
         self.set_value(0x3030,axis,0)
     
-    @muxaxis
+    @stage.muxaxis
     @interface.use_parameters
     def is_moving(self, axis="all"):
         """Move a given axis for a given number of steps"""
         return bool(self.get_value(0x302E,axis))
-    @muxaxis
+    @stage.muxaxis
     @interface.use_parameters
     def check_limit(self, axis="all"):
         """
@@ -221,7 +214,7 @@ class ANC350(comm_backend.ICommBackendWrapper):
         flim=self.get_value(0x3039,axis)
         blim=self.get_value(0x303A,axis)
         return [None,"fwd","bwd","both"][flim+blim*2]
-    @muxaxis
+    @stage.muxaxis
     @interface.use_parameters
     def get_status_n(self, axis="all"):
         """
@@ -231,8 +224,7 @@ class ANC350(comm_backend.ICommBackendWrapper):
         """
         return self.get_value(0x0404,axis)
     status_bits=[(0x001,"running"),(0x002,"limit"),(0x100,"sens_err"),(0x400,"sens_disconn"),(0x800,"ref_valid")]
-    @muxaxis
-    @interface.use_parameters
+    @stage.muxaxis
     def get_status(self, axis="all"):
         """
         Get device status.
@@ -242,23 +234,23 @@ class ANC350(comm_backend.ICommBackendWrapper):
         """
         status_n=self.get_status_n(axis=axis)
         return [s for (m,s) in self.status_bits if status_n&m]
-    @muxaxis
+    @stage.muxaxis
     @interface.use_parameters
     def get_target_position(self, axis="all"):
         """Get the target position for the given axis (the position towards which it is moving)"""
         return self.get_value(0x0408,axis)*1E-9
-    @muxaxis
+    @stage.muxaxis
     @interface.use_parameters
     def get_precision(self, axis="all"):
         """Get the axis precision in m (used for checking if the target is reached)"""
         return self.get_value(0x3036,axis)*1E-9
-    @muxaxis(mux_argnames="precision")
+    @stage.muxaxis(mux_argnames="precision")
     @interface.use_parameters
     def set_precision(self, axis="all", precision=1E-6):
         """Set the axis precision in m (used for checking if the target is reached)"""
         self.set_value(0x3036,axis,int(precision*1E9))
-        return self.get_precision(axis)
-    @muxaxis
+        return self._wip.get_precision(axis)
+    @stage.muxaxis
     @interface.use_parameters
     def is_target_reached(self, axis="all", precision=None):
         """
@@ -267,7 +259,7 @@ class ANC350(comm_backend.ICommBackendWrapper):
         If `precision` is not ``None``, it sets final position tolerance (in m).
         """
         if precision is not None:
-            self.set_precision(precision)
+            self._wip.set_precision(axis,precision)
         self.set_value(0x3036,axis,int(precision*1E9))
         return self.get_value(0x3037,axis)
     def get_sensor_voltage(self):
@@ -278,40 +270,40 @@ class ANC350(comm_backend.ICommBackendWrapper):
         self.set_value(0x0526,0,int(voltage*1E3))
         return self.get_sensor_voltage()
 
-    @muxaxis
+    @stage.muxaxis
     @interface.use_parameters
     def get_voltage(self, axis="all"):
         """Get axis step voltage in Volts"""
         return self.get_value(0x0400,axis)*1E-3
-    @muxaxis(mux_argnames="voltage")
+    @stage.muxaxis(mux_argnames="voltage")
     @interface.use_parameters
     def set_voltage(self, axis, voltage):
         """Set axis step voltage in Volts"""
         self.set_value(0x0400,axis,int(voltage*1E3))
-        return self.get_voltage(axis)
-    @muxaxis
+        return self._wip.get_voltage(axis)
+    @stage.muxaxis
     @interface.use_parameters
     def get_offset(self, axis="all"):
         """Get axis offset voltage in Volts"""
         return self.get_value(0x0514,axis)*1E-3
-    @muxaxis(mux_argnames="voltage")
+    @stage.muxaxis(mux_argnames="voltage")
     @interface.use_parameters
     def set_offset(self, axis, voltage):
         """Set axis offset voltage in Volts"""
         self.set_value(0x0514,axis,int(voltage*1E3))
-        return self.get_offset(axis)
-    @muxaxis
+        return self._wip.get_offset(axis)
+    @stage.muxaxis
     @interface.use_parameters
     def get_frequency(self, axis="all"):
         """Get axis step frequency in Hz"""
         return self.get_value(0x0401,axis)
-    @muxaxis(mux_argnames="freq")
+    @stage.muxaxis(mux_argnames="freq")
     @interface.use_parameters
     def set_frequency(self, axis, freq):
         """Set axis step frequency in Hz"""
         self.set_value(0x0401,axis,int(freq))
-        return self.get_frequency(axis)
-    @muxaxis
+        return self._wip.get_frequency(axis)
+    @stage.muxaxis
     @interface.use_parameters
     def get_capacitance(self, axis="all", measure=False, delay=0.5):
         """
@@ -325,7 +317,7 @@ class ANC350(comm_backend.ICommBackendWrapper):
             time.sleep(delay)
         return self.get_value(0x0569,axis)*1E-12
 
-    @muxaxis
+    @stage.muxaxis
     @interface.use_parameters
     def get_position(self, axis="all"):
         """Get axis position (in m)"""
@@ -339,7 +331,7 @@ class ANC350(comm_backend.ICommBackendWrapper):
         """
         self.set_value(0x0408,axis,int(position*1E9))
         if precision is not None:
-            self.set_precision(precision)
+            self._wip.set_precision(axis,precision)
         self.set_value(0x040D,axis,1)
     def move_by(self, axis, dist):
         """Move along a given axis by a given distance (in m)"""
@@ -356,7 +348,6 @@ class ANC350(comm_backend.ICommBackendWrapper):
         for _ in range(steps):
             self.instr.write(tg)
 
-    @interface.use_parameters
     def wait_move(self, axis, precision=1E-6, timeout=10., period=0.01):
         """
         Wait for a given axis to stop moving or to reach target position.
@@ -373,13 +364,12 @@ class ANC350(comm_backend.ICommBackendWrapper):
             time.sleep(period)
 
     
-    @muxaxis
+    @stage.muxaxis
     @interface.use_parameters
     def stop(self, axis="all"):
         """Stop motion of a given axis"""
         self.set_value(0x0410,axis,0)
     
-    _p_direction=interface.EnumParameterClass("direction",[("+",True),(1,True),("-",False),(0,False)])
     @interface.use_parameters
     def jog(self, axis, direction):
         """

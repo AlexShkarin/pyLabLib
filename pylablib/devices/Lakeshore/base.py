@@ -69,7 +69,7 @@ class Lakeshore218(SCPI.SCPIDevice):
         """
         self.write("INTYPE {} {}".format(group,sensor_type))
         self.wait_dev()
-        return self.get_sensor_type(group)
+        return self._wip.get_sensor_type(group)
     
     @interface.use_parameters
     def get_temperature(self, channel):
@@ -92,7 +92,7 @@ class Lakeshore218(SCPI.SCPIDevice):
     _p_output=interface.RangeParameterClass("output",1,2)
     _p_output_mode=interface.EnumParameterClass("output_mode",{"off":0,"input":1,"manual":2})
     _p_source=interface.EnumParameterClass("source",{"kelvin":1,"celsius":2,"sensor":3,"linear":4})
-    @interface.use_parameters(_returns=(None,_p_output_mode,None,_p_source,None,None,None))
+    @interface.use_parameters(_returns=(None,"output_mode",None,"source",None,None,None))
     def get_analog_output_settings(self, output):
         """
         Get analog output settings for a given output (1 or 2).
@@ -109,7 +109,7 @@ class Lakeshore218(SCPI.SCPIDevice):
         For parameters, see ``ANALOG`` command description in the Lakeshore 218 programming manual.
         Value of ``None`` means keeping the current parameter value.
         """
-        current=self._call_without_parameters(self.get_analog_output_settings,output)
+        current=self._wap.get_analog_output_settings(output)
         value=[c if v is None else v for c,v in zip(current,[bipolar,mode,channel,source,high_value,low_value,man_value])]
         self.write("ANALOG",[output]+value)
         return self.get_analog_output_settings(output)
@@ -138,6 +138,7 @@ class Lakeshore218(SCPI.SCPIDevice):
         """
         values=self.ask("FILTER? {}".format(channel),["bool","int","int"])
         return TLakeshore218FilterSettings(*values)
+    @interface.use_parameters
     def setup_filter(self, channel, enabled=None, points=None, window=None):
         """
         Setup input filter settings for a given input (1 to 8).
@@ -145,10 +146,10 @@ class Lakeshore218(SCPI.SCPIDevice):
         For parameters, see ``FILTER`` command description in the Lakeshore 218 programming manual.
         Value of ``None`` means keeping the current parameter value.
         """
-        current=self._call_without_parameters(self.get_filter_settings,channel)
+        current=self._wip.get_filter_settings(channel)
         value=[c if v is None else v for c,v in zip(current,[enabled,points,window])]
         self.write("FILTER",[channel]+value)
-        return self.get_filter_settings(channel)
+        return self._wip.get_filter_settings(channel)
 
 
 class Lakeshore370(SCPI.SCPIDevice):  # TODO: finish / check

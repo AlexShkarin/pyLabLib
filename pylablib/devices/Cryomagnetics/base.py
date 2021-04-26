@@ -1,4 +1,5 @@
 from ...core.utils.py3 import textstring
+from ...core.utils import general
 from ...core.devio import SCPI, interface, DeviceError, DeviceBackendError
 
 
@@ -60,19 +61,21 @@ class LM500(SCPI.SCPIDevice):
         """Get current measurement channel"""
         return self.ask("CHAN?","int")
     @interface.use_parameters
-    def set_channel(self, channel=1):
-        """Set current measurement channel"""
+    def select_channel(self, channel=1):
+        """Select the current measurement channel"""
         self.write("CHAN",channel)
         return self.get_channel()
 
-    _p_channel_type=interface.EnumParameterClass("channel_type",{"lhe":1,"ln":2})
+    _p_channel_type=interface.EnumParameterClass("channel_type",{"lhe":0,"ln":1})
     @interface.use_parameters(_returns="channel_type")
-    def get_type(self, channel=1):
+    def get_type(self, channel=None):
         """Get type of a given channel (``"lhe"`` or ``"ln"``)"""
-        return self.ask("TYPE? {}".format(channel),"int")
+        return self.ask("TYPE? {}".format(self._get_channel(channel)),"int")
     def _select_channel(self, channel):
         if channel is not None:
             self.write("CHAN",channel)
+    def _get_channel(self, channel):
+        return self.ask("CHAN?","int") if channel is None else channel
     def _check_channel_LHe(self, op, channel=None):
         if channel is None:
             channel=self.get_channel()
@@ -127,41 +130,45 @@ class LM500(SCPI.SCPIDevice):
         return self.get_interval()
     
     @interface.use_parameters
-    def start_measurement(self, channel=1):
+    def start_measurement(self, channel=None):
         """Initialize measurement on a given channel"""
-        self.write("MEAS",channel)
+        self.write("MEAS",self._get_channel(channel))
     def _get_stb(self):
         return self.ask("*STB?","int")
     @interface.use_parameters
-    def wait_for_measurement(self, channel=1):
+    def wait_for_measurement(self, channel=None, timeout=None):
         """Wait for the measurement on a given channel to finish"""
+        channel=self._get_channel(channel)
         mask=0x01 if channel==1 else 0x04
+        ctd=general.Countdown(timeout)
         while not self._get_stb()&mask:
             self.sleep(0.1)
+            if ctd.passed():
+                raise CryomagneticsError("waiting for measurement on channel {} caused a timeout".format(channel))
     @interface.use_parameters
-    def get_level(self, channel=1):
+    def get_level(self, channel=None):
         """Get level reading on a given channel"""
-        res=self.ask("MEAS? {}".format(channel))
+        res=self.ask("MEAS? {}".format(self._get_channel(channel)))
         return float(res.split()[0])
-    @interface.use_parameters
-    def measure_level(self, channel=1):
+    def measure_level(self, channel=None):
         """Measure the level (perform the measurement and return the result) on a given channel"""
+        channel=self._get_channel(channel)
         self.start_measurement(channel=channel)
         self.wait_for_measurement(channel=channel)
         return self.get_level(channel=channel)
 
     @interface.use_parameters
-    def start_fill(self, channel=1):
+    def start_fill(self, channel=None):
         """Initialize filling at a given channel (``None`` for the current channel)"""
-        self.write("FILL",channel)
+        self.write("FILL",self._get_channel(channel))
     @interface.use_parameters
-    def get_fill_status(self, channel=1):
+    def get_fill_status(self, channel=None):
         """
         Get filling status at a given channels (``None`` for the current channel).
         
         Return either ``"off"`` (filling is off), ``"timeout"`` (filling timed out) or a float (time since filling started, in seconds).
         """
-        res=self.ask("FILL? {}".format(channel)).lower()
+        res=self.ask("FILL? {}".format(self._get_channel(channel))).lower()
         if res in {"off","timeout"}:
             return res
         spres=res.split()

@@ -214,17 +214,17 @@ class ITektronixScope(SCPI.SCPIDevice):
     def set_vertical_span(self, channel, span):
         """Set channel vertical span (in V)"""
         self.write(":{}:SCALE".format(channel),span/10.,"float") # scale is per division (10 division per screen)
-        return self.get_vertical_span(channel)
+        return self._wip.get_vertical_span(channel)
     @interface.use_parameters(channel="input_channel")
     def get_vertical_position(self, channel):
         """Get channel vertical position (offset of the zero volt line; in V)"""
-        return self.ask(":{}:POSITION?".format(channel),"float")*self.get_vertical_span(channel)/10. # offset is in divisions (10 division per screen)
+        return self.ask(":{}:POSITION?".format(channel),"float")*self._wip.get_vertical_span(channel)/10. # offset is in divisions (10 division per screen)
     @interface.use_parameters(channel="input_channel")
     def set_vertical_position(self, channel, offset):
         """Set channel vertical position (offset of the zero volt line; in V)"""
-        offset/=self.get_vertical_span(channel)/10. # offset is in divisions (10 division per screen)
+        offset/=self._wip.get_vertical_span(channel)/10. # offset is in divisions (10 division per screen)
         self.write(":{}:POSITION".format(channel),offset,"float")
-        return self.get_vertical_position(channel)
+        return self._wip.get_vertical_position(channel)
     
 
     @interface.use_parameters(channel="input_channel")
@@ -235,7 +235,7 @@ class ITektronixScope(SCPI.SCPIDevice):
     def enable_channel(self, channel, enabled=True):
         """Enable or disable given channel"""
         self.write(":SELECT:{}".format(channel),enabled,"bool")
-        return self.is_channel_enabled(channel)
+        return self._wip.is_channel_enabled(channel)
     @interface.use_parameters(_returns="input_channel")
     def get_selected_channel(self):
         """
@@ -273,7 +273,7 @@ class ITektronixScope(SCPI.SCPIDevice):
         Can be ``"ac"``, ``"dc"``, or ``"gnd"``.
         """
         self.write(":{}:COUPL".format(channel),coupling)
-        return self.get_coupling(channel)
+        return self._wip.get_coupling(channel)
     @interface.use_parameters(channel="input_channel")
     def get_probe_attenuation(self, channel):
         """Get channel probe attenuation"""
@@ -288,7 +288,7 @@ class ITektronixScope(SCPI.SCPIDevice):
         if self._probe_attenuation_comm:
             comm,kind=self._probe_attenuation_comm
             self.write(":{}:{}".format(channel,comm),attenuation if kind=="att" else 1./attenuation)
-        return self.get_probe_attenuation(channel)
+        return self._wip.get_probe_attenuation(channel)
 
     
     def get_points_number(self, kind="send"):
