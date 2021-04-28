@@ -1,4 +1,4 @@
-from ...core.devio import interface
+from ...core.devio import interface, DeviceError
 from ...core.dataproc import image_utils
 from ...core.utils import functions as function_utils, general as general_utils
 
@@ -21,8 +21,8 @@ class ICamera(interface.IDevice):
     _default_image_indexing="rct"
     _default_image_dtype="<u2"
     _clear_pausing_acquisition=False
-    Error=RuntimeError
-    TimeoutError=RuntimeError
+    Error=DeviceError
+    TimeoutError=DeviceError
     def __init__(self):
         super().__init__()
         self._acq_params=None

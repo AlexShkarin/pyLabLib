@@ -51,7 +51,7 @@ class PM100(SCPI.SCPIDevice):
     # def update_sensor_modes(self):
     #     self._sensor_modes=self._check_sensor_modes()
     _all_sensor_modes=["power","energy","voltage","current","frequency"]
-    _p_sensor_mode=interface.EnumParameterClass("sensor_mode",{"power":"POW","energy":"ENER","voltage":"VOLT","current":"CURR","frequency":"FREQ"})
+    _p_sensor_mode=interface.EnumParameterClass("sensor_mode",{"power":"POW","energy":"ENER","voltage":"VOLT","current":"CURR","frequency":"FREQ"},value_case="upper")
     def get_supported_sensor_modes(self):
         """
         Get a list of supported sensor modes.

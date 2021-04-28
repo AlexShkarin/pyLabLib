@@ -36,9 +36,10 @@ class TMCM1110(comm_backend.ICommBackendWrapper,stage.IStage):
         self.open()
 
     def open(self):
-        comm_backend.ICommBackendWrapper.open(self)
+        res=super().open()
         self.instr.flush_read()
         self.instr.setup_cooldown(write=0.01)
+        return res
     
     @staticmethod
     def _build_command(comm, comm_type, value, bank=0, addr=0):

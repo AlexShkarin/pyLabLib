@@ -50,7 +50,7 @@ class IDevice:
         for n in dir(type(self)):
             v=getattr(self,n)
             if isinstance(v,IParameterClass) and v.name:
-                self._parameters[v.name]=v
+                self._add_parameter_class(v)
     def _add_parameter_class(self, par_class):
         """
         Add a parameter class.
@@ -408,8 +408,9 @@ class IEnumParameterClass(ICheckingParameterClass):
             or ``"lower"`` or ``"upper"`` (any received or returned alias will be normalized into this case)
         value_case: default value parameter case for string values; can be ``None`` (no case normalization),
             or ``"lower"`` or ``"upper"`` (any received or returned device value will be normalized into this case)
-        match_prefix: if ``True``, then the keys in the value map (returned by ``_get_value_map`` method) assumed to prefixes,
-            so in the value-to-alias conversion the supplied value matches the map value if it just starts with it;
+        match_prefix: if ``True``, then the keys in the value map (returned by ``_get_value_map`` method) are interpreted as prefixes,
+            so in the value-to-alias conversion the converted value matches the map value if it just starts with it;
+            in the case of ambiguity (several map values are prefixes for the same converted value), the exact match takes priority;
             useful for some SCPI devices, where the shorter version of the value can sometimes be returned.
     """
     def __init__(self, name, allowed_alias="device_values", alias_case="lower", value_case=None, match_prefix=True):
@@ -431,7 +432,7 @@ class IEnumParameterClass(ICheckingParameterClass):
         value=_to_case(value,self._value_case)
         if self._match_prefix and isinstance(value,py3.textstring):
             for v in self._get_value_map():
-                if value.startswith(v):
+                if isinstance(v,py3.textstring) and value.startswith(v):
                     return True
             return False
         else:
@@ -450,12 +451,15 @@ class IEnumParameterClass(ICheckingParameterClass):
         return _to_case(value,self._value_case)
     def to_alias(self, value):
         value=_to_case(value,self._value_case)
+        vmap=self._get_value_map()
         if self._match_prefix and isinstance(value,py3.textstring):
-            for v,a in self._get_value_map().items():
-                if value.startswith(v):
+            if value in vmap:
+                return vmap[value]
+            for v,a in vmap.items():
+                if isinstance(v,py3.textstring) and value.startswith(v):
                     return a
         else:
-            return self._get_value_map()[value]
+            return vmap[value]
     def _alias_error_str(self, alias):
         errs=ICheckingParameterClass._alias_error_str(self,alias)
         allowed_str=", ".join(repr(v) for v in self._get_alias_map())
@@ -481,8 +485,8 @@ class EnumParameterClass(IEnumParameterClass):
             or ``"lower"`` or ``"upper"`` (any received or returned alias will be normalized into this case)
         value_case: default value parameter case for string values; can be ``None`` (no case normalization),
             or ``"lower"`` or ``"upper"`` (any received or returned device value will be normalized into this case)
-        match_prefix: if ``True``, then the keys in the value map (returned by ``_get_value_map`` method) assumed to prefixes,
-            so in the value-to-alias conversion the supplied value matches the map value if it just starts with it;
+        match_prefix: if ``True``, then the keys in the value map (or values in the alias map, if only it is provided) are assumed to br prefixes,
+            so in the value-to-alias conversion the converted value matches the map value if it just starts with it;
             useful for some SCPI devices, where the shorter version of the value can sometimes be returned.
     """
     def __init__(self, name, alias_map, value_map=None, allowed_alias="device_values", alias_case="lower", value_case=None, match_prefix=True):

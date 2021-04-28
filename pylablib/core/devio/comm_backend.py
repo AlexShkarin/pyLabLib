@@ -242,6 +242,9 @@ def remove_longest_term(msg, terms):
 ### Specific backends ###
 
 _backends={}
+_backend_errors={}
+_backend_install_message=("{name:} package is missing. You can install it via PyPi as 'pip install {pkg:}'. "
+    "If it is installed, check if it imports correctly by running 'import {mod:}'")
 
 try:
     try:
@@ -473,7 +476,7 @@ try:
     _backends["visa"]=VisaDeviceBackend
 except ImportError:
     pass
-    
+_backend_errors["visa"]=_backend_install_message.format(name="PyVISA",pkg="pyvisa",mod="pyvisa")
 
 
 try:
@@ -504,7 +507,7 @@ try:
             connect_on_operation (bool): If ``True``, the connection is normally closed, and is opened only on the operations
                 (normally two processes can't be simultaneously connected to the same device).
             open_retry_times (int): Number of times the connection is attempted before giving up.
-            no_dtr (bool): If ``True``, turn off DTR status line before opening (e.g., turns off reset-on-connection for Arduino controllers).
+            no_dtrrts (bool): If ``True``, turn off DTR and RTS status lines before opening (e.g., turns off reset-on-connection for Arduino controllers).
             datatype (str): Type of the returned data; can be ``"bytes"`` (return `bytes` object), ``"str"`` (return `str` object),
                 or ``"auto"`` (default Python result: `str` in Python 2 and `bytes` in Python 3)
             reraise_error: if not ``None``, specifies an error to be re-raised on any backend exception (by default, use backend-specific error);
@@ -518,7 +521,7 @@ try:
         _conn_params=["port","baudrate","bytesize","parity","stopbits","xonxoff","rtscts","dsrdtr"]
         _default_conn=["COM1",19200,8,"N",1,0,0,0]
 
-        def __init__(self, conn, timeout=10., term_write=None, term_read=None, connect_on_operation=False, open_retry_times=3, no_dtr=False, datatype="auto", reraise_error=None):
+        def __init__(self, conn, timeout=10., term_write=None, term_read=None, connect_on_operation=False, open_retry_times=3, no_dtrrts=False, datatype="auto", reraise_error=None):
             conn_dict=self.combine_conn(conn,self._default_conn)
             if term_write is None:
                 term_write=b"\r\n"
@@ -531,9 +534,10 @@ try:
             try:
                 self.instr=serial.serial_for_url(port,do_not_open=True,**conn_dict)
                 self.opened=True
-                if no_dtr:
+                if no_dtrrts:
                     try:
                         self.instr.setDTR(0)
+                        self.instr.setRTS(0)
                     except self.BackendError:
                         warnings.warn("Cannot set DTR for an unconnected device")
                 if not connect_on_operation:
@@ -551,7 +555,6 @@ try:
             general.retry_wait(self.instr.open, self._open_retry_times, 0.3)
         @reraise
         def _do_close(self):
-            #general.retry_wait(self.instr.flush, self._open_retry_times, 0.3)
             general.retry_wait(self.instr.close, self._open_retry_times, 0.3)
         def open(self):
             """Open the connection"""
@@ -711,6 +714,7 @@ try:
     _backends["serial"]=SerialDeviceBackend
 except (ImportError, AttributeError):
     pass
+_backend_errors["serial"]=_backend_install_message.format(name="PySerial",pkg="pyserial",mod="serial")
 
 
 
@@ -729,16 +733,13 @@ try:
         
         Args:
             conn: Connection parameters. Can be either a string (for a port),
-                or a list/tuple ``(port, baudrate, bytesize, parity, stopbits, xonxoff, rtscts, dsrdtr)`` supplied to the serial connection
+                or a list/tuple ``(port, baudrate, bytesize, parity, stopbits, xonxoff, rtscts)`` supplied to the serial connection
                 (default is ``('COM1',19200,8,'N',1,0,0,0)``),
                 or a dict with the same parameters.
             timeout (float): Default timeout (in seconds).
             term_write (str): Line terminator for writing operations; appended to the data
             term_read (str): List of possible single-char terminator for reading operations (specifies when :func:`readline` stops).
-            connect_on_operation (bool): If ``True``, the connection is normally closed, and is opened only on the operations
-                (normally two processes can't be simultaneously connected to the same device).
             open_retry_times (int): Number of times the connection is attempted before giving up.
-            no_dtr (bool): If ``True``, turn off DTR status line before opening (e.g., turns off reset-on-connection for Arduino controllers).
             datatype (str): Type of the returned data; can be ``"bytes"`` (return `bytes` object), ``"str"`` (return `str` object),
                 or ``"auto"`` (default Python result: `str` in Python 2 and `bytes` in Python 3)
             reraise_error: if not ``None``, specifies an error to be re-raised on any backend exception (by default, use backend-specific error);
@@ -939,6 +940,7 @@ try:
     _backends["ft232"]=FT232DeviceBackend
 except (ImportError,NameError,OSError):
     pass
+_backend_errors["ft232"]=_backend_install_message.format(name="pyft232",pkg="pyft232",mod="ft232")
 
 
 
@@ -1307,6 +1309,7 @@ try:
     _backends["pyusb"]=PyUSBDeviceBackend
 except ImportError:
     pass
+_backend_errors["pyusb"]=_backend_install_message.format(name="PyUSB",pkg="pyusb",mod="usb")
     
 
     
@@ -1345,8 +1348,10 @@ def _as_backend(backend, conn=None):
         backend=autodetect_backend(conn)
     if isinstance(backend,type) and issubclass(backend,IDeviceCommBackend):
         return backend
-    funcargparse.check_parameter_range(backend,"backend",_backends)
-    return _backends[backend]
+    if backend in _backends:
+        return _backends[backend]
+    error_text=_backend_errors.get(backend,None)
+    raise ValueError("could not find backend {}".format(backend)+(": "+error_text if error_text else ""))
 def new_backend(conn, backend="auto", defaults=None, **kwargs):
     """
     Build new backend with the supplied parameters.

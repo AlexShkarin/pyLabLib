@@ -190,7 +190,7 @@ class PFCamLib:
             elif header_type==10:
                 self.ptype_v=2
             else:
-                raise RuntimeError("can't determine pfcam version")
+                raise PFCamError("can't determine pfcam version")
         return self.ptype_v
     def get_ptype_dicts(self, port):
         """Get the correct `PropertyType` version"""

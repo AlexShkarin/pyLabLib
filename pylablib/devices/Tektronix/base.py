@@ -458,7 +458,7 @@ class ITektronixScope(SCPI.SCPIDevice):
             data=self.read_binary_array_data(timeout=timeout)
         trace=self.parse_array_data(data,wfmpre["fmt"].to_desc())
         if len(trace)!=wfmpre["pts"]:
-            raise RuntimeError("received data length {0} is not equal to the number of points {1}".format(len(trace),wfmpre["pts"]))
+            raise TektronixError("received data length {0} is not equal to the number of points {1}".format(len(trace),wfmpre["pts"]))
         return self._scale_data(trace,wfmpre)
     def read_multiple_sweeps(self, channels, wfmpres=None, ensure_fmt=True, timeout=None):
         """

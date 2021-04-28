@@ -270,7 +270,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
         self.set_value("TriggerMode",mode)
         return self.get_trigger_mode()
 
-    _p_shutter_mode=interface.EnumParameterClass("shutter_mode",{"open":"Open","closed":"Closed","auto":"Auto"},match_prefix=False)
+    _p_shutter_mode=interface.EnumParameterClass("shutter_mode",{"open":"Open","closed":"Closed","auto":"Auto"})
     @interface.use_parameters(_returns="shutter_mode")
     def get_shutter(self):
         """Get current shutter mode"""
@@ -524,7 +524,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
     def reset_overflows_counter(self):
         """Reset buffer overflows counter"""
         self._overflows_counter=0
-    _p_overflow_behavior=interface.EnumParameterClass("overflow_behavior",["error","restart","ignore"],match_prefix=False)
+    _p_overflow_behavior=interface.EnumParameterClass("overflow_behavior",["error","restart","ignore"])
     @interface.use_parameters(behavior="overflow_behavior")
     def set_overflow_behavior(self, behavior):
         """

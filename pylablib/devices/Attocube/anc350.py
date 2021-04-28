@@ -80,7 +80,7 @@ class ANC350(comm_backend.ICommBackendWrapper,stage.IMultiaxisStage):
                 # if (tg.address>>8)!=0x0F:
                 self._tell_telegrams[(tg.address,tg.index)]=tg
             else:
-                raise RuntimeError("unexpected opcode: {}".format(tg.opcode))
+                raise AttocubeError("unexpected opcode: {}".format(tg.opcode))
             if ctd.passed():
                 raise AttocubeError("timeout while read")
     Reply=collections.namedtuple("Reply",["address","index","reason","data"])

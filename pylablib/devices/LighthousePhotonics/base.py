@@ -33,24 +33,24 @@ class SproutG(comm_backend.ICommBackendWrapper):
         self._add_settings_variable("output_setpoint",self.get_output_setpoint,self.set_output_power)
         self._add_status_variable("output_power",self.get_output_power)
     
-    def _parse_response(self, comm, resp):
+    def _parse_response(self, comm, resp, allowed_replies=("0",)):
         resp=py3.as_str(resp).strip()
         if comm[-1]=="?":
             if not resp.startswith(comm[:-1]+"="):
                 raise LighthousePhotonicsError("Command {} returned unexpected response: {}".format(comm,resp))
             return resp[len(comm):]
         else:
-            if resp!="0":
+            if resp not in allowed_replies:
                 raise LighthousePhotonicsError("Command {} returned unexpected response: {}".format(comm,resp))
             return resp
-    def query(self, comm):
+    def query(self, comm, allowed_replies=("0",)):
         """Send a query to the device and parse the reply"""
         comm=comm.upper()
         with self.instr.single_op():
             self.instr.flush_read()
             self.instr.write(comm)
             resp=self.instr.readline()
-        return self._parse_response(comm,resp)
+        return self._parse_response(comm,resp,allowed_replies=allowed_replies)
 
     def get_device_info(self):
         """Get device information (product name, product version, serial number, configuration)"""
@@ -84,7 +84,7 @@ class SproutG(comm_backend.ICommBackendWrapper):
         `mode` can be ``"on"``, ``"off"``, ``"idle"`` (power standby mode), or ``"calibrate"`` (calibration mode).
         """
         funcargparse.check_parameter_range(mode,"mode",["on","off","idle","calibrate"])
-        self.query("OPMODE={}".format(mode.upper()))
+        self.query("OPMODE={}".format(mode.upper()),allowed_replies=["0","1"])
         return self.get_output_mode()
     def is_enabled(self):
         """Check if the output is on (idle or warmup don't count as on)"""

@@ -29,7 +29,7 @@ class LM500(SCPI.SCPIDevice):
         except self.instr.Error:
             self.close()
             raise
-        self._add_settings_variable("interval",self.get_interval,self.set_interval,ignore_error=(RuntimeError,))
+        self._add_settings_variable("interval",self.get_interval,self.set_interval,ignore_error=(CryomagneticsError,))
         self._add_status_variable("level",self.get_level,mux=([1,2],))
         self._add_status_variable("fill_status",self.get_fill_status,mux=([1,2],))
         self._add_settings_variable("high_level",self.get_high_level,self.set_high_level,mux=([1,2],1))
@@ -80,7 +80,7 @@ class LM500(SCPI.SCPIDevice):
         if channel is None:
             channel=self.get_channel()
         if self.get_type(channel)=="ln":
-            raise RuntimeError("LN channel doesn't support {}".format(op))
+            raise CryomagneticsError("LN channel doesn't support {}".format(op))
     
     _p_mode=interface.EnumParameterClass("mode",{"sample_hold":"s","continuous":"c"})
     @interface.use_parameters(_returns="mode")
