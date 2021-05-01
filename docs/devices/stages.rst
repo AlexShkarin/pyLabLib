@@ -129,3 +129,4 @@ Currently supported stages
     Thorlabs_kinesis
     Arcus_performax
     Trinamic
+    SmarAct

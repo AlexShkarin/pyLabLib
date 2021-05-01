@@ -104,7 +104,7 @@ All of the device errors inherit from :exc:`.DeviceError`, which in turn is a su
 Getting more information
 --------------------------------------
 
-A lot of information about the devices can be gained just from their method names and descriptions. There are several ways of getting these:
+A lot of information about the devices can be gained just from their method names and descriptions (docstrings). There are several ways of getting these:
 
     - In many cases your IDE (PyCharm, Spyder, VS Code with installed Python extension) supports code inspection. In this case, the list of methods will usually pop up after you time the device object name and a dot (such as ``cam.``), and the method docstring will show up after you type the method name and parenthesis (such as ``cam.get_roi(``). However, sometimes it might take a while for these pop-ups to show up.
     - You can use console, such as Jupyter QtConsole, Jupyter Notebook, or a similar console built into the IDE. Here the list of methods can be obtained using the autocomplete feature: type name of the class or object with a dot (such as ``cam.``) and then press ``Tab``. The list of all methods should appear. To get the description of a particular class or method, type it with a question mark (such as ``cam?`` or ``cam.get_roi?``) and execute the result (``Enter`` or ``Shift-Enter``, depending on the console). A description should appear with the argument names and the description.
@@ -201,6 +201,8 @@ Available devices
     .. include:: cameras_list.txt
 - :ref:`Stages <stages>`
     .. include:: stages_list.txt
+- :ref:`Basic sensors <basic_sensors>`
+    .. include:: basic_sensors_list.txt
 - :ref:`Basic lasers <basic_lasers>`
     - :ref:`Lighthouse Photonics SproutG <basic_lasers_lp_sprout>`
     - :ref:`Laser Quantum Finesse <basic_lasers_lq_finesse>`
@@ -210,6 +212,7 @@ Available devices
     
     cameras
     stages
+    basic_sensors
     basic_lasers
 
 .. --------------------------------------

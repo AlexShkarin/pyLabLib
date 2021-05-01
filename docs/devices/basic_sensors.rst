@@ -73,3 +73,15 @@ Channel selection
 Some gauges support simultaneous readout on several channels. In this case, all of their methods take an additional ``channel`` (in most cases) argument, which specify the read channel.
 
 The channels are usually specified by their index starting from 0 or 1, although some devices adopt more complicated labeling schemes (e.g., Lakeshore 218 temperature sensor can only assign a sensor type to a group of 4 sensors, which is labeled ``"A"`` or ``"B"``). The exact specification is given in the specific class description.
+
+
+Currently supported sensors
+-------------------------------------------
+.. include:: basic_sensors_list.txt
+
+
+.. toctree::
+    :hidden:
+
+    HighFinesse
+    Ophir

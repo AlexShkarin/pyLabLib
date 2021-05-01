@@ -8,7 +8,7 @@ Arcus Performax positioners
 
 Arcus has several motor controllers and drivers, which are mainly different in their number of axes, communication possibilities, and driving function. They are also distributed under different names, e.g., Nippon Pulse America (NPA) or Newmark Systems. However, the models nomenclature is the same: there is 4EX for 4-axis controllers with USB and RS485 connection, 2EX/2ED for 2-axis controllers with USB and RS485 connections, and 4ET for 4-axis controllers with Ethernet connection. The class has been tested with 4EX and (partially) 2ED controllers with USB connectivity mode, but other controllers and modes mentioned above should also work.
 
-The main device classes are :class:`pylablib.devices.Arcus.Performax4EXStage<.Performax.Performax4EXStage>` or 4-axis controllers and :class:`pylablib.devices.Arcus.Performax2EXStage<.Performax.Performax2EXStage>` for 2-axis controllers (they have several syntax differences, so one can not substitute ofr the other).
+The main device classes are :class:`pylablib.devices.Arcus.Performax4EXStage<.performax.Performax4EXStage>` or 4-axis controllers and :class:`pylablib.devices.Arcus.Performax2EXStage<.performax.Performax2EXStage>` for 2-axis controllers (they have several syntax differences, so one can not substitute for the other).
 
 
 Software requirements

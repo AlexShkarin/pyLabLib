@@ -45,4 +45,4 @@ Operation
 
 This controller has several features and differences compared to most other stages and sliders:
 
-    - The motion is generally executed in "macrosteps", which is a sequence of several "microsteps" with a given amplitude, frequency, and number. A single macrostep with the defined parameters can be performed with :meth:`.SCU3D.move_macrostep`, while :meth:`.SCU3d.move_by` executes a series of these macrosteps with one of the predefined sizes (from 0 to 20). These sizes are configured to roughly correspond to the step sizes selectable by the controller, although the agreement is not exact.
+    - The motion is generally executed in "macrosteps", which is a sequence of several "microsteps" with a given amplitude, frequency, and number. A single macrostep with the defined parameters can be performed with :meth:`.SCU3D.move_macrostep`, while :meth:`.SCU3D.move_by` executes a series of these macrosteps with one of the predefined sizes (from 0 to 20). These sizes are configured to roughly correspond to the step sizes selectable by the controller, although the agreement is not exact.
