@@ -13,7 +13,7 @@ class PM100(SCPI.SCPIDevice):
         addr: connection address (usually, a VISA connection string)
     """
     Error=ThorlabsError
-    BackendError=ThorlabsBackendError
+    ReraiseError=ThorlabsBackendError
     def __init__(self, addr):
         SCPI.SCPIDevice.__init__(self,addr)
         self._sensor_modes=self._check_sensor_modes()

@@ -19,7 +19,7 @@ class LM500(SCPI.SCPIDevice):
         conn: serial connection parameters (usually port or a tuple containing port and baudrate)
     """
     Error=CryomagneticsError
-    BackendError=CryomagneticsError
+    ReraiseError=CryomagneticsBackendError
     def __init__(self, conn):
         SCPI.SCPIDevice.__init__(self,conn,backend="serial",term_read="\n",term_write="\n",backend_defaults={"serial":("COM1",9600)})
         try:

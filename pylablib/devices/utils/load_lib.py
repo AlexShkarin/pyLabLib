@@ -23,11 +23,19 @@ def get_os_lib_folder():
         return os.path.join(os.environ["WINDIR"],"SysWOW64")
 os_lib_folder=get_os_lib_folder()
 
-def get_program_files_folder(subfolder=""):
-    """Get default Windows Program Files folder or a subfolder within it (``Program Files`` or ``Program Files (x86)``, depending on Python and Windows bitness)"""
+def get_program_files_folder(subfolder="", arch=None):
+    """
+    Get default Windows Program Files folder or a subfolder within it.
+    
+    If `arch` is ``None``, use the current Python architecture to determine the folder;
+    otherwise, it specifies the architecture (``"32bit"`` for ``Program Files (x86)``, ``"64bit"`` for ``Program Files``)
+    """
     if subfolder:
-        return os.path.join(get_program_files_folder(),subfolder)
-    arch=platform.architecture()[0]
+        return os.path.join(get_program_files_folder(arch=arch),subfolder)
+    if arch is None:
+        arch=platform.architecture()[0]
+    elif arch not in ["32bit","64bit"]:
+        raise ValueError("unrecognized architecture: {}".format(arch))
     winarch="64bit" if platform.machine().endswith("64") else "32bit"
     if arch=="32bit" and winarch=="64bit":
         return os.environ.get("PROGRAMFILES(X86)",r"C:\Program Files (x86)")
@@ -38,7 +46,7 @@ program_files_folder=get_program_files_folder()
 
 _load_lock=threading.RLock()
 par_error_message="If you already have it, specify its path as pylablib.par['devices/dlls/{}']='path/to/dll/'"
-def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, depends=None, error_message=None, check_order="location"):
+def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, depends=None, error_message=None, check_order="location", return_location=False):
     """
     Load DLL.
 
@@ -57,6 +65,7 @@ def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, depe
             can be ``"location"`` (loop over locations, and for each location loop over names), ``"name"``  (loop over names, and for each name loop over locations),
             or a list of tuples ``[(loc,name)]`` specifying order of checking
             (in the latter case, `name` and `location` arguments are ignored, except for generating error mesage).
+        return_location(bool): if ``True``, return a tuple ``(dll, location, folder)`` instead of a single dll.
     """
     if platform.system()!="Windows":
         raise OSError("DLLs are not available on non-Windows platform")
@@ -104,7 +113,7 @@ def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, depe
                         dlls.append(ctypes.windll.LoadLibrary(p))
                     else:
                         raise ValueError("unrecognized call convention: {}".format(call_conv))
-                return dlls[-1]
+                return (dlls[-1],loc,paths[-1]) if return_location else dlls[-1]
             except OSError:
                 if locally:
                     os.environ["PATH"]=old_env_path

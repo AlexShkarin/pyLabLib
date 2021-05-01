@@ -22,7 +22,7 @@ libctl=LibraryController(lib)
 
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["device_id","firmware_version","dll_version"])
 def _parse_version(v):
-        return "{}.{}.{}.{}".format(*[(v>>(n*8))&0xFF for n in range(4)][::-1])
+    return "{}.{}.{}.{}".format(*[(v>>(n*8))&0xFF for n in range(4)][::-1])
 def get_device_info(idx):
     """
     Get info of the devices with the given index.
@@ -158,7 +158,7 @@ class SCU3D(stage.IMultiaxisStage):
         
         Can be ``"stopped"`` (default state), ``"setting_amplitude"`` (setting open-loop step amplitude),
         ``"moving"`` (open-loop movement), ``"targeting"`` (closed-loop movement),
-        ``"holding"`` (closed-loop position holding), ``"calibrating"`` (sensort calibration),
+        ``"holding"`` (closed-loop position holding), ``"calibrating"`` (sensor calibration),
         or ``"moving_to_reference"`` (calibrating position sensor).
         """
         return self._get_status_n(axis)

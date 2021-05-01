@@ -33,7 +33,8 @@ def reraise(func):
         try:
             return func(self,*args,**kwargs)
         except self.BackendError as exc:
-            raise self.Error(exc) from exc
+            ReraiseError=getattr(self,"ReraiseError",self.Error)
+            raise ReraiseError(exc) from exc
     return wrapped
 
 class IDeviceCommBackend:
@@ -337,7 +338,7 @@ try:
                     raise VisaDeviceBackend.Error(e) from e
         if module.cmp_versions(visa.__version__,"1.9")=="<": # older pyvisa versions have a slightly different interface
             @reraise
-            def _read_raw(self, size=None):
+            def _read_raw(self, size):
                 chunk_size=self.instr.chunk_size
                 data=bytearray()
                 with self.instr.ignore_warning(visa.constants.VI_SUCCESS_DEV_NPRESENT,visa.constants.VI_SUCCESS_MAX_CNT):
@@ -353,7 +354,7 @@ try:
         @reraise
         def _read_all(self):
             data=bytearray()
-            with self.using_timeout(1E-3):
+            with self.using_timeout(0):
                 while True:
                     try:
                         chunk=self.instr.read_raw()
@@ -1121,7 +1122,7 @@ try:
         Args:
             conn: Connection parameters. Can be either a string (for a port),
                 or a list/tuple ``(vendorID, productID, index, endpoint_read, endpoint_write, backend)`` supplied to the connection
-                (default is ``(0x0000,0x0000,0,0x00,0x01,'libusb0')``, which is invalid for most devices),
+                (default is ``(0x0000,0x0000,0,0x00,0x01,'libusb1')``, which is invalid for most devices),
                 or a dict with the same parameters.
                 ``vendorID`` and ``productID`` specify device kind, ``index`` is an integer index (starting from zero) of the device
                 among several identical (i.e., with the same ids) ones, and ``endpoint_read`` and ``endpoint_write`` specify connection endpoints for the specific device.

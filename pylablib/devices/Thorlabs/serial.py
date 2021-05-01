@@ -12,7 +12,7 @@ class ThorlabsSerialInterface(SCPI.SCPIDevice):
     """
     _allow_concatenate_write=False
     Error=ThorlabsError
-    BackendError=ThorlabsBackendError
+    ReraiseError=ThorlabsBackendError
     def __init__(self, conn):
         SCPI.SCPIDevice.__init__(self,conn,backend="serial",term_read=["\r","\n"],term_write="\r",timeout=5.,backend_defaults={"serial":("COM1",115200)})
 

@@ -53,6 +53,7 @@ class OZOpticsDevice(comm_backend.ICommBackendWrapper):
                 if ln.startswith(prefix.upper()):
                     return ln[len(prefix):].strip()
             raise OZOpticsError("unexpected reply: {}".format(resp))
+        return resp
     
     def restart(self):
         """Restart the device"""

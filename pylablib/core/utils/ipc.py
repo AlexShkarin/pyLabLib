@@ -36,7 +36,7 @@ class IIPCChannel(object):
         return ()
     @classmethod
     def from_args(cls, *args):
-        """Create a peer connection from teh supplied arguments"""
+        """Create a peer connection from the supplied arguments"""
         return cls(*args)
 
 
@@ -264,5 +264,5 @@ class SharedMemIPCTable(object):
         return (self.pipe.get_peer_args()[0],self.arr)
     @classmethod
     def from_args(cls, *args):
-        """Create a peer connection from teh supplied arguments"""
+        """Create a peer connection from the supplied arguments"""
         return cls(*args)

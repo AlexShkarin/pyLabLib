@@ -108,7 +108,7 @@ class IDevice:
     def _update_device_variable_order(self, path, kind):
         """Shift the order of the device variable to the current position"""
         if kind not in self._device_vars:
-            raise ValueError("unrecognized info node kind: {}".format(kind))
+            raise ValueError("unrecognized device variable kind: {}".format(kind))
         if path not in self._device_vars[kind]:
             raise ValueError("variable {} does not exist".format(path))
         order=self._device_vars_order[kind]
@@ -133,7 +133,7 @@ class IDevice:
                 only values with a priority equal to higher then specified (0 by default) are returned.
         """
         if kind not in self._device_vars:
-            raise ValueError("unrecognized info node kind: {}".format(kind))
+            raise ValueError("unrecognized device variable kind: {}".format(kind))
         if priority<-10 or priority>10:
             raise ValueError("priority should be between -10 and 10")
         if not isinstance(ignore_error,tuple):
@@ -164,7 +164,7 @@ class IDevice:
         """
         for kind in kinds:
             if kind not in self._device_vars:
-                raise ValueError("unrecognized info node kind: {}".format(kind))
+                raise ValueError("unrecognized device variable kind: {}".format(kind))
         info={}
         variables,priority=(None,include) if isinstance(include,int) else (include,None)
         for kind in kinds:

@@ -45,7 +45,8 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
     _allow_concatenate_write=False # allow automatic concatenation of several write operations (see :meth:`using_write_buffer`)
     _concatenate_write_separator=";\n" # separator to join different commands in concatenated write operation (with :meth:`using_write_buffer`)
     Error=DeviceError
-    BackendError=None
+    BackendError=comm_backend.DeviceBackendError
+    ReraiseError=None
     def __init__(self, conn, term_write=None, term_read=None, wait_callback=None, backend="auto", backend_defaults=None, failsafe=None, timeout=None, backend_params=None):
         self._wait_sync_timeout=self._default_wait_sync_timeout
         failsafe=self._default_failsafe if failsafe is None else failsafe
@@ -62,9 +63,8 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
             self._retry_times=0
         self._wait_callback=wait_callback
         self._wait_callback_timeout=self._default_wait_callback_timeout
-        instr=comm_backend.new_backend(conn,backend=backend,term_write=term_write,term_read=term_read,timeout=self._backend_timeout,defaults=backend_defaults,reraise_error=self.BackendError,**(backend_params or {}))
-        if self.BackendError is None:
-            self.BackendError=instr.Error
+        instr=comm_backend.new_backend(conn,backend=backend,term_write=term_write,term_read=term_read,timeout=self._backend_timeout,defaults=backend_defaults,reraise_error=self.ReraiseError,**(backend_params or {}))
+        self.BackendError=instr.Error
         instr.setup_cooldown(**self._default_operation_cooldown)
         comm_backend.ICommBackendWrapper.__init__(self,instr)
         self.conn=conn
@@ -91,7 +91,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
     def _instr_write(self, msg):
         return self.instr.write(msg)
 
-    def _add_scpi_parameter(self, name, comm, kind="float", options=None, match_option="prefix", set_delay=0, add_node=False):
+    def _add_scpi_parameter(self, name, comm, kind="float", parameter=None, set_delay=0, add_variable=False):
         """
         Add a new SCPI parameter description for easier access.
 
@@ -100,41 +100,45 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
         Args:
             name: parameter name
             comm: SCPI access command (e.g., ``":TRIG:SOURCE"``)
-            kind: parameter kind; can be  ``"int"``, ``"float"``, ``"bool"``, or ``"enum"`` (for text/enum values)
-            options: for ``"enum"`` kind it is a dictionary ``{scpi_value: return_value}``,
-                where ``scpi_value`` is a return SCPI value text (upper case) and ``return_value`` is the value accepted/returned by the set/get method.
-            match_option: describes how options are matched; can be ``"prefix"`` (match option if it's prefix of the result), or ``"exact"`` (match if result is an exact match)
+            kind: parameter kind; can be  ``"string"``, ``"int"``, ``"float"``, ``"bool"``, or ``"param"`` (for parameter values)
+            parameter: for ``"param"`` kind it is a device parameter class used to convert this device parameter
             set_delay: delay between setting and getting commands on parameter setting
-            add_node: if ``True``, automatically add a settings node with the corresponding name
+            add_variable: if ``True``, automatically add a settings variable with the corresponding name
         """
-        funcargparse.check_parameter_range(kind,"kind",["int","float","enum","bool"])
-        funcargparse.check_parameter_range(match_option,"match_option",["prefix","exact"])
-        ioptions=general_utils.invert_dict(options) if options else {}
-        self._scpi_parameters[name]=(comm,kind,options or {},ioptions,match_option,set_delay)
-        if add_node:
-            self._add_device_variable(name,lambda: self._get_scpi_parameter(name),lambda v: self._set_scpi_parameter(name,v),multiarg=False)
+        funcargparse.check_parameter_range(kind,"kind",["string","int","float","param","bool"])
+        parameter=self._parameters.get(parameter,parameter)
+        self._scpi_parameters[name]=(comm,kind,parameter,set_delay)
+        if add_variable:
+            self._add_device_variable(name,"settings",lambda: self._get_scpi_parameter(name),lambda v: self._set_scpi_parameter(name,v),multiarg=False)
+    def _modify_scpi_parameter(self, name, comm=None, kind=None, parameter=None, set_delay=None):
+        """
+        Modify the properties of the existing SCPI parameter.
+
+        Arguments are the same as :meth:`_add_scpi_parameter`. ``None`` arguments are preserved.
+        """
+        cpar=self._scpi_parameters[name]
+        comm=cpar[0] if comm is None else comm
+        if kind is not None:
+            funcargparse.check_parameter_range(kind,"kind",["string","int","float","param","bool"])
+        kind=cpar[1] if kind is None else kind
+        parameter=cpar[2] if parameter is None else self._parameters.get(parameter,parameter)
+        set_delay=cpar[3] if set_delay is None else set_delay
+        self._scpi_parameters[name]=(comm,kind,parameter,set_delay)
     def _get_scpi_parameter(self, name):
         """Get SCPI parameter with a given name"""
-        comm,kind,options,_,match_option,_=self._scpi_parameters[name]
-        if kind in ["int","float","bool"]:
+        comm,kind,parameter,_=self._scpi_parameters[name]
+        if kind in ["string","int","float","bool"]:
             return self.ask(comm+"?",kind)
-        elif kind=="enum":
-            value=self.ask(comm+"?","string").upper()
-            if match_option=="exact":
-                return options[value]
-            else:
-                for k,v in options.items():
-                    if value.startswith(k):
-                        return v
-                raise KeyError("can't find option matching value {}".format(value))
+        elif kind=="param":
+            value=self.ask(comm+"?","string")
+            return parameter.i(value)
     def _set_scpi_parameter(self, name, value):
         """Set SCPI parameter with a given name"""
-        comm,kind,_,ioptions,_,set_delay=self._scpi_parameters[name]
-        if kind in ["int","float","bool"]:
+        comm,kind,parameter,set_delay=self._scpi_parameters[name]
+        if kind in ["string","int","float","bool"]:
             self.write(comm,value,kind)
-        elif kind=="enum":
-            funcargparse.check_parameter_range(value,"value",ioptions)
-            self.write("{} {}".format(comm,ioptions[value]))
+        elif kind=="param":
+            self.write(comm,parameter(value),"string")
         if set_delay>0:
             self.sleep(set_delay)
         return self._get_scpi_parameter(name)
@@ -270,6 +274,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
         """Get the device status register (by default, ``"*ESR?"`` command)"""
         return self.ask(self._esr_comm,"int",timeout=timeout)
     _cls_comm="*CLS"
+    _comm_valid_check_mode="esr"
     def _is_command_valid(self, comm, cached=True, clear_status=True):
         """
         Check if the command or the query is valid.
@@ -279,11 +284,26 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
         If ``clear_status==True``, clear status register before hand (if it's not cleared, the message queue can overflow, yielding false positives)
         """
         if (not cached) or (comm not in self._command_validity_cache):
-            if clear_status:
-                self.write(self._cls_comm)
-            self.write(comm)
-            self.flush()
-            result=not bool(self.get_esr()&0x20)
+            result=True
+            if self._comm_valid_check_mode=="esr":
+                if clear_status:
+                    self.write(self._cls_comm)
+                self.write(comm)
+                self.flush()
+                result=not bool(self.get_esr()&0x20)
+            elif self._comm_valid_check_mode=="ret/idn":
+                idn_res=self.get_id()
+                self.write(comm)
+                self.write(self._id_comm)
+                result=False
+                try:
+                    while True:
+                        res=self.read()
+                        if res==idn_res:
+                            break
+                        result=True
+                except self.instr.Error:
+                    pass
             if cached:
                 self._command_validity_cache[comm]=result
         else:
@@ -371,12 +391,12 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
         
         Args:
             msg (str): Text message.
-            arg: Optional argument to append in the end.
+            arg: Optional argument to append in the end. If a list of arguments is supplied, the result is joined with ``","``.
             arg_type (str): Argument type. Can be ``'raw'`` (in which case data is sent raw), ``'string'``, ``'int'``, ``'float'``,
                 ``'bool'``, a format string (such as ``'{:.3f}'``) or a list of argument types (for an iterable argument);
                 if format string is used and the argument is a list or a tuple, then it is expanded as a list of arguments
                 (e.g., ``arg_type='{0};{1}'`` with ``arg=[1,2]`` will produce a string ``'1;2'``);
-                if a list of types is used, each element of `arg` is converted using the corresponding type, and the result is joined with commas.
+                if a list of types is used, each element of `arg` is converted using the corresponding type, and the result is joined with ``","``.
             unit (str): If not ``None``, use it as a unit to append after the value.
             bool_selector (tuple): A tuple ``(false_value, true_value)`` of two strings to represent bool argument;
                 by default, use ``._bool_selector`` attribute.
@@ -442,7 +462,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
             return data_type(msg)
         else:
             raise ValueError("unrecognized data_type: {0}".format(data_type))
-    def _check_reply(self, reply, msg=None):
+    def _check_reply(self, reply, msg=None):  # pylint: disable=unused-argument
         """
         Check the raw reply returned by the device.
 
@@ -501,7 +521,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
         l=0
         try:
             while True:
-                l=l+len(self._read_one_try(raw=True,timeout=0))
+                l=l+len(self._read_one_try(raw=True,timeout=1E-3))
                 if one_line:
                     return l
         except self.instr.Error:

@@ -31,7 +31,6 @@ class ANC300(comm_backend.ICommBackendWrapper,stage.IMultiaxisStage):
         super().__init__(instr)
         self.open()
         self._correction={}
-        self._add_info_variable("axes",self.get_all_axes)
         self._add_info_variable("device_info",self.get_device_info)
         self._add_info_variable("axes_serial",self.get_axis_serial)
         self._add_status_variable("modes",self.get_mode)

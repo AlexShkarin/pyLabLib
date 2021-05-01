@@ -15,26 +15,34 @@ TTriggerParameters=collections.namedtuple("TTriggerParameters",["source","level"
 class ITektronixScope(SCPI.SCPIDevice):
     """
     Generic Tektronix Oscilloscope.
+    
+    Args:
+        addr: device address; usually a VISA address string such as ``"USB0::0x0699::0x0364::C000000::INSTR"``
+        nchannels: can specify number of channels on the oscilloscope; by default, autodetect number of channels (might take several seconds on connection)
     """
     _wfmpre_comm="WFMP"  # command used to obtain waveform preamble
     _trig_comm="TRIGGER:MAIN"  # command used to set up trigger
     _software_trigger_delay=0.3 # delay between issuing a single acquisition and sending the software trigger; if the trigger is sent sooner, it is ignored
     _probe_attenuation_comm=("PROBE","att")
     # _default_operation_cooldown={"write":2E-3}
-    _main_channels_idx=[1,2,3,4]  # ids of main channels (integers)
+    _main_channels_idx="specify"  # ids of main channels (integers); "specify" means the number is specified in constructor; specified "auto" means that they get autodetected on connection
     _aux_channels=[]  # names of aux channels (strings)
     # horizontal offset method; either ``"delay"`` (use ``"HORizontal:DELay:TIMe"``), ``"pos"`` (use ``"HORizontal:POSition"``, and set ``"HORizontal:DELay:MODe"`` accordingly),
     # or ``"pos_only"`` (use ``"HORizontal:POSition"``, don't set ``"HORizontal:DELay:MODe"`` in case it's not available)
     _hor_offset_method="pos_only"
+    _hor_pos_mode="real_center"  # mode of :HORIZONTAL:POS command; can be "real_center", if time position of the sample is specified (0 is centered), or "frac" if fraction to the left is specified (50 is centered)
     Error=TektronixError
-    BackendError=TektronixBackendError
-    def __init__(self, addr):
+    ReraiseError=TektronixBackendError
+    def __init__(self, addr, nchannels="auto"):
         SCPI.SCPIDevice.__init__(self,addr)
-        _main_channels=[(i,"ch{}".format(i)) for i in self._main_channels_idx]
-        self._add_parameter_class(interface.EnumParameterClass("input_channel",_main_channels,value_case="upper"))
-        self._add_parameter_class(interface.EnumParameterClass("channel",_main_channels+self._aux_channels,value_case="upper"))
-        self.data_fmt="<i1"
-        self._add_info_variable("addr",lambda: self.conn)
+        if self._main_channels_idx=="specify":
+            if nchannels=="auto":
+                nchannels=self._detect_main_channels_number()
+            self._main_channels_idx=list(range(1,nchannels+1))
+        main_channels=[(i,"ch{}".format(i)) for i in self._main_channels_idx]
+        self._add_parameter_class(interface.EnumParameterClass("input_channel",main_channels,value_case="upper"))
+        self._add_parameter_class(interface.EnumParameterClass("channel",main_channels+self._aux_channels,value_case="upper"))
+        self.default_data_fmt="<i1"
         self._add_settings_variable("edge_trigger/source",self.get_edge_trigger_source,self.set_edge_trigger_source)
         self._add_settings_variable("edge_trigger/coupling",self.get_edge_trigger_coupling,self.set_edge_trigger_coupling)
         self._add_settings_variable("edge_trigger/slope",self.get_edge_trigger_slope,self.set_edge_trigger_slope)
@@ -47,7 +55,14 @@ class ITektronixScope(SCPI.SCPIDevice):
         self._add_settings_variable("coupling",self.get_coupling,self.set_coupling,mux=(self._main_channels_idx,))
         self._add_settings_variable("probe_attenuation",self.get_probe_attenuation,self.set_probe_attenuation,mux=(self._main_channels_idx,))
 
-
+    def _detect_main_channels_number(self):
+        ch=1
+        while ch<=16:
+            if self._is_command_valid(":CH{}:POSITION?".format(ch+1)):
+                ch+=1
+            else:
+                break
+        return ch
     def grab_single(self, wait=True, software_trigger=False, wait_timeout=None):
         """
         Set single waveform grabbing and wait for acquisition.
@@ -183,6 +198,18 @@ class ITektronixScope(SCPI.SCPIDevice):
         """Set horizontal span (in seconds)"""
         self.write(":HORIZONTAL:SCALE",span/10.,"float") # scale is per division (10 division per screen)
         return self.get_horizontal_span()
+    def _to_horizontal_pos(self, center_time):
+        if self._hor_pos_mode=="real_center":
+            return center_time
+        span=self.get_horizontal_span()
+        rel_offset=(center_time/span*100)+50
+        rel_offset=min(max(rel_offset,0),100)
+        return rel_offset
+    def _from_horizontal_pos(self, hor_pos):
+        if self._hor_pos_mode=="real_center":
+            return hor_pos
+        span=self.get_horizontal_span()
+        return (hor_pos/100.-.5)*span
     def get_horizontal_offset(self):
         """Get horizontal offset (position of the center of the sweep; in seconds)"""
         if self._hor_offset_method=="delay":
@@ -191,8 +218,7 @@ class ITektronixScope(SCPI.SCPIDevice):
         else:
             if self._hor_offset_method=="pos":
                 self.write(":HORIZONTAL:DELAY:MODE 0")
-            span=self.get_horizontal_span()
-            return (self.ask(":HORIZONTAL:POS?","float")/100.-.5)*span
+            return self._from_horizontal_pos(self.ask(":HORIZONTAL:POS?","float"))
     def set_horizontal_offset(self, offset=0.):
         """Set horizontal offset (position of the center of the sweep; in seconds)"""
         if self._hor_offset_method=="delay":
@@ -201,10 +227,8 @@ class ITektronixScope(SCPI.SCPIDevice):
         else:
             if self._hor_offset_method=="pos":
                 self.write(":HORIZONTAL:DELAY:MODE 0")
-            span=self.get_horizontal_span()
-            rel_offset=(offset/span*100)+50
-            rel_offset=min(max(rel_offset,0),100)
-            self.write(":HORIZONTAL:POS",offset,"float")
+            pos=self._to_horizontal_pos(offset)
+            self.write(":HORIZONTAL:POS",pos,"float")
         return self.get_horizontal_offset()
     @interface.use_parameters(channel="input_channel")
     def get_vertical_span(self, channel):
@@ -357,7 +381,7 @@ class ITektronixScope(SCPI.SCPIDevice):
         If ``"default"``, use the oscilloscope default format (usually binary with smallest appropriate byte size).
         """
         if fmt=="default":
-            fmt=self.data_fmt
+            fmt=self.default_data_fmt
         fmt=data_format.DataFormat.from_desc(fmt)
         if fmt.is_ascii():
             self.write(":DATA:ENCDG ASCII")
@@ -473,7 +497,7 @@ class ITektronixScope(SCPI.SCPIDevice):
         """
         wfmpres=wfmpres or [None]*len(channels)
         if ensure_fmt:
-            fmt=wfmpres[0]["fmt"] if wfmpres[0] else self.data_fmt
+            fmt=wfmpres[0]["fmt"] if wfmpres[0] else self.default_data_fmt
             if self.get_data_format()!=data_format.DataFormat.from_desc(fmt).to_desc():
                 self.set_data_format(fmt=fmt)
         return [self._read_sweep_fast(ch,wfmpre,timeout=timeout) for (ch,wfmpre) in zip(channels,wfmpres)]
@@ -499,16 +523,25 @@ class ITektronixScope(SCPI.SCPIDevice):
 class TDS2000(ITektronixScope):
     """
     Tektronix TDS2000 Oscilloscope.
+
+    Args:
+        addr: device address; usually a VISA address string such as ``"USB0::0x0699::0x0364::C000000::INSTR"``
+        nchannels: can specify number of channels on the oscilloscope; by default, autodetect number of channels (might take several seconds on connection)
     """
 
 class DPO2014(ITektronixScope):
     """
     Tektronix DPO2014 Oscilloscope.
+
+    Args:
+        addr: device address; usually a VISA address string such as ``"USB0::0x0699::0x0364::C000000::INSTR"``
+        nchannels: can specify number of channels on the oscilloscope; by default, autodetect number of channels (might take several seconds on connection)
     """
     _wfmpre_comm="WFMO"
     _trig_comm="TRIGGER:A"
     _probe_attenuation_comm=("PROBE:GAIN","gain")
     _hor_offset_method="delay"
+    _hor_pos_mode="frac"
     def _build_wfmpre(self, data):
         wfmpre={}
         wfmpre["fmt"]=data_format.DataFormat.from_desc("ascii") if data[2].startswith("ASC") else self._build_data_format(data[3],data[0])

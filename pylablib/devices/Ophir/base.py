@@ -194,6 +194,7 @@ class VegaPowerMeter(OphirDevice):
         Set current range index.
 
         `rng_idx` is the range index from 0 (highest) to maximal (lowest); auto-ranging is -1.
+        The corresponding ranges are given by :meth:`get_range_info`.
         """
         self.query("$WN{:d}".format(rng_idx))
         return self.get_range_idx()
