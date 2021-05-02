@@ -1,7 +1,7 @@
 import numpy as np
 
 from ...core.devio import SCPI, data_format, interface, DeviceError, DeviceBackendError
-from ...core.utils import funcargparse
+from ...core.utils import funcargparse, general
 
 import collections
 
@@ -11,10 +11,17 @@ class TektronixError(DeviceError):
 class TektronixBackendError(TektronixError,DeviceBackendError):
     """Generic Tektronix backend communication error"""
 
+def muxchannel(*args, **kwargs):
+    """Multiplex the function over its channel argument"""
+    if len(args)>0:
+        return muxchannel(**kwargs)(args[0])
+    def ch_func(self, *_, **__):
+        return list(self._main_channels_idx)
+    return general.muxcall("channel",all_arg_func=ch_func,mux_argnames=kwargs.get("mux_argnames",None),return_kind=kwargs.get("return_kind","list"),allow_partial=True)
 TTriggerParameters=collections.namedtuple("TTriggerParameters",["source","level","coupling","slope"])
 class ITektronixScope(SCPI.SCPIDevice):
     """
-    Generic Tektronix Oscilloscope.
+    Generic Tektronix oscilloscope.
     
     Args:
         addr: device address; usually a VISA address string such as ``"USB0::0x0699::0x0364::C000000::INSTR"``
@@ -43,6 +50,7 @@ class ITektronixScope(SCPI.SCPIDevice):
         self._add_parameter_class(interface.EnumParameterClass("input_channel",main_channels,value_case="upper"))
         self._add_parameter_class(interface.EnumParameterClass("channel",main_channels+self._aux_channels,value_case="upper"))
         self.default_data_fmt="<i1"
+        self._add_info_variable("channels_number",self.get_channels_number)
         self._add_settings_variable("edge_trigger/source",self.get_edge_trigger_source,self.set_edge_trigger_source)
         self._add_settings_variable("edge_trigger/coupling",self.get_edge_trigger_coupling,self.set_edge_trigger_coupling)
         self._add_settings_variable("edge_trigger/slope",self.get_edge_trigger_slope,self.set_edge_trigger_slope)
@@ -63,6 +71,9 @@ class ITektronixScope(SCPI.SCPIDevice):
             else:
                 break
         return ch
+    def get_channels_number(self):
+        """Get the number of channels"""
+        return len(self._main_channels_idx)
     def grab_single(self, wait=True, software_trigger=False, wait_timeout=None):
         """
         Set single waveform grabbing and wait for acquisition.
@@ -77,6 +88,9 @@ class ITektronixScope(SCPI.SCPIDevice):
             self.force_trigger()
         if wait:
             self.wait_sync(timeout=wait_timeout)
+    def wait_for_grabbing(self, timeout=None):
+        """Wait until the acquisition is complete"""
+        self.wait_sync(timeout=timeout)
     def grab_continuous(self, enable=True):
         """Start or stop continuous grabbing"""
         self.write(":ACQ:STOPAFTER RUNSTOP")
@@ -145,7 +159,7 @@ class ITektronixScope(SCPI.SCPIDevice):
     def _get_edge_trigger_params(self):
         return TTriggerParameters(self.get_edge_trigger_source(), self.get_trigger_level(), self.get_edge_trigger_coupling(), self.get_edge_trigger_slope())
     @interface.use_parameters(source="channel")
-    def setup_edge_trigger(self, source, level, coupling="dc", slope="fall"):
+    def setup_edge_trigger(self, source, level, coupling="dc", slope="rise"):
         """
         Setup edge trigger.
 
@@ -230,31 +244,37 @@ class ITektronixScope(SCPI.SCPIDevice):
             pos=self._to_horizontal_pos(offset)
             self.write(":HORIZONTAL:POS",pos,"float")
         return self.get_horizontal_offset()
+    @muxchannel
     @interface.use_parameters(channel="input_channel")
     def get_vertical_span(self, channel):
         """Get channel vertical span (in V)"""
         return self.ask(":{}:SCALE?".format(channel),"float")*10. # scale is per division (10 division per screen)
+    @muxchannel(mux_argnames="span")
     @interface.use_parameters(channel="input_channel")
     def set_vertical_span(self, channel, span):
         """Set channel vertical span (in V)"""
         self.write(":{}:SCALE".format(channel),span/10.,"float") # scale is per division (10 division per screen)
         return self._wip.get_vertical_span(channel)
+    @muxchannel
     @interface.use_parameters(channel="input_channel")
     def get_vertical_position(self, channel):
         """Get channel vertical position (offset of the zero volt line; in V)"""
         return self.ask(":{}:POSITION?".format(channel),"float")*self._wip.get_vertical_span(channel)/10. # offset is in divisions (10 division per screen)
+    @muxchannel(mux_argnames="position")
     @interface.use_parameters(channel="input_channel")
-    def set_vertical_position(self, channel, offset):
+    def set_vertical_position(self, channel, position):
         """Set channel vertical position (offset of the zero volt line; in V)"""
-        offset/=self._wip.get_vertical_span(channel)/10. # offset is in divisions (10 division per screen)
-        self.write(":{}:POSITION".format(channel),offset,"float")
+        position/=self._wip.get_vertical_span(channel)/10. # position is in divisions (10 division per screen)
+        self.write(":{}:POSITION".format(channel),position,"float")
         return self._wip.get_vertical_position(channel)
     
 
+    @muxchannel
     @interface.use_parameters(channel="input_channel")
     def is_channel_enabled(self, channel):
         """Check if channel is enabled"""
         return self.ask(":SELECT:{}?".format(channel),"bool")
+    @muxchannel(mux_argnames="enabled")
     @interface.use_parameters(channel="input_channel")
     def enable_channel(self, channel, enabled=True):
         """Enable or disable given channel"""
@@ -277,11 +297,19 @@ class ITektronixScope(SCPI.SCPIDevice):
         """
         self.write(":DATA:SOURCE {}".format(channel))
         return self.get_selected_channel()
+    def _normalize_channel(self, channel):
+        return self._parameters["channel"](channel)
+    def _get_channel(self, channel):
+        """Get the specified channel, or the current if ``None``"""
+        if channel is None:
+            return self.get_selected_channel()
+        return self._normalize_channel(channel)
     def _change_channel(self, channel=None):
-        """Select a new channel is specified"""
+        """Select a new channel if specified"""
         if channel is not None:
             self.select_channel(channel)
     @interface.use_parameters(channel="input_channel",_returns="coupling")
+    @muxchannel
     def get_coupling(self, channel):
         """
         Get channel coupling.
@@ -289,6 +317,7 @@ class ITektronixScope(SCPI.SCPIDevice):
         Can be ``"ac"``, ``"dc"``, or ``"gnd"``.
         """
         return self.ask(":{}:COUPL?".format(channel))
+    @muxchannel(mux_argnames="coupling")
     @interface.use_parameters(channel="input_channel")
     def set_coupling(self, channel, coupling="dc"):
         """
@@ -298,6 +327,7 @@ class ITektronixScope(SCPI.SCPIDevice):
         """
         self.write(":{}:COUPL".format(channel),coupling)
         return self._wip.get_coupling(channel)
+    @muxchannel
     @interface.use_parameters(channel="input_channel")
     def get_probe_attenuation(self, channel):
         """Get channel probe attenuation"""
@@ -306,6 +336,7 @@ class ITektronixScope(SCPI.SCPIDevice):
         comm,kind=self._probe_attenuation_comm
         value=self.ask(":{}:{}?".format(channel,comm),"float")
         return value if kind=="att" else 1./value
+    @muxchannel(mux_argnames="attenuation")
     @interface.use_parameters(channel="input_channel")
     def set_probe_attenuation(self, channel, attenuation):
         """Set channel probe attenuation"""
@@ -323,7 +354,7 @@ class ITektronixScope(SCPI.SCPIDevice):
         It can be ``"acq"`` (number of points acquired),
         ``"trace"`` (number of points in the source of the read-out trace; can be lower than ``"acq"`` if the data resultion is reduced, or if the source is not a channel data),
         or ``"send"`` (number of points in the sent waveform; can be lower than ``"trace"`` if :meth:`get_data_pts_range` is used to specify and incomplete range).
-        Not all kinds are defined for all scope model (e.g., ``"trace"`` is not defined for TDS20XX oscilloscopes).
+        Not all kinds are defined for all scope model (e.g., ``"trace"`` is not defined for TDS2000 series oscilloscopes).
         
         For length of read-out trace, see also :meth:`get_data_pts_range`.
         """
@@ -418,6 +449,8 @@ class ITektronixScope(SCPI.SCPIDevice):
         return self._build_data_format(dfmt,size).to_desc()
 
     def _build_wfmpre(self, data):
+        if len(data)<15:
+            raise self.Error("incomplete preamble: {}".format(data))
         wfmpre={}
         wfmpre["fmt"]=data_format.DataFormat.from_desc("ascii") if data[2].startswith("ASC") else self._build_data_format(data[3],data[0])
         wfmpre["pts"]=int(data[5])
@@ -428,16 +461,21 @@ class ITektronixScope(SCPI.SCPIDevice):
         wfmpre["yzero"]=float(data[13])
         wfmpre["yoff"]=float(data[14])
         return wfmpre
-    def get_wfmpre(self, channel=None):
+    def get_wfmpre(self, channel=None, enable=True):
         """
         Get preamble dictionary describing all scaling and format data for the given channel or a list of channels.
 
         Can be acquired once and used in subsequent multiple reads to save time on re-requesting.
         If `channel` is ``None``, use the currently selected channel.
+        If ``enable==True``, make sure that the requested channel is enabled; getting preamble for disabled channels raises an error.
         """
-        if isinstance(channel,list):
-            return [self.get_wfmpre(ch) for ch in channel]
+        if isinstance(channel,(list,tuple)):
+            return {self._normalize_channel(ch):self.get_wfmpre(ch,enable=enable) for ch in channel}
         self._change_channel(channel)
+        if enable:
+            channel=self._get_channel(channel)
+            if not self.is_channel_enabled(channel):
+                self.enable_channel(channel)
         data=self.ask(":{}?".format(self._wfmpre_comm)).split(";")
         data=[d.strip().upper() for d in data]
         return self._build_wfmpre(data)
@@ -474,7 +512,7 @@ class ITektronixScope(SCPI.SCPIDevice):
     @interface.use_parameters(channel="input_channel")
     def _read_sweep_fast(self, channel, wfmpre=None, timeout=None):
         self.write(":DATA:SOURCE {}".format(channel))
-        wfmpre=wfmpre or self.get_wfmpre()
+        wfmpre=wfmpre or self.get_wfmpre(enable=False)
         self.write(":CURVE?")
         if wfmpre["fmt"].is_ascii():
             data=self.read("raw",timeout=timeout)
@@ -484,23 +522,30 @@ class ITektronixScope(SCPI.SCPIDevice):
         if len(trace)!=wfmpre["pts"]:
             raise TektronixError("received data length {0} is not equal to the number of points {1}".format(len(trace),wfmpre["pts"]))
         return self._scale_data(trace,wfmpre)
-    def read_multiple_sweeps(self, channels, wfmpres=None, ensure_fmt=True, timeout=None):
+    def read_multiple_sweeps(self, channels, wfmpres=None, ensure_fmt=False, timeout=None):
         """
         Read data from a multiple channels channel.
 
         Args:
             channels: list of channel indices or names
-            wfmpres: optional list of preamble dictionaries (obtained using :meth:`get_wfmpre`);
+            wfmpres: optional list or dictionary of preambles (obtained using :meth:`get_wfmpre`);
                 if it is ``None``, obtain during reading, which slows down the data acquisition a bit
-            ensure_fmt: if ``True``, make sure that oscilloscope data format agrees with the one in `wfmpre`.
+            ensure_fmt: if ``True``, make sure that oscilloscope data format agrees with the one in `wfmpre`
             timeout: read timeout
         """
-        wfmpres=wfmpres or [None]*len(channels)
+        if not channels:
+            return []
+        channels=[self._normalize_channel(ch) for ch in channels]
+        if wfmpres is None:
+            wfmpres={}
+        elif isinstance(wfmpres,(list,tuple)):
+            wfmpres=dict(zip(channels,wfmpres))
         if ensure_fmt:
-            fmt=wfmpres[0]["fmt"] if wfmpres[0] else self.default_data_fmt
+            pre=wfmpres.get(channels[0],None)
+            fmt=pre["fmt"] if pre else self.default_data_fmt
             if self.get_data_format()!=data_format.DataFormat.from_desc(fmt).to_desc():
                 self.set_data_format(fmt=fmt)
-        return [self._read_sweep_fast(ch,wfmpre,timeout=timeout) for (ch,wfmpre) in zip(channels,wfmpres)]
+        return [self._read_sweep_fast(ch,wfmpres.get(ch,None),timeout=timeout) for ch in channels]
     def read_sweep(self, channel, wfmpre=None, ensure_fmt=True, timeout=None):
         """
         Read data from a single channel.
@@ -522,16 +567,16 @@ class ITektronixScope(SCPI.SCPIDevice):
 
 class TDS2000(ITektronixScope):
     """
-    Tektronix TDS2000 Oscilloscope.
+    Tektronix TDS2000 series oscilloscope.
 
     Args:
         addr: device address; usually a VISA address string such as ``"USB0::0x0699::0x0364::C000000::INSTR"``
         nchannels: can specify number of channels on the oscilloscope; by default, autodetect number of channels (might take several seconds on connection)
     """
 
-class DPO2014(ITektronixScope):
+class DPO2000(ITektronixScope):
     """
-    Tektronix DPO2014 Oscilloscope.
+    Tektronix DPO2000 series oscilloscope.
 
     Args:
         addr: device address; usually a VISA address string such as ``"USB0::0x0699::0x0364::C000000::INSTR"``

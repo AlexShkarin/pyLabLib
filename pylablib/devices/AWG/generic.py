@@ -22,6 +22,11 @@ class GenericAWG(SCPI.SCPIDevice):
     _force_channel_source_pfx=False
     _default_operation_cooldown={"write":1E-2}
     _channels_number=1
+    _default_load=50
+    _inf_load=1E10
+    _range_mode="high_low"  # range setting mode; can be "high_low" or "amp_off"
+    _function_aliases={"sine":"SIN","square":"SQU","ramp":"RAMP","pulse":"PULS","noise":"NOIS","prbs":"PRBS","dc":"DC","user":"USER","arb":"ARB"}
+    _supported_functions=list(_function_aliases)
     Error=GenericAWGError
     ReraiseError=GenericAWGBackendError
     def __init__(self, addr):
@@ -35,8 +40,11 @@ class GenericAWG(SCPI.SCPIDevice):
             self._add_scpi_parameter("output_sync","SYNC",kind="bool",channel=ch,comm_kind="output",add_variable=True)
             self._add_settings_variable("load",self.get_load,self.set_load,channel=ch)
             self._add_settings_variable("range",self.get_range,self.set_range,multiarg=False,channel=ch)
+            self._add_scpi_parameter("amplitude","VOLTAGE",kind="float",channel=ch)
+            self._add_scpi_parameter("offset","VOLTAGE:OFFSET",kind="float",channel=ch)
             self._add_settings_variable("frequency",self.get_frequency,self.set_frequency,channel=ch)
             self._add_settings_variable("phase",self.get_phase,self.set_phase,channel=ch)
+            self._add_scpi_parameter("phase","PHASE",kind="float",channel=ch)
             self._add_scpi_parameter("function","FUNCTION",kind="param",parameter="function",channel=ch,add_variable=True)
             self._add_scpi_parameter("duty_cycle","FUNCTION:SQUARE:DCYCLE",channel=ch,add_variable=True)
             self._add_scpi_parameter("ramp_symmetry","FUNCTION:RAMP:SYMMETRY",channel=ch,add_variable=True)
@@ -49,12 +57,10 @@ class GenericAWG(SCPI.SCPIDevice):
             self._add_scpi_parameter("trigger_slope","TRIG:SLOPE",kind="param",parameter="slope",channel=ch,add_variable=True)
             self._add_scpi_parameter("trigger_output","OUTPUT:TRIG",kind="bool",channel=ch,add_variable=True)
             self._add_scpi_parameter("output_trigger_slope","OUTPUT:TRIG:SLOPE",kind="param",parameter="slope",channel=ch,add_variable=True)
+        self._add_scpi_parameter("voltage_unit","VOLTAGE:UNIT",kind="string")
+        self._add_scpi_parameter("phase_unit","UNIT:ANGLE",kind="string")
         self._current_channel=1
 
-    _default_load=50
-    _inf_load=1E10
-    _function_aliases={"sine":"SIN","square":"SQU","ramp":"RAMP","pulse":"PULS","noise":"NOIS","prbs":"PRBS","dc":"DC","user":"USER","arb":"ARB"}
-    _supported_functions=list(_function_aliases)
     _p_polarity=interface.EnumParameterClass("polarity",["norm","inv"],value_case="upper",match_prefix=True)
     _p_burst_mode=interface.EnumParameterClass("burst_mode",{"trig":"TRIG","gate":"GATE"},value_case="upper",match_prefix=True)
     _p_trigger_source=interface.EnumParameterClass("trigger_source",["imm","ext","bus"],value_case="upper",match_prefix=True)
@@ -73,6 +79,13 @@ class GenericAWG(SCPI.SCPIDevice):
             name=self._build_variable_name(name,channel)
             comm=self._build_channel_command(comm,channel,kind=comm_kind)
         return SCPI.SCPIDevice._add_scpi_parameter(self,name,comm,kind=kind,parameter=parameter,set_delay=set_delay,add_variable=add_variable)
+    def _modify_scpi_parameter(self, name, comm, kind=None, parameter=None, set_delay=0, channel=None, comm_kind="source"):
+        if channel is not None and name not in self._all_channel_commands:
+            if not self._can_add_command(name,channel):
+                return
+            name=self._build_variable_name(name,channel)
+            comm=self._build_channel_command(comm,channel,kind=comm_kind)
+        return SCPI.SCPIDevice._modify_scpi_parameter(self,name,comm,kind=kind,parameter=parameter,set_delay=set_delay)
     def _add_settings_variable(self, path, getter=None, setter=None, ignore_error=(), mux=None, multiarg=True, channel=None):
         if channel is not None and path not in self._all_channel_commands:
             if not self._can_add_command(path,channel):
@@ -90,19 +103,19 @@ class GenericAWG(SCPI.SCPIDevice):
             return self._get_scpi_parameter(name)
         channel=self._get_channel(channel)
         return self._get_scpi_parameter(self._build_variable_name(name,channel))
-    def _set_channel_scpi_parameter(self, name, value, channel=None):
+    def _set_channel_scpi_parameter(self, name, value, channel=None, result=False):
         if name in self._all_channel_commands:
-            return self._set_scpi_parameter(name,value)
+            return self._set_scpi_parameter(name,value,result=result)
         channel=self._get_channel(channel)
-        return self._set_scpi_parameter(self._build_variable_name(name,channel),value)
+        return self._set_scpi_parameter(self._build_variable_name(name,channel),value,result=result)
     def _get_scpi_parameter(self, name):
         try:
             return SCPI.SCPIDevice._get_scpi_parameter(self,name)
         except KeyError:
             raise self.Error("option '{}' is not supported by this device".format(name))
-    def _set_scpi_parameter(self, name, value):
+    def _set_scpi_parameter(self, name, value, result=False):
         try:
-            return SCPI.SCPIDevice._set_scpi_parameter(self,name,value)
+            return SCPI.SCPIDevice._set_scpi_parameter(self,name,value,result=result)
         except KeyError:
             raise self.Error("option '{}' is not supported by this device".format(name))
     def _ask_channel(self, msg, data_type="string", delay=0., timeout=None, read_echo=False, name=None, channel=None, comm_kind="source"):
@@ -215,30 +228,33 @@ class GenericAWG(SCPI.SCPIDevice):
         return self._set_channel_scpi_parameter("function",func,channel=channel)
     
     def get_amplitude(self, channel=None):
-        """Get output amplitude"""
-        self._write_channel("VOLTAGE:UNIT","VPP",name="voltage_unit",channel=channel)
-        return self._ask_channel("VOLTAGE?","float",name="amplitude",channel=channel)/2.
+        """Get output amplitude (i.e., half of the span)"""
+        self._set_scpi_parameter("voltage_unit","VPP")
+        return self._get_channel_scpi_parameter("amplitude",channel=channel)/2
     def set_amplitude(self, amplitude, channel=None):
-        """Set output amplitude"""
-        self._write_channel("VOLTAGE:UNIT","VPP",name="voltage_unit",channel=channel)
-        self._write_channel("VOLTAGE",amplitude*2,"float",name="amplitude",channel=channel)
-        return self.get_amplitude(channel=channel)
+        """Set output amplitude (i.e., half of the span)"""
+        self._set_scpi_parameter("voltage_unit","VPP")
+        return self._set_channel_scpi_parameter("amplitude",amplitude*2,channel=channel)/2
     def get_offset(self, channel=None):
         """Get output offset"""
-        return self._ask_channel("VOLTAGE:OFFSET?","float",name="offset",channel=channel)
+        return self._get_channel_scpi_parameter("offset",channel=channel)
     def set_offset(self, offset, channel=None):
         """Set output offset"""
-        self._write_channel("VOLTAGE:OFFSET",offset,"float",name="offset",channel=channel)
-        return self.get_offset(channel=channel)
+        return self._set_channel_scpi_parameter("offset",offset,channel=channel)
     def get_range(self, channel=None):
         """
         Get output voltage range.
         
         Return tuple ``(vmin, vmax)`` with the low and high voltage values (i.e., ``offset-amplitude`` and ``offset+amplitude``).
         """
-        low=self._ask_channel("VOLTAGE:LOW?","float",name="voltage",channel=channel)
-        high=self._ask_channel("VOLTAGE:HIGH?","float",name="voltage",channel=channel)
-        return low,high
+        if self._range_mode=="high_low":
+            low=self._ask_channel("VOLTAGE:LOW?","float",name="voltage",channel=channel)
+            high=self._ask_channel("VOLTAGE:HIGH?","float",name="voltage",channel=channel)
+            return low,high
+        else:
+            amp=self.get_amplitude(channel=channel)
+            off=self.get_offset(channel=channel)
+            return off-amp,off+amp
     def set_range(self, rng, channel=None):
         """
         Set output voltage range.
@@ -254,13 +270,23 @@ class GenericAWG(SCPI.SCPIDevice):
             self.set_amplitude(10E-3,channel=channel)
             self.set_offset((high+low)/2.,channel=channel)
         else:
-            curr_rng=self.get_range(channel=channel)
-            if low<curr_rng[1]:
-                self._write_channel("VOLTAGE:LOW",low,"float",name="voltage",channel=channel)
-                self._write_channel("VOLTAGE:HIGH",high,"float",name="voltage",channel=channel)
+            if self._range_mode=="high_low":
+                curr_rng=self.get_range(channel=channel)
+                if low<curr_rng[1]:
+                    self._write_channel("VOLTAGE:LOW",low,"float",name="voltage",channel=channel)
+                    self._write_channel("VOLTAGE:HIGH",high,"float",name="voltage",channel=channel)
+                else:
+                    self._write_channel("VOLTAGE:HIGH",high,"float",name="voltage",channel=channel)
+                    self._write_channel("VOLTAGE:LOW",low,"float",name="voltage",channel=channel)
             else:
-                self._write_channel("VOLTAGE:HIGH",high,"float",name="voltage",channel=channel)
-                self._write_channel("VOLTAGE:LOW",low,"float",name="voltage",channel=channel)
+                amp,off=(rng[1]-rng[0])/2,(rng[1]+rng[0])/2
+                curr_amp=self.get_amplitude(channel=channel)
+                if curr_amp>=amp:
+                    self.set_amplitude(amp,channel=channel)
+                    self.set_offset(off,channel=channel)
+                else:
+                    self.set_offset(off,channel=channel)
+                    self.set_amplitude(amp,channel=channel)
         return self.get_range(channel=channel)
     
     def get_frequency(self, channel=None):
@@ -276,16 +302,15 @@ class GenericAWG(SCPI.SCPIDevice):
         if self._channels_number==1:
             return None
         if self._set_angle_unit:
-            self.write(":UNIT:ANGLE DEG")
-        return self._ask_channel("PHASE?","float",name="phase",channel=channel)
+            self._set_scpi_parameter("phase_unit","DEG")
+        return self._get_channel_scpi_parameter("phase",channel=channel)
     def set_phase(self, phase, channel=None):
         """Set output phase (in degrees)"""
         if self._channels_number==1:
             return None
         if self._set_angle_unit:
-            self.write(":UNIT:ANGLE DEG")
-        self._write_channel("PHASE",phase,"float",name="phase",channel=channel)
-        return self.get_phase(channel=channel)
+            self._set_scpi_parameter("phase_unit","DEG")
+        return self._set_channel_scpi_parameter("phase",phase,channel=channel)
     def sync_phase(self):
         """Synchronize phase between two channels"""
         if self._channels_number>1:

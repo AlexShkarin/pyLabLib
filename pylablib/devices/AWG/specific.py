@@ -30,73 +30,47 @@ class InstekAFG2225(GenericAWG):
     Compared to 2000/2100 series, has one extra channel and a bit more capabilities
     (burst trigger, pulse function)
     """
-    _exclude_commands={"output_polarity","output_sync","trigger_output","output_trigger_slope"}
+    _exclude_commands={"output_polarity","output_sync","trigger_output","output_trigger_slope","voltage_unit"}
     _supported_functions={"sine","square","noise","ramp","pulse","user"}
     _set_angle_unit=False
     _force_channel_source_pfx=True
     _channels_number=2
+    _range_mode="amp_off"
+    _amplitude_opc_check=True
     def __init__(self, addr):
         GenericAWG.__init__(self,addr)
         for ch in range(1,self._channels_number+1):
-            self._add_scpi_parameter("duty_cycle","SQUARE:DCYCLE",channel=ch,add_variable=True)
-            self._add_scpi_parameter("ramp_symmetry","RAMP:SYMMETRY",channel=ch,add_variable=True)
-            self._add_scpi_parameter("pulse_width","PULSE:WIDTH",channel=ch,add_variable=True)
-            self._add_scpi_parameter("trigger_source","BURST:TRIG:SOURCE",kind="param",parameter="trigger_source",channel=ch,add_variable=True)
-            self._add_scpi_parameter("trigger_slope","BURST:TRIG:SLOPE",kind="param",parameter="slope",channel=ch,add_variable=True)
-    def get_amplitude(self, channel=None):
-        """Get output amplitude"""
+            self._modify_scpi_parameter("offset","DCOFFSET",channel=ch)
+            self._modify_scpi_parameter("duty_cycle","SQUARE:DCYCLE",channel=ch)
+            self._modify_scpi_parameter("ramp_symmetry","RAMP:SYMMETRY",channel=ch)
+            self._modify_scpi_parameter("pulse_width","PULSE:WIDTH",channel=ch)
+            self._modify_scpi_parameter("trigger_source","BURST:TRIG:SOURCE",channel=ch)
+            self._modify_scpi_parameter("trigger_slope","BURST:TRIG:SLOPE",channel=ch)
+    def _set_vpp_unit(self, channel=None):
         if self._ask_channel("VOLTAGE:UNIT?",name="voltage_unit",channel=channel).upper()!="VPP":
             self._write_channel("VOLTAGE:UNIT","VPP",name="voltage_unit",channel=channel)
+    def get_offset(self, channel=None):
+        self._set_vpp_unit(channel=channel)
+        return self._ask_channel("DCOFFSET?","float",name="offset",channel=channel)
+    def set_offset(self, offset, channel=None):
+        self._set_vpp_unit(channel=channel)
+        if self._amplitude_opc_check:
+            self._write_channel("DCOFFSET {:.3f};*OPC?".format(offset),name="offset",channel=channel)
+            self.read()
+        else:
+            self._write_channel("DCOFFSET",offset,"float",name="offset",channel=channel)
+        return self.get_offset(channel=channel)
+    def get_amplitude(self, channel=None):
+        self._set_vpp_unit(channel=channel)
         return self._ask_channel("AMPLITUDE?","float",name="amplitude",channel=channel)/2.
     def set_amplitude(self, amplitude, channel=None):
-        """Set output amplitude"""
-        if self._ask_channel("VOLTAGE:UNIT?",name="voltage_unit",channel=channel).upper()!="VPP":
-            self._write_channel("VOLTAGE:UNIT","VPP",name="voltage_unit",channel=channel)
-            self._write_channel("AMPLITUDE",amplitude*2,"float",name="amplitude",channel=channel)
-            self.sleep(1) # it looks like one needs to wait some time after setting the amplitude; otherwise, there's no response to the next command
+        self._set_vpp_unit(channel=channel)
+        if self._amplitude_opc_check:
+            self._write_channel("AMPLITUDE {:.3f};*OPC?".format(amplitude*2),name="amplitude",channel=channel)
+            self.read()
         else:
             self._write_channel("AMPLITUDE",amplitude*2,"float",name="amplitude",channel=channel)
         return self.get_amplitude(channel=channel)
-    def get_offset(self, channel=None):
-        """Get output offset"""
-        return self._ask_channel("DCOFFSET?","float",name="offset",channel=channel)
-    def set_offset(self, offset, channel=None):
-        """Set output offset"""
-        self._write_channel("DCOFFSET",offset,"float",name="offset",channel=channel)
-        return self.get_offset(channel=channel)
-    def get_range(self, channel=None):
-        """
-        Get output voltage range.
-        
-        Return tuple ``(vmin, vmax)`` with the low and high voltage values (i.e., ``offset-amplitude`` and ``offset+amplitude``).
-        """
-        amp=self.get_amplitude(channel=channel)
-        off=self.get_offset(channel=channel)
-        return off-amp,off+amp
-    def set_range(self, rng, channel=None):
-        """
-        Set output voltage range.
-        
-        If span is less than ``1E-4``, automatically switch to DC mode.
-        """
-        try:
-            low,high=min(rng),max(rng)
-        except TypeError:
-            low,high=rng,rng
-        if abs(high-low)<1E-4:
-            self.set_function("DC",channel=channel)
-            self.set_amplitude(10E-3,channel=channel)
-            self.set_offset((high+low)/2.,channel=channel)
-        else:
-            amp,off=(rng[1]-rng[0])/2,(rng[1]+rng[0])/2
-            curr_amp=self.get_amplitude(channel=channel)
-            if curr_amp>=amp:
-                self.set_amplitude(amp,channel=channel)
-                self.set_offset(off,channel=channel)
-            else:
-                self.set_offset(off,channel=channel)
-                self.set_amplitude(amp,channel=channel)
-        return self.get_range(channel=channel)
 
 
 class InstekAFG2000(InstekAFG2225):
@@ -110,6 +84,23 @@ class InstekAFG2000(InstekAFG2225):
     _exclude_commands=InstekAFG2225._exclude_commands|{"pulse_width",
         "burst_enabled","burst_mode","burst_ncycles","gate_polarity",
         "trigger_source","trigger_slope"}
+    _amplitude_opc_check=False
+
+
+class RSInstekAFG21000(InstekAFG2000):
+    """
+    RS Instek AFG21000 series AWG.
+
+    Compared to Instek AFG2000, it takes care of the amplitude output bug.
+    """
+    def get_offset(self, channel=None):
+        inf_load=self.get_load(channel=channel)>1E3
+        off=InstekAFG2000.get_offset(self,channel=channel)
+        return off*2 if inf_load else off # seems to be the case, that returned values are not adjusted for highZ load (set values are, though)
+    def get_amplitude(self, channel=None):
+        inf_load=self.get_load(channel=channel)>1E3
+        amp=InstekAFG2000.get_amplitude(self,channel=channel)
+        return amp*2 if inf_load else amp # seems to be the case, that returned values are not adjusted for highZ load (set values are, though)
 
 
 

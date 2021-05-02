@@ -1,4 +1,4 @@
-from ..utils.py3 import textstring, as_str
+from ..utils.py3 import textstring, anystring, as_str
 from .base import DeviceError
 from . import data_format
 from . import comm_backend
@@ -120,7 +120,8 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
         comm=cpar[0] if comm is None else comm
         if kind is not None:
             funcargparse.check_parameter_range(kind,"kind",["string","int","float","param","bool"])
-        kind=cpar[1] if kind is None else kind
+        else:
+            kind=cpar[1]
         parameter=cpar[2] if parameter is None else self._parameters.get(parameter,parameter)
         set_delay=cpar[3] if set_delay is None else set_delay
         self._scpi_parameters[name]=(comm,kind,parameter,set_delay)
@@ -132,7 +133,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
         elif kind=="param":
             value=self.ask(comm+"?","string")
             return parameter.i(value)
-    def _set_scpi_parameter(self, name, value):
+    def _set_scpi_parameter(self, name, value, result=False):
         """Set SCPI parameter with a given name"""
         comm,kind,parameter,set_delay=self._scpi_parameters[name]
         if kind in ["string","int","float","bool"]:
@@ -141,7 +142,8 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
             self.write(comm,parameter(value),"string")
         if set_delay>0:
             self.sleep(set_delay)
-        return self._get_scpi_parameter(name)
+        if result:
+            return self._get_scpi_parameter(name)
     
     def reconnect(self, new_instrument=True):
         """
@@ -362,7 +364,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
         if arg_type is None:
             arg_type=self.get_arg_type(arg)
         if arg_type in ["s","string","r","raw"]:
-            return arg
+            return arg if isinstance(arg,anystring) else str(arg)
         elif arg_type in ["i","int"]:
             return "{:d}".format(int(arg))
         elif arg_type in ["f","float"]:
