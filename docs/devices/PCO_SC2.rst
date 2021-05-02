@@ -1,7 +1,7 @@
 .. _cameras_pco_sc2:
 
 .. note::
-    General camera communication concepts are described on the corresponding :ref:`page <cameras>`
+    General camera communication concepts are described on the corresponding :ref:`page <cameras_basics>`
 
 PCO SC2 cameras interface
 =========================
@@ -10,7 +10,7 @@ SC2 is the interface used with PCO cameras. It has been tested with pco.edge cam
 
 The code is located in :mod:`pylablib.devices.PCO`, and the main camera class is :class:`pylablib.devices.PCO.PCOSC2Camera<.SC2.PCOSC2Camera>`.
 
-DLL requirements
+Software requirements
 -----------------------
 
 These cameras require ``SC2_Cam.dll``, which is installed with the freely available `pco.camware <https://www.pco.de/software/camera-control-software/pcocamware/>`__ and `pco.sdk <https://www.pco.de/software/development-tools/pcosdk/>`__ tools. By default, the library searches for DLLs in ``Digital Camera Toolbox/Camware4`` and ``PCO Digital Camera Toolbox/pco.sdk/bin`` folder in ``Program Files`` folder (or ``Program files (x86)``, if 32-bit version of Python is running), as well as in the folder containing the script. If the DLLs are located elsewhere, the path can be specified using the library parameter ``devices/dlls/pco_sc2``::

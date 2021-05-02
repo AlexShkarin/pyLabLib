@@ -1,9 +1,9 @@
 .. _misc_thorlabs:
 
 .. note::
-    General device communication concepts are described on the corresponding :ref:`page <devices>`.
+    General device communication concepts are described on the corresponding :ref:`page <devices_basics>`.
 
-Various Thorlabs devices
+Miscellaneous Thorlabs devices
 ==============================
 
 Thorlabs has a variety of devices implementing different serial communication protocols, mostly related to optomechanics. Their requirements and general approach are fairly similar, so they are all collected here.

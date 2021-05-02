@@ -1,7 +1,7 @@
 .. _lasers_m2:
 
 .. note::
-    General device communication concepts are described on the corresponding :ref:`page <devices>`.
+    General device communication concepts are described on the corresponding :ref:`page <devices_basics>`.
 
 M2 Solstis laser
 =======================

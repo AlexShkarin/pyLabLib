@@ -1,16 +1,16 @@
 .. _cameras_imaq:
 
 .. note::
-    General camera communication concepts are described on the corresponding :ref:`page <cameras>`
+    General camera communication concepts are described on the corresponding :ref:`page <cameras_basics>`
 
-IMAQ frame grabbers interface
-===============================
+NI IMAQ frame grabbers interface
+================================
 
-IMAQ is the interface from National Instruments, which is used in a variety of frame grabber. It has been tested with NI PCI-1430 and PCI-1433 frame grabbers together with PhotonFocus MV-D1024E camera.
+NI IMAQ is the interface from National Instruments, which is used in a variety of frame grabber. It has been tested with NI PCI-1430 and PCI-1433 frame grabbers together with PhotonFocus MV-D1024E camera.
 
 The code is located in :mod:`pylablib.devices.IMAQ`, and the main camera class is :class:`pylablib.devices.IMAQ.IMAQCamera<.IMAQ.IMAQCamera>`.
 
-DLL requirements
+Software requirements
 -----------------------
 
 This interfaces requires ``imaq.dll``, which is installed with the freely available `Vision Acquisition Software <https://www.ni.com/en-us/support/downloads/drivers/download.vision-acquisition-software.html>`__, which also includes all the necessary drivers. After installation, the DLL is automatically added to the ``System32`` folder, where pylablib looks for it by default. If the DLL is located elsewhere, the path can be specified using the library parameter ``devices/dlls/niimaq``::

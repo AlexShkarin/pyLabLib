@@ -1,7 +1,7 @@
 .. _stages_smaract:
 
 .. note::
-    General stage communication concepts are described on the corresponding :ref:`page <stages>`
+    General stage communication concepts are described on the corresponding :ref:`page <stages_basics>`
 
 SmarAct positioners
 =======================

@@ -1,7 +1,7 @@
 .. _sensors_lakeshore:
 
 .. note::
-    Basic sensors communication concepts are described on the corresponding :ref:`page <basic_sensors>`
+    Basic sensors communication concepts are described on the corresponding :ref:`page <basic_sensors_basics>`
 
 Lakeshore temperature sensors
 ==============================

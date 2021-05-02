@@ -1,7 +1,7 @@
 .. _misc_ozoptics:
 
 .. note::
-    General device communication concepts are described on the corresponding :ref:`page <devices>`.
+    General device communication concepts are described on the corresponding :ref:`page <devices_basics>`.
 
 OZ Optics devices
 ==============================

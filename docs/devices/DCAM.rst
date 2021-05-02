@@ -1,7 +1,7 @@
 .. _cameras_dcam:
 
 .. note::
-    General camera communication concepts are described on the corresponding :ref:`page <cameras>`.
+    General camera communication concepts are described on the corresponding :ref:`page <cameras_basics>`.
 
 DCAM cameras interface
 =======================
@@ -10,7 +10,7 @@ DCAM is the interface used in Hamamatsu cameras. It has been tested with Hamamat
 
 The code is located in :mod:`pylablib.devices.DCAM`, and the main camera class is :class:`pylablib.devices.DCAM.DCAMCamera<.DCAM.DCAMCamera>`.
 
-DLL requirements
+Software requirements
 -----------------------
 
 These cameras require ``dcamapi.dll``, which is installed with most of Hamamatsu software (such as HoKaWo or HiPic), as well as with the freely available `DCAM API <https://dcam-api.com/>`__, which also includes all the necessary drivers. After installation, the DLL is automatically added to the ``System32`` folder, where pylablib looks for it by default. If the DLL is located elsewhere, the path can be specified using the library parameter ``devices/dlls/dcamapi``::

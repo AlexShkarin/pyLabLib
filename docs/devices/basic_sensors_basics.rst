@@ -1,9 +1,9 @@
-.. _basic_sensors:
+.. _basic_sensors_basics:
 
 .. note::
-    General device communication concepts are described on the corresponding :ref:`page <devices>`.
+    General device communication concepts are described on the corresponding :ref:`page <devices_basics>`.
 
-Basic sensors
+Basics of sensors communication
 ======================================
 
 Basic example
@@ -78,12 +78,3 @@ The channels are usually specified by their index starting from 0 or 1, although
 Currently supported sensors
 -------------------------------------------
 .. include:: basic_sensors_list.txt
-
-
-.. toctree::
-    :hidden:
-
-    HighFinesse
-    Ophir
-    Lakeshore
-    Pfeiffer

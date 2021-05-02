@@ -1,6 +1,6 @@
-.. _devices:
+.. _devices_basics:
 
-Devices
+Basics of device communication
 ======================================
 
 The devices are represented as Python objects, in most cases, one per device.
@@ -197,28 +197,4 @@ Stepping the M Squared laser wavelength and recording an image from the Andor IX
 Available devices
 --------------------------------------
 
-- :ref:`Cameras <cameras>`
-    .. include:: cameras_list.txt
-- :ref:`Stages <stages>`
-    .. include:: stages_list.txt
-- :ref:`Various Thorlabs devices <misc_thorlabs>`: :ref:`MFF101/102 <misc_thorlabs_mff>` motorized flip mirror mount, :ref:`FW102/212 <misc_thorlabs_fw>` motorized filter wheel, and :ref:`MDT693/694 <misc_thorlabs_mdt693>` high-voltage source. 
-- :ref:`Various OZOptics devices <misc_ozoptics>`: :ref:`EPC04 <misc_ozoptics_epc04>` fiber polarization controller, :ref:`DD100 <misc_ozoptics_dd100>` motorized fiber attenuator, and :ref:`TF100 <misc_ozoptics_tf100>` motorized fiber filter. 
-- :ref:`Basic sensors <basic_sensors>`
-    .. include:: basic_sensors_list.txt
-- :ref:`Basic lasers <basic_lasers>`
-    - :ref:`Lighthouse Photonics SproutG <basic_lasers_lp_sprout>`
-    - :ref:`Laser Quantum Finesse <basic_lasers_lq_finesse>`
-- :ref:`M2 Solstis laser <lasers_m2>`
-- :ref:`Tektronix oscilloscopes <oscilloscopes_tektronix>`. Tested with TDS2002B, TDS2004B, and DPO2014B.
-
-.. toctree::
-    :hidden:
-    
-    cameras
-    stages
-    Thorlabs_misc
-    OZOptics
-    basic_sensors
-    basic_lasers
-    M2
-    Tektronix
+.. include:: all_devices_list.txt

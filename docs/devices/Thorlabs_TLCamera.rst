@@ -1,7 +1,7 @@
 .. _cameras_thorlabs_tlcamera:
 
 .. note::
-    General camera communication concepts are described on the corresponding :ref:`page <cameras>`
+    General camera communication concepts are described on the corresponding :ref:`page <cameras_basics>`
 
 Thorlabs Scientific Cameras interface
 ====================================================
@@ -10,7 +10,7 @@ This is the interface used in Thorlabs scientific sCMOS cameras such as Kiralux 
 
 The code is located in :mod:`pylablib.devices.Thorlabs`, and the main camera class is :class:`pylablib.devices.Thorlabs.ThorlabsTLCamera<.TLCamera.ThorlabsTLCamera>`.
 
-DLL requirements
+Software requirements
 -----------------------
 
 These cameras require ``thorlabs_tsi_camera_sdk.dll``, as well as several additional DLLs: ``thorlabs_unified_sdk_kernel.dll``, ``thorlabs_unified_sdk_main.dll``, ``thorlabs_tsi_usb_driver.dll``, ``thorlabs_tsi_usb_hotplug_monitor.dll``, ``thorlabs_tsi_cs_camera_device.dll``, ``tsi_sdk.dll``, ``tsi_usb.dll``. All of them is automatically installed with the freely available `Thorcam <https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam>`__ tools. By default, the library searches for DLLs in ``Thorlabs/Scientific Imaging/ThorCam`` folder in ``Program Files`` folder (or ``Program files (x86)``, if 32-bit version of Python is running), as well as in the folder containing the script. If the DLLs are located elsewhere, the path can be specified using the library parameter ``devices/dlls/thorlabs_tlcam``::

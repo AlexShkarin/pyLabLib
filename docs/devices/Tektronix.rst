@@ -1,7 +1,7 @@
 .. _oscilloscopes_tektronix:
 
 .. note::
-    General device communication concepts are described on the corresponding :ref:`page <devices>`.
+    General device communication concepts are described on the corresponding :ref:`page <devices_basics>`.
 
 Tektronix oscilloscopes
 =======================

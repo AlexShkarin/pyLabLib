@@ -1,7 +1,7 @@
 .. _basic_lasers:
 
 .. note::
-    General device communication concepts are described on the corresponding :ref:`page <devices>`.
+    General device communication concepts are described on the corresponding :ref:`page <devices_basics>`.
 
 Basic lasers
 ======================================

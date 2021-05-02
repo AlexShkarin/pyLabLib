@@ -1,7 +1,7 @@
 .. _cameras_uc480:
 
 .. note::
-    General camera communication concepts are described on the corresponding :ref:`page <cameras>`
+    General camera communication concepts are described on the corresponding :ref:`page <cameras_basics>`
 
 Uc480 camera interface
 =======================
@@ -10,7 +10,7 @@ This is the interface used in multiple cameras, including simple Thorlabs and ID
 
 The code is located in :mod:`pylablib.devices.uc480`, and the main camera class is :class:`pylablib.devices.uc480.UC480Camera<.uc480.UC480Camera>`.
 
-DLL requirements
+Software requirements
 -----------------------
 
 These cameras require ``uc480.dll``, which is automatically installed with the freely available `Thorcam <https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam>`__ tools. By default, the library searches for DLLs in ``Thorlabs/Scientific Imaging/ThorCam`` folder in ``Program Files`` folder (or ``Program files (x86)``, if 32-bit version of Python is running), as well as in the folder containing the script. If the DLLs are located elsewhere, the path can be specified using the library parameter ``devices/dlls/uc480``::

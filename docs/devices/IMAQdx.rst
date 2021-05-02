@@ -1,16 +1,16 @@
 .. _cameras_imaqdx:
 
 .. note::
-    General camera communication concepts are described on the corresponding :ref:`page <cameras>`
+    General camera communication concepts are described on the corresponding :ref:`page <cameras_basics>`
 
 NI IMAQdx interface
 =======================
 
-IMAQdx is the interface provided by  National Instruments and which supports a wide variety of cameras. It is completely separate from IMAQ, and it supports other interfaces: USB, Ethernet and FireWire. It has been tested with ???.
+NI IMAQdx is the interface provided by  National Instruments and which supports a wide variety of cameras. It is completely separate from IMAQ, and it supports other interfaces: USB, Ethernet and FireWire. It has been tested with ???.
 
 The code is located in :mod:`pylablib.devices.IMAQdx`, and the main camera class is :class:`pylablib.devices.IMAQdx.IMAQdxCamera<.IMAQdx.IMAQdxCamera>`.
 
-DLL requirements
+Software requirements
 ----------------------
 
 These cameras require ``imaqdx.dll``, which is installed with the freely available `Vision Acquisition Software <https://www.ni.com/en-us/support/downloads/drivers/download.vision-acquisition-software.html>`__. However, the IMAQdx part of the software is proprietary, and requires purchase to use. After installation, the DLL is automatically added to the ``System32`` folder, where pylablib looks for it by default. If the DLL is located elsewhere, the path can be specified using the library parameter ``devices/dlls/niimaqdx``::

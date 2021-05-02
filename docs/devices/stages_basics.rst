@@ -1,9 +1,9 @@
-.. _stages:
+.. _stages_basics:
 
 .. note::
-    General device communication concepts are described on the corresponding :ref:`page <devices>`.
+    General device communication concepts are described on the corresponding :ref:`page <devices_basics>`.
 
-Stages
+Stages control basics
 ======================================
 
 Basic example
@@ -114,19 +114,3 @@ As mentioned above, often stages require homing to get absolute position reading
 If homing is implemented, it use done using the ``home`` method. In addition, there can also be an ``is_homed`` method, which checks if the homing has already been performed. If the method is present, then by default ``home`` will not execute if ``is_homed`` returns ``True``, unless forced.
 
 Some stages do not have an explicit homing method, but can be manually homed by, e.g., running the stage to the limit switch and setting the position reference to 0.
-
-
-Currently supported stages
--------------------------------------------
-.. include:: stages_list.txt
-
-
-
-.. toctree::
-    :hidden:
-
-    Attocube
-    Thorlabs_kinesis
-    Arcus_performax
-    Trinamic
-    SmarAct

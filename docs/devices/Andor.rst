@@ -1,7 +1,7 @@
 .. _cameras_andor:
 
 .. note::
-    General camera communication concepts are described on the corresponding :ref:`page <cameras>`
+    General camera communication concepts are described on the corresponding :ref:`page <cameras_basics>`
 
 Andor cameras
 =======================
@@ -22,7 +22,7 @@ This is an older SDK, which mainly involves older cameras. It has been tested wi
 
 The code is located in :mod:`pylablib.devices.Andor`, and the main camera class is :class:`pylablib.devices.Andor.AndorSDK2Camera<.AndorSDK2.AndorSDK2Camera>`.
 
-DLL requirements
+Software requirements
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 The required DLL can have different names depending on the Solis version and SDK bitness. For 64-bit version it will be called ``atmcd64d.dll`` or ``atmcd64d_legacy.dll``. For 32-bit version, correspondingly, ``atmcd32d.dll`` or ``atmcd32d_legacy.dll``. By default, library searches for DLLs in ``Andor Solis`` and ``Andor SDK`` folder in ``Program Files`` folder (or ``Program files (x86)``, if 32-bit version of Python is running), as well as in the folder containing the script. If the DLLs are located elsewhere, the path can be specified using the library parameter ``devices/dlls/andor_sdk2``::
@@ -76,7 +76,7 @@ This is a newer SDK, which covers the newer cameras. It has been tested with And
 
 The code is located in :mod:`pylablib.devices.Andor`, and the main camera class is :class:`pylablib.devices.Andor.AndorSDK3Camera<.AndorSDK3.AndorSDK3Camera>`.
 
-DLL requirements
+Software requirements
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 This library requires several DLLs all located in the same folder: ``atcore.dll``, ``atblkbx.dll``, ``atcl_bitflow.dll``, ``atdevapogee.dll``, ``atdevregcam.dll``, ``atusb_libusb.dll``, ``atusb_libusb10.dll``. Same as for SDK2, pylablib looks for DLLs in ``Andor Solis`` and ``Andor SDK3`` folders in ``Program Files`` folder (or ``Program files (x86)``, if 32-bit version of Python is running), as well as in the folder containing the script. A custom DLLs path can be specified using the library parameter ``devices/dlls/andor_sdk3``::
@@ -113,6 +113,6 @@ The operation of these cameras is also relatively standard. They support all the
         >> cam.v["ExposureTime"]  # get the exposure; could also use cam.get_value("ExposureTime")
         0.1
 
-      Some values serve as commands; these can be invoked using :meth:`.AndorSDK3Camera.command` method. To get a dictionary of all available values, you can call :meth:`.AndorSDK3Camera.get_all_values`. Finally, you can check if the particular parameter is available by querying :meth:`.AndorSDK3Camera.is_feature_available`, :meth:`.AndorSDK3Camera.is_feature_readable`, and :meth:`.AndorSDK3Camera.is_feature_writable`. The description of the features is given in `manual <https://andor.oxinst.com/downloads/uploads/Andor_SDK3_Manual.pdf>`__.
+      Some values serve as commands; these can be invoked using :meth:`.AndorSDK3Camera.call_command` method. To get a dictionary of all available values, you can call :meth:`.AndorSDK3Camera.get_all_values`. Finally, you can check if the particular parameter is available by querying :meth:`.AndorSDK3Camera.is_feature_available`, :meth:`.AndorSDK3Camera.is_feature_readable`, and :meth:`.AndorSDK3Camera.is_feature_writable`. The description of the features is given in `manual <https://andor.oxinst.com/downloads/uploads/Andor_SDK3_Manual.pdf>`__.
     
     - USB cameras can, in principle, generate data at higher rate than about 320Mb/s that the USB3 bus supports. For example, Andor Zyla with 16 bit readout has a single full frame size of 8Mb, which puts the maximal USB throughput at about 40FPS. At the same time, the camera itself is capable of reading up to 100FPS at the full frame. Hence, it is possible to overflow the camera internal buffer (size on the order of 1Gb) regardless of the PC performance. If this happens, the acquisition process halts and needs to be restarted. To check for the number of buffer overflows, you can use :meth:`.AndorSDK3Camera.get_missed_frames_status`, and to reset this counter, :meth:`.AndorSDK3Camera.reset_overflows_counter` (it also automatically resets on acquisition clearing, but not stopping). In addition, the class can implement different strategies when encountering overflow while waiting for a new frame. It is set using :meth:`.AndorSDK3Camera.set_overflow_behavior`, and it can be ``"error"`` (raise :exc:`.AndorError`, which is the default behavior), ``"restart"`` (restart the acquisition and immediately raise timeout error), or ``"ignore"`` (ignore the overflow, which will eventually lead to a timeout error, as the new frames are no longer generated).

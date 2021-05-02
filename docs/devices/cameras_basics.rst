@@ -1,9 +1,9 @@
-.. _cameras:
+.. _cameras_basics:
 
 .. note::
-    General device communication concepts are described on the corresponding :ref:`page <devices>`.
+    General device communication concepts are described on the corresponding :ref:`page <devices_basics>`.
 
-Cameras
+Cameras control basics
 ======================================
 
 Basic examples
@@ -189,16 +189,3 @@ Many cameras supply additional information together with the frames. Most freque
 Currently supported cameras
 -------------------------------------------
 .. include:: cameras_list.txt
-
-
-
-.. toctree::
-    :hidden:
-
-    Andor
-    DCAM
-    IMAQ
-    IMAQdx
-    PCO_SC2
-    Thorlabs_TLCamera
-    uc480

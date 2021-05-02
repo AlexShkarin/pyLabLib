@@ -1,7 +1,7 @@
 .. _sensors_highfinesse:
 
 .. note::
-    General sensor communication concepts are described on the corresponding :ref:`page <basic_sensors>`
+    General sensor communication concepts are described on the corresponding :ref:`page <basic_sensors_basics>`
 
 HighFinesse wavemeters
 ==============================

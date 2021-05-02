@@ -8,7 +8,7 @@ Welcome to pylablib documentation!
    install
    dataproc
    utils
-   devices/devices
+   devices/devices_root
    changelog
    API reference <.apidoc/modules>
 
