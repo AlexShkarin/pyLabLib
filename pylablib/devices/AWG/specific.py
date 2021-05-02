@@ -112,6 +112,7 @@ class RigolDG1000(GenericAWG):
     """
     _default_operation_cooldown={"write":1E-2}
     _channels_number=2
+    _supported_functions={"sine","square","noise","ramp","pulse","dc","user"}
     _single_channel_commands={  "output_sync",
                                 "burst_enabled","burst_mode","burst_ncycles","gate_polarity",
                                 "trigger_source","trigger_slope","trigger_output","output_trigger_slope"}

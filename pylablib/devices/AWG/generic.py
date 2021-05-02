@@ -39,7 +39,7 @@ class GenericAWG(SCPI.SCPIDevice):
             self._add_scpi_parameter("output_polarity","POLARITY",kind="param",parameter="polarity",channel=ch,comm_kind="output",add_variable=True)
             self._add_scpi_parameter("output_sync","SYNC",kind="bool",channel=ch,comm_kind="output",add_variable=True)
             self._add_settings_variable("load",self.get_load,self.set_load,channel=ch)
-            self._add_settings_variable("range",self.get_range,self.set_range,multiarg=False,channel=ch)
+            self._add_settings_variable("output_range",self.get_output_range,self.set_output_range,multiarg=False,channel=ch)
             self._add_scpi_parameter("amplitude","VOLTAGE",kind="float",channel=ch)
             self._add_scpi_parameter("offset","VOLTAGE:OFFSET",kind="float",channel=ch)
             self._add_settings_variable("frequency",self.get_frequency,self.set_frequency,channel=ch)
@@ -153,26 +153,20 @@ class GenericAWG(SCPI.SCPIDevice):
         self._check_ch(channel)
         return self._current_channel if channel is None else channel
 
-    def get_channel(self):
+    def get_current_channel(self):
+        """Get current channel"""
         return self._current_channel
-    def select_channel(self, channel):
+    def select_current_channel(self, channel):
+        """Select current default channel"""
         self._check_ch(channel)
         self._current_channel=channel
-    @contextlib.contextmanager
-    def default_channel(self, channel):
-        curr_ch=self._current_channel
-        try:
-            self.select_channel(channel)
-            yield
-        finally:
-            self.select_channel(curr_ch)
     
-    def get_output(self, channel=None):
+    def is_output_enabled(self, channel=None):
         """Check if the output is enabled"""
         return self._get_channel_scpi_parameter("output_on",channel=channel)
-    def set_output(self, enabled=True, channel=None):
+    def enable_output(self, enabled=True, channel=None):
         """Turn the output on or off"""
-        return self._set_channel_scpi_parameter("output_on",enabled,channel=channel)
+        return self._set_channel_scpi_parameter("output_on",enabled,channel=channel,result=True)
 
     
     def get_output_polarity(self, channel=None):
@@ -188,13 +182,13 @@ class GenericAWG(SCPI.SCPIDevice):
 
         Can be either ``"norm"`` or ``"inv"``.
         """
-        return self._set_channel_scpi_parameter("output_polarity",polarity,channel=channel)
+        return self._set_channel_scpi_parameter("output_polarity",polarity,channel=channel,result=True)
     def is_sync_output_enabled(self, channel=None):
         """Check if SYNC output is enabled"""
-        return self._get_channel_scpi_parameter("sync_output",channel=channel)
+        return self._get_channel_scpi_parameter("output_sync",channel=channel)
     def enable_sync_output(self, enabled=True, channel=None):
         """Enable or disable SYNC output"""
-        return self._set_channel_scpi_parameter("sync_output",enabled,channel=channel)
+        return self._set_channel_scpi_parameter("output_sync",enabled,channel=channel,result=True)
         
     def get_load(self, channel=None):
         """Get the output load"""
@@ -225,7 +219,7 @@ class GenericAWG(SCPI.SCPIDevice):
         Can be one of the following: ``"sine"``, ``"square"``, ``"ramp"``, ``"pulse"``, ``"noise"``, ``"prbs"``, ``"DC"``, ``"user"``, ``"arb"``.
         Not all functions can be available, depending on the particular model of the generator.
         """
-        return self._set_channel_scpi_parameter("function",func,channel=channel)
+        return self._set_channel_scpi_parameter("function",func,channel=channel,result=True)
     
     def get_amplitude(self, channel=None):
         """Get output amplitude (i.e., half of the span)"""
@@ -234,14 +228,14 @@ class GenericAWG(SCPI.SCPIDevice):
     def set_amplitude(self, amplitude, channel=None):
         """Set output amplitude (i.e., half of the span)"""
         self._set_scpi_parameter("voltage_unit","VPP")
-        return self._set_channel_scpi_parameter("amplitude",amplitude*2,channel=channel)/2
+        return self._set_channel_scpi_parameter("amplitude",amplitude*2,channel=channel,result=True)/2
     def get_offset(self, channel=None):
         """Get output offset"""
         return self._get_channel_scpi_parameter("offset",channel=channel)
     def set_offset(self, offset, channel=None):
         """Set output offset"""
-        return self._set_channel_scpi_parameter("offset",offset,channel=channel)
-    def get_range(self, channel=None):
+        return self._set_channel_scpi_parameter("offset",offset,channel=channel,result=True)
+    def get_output_range(self, channel=None):
         """
         Get output voltage range.
         
@@ -255,7 +249,7 @@ class GenericAWG(SCPI.SCPIDevice):
             amp=self.get_amplitude(channel=channel)
             off=self.get_offset(channel=channel)
             return off-amp,off+amp
-    def set_range(self, rng, channel=None):
+    def set_output_range(self, rng, channel=None):
         """
         Set output voltage range.
         
@@ -271,7 +265,7 @@ class GenericAWG(SCPI.SCPIDevice):
             self.set_offset((high+low)/2.,channel=channel)
         else:
             if self._range_mode=="high_low":
-                curr_rng=self.get_range(channel=channel)
+                curr_rng=self.get_output_range(channel=channel)
                 if low<curr_rng[1]:
                     self._write_channel("VOLTAGE:LOW",low,"float",name="voltage",channel=channel)
                     self._write_channel("VOLTAGE:HIGH",high,"float",name="voltage",channel=channel)
@@ -287,7 +281,7 @@ class GenericAWG(SCPI.SCPIDevice):
                 else:
                     self.set_offset(off,channel=channel)
                     self.set_amplitude(amp,channel=channel)
-        return self.get_range(channel=channel)
+        return self.get_output_range(channel=channel)
     
     def get_frequency(self, channel=None):
         """Get output frequency"""
@@ -310,7 +304,7 @@ class GenericAWG(SCPI.SCPIDevice):
             return None
         if self._set_angle_unit:
             self._set_scpi_parameter("phase_unit","DEG")
-        return self._set_channel_scpi_parameter("phase",phase,channel=channel)
+        return self._set_channel_scpi_parameter("phase",phase,channel=channel,result=True)
     def sync_phase(self):
         """Synchronize phase between two channels"""
         if self._channels_number>1:
@@ -329,7 +323,7 @@ class GenericAWG(SCPI.SCPIDevice):
 
         Only applies to ``"square"`` output function.
         """
-        return self._set_channel_scpi_parameter("duty_cycle",dcycle,channel=channel)
+        return self._set_channel_scpi_parameter("duty_cycle",dcycle,channel=channel,result=True)
     def get_ramp_symmetry(self, channel=None):
         """
         Get output ramp symmetry (in percent).
@@ -343,7 +337,7 @@ class GenericAWG(SCPI.SCPIDevice):
 
         Only applies to ``"ramp"`` output function.
         """
-        return self._set_channel_scpi_parameter("ramp_symmetry",rsymm,channel=channel)
+        return self._set_channel_scpi_parameter("ramp_symmetry",rsymm,channel=channel,result=True)
     def get_pulse_width(self, channel=None):
         """
         Get output pulse width (in seconds).
@@ -357,14 +351,14 @@ class GenericAWG(SCPI.SCPIDevice):
 
         Only applies to ``"pulse"`` output function.
         """
-        return self._set_channel_scpi_parameter("pulse_width",width,channel=channel)
+        return self._set_channel_scpi_parameter("pulse_width",width,channel=channel,result=True)
 
     def is_burst_enabled(self, channel=None):
         """Check if the burst mode is enabled"""
         return self._get_channel_scpi_parameter("burst_enabled",channel=channel)
     def enable_burst(self, enabled=True, channel=None):
         """Enable burst mode"""
-        return self._set_channel_scpi_parameter("burst_enabled",enabled,channel=channel)
+        return self._set_channel_scpi_parameter("burst_enabled",enabled,channel=channel,result=True)
     def get_burst_mode(self, channel=None):
         """
         Get burst mode.
@@ -378,7 +372,7 @@ class GenericAWG(SCPI.SCPIDevice):
 
         Can be either ``"trig"`` or ``"gate"``.
         """
-        return self._set_channel_scpi_parameter("burst_mode",mode,channel=channel)
+        return self._set_channel_scpi_parameter("burst_mode",mode,channel=channel,result=True)
     def get_burst_ncycles(self, channel=None):
         """
         Get burst mode ncycles.
@@ -409,7 +403,7 @@ class GenericAWG(SCPI.SCPIDevice):
 
         Can be either ``"norm"`` or ``"inv"``.
         """
-        return self._set_channel_scpi_parameter("gate_polarity",polarity,channel=channel)
+        return self._set_channel_scpi_parameter("gate_polarity",polarity,channel=channel,result=True)
     
     
     def get_trigger_source(self, channel=None):
@@ -425,7 +419,7 @@ class GenericAWG(SCPI.SCPIDevice):
 
         Can be either ``"imm"``, ``"ext"``, or ``"bus"``.
         """
-        return self._set_channel_scpi_parameter("trigger_source",src,channel=channel)
+        return self._set_channel_scpi_parameter("trigger_source",src,channel=channel,result=True)
     def get_trigger_slope(self, channel=None):
         """
         Get trigger slope.
@@ -439,13 +433,13 @@ class GenericAWG(SCPI.SCPIDevice):
 
         Can be either ``"pos"``, or ``"neg"``.
         """
-        return self._set_channel_scpi_parameter("trigger_slope",slope,channel=channel)
+        return self._set_channel_scpi_parameter("trigger_slope",slope,channel=channel,result=True)
     def is_trigger_output_enabled(self, channel=None):
         """Check if the trigger output is enabled"""
         return self._get_channel_scpi_parameter("trigger_output",channel=channel)
     def enable_trigger_output(self, enabled=True, channel=None):
         """Enable trigger output"""
-        return self._set_channel_scpi_parameter("trigger_output",enabled,channel=channel)
+        return self._set_channel_scpi_parameter("trigger_output",enabled,channel=channel,result=True)
     def get_output_trigger_slope(self, channel=None):
         """
         Get output trigger slope.
@@ -459,4 +453,4 @@ class GenericAWG(SCPI.SCPIDevice):
 
         Can be either ``"pos"``, or ``"neg"``.
         """
-        return self._set_channel_scpi_parameter("output_trigger_slope",slope,channel=channel)
+        return self._set_channel_scpi_parameter("output_trigger_slope",slope,channel=channel,result=True)

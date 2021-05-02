@@ -4,6 +4,7 @@ from ...core.utils import general, funcargparse
 
 import time
 import numpy as np
+import collections
 
 class NIError(DeviceError):
     """Generic NI error"""
@@ -25,6 +26,22 @@ def _check_nidaqmx():
                 "If it is installed, check if it imports correctly by running 'import nidaqmx'")
         raise ImportError(msg)
 
+
+TDeviceInfo=collections.namedtuple("TDeviceInfo",["name","model","serial_number"])
+def get_device_info(name):
+    """
+    Get device info.
+
+    Return tuple ``(name, model, serial)``.
+    """
+    _check_nidaqmx()
+    d=nidaqmx.system.Device(name)
+    return TDeviceInfo(d.name,d.product_type,"{:08X}".format(d.dev_serial_num or 0))
+def list_devices():
+    """List all connected NI DAQ devices"""
+    _check_nidaqmx()
+    s=nidaqmx.system.System()
+    return [get_device_info(d.name) for d in s.devices]
 
 class NIDAQ(interface.IDevice):
     """
@@ -65,7 +82,7 @@ class NIDAQ(interface.IDevice):
         self.open()
         self._update_channel_names()
         self._running=False
-        self._add_info_variable("device",lambda: self.dev_name)
+        self._add_info_variable("device_info",self.get_device_info)
         self._add_settings_variable("clock_cfg",self.get_clock_parameters,self.setup_clock)
         self._add_settings_variable("clock_export",self.get_export_clock_terminal,self.export_clock)
         self._add_settings_variable("voltage_output_clock_cfg",self.get_voltage_output_clock_parameters,self.setup_voltage_output_clock)
@@ -121,6 +138,13 @@ class NIDAQ(interface.IDevice):
         self.close()
         self.dev.reset_device()
         self.open()
+    def get_device_info(self):
+        """
+        Get device info.
+
+        Return tuple ``(name, model, serial)``.
+        """
+        return get_device_info(self.dev_name)
 
     def _build_channel_name(self, channel):
         channel=channel.lower().strip("/")

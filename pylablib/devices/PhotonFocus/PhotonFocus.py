@@ -145,23 +145,25 @@ def query_camera_name(port):
             pass
     return None
 TCameraInfo=collections.namedtuple("TCameraInfo",["manufacturer","port","version","type"])
-def list_cameras(supported=False):
+def list_cameras(only_supported=True):
     """
-    List all cameras available through PFCam interface
+    List all cameras available through PFCam interface.
     
-    If ``supported==True``, only return cameras which support PFCam protocol
+    If ``only_supported==True``, only return cameras which support PFCam protocol
     (this check only works if the camera is not currently accessed by some other software).
+    Return a list ``[(port, info)]``, where ``port`` is the pfcam port given to :class:`PhotonFocusIMAQCamera`,
+    and ``info`` is the information returned by :func:`query_camera_name`.
     """
     libctl.preinit()
     ports=range(lib.pfPortInit())
-    if supported:
+    if only_supported:
         ports=[p for p in ports if query_camera_name(p) is not None]
     infos=[lib.pfPortInfo(p) for p in ports]
     infos=[TCameraInfo(py3.as_str(manu),py3.as_str(name),version,typ) for manu,name,version,typ in infos]
     return list(zip(ports,infos))
-def get_cameras_number(supported=False):
+def get_cameras_number(only_supported=True):
     """Get the total number of connected PFCam cameras"""
-    return len(list_cameras(supported=supported))
+    return len(list_cameras(only_supported=only_supported))
 
 
 
@@ -487,26 +489,31 @@ def _extract_line(frames, preferred_line=True):
             return np.frombuffer((frames[:,-1,:lsz*4].astype("<u1").tobytes()),"<u4").reshape((-1,lsz)) if frames.shape[1]>0 else np.zeros((len(frames),lsz,1))
         else:
             return np.frombuffer((frames[:,-2,:lsz*4].astype("<u1").tobytes()),"<u4").reshape((-1,lsz)) if frames.shape[1]>1 else np.zeros((len(frames),lsz,1))
-def get_status_lines(frames, check_transposed=True):
+def get_status_lines(frames, check_transposed=True, drop_magic=True):
     """
-    Extract status lines from the given frames.
+    Extract status lines (up to first 6 entries) from the given frames.
     
     `frames` can be 2D array (one frame), 3D array (stack of frames, first index is frame number), or list of array.
     Automatically check if the status line is present; return ``None`` if it's not.
     If ``check_transposed==True``, check for the case where the image is transposed (i.e., line becomes a column).
+    If ``drop_magic==True``, remove the first status line entry, which is simply a special number marking the status line presence.
+    Return a 1D or 2D numpy array, where the first axis (if present) is the frame number, and the last is the status line entry
+    The entries after the magic are the frame index, timestamp (in us), missed trigger counters (up to 255),
+    average frame value, and the intergation time (in pixel clock cycles, which depend on the camera).
     """
     if isinstance(frames,list):
-        return [get_status_lines(f,check_transposed=check_transposed) for f in frames]
+        return [get_status_lines(f,check_transposed=check_transposed,drop_magic=drop_magic) for f in frames]
     if frames.shape[-1]>=4:
+        s=1 if drop_magic else 0
         lines=_extract_line(frames,True)
         if _check_magic(lines):
-            return lines
+            return lines[:,s:]
         lines=_extract_line(frames,False)
         if _check_magic(lines):
-            return lines
+            return lines[:,s:]
     if check_transposed:
         tframes=frames.T if frames.ndim==2 else frames.transpose((0,2,1))
-        return get_status_lines(tframes,check_transposed=False)
+        return get_status_lines(tframes,check_transposed=False,drop_magic=drop_magic)
     return None
 def get_status_line_position(frame, check_transposed=True):
     """
@@ -585,7 +592,7 @@ def find_skipped_frames(lines, step=1):
 
     Return list ``[(idx, skipped)]``, where `idx` is the index after which `skipped` frames were skipped.
     """
-    dfs=(lines[1:,1]-lines[:-1,1])%(2**24) # the internal counter is only 24-bit
+    dfs=(lines[1:,0]-lines[:-1,0])%(2**24) # the internal counter is only 24-bit
     skipped_idx=(dfs!=step)
     skipped_idx=skipped_idx.nonzero()[0]
     return list(zip(skipped_idx,dfs[skipped_idx])) if len(skipped_idx) else []

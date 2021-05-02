@@ -80,7 +80,7 @@ class Lakeshore218(SCPI.SCPIDevice):
         """
         Get sensor curve index for a given channel (1 to 8).
         
-        For curve descriptions, see Lakeshore 218 manual.
+        For curve descriptions, see ``INCRV`` command description in the Lakeshore 218 programming manual.
         """
         return self.ask("INCRV? {}".format(channel),"int")
     @interface.use_parameters
@@ -88,7 +88,7 @@ class Lakeshore218(SCPI.SCPIDevice):
         """
         Get sensor curve index for a given channel (1 to 8).
         
-        For curve descriptions, see Lakeshore 218 manual.
+        For curve descriptions, see ``INCRV`` command description in the Lakeshore 218 programming manual.
         """
         self.write("INCRV",[channel,index])
         self.wait_dev()
@@ -102,15 +102,15 @@ class Lakeshore218(SCPI.SCPIDevice):
         Get header of a given curve (1-9 or 21-28).
 
         Return tuple ``(name, serial, fmt, limit, coeff)``.
-        For values descriptions, see Lakeshore 218 manual.
+        For values descriptions, see ``CRVHDR`` command description in the Lakeshore 218 programming manual.
         """
         return TLakeshore218CurveHeader(*self.ask("CRVHDR? {}".format(index),["string","string","int","float","int"]))
     @interface.use_parameters(fmt="curve_format",coeff="curve_coeff")
     def set_curve_header(self, index, name=None, serial=None, fmt=None, limit=None, coeff=None):
         """
-        Set header of a given curve (1-9 or 21-28).
+        Set header of a given user curve (21-28).
 
-        For values descriptions, see Lakeshore 218 manual.
+        For values descriptions, see ``CRVHDR`` command description in the Lakeshore 218 programming manual.
         """
         cheader=tuple(self._wap.get_curve_header(index))
         header=[(cv if nv is None else nv) for cv,nv in zip(cheader,[name,serial,fmt,limit,coeff])]

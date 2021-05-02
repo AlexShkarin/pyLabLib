@@ -180,7 +180,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
                 lib.AT_SetEnumIndex(self.handle,name,int(value))
         else:
             raise AndorError("can't read feature '{}' with kind '{}'".format(name,kind))
-    def command(self, name):
+    def call_command(self, name):
         """Execute the given command"""
         if not lib.AT_IsImplemented(self.handle,name):
             raise AndorError("command is not implemented: {}".format(name))
@@ -499,11 +499,11 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
         self._frame_counter.reset(nframes)
         self._buffer_mgr.reset()
         self._buffer_mgr.start_loop()
-        self.command("AcquisitionStart")
+        self.call_command("AcquisitionStart")
     def stop_acquisition(self):
         if self.get_value("CameraAcquiring"):
             self._frame_counter.update_acquired_frames(self._get_acquired_frames())
-            self.command("AcquisitionStop")
+            self.call_command("AcquisitionStop")
             self._buffer_mgr.stop_loop()
     def acquisition_in_progress(self):
         return self.get_value("CameraAcquiring")
