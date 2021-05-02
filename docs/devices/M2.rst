@@ -1,0 +1,39 @@
+.. _lasers_m2:
+
+.. note::
+    General device communication concepts are described on the corresponding :ref:`page <devices>`.
+
+M2 Solstis laser
+=======================
+
+Solstis is a Ti:Saph laser produces by M2. It is controlled via IceBloc controller unit, which communicates with the PC via a network connection.
+
+The main laser class is :class:`pylablib.devices.M2.Solstis<.solstis.Solstis>`.
+
+Software requirements
+-----------------------
+
+The device provides a bare network interface, so no additional software is required. However, the device and the local network need to be appropriately configured, such that the PC is and the laser are in the same local network and have static IPs.
+
+
+Connection
+-----------------------
+
+The laser is identified by its IP address (typically starting with ``192.168.1``, if it is on the local network) and the port::
+
+    >> from pylablib.devices import M2
+    >> laser = M2.Solstis("192.168.1.2",34567)
+    >> laser.close()
+
+The port is set up in the ``Remote interface`` row of the ``Network Settings`` menu of the laser web interface. There you also need to provide the correct IP address of the controlling PC and enable the remote interface; otherwise the connection will be rejected by the laser.
+
+In addition, you can enable websocket interface option, which is used to send request directly though the device web interface (it should also be opened in the browser and logged in to work). It is used for some options which are unavailable otherwise, such as enabling or disable the wavemeter connection, receiving some additional status information, and performing more robust control.
+
+Operation
+------------------------
+
+The method names are pretty self-explanatory, and mostly correspond directly to the operations in the web interface. Note that, due to the remote interface organization, terascan requires two methods to start: first :meth:`.Solstis.setup_terascan` to specify parameters, and then :meth:`.Solstis.start_terascan` to start it.
+
+One should note, that the device operation is not very stable, and occasionally some errors and crashes arise. These can range from failed wavelength tuning and terascan, to terascans failing in exotic ways (e.g., the remote interface suggests that the scan is in progress while the web interface reports a crash), to complete device failure requiring Ice Bloc power cycling.
+
+The device class attempts to somewhat mitigate it by providing relatively robust stopping method :meth:`.Solstis.stop_all_operation`. It uses web interface to get a better information about the laser crashing and send additional stopping commands. It also performs additional steps to stop scans and put the laser in an operation state after a failure, such as stearting quick small fine and terascans, and tuning to a nearby frequency.

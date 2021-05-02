@@ -11,7 +11,7 @@ Basic example
 
 Basic sensors usually only implement a handful of functions related to reading out the measurements (possibly on different channels) and setting up measurements modes::
 
-    >> gauge = Pfeiffer.TPG26x("COM1")  # connect to the gauge
+    >> gauge = Pfeiffer.TPG260("COM1")  # connect to the gauge
     >> gauge.enable(1)  # enable the first channel (usually it's already enabled)
     >> gauge.get_pressure()  # read pressure at the default channel (1)
     100E3
@@ -54,9 +54,9 @@ In some cases the readout method would return a non-numerical values. This usual
 Units
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Unless absolutely necessary and obvious, all the redout values are specified in SI units (even, e.g., laser frequency in Hz, or pressure in Pa). In rare cases when the devices allows for selection of readout units (e.g., Pfeiffer TPG26x gauges), it only affects the displayed value, but not the results returned by the corresponding methods::
+Unless absolutely necessary and obvious, all the redout values are specified in SI units (even, e.g., laser frequency in Hz, or pressure in Pa). In rare cases when the devices allows for selection of readout units (e.g., Pfeiffer TPG260 gauges), it only affects the displayed value, but not the results returned by the corresponding methods::
 
-    >> gauge = Pfeiffer.TPG26x("COM1")
+    >> gauge = Pfeiffer.TPG260("COM1")
     >> gauge.set_units("pa")
     >> gauge.get_pressure()
     100E3
@@ -85,3 +85,5 @@ Currently supported sensors
 
     HighFinesse
     Ophir
+    Lakeshore
+    Pfeiffer

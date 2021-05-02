@@ -281,7 +281,7 @@ class IMAQCamera(camera.IROICamera):
             trig_line(int): trigger line number
             trig_pol(str): trigger polarity; can be ``"high"`` or ``"low"``
             trig_drive(str): trigger output signal; can be ``"disable"`` (disable drive),
-                ``"acq_in_progress"`` (asserted when acquisition is started),``"acq_done"`` (asserted when acquisition is done),
+                ``"acq_in_progress"`` (asserted when acquisition is started), ``"acq_done"`` (asserted when acquisition is done),
                 ``"unasserted"`` (force unasserted level), ``"asserted"`` (force asserted level),
                 ``"hsync"`` (asserted on start of a single line start), ``"vsync"`` (asserted on start of a frame scan),
                 ``"frame_start"`` (asserted when a single frame is captured), or ``"frame_done"`` (asserted when a single frame is done)

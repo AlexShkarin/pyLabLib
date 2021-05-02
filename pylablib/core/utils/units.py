@@ -23,7 +23,7 @@ def convert_length_units(value, value_unit="m", result_unit="m", case_sensitive=
     """
     Convert `value` from `value_unit` to `result_unit`.
     
-    The possible length units are ``'m'``,``'mm'``, ``'um'``, ``'nm'``, ``'pm'``, ``'fm'``.
+    The possible length units are ``'m'``, ``'mm'``, ``'um'``, ``'nm'``, ``'pm'``, ``'fm'``.
     If ``case_sensitive==True``, matching units is case sensitive. 
     """
     if string_utils.string_equal(value_unit,"m",case_sensitive=case_sensitive):
@@ -59,7 +59,7 @@ def convert_time_units(value, value_unit="s", result_unit="s", case_sensitive=Tr
     """
     Convert `value` from `value_unit` to `result_unit`.
     
-    The possible time units are ``'s'``,``'ms'``, ``'us'``, ``'ns'``, ``'ps'``, ``'fs'``, ``'as'``.
+    The possible time units are ``'s'``, ``'ms'``, ``'us'``, ``'ns'``, ``'ps'``, ``'fs'``, ``'as'``.
     If ``case_sensitive==True``, matching units is case sensitive. 
     """
     if string_utils.string_equal(value_unit,"s",case_sensitive=case_sensitive):
@@ -99,7 +99,7 @@ def convert_frequency_units(value, value_unit="Hz", result_unit="Hz", case_sensi
     """
     Convert `value` from `value_unit` to `result_unit`.
     
-    The possible frequency units are ``'Hz'``,``'kHz'``, ``'MHz'``, ``'GHz'``.
+    The possible frequency units are ``'Hz'``, ``'kHz'``, ``'MHz'``, ``'GHz'``.
     If ``case_sensitive==True``, matching units is case sensitive. 
     """
     if string_utils.string_equal(value_unit,"Hz",case_sensitive=case_sensitive):

@@ -201,104 +201,24 @@ Available devices
     .. include:: cameras_list.txt
 - :ref:`Stages <stages>`
     .. include:: stages_list.txt
+- :ref:`Various Thorlabs devices <misc_thorlabs>`: :ref:`MFF101/102 <misc_thorlabs_mff>` motorized flip mirror mount, :ref:`FW102/212 <misc_thorlabs_fw>` motorized filter wheel, and :ref:`MDT693/694 <misc_thorlabs_mdt693>` high-voltage source. 
+- :ref:`Various OZOptics devices <misc_ozoptics>`: :ref:`EPC04 <misc_ozoptics_epc04>` fiber polarization controller, :ref:`DD100 <misc_ozoptics_dd100>` motorized fiber attenuator, and :ref:`TF100 <misc_ozoptics_tf100>` motorized fiber filter. 
 - :ref:`Basic sensors <basic_sensors>`
     .. include:: basic_sensors_list.txt
 - :ref:`Basic lasers <basic_lasers>`
     - :ref:`Lighthouse Photonics SproutG <basic_lasers_lp_sprout>`
     - :ref:`Laser Quantum Finesse <basic_lasers_lq_finesse>`
+- :ref:`M2 Solstis laser <lasers_m2>`
+- :ref:`Tektronix oscilloscopes <oscilloscopes_tektronix>`. Tested with TDS2002B, TDS2004B, and DPO2014B.
 
 .. toctree::
     :hidden:
     
     cameras
     stages
+    Thorlabs_misc
+    OZOptics
     basic_sensors
     basic_lasers
-
-.. --------------------------------------
-.. List of devices
-.. --------------------------------------
-
-.. ===================================    ==============================    =================================================================================    =======================================================================================
-.. Device                                 Kind                              Module                                                                               Comments
-.. ===================================    ==============================    =================================================================================    =======================================================================================
-.. Lighthouse Photonics SproutG           Laser                             :mod:`LighthousePhotonics <pylablib.devices.LighthousePhotonics.base>`
-.. LaserQuantum Finesse                   Laser                             :mod:`LaserQuantum <pylablib.devices.LaserQuantum.base>`
-.. HighFinesse WS/6 and WS/7              Wavemeter                         :mod:`HighFinesse <pylablib.devices.HighFinesse>`
-.. Photon Focus PFCam interface           Camera                            :mod:`PhotonFocus <pylablib.devices.PhotonFocus>`                                    Tested with MV-D1024E and CameraLink connection with NI PCIe-1433 frame grabber (via IMAQ)
-.. Ophir Vega                             Optical power meter               :mod:`Ophir <pylablib.devices.Ophir>`
-.. Thorlabs PM100D                        Optical power meter               :mod:`Thorlabs <pylablib.devices.Thorlabs>`
-.. Agilent AWG33220A                      Arbitrary waveform generator      :mod:`AgilentElectronics <pylablib.devices.GenericAWGs>`
-.. Agilent AWG33500                       Arbitrary waveform generator      :mod:`AgilentElectronics <pylablib.devices.GenericAWGs>`                             Tested with Agilent 33509B
-.. Rigol DG1000                           Arbitrary waveform generator      :mod:`AgilentElectronics <pylablib.devices.GenericAWGs>`                             Tested with DG1022
-.. Instek AFG-2225                        Arbitrary waveform generator      :mod:`AgilentElectronics <pylablib.devices.GenericAWGs>`                             Tested with Instek AFG-2225
-.. Thorlabs MDT693/4A                     High voltage source               :mod:`Thorlabs <pylablib.devices.Thorlabs>`
-.. Agilent AMP33502A                      DC amplifier                      :mod:`AgilentElectronics <pylablib.devices.AgilentElectronics>`
-.. Rigol DSA1030A                         Microwave spectrum analyzer       :mod:`Rigol <pylablib.devices.Rigol>`
-.. Agilent HP8712B, HP8722D               Vector network analyzers          :mod:`AgilentElectronics <pylablib.devices.AgilentElectronics>`
-.. Tektronix DPO2014, TDS2000             Oscilloscopes                     :mod:`Tektronix <pylablib.devices.Tektronix>`
-.. NI DAQ interface                       NI DAQ devices                    :mod:`NI <pylablib.devices.NI>`                                                      Wrapper around the `nidaqmx <https://nidaqmx-python.readthedocs.io/en/latest/>`_ package. Tested with NI USB-6008 and NI PCIe-6323
-.. Arcus PerforMax                        Translation stage                 :mod:`Arcus <pylablib.devices.Arcus>`                                                Tested with PMX-4EX-SA stage.
-.. SmarAct SCU3D                          Translation stage                 :mod:`SmarAct <pylablib.devices.SmarAct>`
-.. Attocube ANC300                        Piezo slider controller           :mod:`Attocube <pylablib.devices.Attocube>`                                          Tested with Ethernet and Serial port connection
-.. Attocube ANC350                        Piezo slider controller           :mod:`Attocube <pylablib.devices.Attocube>`                                          Tested with USB and Serial port connection
-.. Trinamic TMCM1110                      Stepper motor controller          :mod:`Trinamic <pylablib.devices.Trinamic>`
-.. Thorlabs motor controllers             DC servo motor controller         :mod:`Thorlabs <pylablib.devices.Thorlabs>`                                          Tested with KDC101 and K10CR1
-.. Thorlabs FW102/202                     Motorized filter wheel            :mod:`Thorlabs <pylablib.devices.Thorlabs>`
-.. Thorlabs MFF                           Motorized flip mount              :mod:`Thorlabs <pylablib.devices.Thorlabs>`
-.. Cryomagnetics LM500/510                Cryogenic level meter             :mod:`Cryomagnetics <pylablib.devices.Cryomagnetics>`
-.. Lakeshore 218                          Temperature controllers           :mod:`Lakeshore <pylablib.devices.Lakeshore>`
-.. MKS 9xx                                Pressure gauge                    :mod:`MKS <pylablib.devices.MKS>`
-.. Pfeiffer gauges                        Pressure gauge                    :mod:`Pfeiffer <pylablib.devices.Pfeiffer>`                                          Tested with TPG261 and DPG202
-.. ===================================    ==============================    =================================================================================    =======================================================================================
-
-
-
-
-
-
-
-.. --------------------------------------
-.. List of devices
-.. --------------------------------------
-
-.. ===================================    ==============================    =================================================================================    =======================================================================================
-.. Device                                 Kind                              Module                                                                               Comments
-.. ===================================    ==============================    =================================================================================    =======================================================================================
-.. Lighthouse Photonics SproutG           Laser                             :mod:`LighthousePhotonics <pylablib.devices.LighthousePhotonics.base>`
-.. LaserQuantum Finesse                   Laser                             :mod:`LaserQuantum <pylablib.devices.LaserQuantum.base>`
-.. HighFinesse WS/6 and WS/7              Wavemeter                         :mod:`HighFinesse <pylablib.devices.HighFinesse>`
-.. Andor SDK2 interface                   Camera                            :mod:`Andor <pylablib.devices.Andor>`                                                Tested with Andor IXON and Luca
-.. Andor SDK3 interface                   Camera                            :mod:`Andor <pylablib.devices.Andor>`                                                Tested with Andor Zyla
-.. Hamamatsu DCAM interface               Camera                            :mod:`DCAM <pylablib.devices.DCAM>`                                                  Tested with ORCA-Flash 4.0 (C11440-22CU)
-.. NI IMAQdx interface                    Camera                            :mod:`IMAQdx <pylablib.devices.IMAQdx.IMAQdx>`                                       Tested with Photon Focus HD1-D1312 with GigE connection
-.. NI IMAQ interface                      Camera                            :mod:`IMAQ <pylablib.devices.IMAQ.IMAQ>`                                             Tested with NI PCI-1430 frame grabber
-.. Photon Focus PFCam interface           Camera                            :mod:`PhotonFocus <pylablib.devices.PhotonFocus>`                                    Tested with MV-D1024E and CameraLink connection with NI PCIe-1433 frame grabber (via IMAQ)
-.. PCO SC2 interface                      Camera                            :mod:`PCO_SC2 <pylablib.devices.PCO_SC2>`                                            Tested with PCO.edge 5.5 CL and PCO.edge CLHS
-.. Thorlabs TLCamera interface            Camera                            :mod:`TLCamera <pylablib.devices.Thorlabs.TLCamera>`                                 Tested with Thorlabs Kiralux
-.. Uc480 camera interface                 Camera                            :mod:`uc480 <pylablib.devices.uc480.uc480>`                                          Tested with IDS SC2592R12M and Thorlabs DCC1545M
-.. Ophir Vega                             Optical power meter               :mod:`Ophir <pylablib.devices.Ophir>`
-.. Thorlabs PM100D                        Optical power meter               :mod:`Thorlabs <pylablib.devices.Thorlabs>`
-.. Agilent AWG33220A                      Arbitrary waveform generator      :mod:`AgilentElectronics <pylablib.devices.GenericAWGs>`
-.. Agilent AWG33500                       Arbitrary waveform generator      :mod:`AgilentElectronics <pylablib.devices.GenericAWGs>`                             Tested with Agilent 33509B
-.. Rigol DG1000                           Arbitrary waveform generator      :mod:`AgilentElectronics <pylablib.devices.GenericAWGs>`                             Tested with DG1022
-.. Instek AFG-2225                        Arbitrary waveform generator      :mod:`AgilentElectronics <pylablib.devices.GenericAWGs>`                             Tested with Instek AFG-2225
-.. Thorlabs MDT693/4A                     High voltage source               :mod:`Thorlabs <pylablib.devices.Thorlabs>`
-.. Agilent AMP33502A                      DC amplifier                      :mod:`AgilentElectronics <pylablib.devices.AgilentElectronics>`
-.. Rigol DSA1030A                         Microwave spectrum analyzer       :mod:`Rigol <pylablib.devices.Rigol>`
-.. Agilent HP8712B, HP8722D               Vector network analyzers          :mod:`AgilentElectronics <pylablib.devices.AgilentElectronics>`
-.. Tektronix DPO2014, TDS2000             Oscilloscopes                     :mod:`Tektronix <pylablib.devices.Tektronix>`
-.. NI DAQ interface                       NI DAQ devices                    :mod:`NI <pylablib.devices.NI>`                                                      Wrapper around the `nidaqmx <https://nidaqmx-python.readthedocs.io/en/latest/>`_ package. Tested with NI USB-6008 and NI PCIe-6323
-.. Arcus PerforMax                        Translation stage                 :mod:`Arcus <pylablib.devices.Arcus>`                                                Tested with PMX-4EX-SA stage.
-.. SmarAct SCU3D                          Translation stage                 :mod:`SmarAct <pylablib.devices.SmarAct>`
-.. Attocube ANC300                        Piezo slider controller           :mod:`Attocube <pylablib.devices.Attocube>`                                          Tested with Ethernet and Serial port connection
-.. Attocube ANC350                        Piezo slider controller           :mod:`Attocube <pylablib.devices.Attocube>`                                          Tested with USB and Serial port connection
-.. Trinamic TMCM1110                      Stepper motor controller          :mod:`Trinamic <pylablib.devices.Trinamic>`
-.. Thorlabs motor controllers             DC servo motor controller         :mod:`Thorlabs <pylablib.devices.Thorlabs>`                                          Tested with KDC101 and K10CR1
-.. Thorlabs FW102/202                     Motorized filter wheel            :mod:`Thorlabs <pylablib.devices.Thorlabs>`
-.. Thorlabs MFF                           Motorized flip mount              :mod:`Thorlabs <pylablib.devices.Thorlabs>`
-.. Cryomagnetics LM500/510                Cryogenic level meter             :mod:`Cryomagnetics <pylablib.devices.Cryomagnetics>`
-.. Lakeshore 218                          Temperature controllers           :mod:`Lakeshore <pylablib.devices.Lakeshore>`
-.. MKS 9xx                                Pressure gauge                    :mod:`MKS <pylablib.devices.MKS>`
-.. Pfeiffer gauges                        Pressure gauge                    :mod:`Pfeiffer <pylablib.devices.Pfeiffer>`                                          Tested with TPG261 and DPG202
-.. ===================================    ==============================    =================================================================================    =======================================================================================
+    M2
+    Tektronix
