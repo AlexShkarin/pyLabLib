@@ -1,1 +1,1 @@
-from .base import TPG26x, DPG202, PfeifferError
+from .base import TPG260, DPG202, PfeifferError

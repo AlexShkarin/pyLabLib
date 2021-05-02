@@ -17,8 +17,8 @@ class TestLakeshore218(DeviceTester):
     devcls=Lakeshore.Lakeshore218
 
 
-class TestPfeifferTPG26x(DeviceTester):
-    """Testing class for TPG26x pressure sensor"""
-    devname="pfeiffer_tpg26x"
-    devcls=Pfeiffer.TPG26x
+class TestPfeifferTPG260(DeviceTester):
+    """Testing class for TPG260 pressure sensor"""
+    devname="pfeiffer_tpg260"
+    devcls=Pfeiffer.TPG260
     get_set_all_exclude=["calibration_factor"]

@@ -1,1 +1,1 @@
-from .base import Lakeshore218, Lakeshore370, LakeshoreError
+from .base import Lakeshore218, LakeshoreError

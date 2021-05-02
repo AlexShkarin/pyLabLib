@@ -12,11 +12,11 @@ class PfeifferBackendError(PfeifferError,DeviceBackendError):
 
 
 
-TTPG26xSwitchSettings=collections.namedtuple("TSwitchSettings",["channel","low_thresh","high_thresh"])
-TTPG26xGaugeControlSettings=collections.namedtuple("TGaugeControlSettings",["activation_control","deactivation_control","on_thresh","off_thresh"])
-class TPG26x(comm_backend.ICommBackendWrapper):
+TTPG260SwitchSettings=collections.namedtuple("TSwitchSettings",["channel","low_thresh","high_thresh"])
+TTPG260GaugeControlSettings=collections.namedtuple("TGaugeControlSettings",["activation_control","deactivation_control","on_thresh","off_thresh"])
+class TPG260(comm_backend.ICommBackendWrapper):
     """
-    TPG26x series (TPG261/262) pressure gauge.
+    TPG260 series (TPG261/262) pressure gauge.
 
     Args:
         conn: serial connection parameters (usually port or a tuple containing port and baudrate)
@@ -194,7 +194,7 @@ class TPG26x(comm_backend.ICommBackendWrapper):
         """
         ch,lt,ht=self.query("SP{}".format(switch_function),["int","float","float"])
         units=self.get_units()
-        return TTPG26xSwitchSettings(ch+1,self.to_Pa(lt,units),self.to_Pa(ht,units))
+        return TTPG260SwitchSettings(ch+1,self.to_Pa(lt,units),self.to_Pa(ht,units))
     @interface.use_parameters(_returns=["channel",None,None])
     def setup_switch(self, switch_function, channel, low_thresh, high_thresh):
         """
@@ -206,7 +206,7 @@ class TPG26x(comm_backend.ICommBackendWrapper):
         low_thresh=self.from_Pa(low_thresh,units)
         high_thresh=self.from_Pa(high_thresh,units)
         ch,lt,ht=self.query("SP{},{},{},{}".format(switch_function,channel-1,low_thresh,high_thresh),["int","float","float"])
-        return TTPG26xSwitchSettings(ch+1,self.to_Pa(lt,units),self.to_Pa(ht,units))
+        return TTPG260SwitchSettings(ch+1,self.to_Pa(lt,units),self.to_Pa(ht,units))
     def get_switch_status(self):
         """Return status of the 4 switch functions"""
         return [bool(v) for v in self.query("SPS","int")]
@@ -222,7 +222,7 @@ class TPG26x(comm_backend.ICommBackendWrapper):
         """
         acc,dacc,ont,offt=self.query("SC{}".format(channel),["int","int","float","float"])
         units=self.get_units()
-        return TTPG26xGaugeControlSettings(acc,dacc,self.to_Pa(ont,units),self.to_Pa(offt,units))
+        return TTPG260GaugeControlSettings(acc,dacc,self.to_Pa(ont,units),self.to_Pa(offt,units))
     @interface.use_parameters(_returns=["activation_control","deactivation_control",None,None])
     def setup_gauge_control(self, channel, activation_control, deactivation_control, on_thresh, off_thresh):
         """
@@ -234,7 +234,7 @@ class TPG26x(comm_backend.ICommBackendWrapper):
         on_thresh=self.from_Pa(on_thresh,units)
         off_thresh=self.from_Pa(off_thresh,units)
         acc,dacc,ont,offt=self.query("SC{},{},{},{},{}".format(channel,activation_control,deactivation_control,on_thresh,off_thresh),["int","int","float","float"])
-        return TTPG26xGaugeControlSettings(acc,dacc,self.to_Pa(ont,units),self.to_Pa(offt,units))
+        return TTPG260GaugeControlSettings(acc,dacc,self.to_Pa(ont,units),self.to_Pa(offt,units))
 
     def _parse_errors(self, errs):
         if not isinstance(errs,list):
