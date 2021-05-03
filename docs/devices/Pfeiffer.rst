@@ -6,7 +6,7 @@
 Pfeiffer pressure gauges
 ==============================
 
-Lakeshore manufactures a range of pressure gauges and controllers with several different standards and communication protocols. The code has been tested with Pfeiffer TPG261 controller and Pfeiffer DPG202 controller.
+Pfeiffer manufactures a range of pressure gauges and controllers with several different standards and communication protocols. The code has been tested with Pfeiffer TPG260 series controller (specifically, TPG261) and Pfeiffer DPG202 controller.
 
 The main device classes are :class:`pylablib.devices.Pfeiffer.TPG260<.Pfeiffer.base.TPG260>` and :class:`pylablib.devices.Pfeiffer.DPG202<.Pfeiffer.base.DPG202>`.
 

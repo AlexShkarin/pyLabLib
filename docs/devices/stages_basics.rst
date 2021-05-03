@@ -86,7 +86,7 @@ In addition, many stages provide methods for additional information, e.g., ``get
 Position readout
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The the stage has position readout (either hardware sensor, or step counting), it is implemented with the ``get_position`` method. In most cases, it will be accompanied with the ``set_position_reference`` method, which lets one change the currently stored position, effectively adding an offset to all further position readings::
+The stage has position readout (either hardware sensor, or step counting), it is implemented with the ``get_position`` method. In most cases, it will be accompanied with the ``set_position_reference`` method, which lets one change the currently stored position, effectively adding an offset to all further position readings::
 
     >> stage.get_position()
     10000
@@ -111,6 +111,6 @@ Homing
 
 As mentioned above, often stages require homing to get absolute position readings. It needs to be done every time the stage is power-cycled, but the homing parameters usually persist between different re-connections.
 
-If homing is implemented, it use done using the ``home`` method. In addition, there can also be an ``is_homed`` method, which checks if the homing has already been performed. If the method is present, then by default ``home`` will not execute if ``is_homed`` returns ``True``, unless forced.
+If homing is implemented, it is done using the ``home`` method. In addition, there can also be an ``is_homed`` method, which checks if the homing has already been performed. If the method is present, then by default ``home`` will not execute if ``is_homed`` returns ``True``, unless forced.
 
 Some stages do not have an explicit homing method, but can be manually homed by, e.g., running the stage to the limit switch and setting the position reference to 0.

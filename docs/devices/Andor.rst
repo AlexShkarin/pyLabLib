@@ -6,11 +6,11 @@
 Andor cameras
 =======================
 
-Andor implements two completely separate interfaces for different cameras. The older one, called SDK, or simply SDK, provides interface for the older cameras: iXon, iKon, iStart, iDus,, iVac, Luca, Newton. The details of this SDK are available in the `manual <https://andor.oxinst.com/downloads/uploads/Andor_Software_Development_Kit_2.pdf>`__.
+Andor implements two completely separate interfaces for different cameras. The older one, called SDK, or simply SDK, provides interface for the older cameras: iXon, iKon, iStart, iDus, iVac, Luca, Newton. The details of this SDK are available in the `manual <https://andor.oxinst.com/downloads/uploads/Andor_Software_Development_Kit_2.pdf>`__.
 
 The newer SDK, called SDK3, covers newer cameras: Zyla, Neo, Apogee, Sona, Marana, and Balor. The `manual <https://andor.oxinst.com/downloads/uploads/Andor_SDK3_Manual.pdf>`__ describes the cameras and capabilities in more details.
 
-The required DLLs are distributed with `Andor Solis <https://andor.oxinst.com/products/solis-software/>`__ or the corresponding `Andor SKD <https://andor.oxinst.com/products/software-development-kit/>`__. In most cases, you will have Andor Solis installed to have the drivers and to communicate with the cameras to begin with.
+The required DLLs are distributed with `Andor Solis <https://andor.oxinst.com/products/solis-software/>`__ or the corresponding `Andor SKD <https://andor.oxinst.com/products/software-development-kit/>`__. In most cases, you have Andor Solis already installed to provide the drivers and to communicate with the cameras to begin with.
 
 
 .. _cameras_andor_sdk2:
@@ -58,7 +58,7 @@ The operation of these cameras is relatively standard. They support all the stan
 
         cam = Andor.AndorSDK2Camera(temperature=-50, fan_mode="on")
     
-    - Often cameras have a lot of different readout parameters: channel, amplifier, vertical and horizontal scan speed, etc. These parameters greatly affect the camera sensitivity and readout speed. By default, the parameter are typically set to the slowest mode. To get the list of all possible parameter combinations, you can use :meth:`.AndorSDK2Camera.get_all_amp_modes` and :meth:`.AndorSDK2Camera.get_max_vsspeed`. Afterwards, you can set them using :meth:`.AndorSDK2Camera.set_amp_mode` and :meth:`.AndorSDK2Camera.set_vsspeed`.
+    - Often cameras have a lot of different readout parameters: channel, amplifier, vertical and horizontal scan speed, etc. These parameters greatly affect the camera sensitivity and readout speed. Upon the connection, the parameter are typically set to the slowest mode. To get the list of all possible parameter combinations, you can use :meth:`.AndorSDK2Camera.get_all_amp_modes` and :meth:`.AndorSDK2Camera.get_max_vsspeed`. Afterwards, you can set them using :meth:`.AndorSDK2Camera.set_amp_mode` and :meth:`.AndorSDK2Camera.set_vsspeed`.
     - The default shutter parameter is ``"closed"``, which preserves camera from possible high illumination, but can lead to confusion.
     - This SDK does not allow for specifying number of frames in the frames buffer. However, the parameters chosen by the SDK are usually reasonable (at least a second worth of acquisition).
     - Some cameras (e.g., iXon) have lots of readout (full frame, ROI, full vertical binning, etc.) and acquisition modes (single, continuous, accumulating, kinetic cycle, etc.). They are described in details in the `manual <https://andor.oxinst.com/downloads/uploads/Andor_Software_Development_Kit_2.pdf>`__.

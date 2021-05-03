@@ -24,7 +24,7 @@ These cameras require ``pfcam.dll``, which is installed with `PFInstaller <https
 Connection
 -----------------------
 
-The camera class requires two pieces of information. First is the NI IMAQ interface name (e.g., ``"img0"``), identified as described in the :ref:`NI IMAQ <cameras_imaq>` documentation. The second is the pfcam port, which is a number starting from zero. To list all of the connected pfcam-compatible cameras, you can run :func:`.PhotonFocus.list_cameras`:
+The camera class requires two pieces of information. First is the NI IMAQ interface name (e.g., ``"img0"``), identified as described in the :ref:`NI IMAQ <cameras_imaq>` documentation. The second is the pfcam port, which is a number starting from zero. To list all of the connected pfcam-compatible cameras, you can run :func:`.PhotonFocus.list_cameras`::
 
     >> from pylablib.devices import PhotonFocus, IMAQ
     >> IMAQ.list_cameras()  # get all IMAQ frame grabber devices

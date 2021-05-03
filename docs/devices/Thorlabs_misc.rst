@@ -34,7 +34,7 @@ Operation
 MFF101/102 flip mount
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-The class is proved as :class:`pylablib.devices.Thorlabs.MFF<.Thorlabs.kinesis.MFF>`. It allows for control of the flip mirror position, as well as changing its digital input and output settings.
+The class is provided as :class:`pylablib.devices.Thorlabs.MFF<.Thorlabs.kinesis.MFF>`. It allows for control of the flip mirror position, as well as changing its digital input and output settings.
 
 
 .. _misc_thorlabs_fw:

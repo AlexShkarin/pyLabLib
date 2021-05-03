@@ -42,5 +42,6 @@ Operation
 ------------------------
 
 The operation of these cameras is relatively standard. They support all the standard methods for dealing with ROI and exposure, starting and stopping acquisition, and operating the frame reading loop. However, there's a couple of differences from the standard libraries worth highlighting:
+
     - Some cameras support both binning (adding several pixels together) and subsampling (skipping some pixels). However, only one can be enabled at a time. They can be set independently using, correspondingly, :meth:`.UC480Camera.get_binning`/:meth:`.UC480Camera.set_binning` and :meth:`.UC480Camera.get_subsampling`/:meth:`.UC480Camera.set_subsampling`. They can also be set as binning factors in :meth:`.UC480Camera.get_roi`/:meth:`.UC480Camera.set_roi`. Whether binning or subsampling is set there can be determined by the ``roi_binning_mode`` parameter on creation.
     - Uc480 API supports many different pixel modes, including packed ones. However, pylablib currently supports only unpacked modes.

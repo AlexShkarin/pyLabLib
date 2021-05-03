@@ -6,7 +6,7 @@
 NI DAQmx interface
 =======================
 
-National Instruments produces lots of different data acquisition devices, which support digital and analog input and output, both immediate and clocked (depending on the exact device). They are controlled via a very universal `NI DAQmx <https://knowledge.ni.com/KnowledgeArticleDetails?id=kA00Z000000P8baSAC>`__ interface. This interface is provided in `python-nidaqmx <https://nidaqmx-python.readthedocs.io/en/latest/>`__ package, which provides a fairly close to original functionality, but with much more convenient Python wrappers. Pylablib implements a relatively thin wrapper around this package to make closer to the other device classes, and to simplify common tasks such as setting up voltage and counter input channels.
+National Instruments produces lots of different data acquisition devices, which support digital and analog input and output, both immediate and clocked (depending on the exact device). They are controlled via a very universal `NI DAQmx <https://knowledge.ni.com/KnowledgeArticleDetails?id=kA00Z000000P8baSAC>`__ interface. This interface is provided in `python-nidaqmx <https://nidaqmx-python.readthedocs.io/en/latest/>`__ package, which provides a fairly close to original functionality, but with much more convenient Python wrappers. Pylablib implements a relatively thin wrapper around this package to present it in a way similar to the other device classes, and to simplify common tasks such as setting up voltage and counter input channels.
 
 The main daq class is :class:`pylablib.devices.NI.NIDAQ<.NI.daq.NIDAQ>`.
 

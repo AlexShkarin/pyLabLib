@@ -34,7 +34,7 @@ The cameras are identified by their serial number. To list all of the connected 
     >> cam1.close()
     >> cam2.close()
 
-If not serial is provided, the software connects to the first available camera.
+If no serial is provided, the software connects to the first available camera.
 
 Operation
 ------------------------

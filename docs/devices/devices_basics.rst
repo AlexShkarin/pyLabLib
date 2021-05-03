@@ -28,7 +28,7 @@ The device identifier or address needs to be provided upon the device object cre
       
       Network devices do not easily provide such functionality (also, there are, in principle, lots of devices connected to the networks), so you might need to learn the device IP elsewhere (usually, it is set on the device front panel or using some kind of configuration tool).
 
-      In most cases, the connection address is all you need. However, sometimes the connection might requirements some additional information. The most common situations are ports for the network connection and baud rates for the serial connections. Ports can be supplied either as a part of the string ``"192.168.1.3:7230"``, or as a tuple ``("192.168.1.3", 7230)``. The baud rates are, similarly, provided as a tuple: ``("COM1", 19200)``. By default, the devices would use the baud rate which is most common for them, but in some cases (e.g., if the device baud rate can be changed), you might need to provide it explicitly. If it is provided incorrectly, then no communication can be done, and any request will return a timeout error::
+      In most cases, the connection address is all you need. However, sometimes the connection might require some additional information. The most common situations are ports for the network connection and baud rates for the serial connections. Ports can be supplied either as a part of the string ``"192.168.1.3:7230"``, or as a tuple ``("192.168.1.3", 7230)``. The baud rates are, similarly, provided as a tuple: ``("COM1", 19200)``. By default, the devices would use the baud rate which is most common for them, but in some cases (e.g., if the device baud rate can be changed), you might need to provide it explicitly. If it is provided incorrectly, then no communication can be done, and any request will return a timeout error::
 
         >> from pylablib.devices import Ophir
         >> meter = Ophir.VegaPowerMeter("COM3")  # for this power meter 9600 baud are used by default
@@ -118,7 +118,7 @@ All devices have ``get_settings`` and ``apply_settings`` methods which, correspo
 
 Additionally, there is ``get_full_info`` method, which return as complete information as possible. It is particularly useful to check the device status and see if it is connected and working properly, and to save the devices configuration when, e.g., acquiring the data. Finally, the settings can also be accessed through ``.dv`` attribute, which provides dictionary-like interface::
 
-    >>> wheel = Thorlabs.FW("COM1")
+    >>> wheel = Thorlabs.FW("COM1")  # connect to FW102 motorized filter wheel
     >>> wheel.get_position()
     1
     >>> wheel.get_settings()
@@ -147,7 +147,7 @@ The simpler devices using serial connection (either with an external USB-to-Seri
 
 Devices which require manufacturer DLLs are harder to set up. For most of them, at the very least, you need to install the manufacturer-provided software for communication. Frequently it already includes the necessary libraries, which means that nothing else is required. However, sometimes you would need to download either an additional SDK package, or DLLs directly from the website. Since these libraries take a lot of space and are often proprietary, they are not distributed with the pylablib.
 
-Note that DLLs can have 32-bit and 64-bit version, and it should agree with the Python version that you use. Unless you have a really good reason to do otherwise, it is strongly recommended to use 64-bit Python, which means that you would need 64-bit DLLs (which is the standard in most cases these days). To check your python version, you can read the prompt when running the Python console, or run ``python -c "import platform; print(platform.architecture()[0])"`` in the command line.
+Note that DLLs can have 32-bit and 64-bit version, and it should agree with the Python version that you use. Unless you have a really good reason to do otherwise, it is strongly recommended to use 64-bit Python, which means that you would need 64-bit DLLs (which is the standard in most cases these days). To check your Python bitness, you can read the prompt when running the Python console, or run ``python -c "import platform; print(platform.architecture()[0])"`` in the command line.
 
 In addition, you need to provide pylablib with the path to the DLLs. In many cases it checks the standard locations such as the default ``System32`` folder (used, e.g., in DCAM or IMAQ cameras) or defaults paths for manufacturer software (such as ``C:/Program Files/Andor SOLIS`` for Andor cameras). If the software path is different, or if you choose to obtain DLLs elsewhere, you can also explicitly provide path by setting the library parameter::
 
