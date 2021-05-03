@@ -404,6 +404,8 @@ class IEnumParameterClass(ICheckingParameterClass):
         allowed_alias: specifies a range of allowed aliases; can be ``"exact"`` (only exact map matches are allowed),
             ``"device_value"`` (exact map matches and raw device values are allowed), or ``"all"`` (all values are allowed);
             in the latter two cases the value not in the map are passed as is.
+        allowed_value: specifies a range of allowed device values; can be ``"exact"`` (only exact map matches are allowed),
+            or ``"all"`` (all values are allowed); in the latter case the value not in the map is passed as is.
         alias_case: default alias parameter case for string values; can be ``None`` (no case normalization),
             or ``"lower"`` or ``"upper"`` (any received or returned alias will be normalized into this case)
         value_case: default value parameter case for string values; can be ``None`` (no case normalization),
@@ -413,12 +415,14 @@ class IEnumParameterClass(ICheckingParameterClass):
             in the case of ambiguity (several map values are prefixes for the same converted value), the exact match takes priority;
             useful for some SCPI devices, where the shorter version of the value can sometimes be returned.
     """
-    def __init__(self, name, allowed_alias="device_values", alias_case="lower", value_case=None, match_prefix=True):
+    def __init__(self, name, allowed_alias="device_values", allowed_value="exact", alias_case="lower", value_case=None, match_prefix=True):
         funcargparse.check_parameter_range(alias_case,"alias_case",["lower","upper",None])
         funcargparse.check_parameter_range(value_case,"value_case",["lower","upper",None])
         funcargparse.check_parameter_range(allowed_alias,"allowed_alias",["exact","device_values","all"])
+        funcargparse.check_parameter_range(allowed_value,"allowed_value",["exact","all"])
         ICheckingParameterClass.__init__(self,name=name)
         self._allowed_alias=allowed_alias
+        self._allowed_value=allowed_value
         self._match_prefix=match_prefix
         self._alias_case=alias_case
         self._value_case=value_case
@@ -430,6 +434,8 @@ class IEnumParameterClass(ICheckingParameterClass):
         
     def check_value(self, value):
         value=_to_case(value,self._value_case)
+        if self._allowed_value=="all":
+            return True
         if self._match_prefix and isinstance(value,py3.textstring):
             for v in self._get_value_map():
                 if isinstance(v,py3.textstring) and value.startswith(v):
@@ -452,14 +458,15 @@ class IEnumParameterClass(ICheckingParameterClass):
     def to_alias(self, value):
         value=_to_case(value,self._value_case)
         vmap=self._get_value_map()
+        if value in vmap:
+            return vmap[value]
         if self._match_prefix and isinstance(value,py3.textstring):
-            if value in vmap:
-                return vmap[value]
             for v,a in vmap.items():
                 if isinstance(v,py3.textstring) and value.startswith(v):
                     return a
-        else:
-            return vmap[value]
+        if self._allowed_value=="all":
+            return _to_case(value,self._alias_case)
+        raise KeyError("can not convert value {}".format(value))
     def _alias_error_str(self, alias):
         errs=ICheckingParameterClass._alias_error_str(self,alias)
         allowed_str=", ".join(repr(v) for v in self._get_alias_map())
@@ -481,6 +488,8 @@ class EnumParameterClass(IEnumParameterClass):
         allowed_alias: specifies a range of allowed aliases; can be ``"exact"`` (only exact map matches are allowed),
             ``"device_value"`` (exact map matches and raw device values are allowed), or ``"all"`` (all values are allowed);
             in the latter two cases the value not in the map are passed as is.
+        allowed_value: specifies a range of allowed device values; can be ``"exact"`` (only exact map matches are allowed),
+            or ``"all"`` (all values are allowed); in the latter case the value not in the map is passed as is.
         alias_case: default alias parameter case for string values; can be ``None`` (no case normalization),
             or ``"lower"`` or ``"upper"`` (any received or returned alias will be normalized into this case)
         value_case: default value parameter case for string values; can be ``None`` (no case normalization),
@@ -489,8 +498,8 @@ class EnumParameterClass(IEnumParameterClass):
             so in the value-to-alias conversion the converted value matches the map value if it just starts with it;
             useful for some SCPI devices, where the shorter version of the value can sometimes be returned.
     """
-    def __init__(self, name, alias_map, value_map=None, allowed_alias="device_values", alias_case="lower", value_case=None, match_prefix=True):
-        IEnumParameterClass.__init__(self,name=name,allowed_alias=allowed_alias,alias_case=alias_case,value_case=value_case,match_prefix=match_prefix)
+    def __init__(self, name, alias_map, value_map=None, allowed_alias="device_values", allowed_value="exact", alias_case="lower", value_case=None, match_prefix=True):
+        IEnumParameterClass.__init__(self,name=name,allowed_alias=allowed_alias,allowed_value=allowed_value,alias_case=alias_case,value_case=value_case,match_prefix=match_prefix)
         if isinstance(alias_map,dict):
             self._alias_map=alias_map
             self._value_map=value_map or general.invert_dict(alias_map)

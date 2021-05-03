@@ -105,12 +105,38 @@ class RSInstekAFG21000(InstekAFG2000):
 
 
 
+class TektronixAFG1000(GenericAWG):
+    _function_aliases=GenericAWG._function_aliases.copy()
+    _function_aliases["noise"]="PRN"
+    _supported_functions={"sine","square","ramp","pulse","noise","user","*"}
+    _single_channel_commands={"burst_enabled","burst_mode","burst_ncycles"}
+    _exclude_commands={ "duty_cycle","ramp_symmetry",
+                        "output_polarity","output_sync","voltage_unit","phase_unit",
+                        "gate_polarity","trigger_source","trigger_slope","trigger_output","output_trigger_slope"}
+    _range_mode="amp_off"
+    _set_angle_unit=False
+    _default_angle_unit="rad"
+    def __init__(self, addr, channels_number="auto"):
+        self._channels_number=channels_number
+        GenericAWG.__init__(self,addr)
+        for ch in range(1,self._channels_number+1):
+            self._modify_scpi_parameter("output_load","IMPEDANCE",comm_kind="output",channel=ch)
+            self._add_scpi_parameter("pulse_duty_cycle","PULSE:DCYCLE",channel=ch,add_variable=False)
+            self._add_settings_variable("pulse_width",self.get_pulse_width,self.set_pulse_width,channel=ch)
+    def get_pulse_width(self, channel=None):
+        dcycle=self._get_channel_scpi_parameter("pulse_duty_cycle",channel=channel)
+        return (1./self.get_frequency(channel=channel))*(dcycle/100)
+    def set_pulse_width(self, width, channel=None):
+        dcycle=width*self.get_frequency(channel=channel)*100
+        self._set_channel_scpi_parameter("pulse_duty_cycle",dcycle,channel=channel)
+        return self.get_pulse_width(channel=channel)
+
+
 
 class RigolDG1000(GenericAWG):
     """
     Rigol DG1000 AWG.
     """
-    _default_operation_cooldown={"write":1E-2}
     _channels_number=2
     _supported_functions={"sine","square","noise","ramp","pulse","dc","user"}
     _single_channel_commands={  "output_sync",
@@ -120,7 +146,7 @@ class RigolDG1000(GenericAWG):
     def __init__(self, addr):
         GenericAWG.__init__(self,addr)
         for ch in range(1,self._channels_number+1):
-            self._add_scpi_parameter("pulse_width","PULSE:WIDTH",channel=ch,add_variable=True)
+            self._modify_scpi_parameter("pulse_width","PULSE:WIDTH",channel=ch)
     def _instr_read(self, raw=False, size=None):
         data=GenericAWG._instr_read(self,raw=raw,size=size)
         if not raw:

@@ -728,7 +728,7 @@ class Solstis(interface.IDevice):
     def _check_fast_scan_type(self, scan_type):
         if scan_type not in self._fast_scan_types:
             raise M2Error("unknown fast scan type: {}".format(scan_type))
-    def start_fast_scan(self, scan_type, width, time, sync=False, setup_locks=True):
+    def start_fast_scan(self, scan_type, width, period, sync=False, setup_locks=True):
         """
         Setup and start fast scan.
 
@@ -738,7 +738,7 @@ class Solstis(interface.IDevice):
                 ``"resonator_continuous"``, ``"resonator_single"``, ``"resonator_ramp"``, ``"resonator_triangular"``,
                 ``"ecd_continuous"``, ``"ecd_ramp"``, or ``"fringe_test"`` (see M2 Solstis JSON protocol manual for details)
             width(float): scan width (in Hz).
-            time(float): scan time/period (in s).
+            period(float): scan time/period (in s).
             sync(bool): if ``True``, wait until the scan is set up (not until the whole scan is complete).
             setup_locks(bool): if ``True``, automatically setup etalon and reference cavity locks in the appropriate states for etalon, cavity, or resonator scans.
         """
@@ -754,7 +754,7 @@ class Solstis(interface.IDevice):
                 self.unlock_reference_cavity()
                 self.unlock_etalon()
             self.lock_wavemeter(False,error_on_fail=False)
-        _,reply=self.query("fast_scan_start",{"scan":scan_type,"width":[width/1E9],"time":[time]},report=True)
+        _,reply=self.query("fast_scan_start",{"scan":scan_type,"width":[width/1E9],"time":[period]},report=True)
         if reply["status"][0]==1:
             raise M2Error("could not start fast scan: width too great for the current tuning position")
         elif reply["status"][0]==2:

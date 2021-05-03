@@ -1,8 +1,7 @@
 from ...core.devio import SCPI, interface, DeviceError, DeviceBackendError
 from ...core.utils import units
 
-import contextlib
-
+import numpy as np
 
 class GenericAWGError(DeviceError):
     """Generic AWG error"""
@@ -19,6 +18,7 @@ class GenericAWG(SCPI.SCPIDevice):
     _single_channel_commands=set()
     _all_channel_commands=set()
     _set_angle_unit=True
+    _default_angle_unit="deg"
     _force_channel_source_pfx=False
     _default_operation_cooldown={"write":1E-2}
     _channels_number=1
@@ -33,12 +33,16 @@ class GenericAWG(SCPI.SCPIDevice):
         SCPI.SCPIDevice.__init__(self,addr)
         self._channels_number=self._get_channels_number()
         functions={k:v for (k,v) in self._function_aliases.items() if k in self._supported_functions}
-        self._add_parameter_class(interface.EnumParameterClass("function",functions,value_case="upper",match_prefix=True))
+        if "*" in self._supported_functions:
+            self._add_parameter_class(interface.EnumParameterClass("function",functions,match_prefix=True,allowed_alias="all",allowed_value="all",alias_case=None))
+        else:
+            self._add_parameter_class(interface.EnumParameterClass("function",functions,value_case="upper",match_prefix=True))
         for ch in range(1,self._channels_number+1):
             self._add_scpi_parameter("output_on","",kind="bool",channel=ch,comm_kind="output",add_variable=True)
             self._add_scpi_parameter("output_polarity","POLARITY",kind="param",parameter="polarity",channel=ch,comm_kind="output",add_variable=True)
             self._add_scpi_parameter("output_sync","SYNC",kind="bool",channel=ch,comm_kind="output",add_variable=True)
-            self._add_settings_variable("load",self.get_load,self.set_load,channel=ch)
+            self._add_scpi_parameter("output_load","LOAD",kind="string",channel=ch,comm_kind="output",add_variable=False)
+            self._add_settings_variable("output_load",self.get_load,self.set_load,channel=ch)
             self._add_settings_variable("output_range",self.get_output_range,self.set_output_range,multiarg=False,channel=ch)
             self._add_scpi_parameter("amplitude","VOLTAGE",kind="float",channel=ch)
             self._add_scpi_parameter("offset","VOLTAGE:OFFSET",kind="float",channel=ch)
@@ -60,6 +64,11 @@ class GenericAWG(SCPI.SCPIDevice):
         self._add_scpi_parameter("voltage_unit","VOLTAGE:UNIT",kind="string")
         self._add_scpi_parameter("phase_unit","UNIT:ANGLE",kind="string")
         self._current_channel=1
+    _all_parameters={   "output_on","output_polarity","output_sync","output_load",
+                        "amplitude","offset","frequency","phase","voltage_unit","phase_unit",
+                        "function","duty_cycle","ramp_symmetry","pulse_width",
+                        "burst_enabled","burst_mode","burst_ncycles","gate_polarity",
+                        "trigger_source","trigger_slope","trigger_output","output_trigger_slope"}  # not used, but good for reference / use in derived classes
 
     _p_polarity=interface.EnumParameterClass("polarity",["norm","inv"],value_case="upper",match_prefix=True)
     _p_burst_mode=interface.EnumParameterClass("burst_mode",{"trig":"TRIG","gate":"GATE"},value_case="upper",match_prefix=True)
@@ -72,6 +81,10 @@ class GenericAWG(SCPI.SCPIDevice):
             return self._channels_number
     def _can_add_command(self, name, channel=1):
         return not (name in self._exclude_commands or (name in self._single_channel_commands and channel>1))
+    def _check_command(self, name, channel=1):
+        channel=self._get_channel(channel)
+        if not self._can_add_command(name,channel=channel):
+            raise self.Error("option '{}' for channel {} is not supported by this device".format(name,channel))
     def _add_scpi_parameter(self, name, comm, kind="float", parameter=None, set_delay=0, channel=None, comm_kind="source", add_variable=False):
         if channel is not None and name not in self._all_channel_commands:
             if not self._can_add_command(name,channel):
@@ -99,11 +112,13 @@ class GenericAWG(SCPI.SCPIDevice):
                 setter=lambda *args: osetter(*args,channel=channel)
         return SCPI.SCPIDevice._add_settings_variable(self,path,getter=getter,setter=setter,ignore_error=ignore_error,mux=mux,multiarg=multiarg)
     def _get_channel_scpi_parameter(self, name, channel=None):
+        self._check_command(name,channel=channel)
         if name in self._all_channel_commands:
             return self._get_scpi_parameter(name)
         channel=self._get_channel(channel)
         return self._get_scpi_parameter(self._build_variable_name(name,channel))
     def _set_channel_scpi_parameter(self, name, value, channel=None, result=False):
+        self._check_command(name,channel=channel)
         if name in self._all_channel_commands:
             return self._set_scpi_parameter(name,value,result=result)
         channel=self._get_channel(channel)
@@ -119,10 +134,12 @@ class GenericAWG(SCPI.SCPIDevice):
         except KeyError:
             raise self.Error("option '{}' is not supported by this device".format(name))
     def _ask_channel(self, msg, data_type="string", delay=0., timeout=None, read_echo=False, name=None, channel=None, comm_kind="source"):
+        self._check_command(name,channel=channel)
         if name not in self._all_channel_commands:
             msg=self._build_channel_command(msg,channel,kind=comm_kind)
         return SCPI.SCPIDevice.ask(self,msg,data_type=data_type,delay=delay,timeout=timeout,read_echo=read_echo)
     def _write_channel(self, msg, arg=None, arg_type=None, unit=None, bool_selector=("OFF","ON"), wait_sync=None, read_echo=False, read_echo_delay=0., name=None, channel=None, comm_kind="source"):
+        self._check_command(name,channel=channel)
         if name not in self._all_channel_commands:
             msg=self._build_channel_command(msg,channel,kind=comm_kind)
         return SCPI.SCPIDevice.write(self,msg,arg=arg,arg_type=arg_type,unit=unit,bool_selector=bool_selector,wait_sync=wait_sync,read_echo=read_echo,read_echo_delay=read_echo_delay)
@@ -192,7 +209,7 @@ class GenericAWG(SCPI.SCPIDevice):
         
     def get_load(self, channel=None):
         """Get the output load"""
-        value=self._ask_channel("LOAD?",name="output_load",channel=channel,comm_kind="output")
+        value=self._get_channel_scpi_parameter("output_load",channel=channel)
         if value.lower()=="def":
             return self._default_load
         if value.lower()=="inf":
@@ -201,7 +218,7 @@ class GenericAWG(SCPI.SCPIDevice):
     def set_load(self, load=None, channel=None):
         """Set the output load (``None`` means High-Z)"""
         load="INF" if load is None else load
-        self._write_channel("LOAD",load,name="output_load",channel=channel,comm_kind="output")
+        self._set_channel_scpi_parameter("output_load",str(load),channel=channel)
         return self.get_load(channel=channel)
         
     def get_function(self, channel=None):
@@ -297,14 +314,16 @@ class GenericAWG(SCPI.SCPIDevice):
             return None
         if self._set_angle_unit:
             self._set_scpi_parameter("phase_unit","DEG")
-        return self._get_channel_scpi_parameter("phase",channel=channel)
+        fact=360/(2*np.pi) if self._default_angle_unit=="rad" else 1
+        return self._get_channel_scpi_parameter("phase",channel=channel)*fact
     def set_phase(self, phase, channel=None):
         """Set output phase (in degrees)"""
         if self._channels_number==1:
             return None
         if self._set_angle_unit:
             self._set_scpi_parameter("phase_unit","DEG")
-        return self._set_channel_scpi_parameter("phase",phase,channel=channel,result=True)
+        fact=360/(2*np.pi) if self._default_angle_unit=="rad" else 1
+        return self._set_channel_scpi_parameter("phase",phase/fact,channel=channel,result=True)*fact
     def sync_phase(self):
         """Synchronize phase between two channels"""
         if self._channels_number>1:
