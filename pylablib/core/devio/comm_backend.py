@@ -5,6 +5,7 @@ Routines for defining a unified interface across multiple backends.
 from ..utils import funcargparse, general, net, py3, module
 from builtins import range,zip
 from . import interface
+from . import backend_logger
 from .base import DeviceError
 
 import time
@@ -36,6 +37,19 @@ def reraise(func):
             ReraiseError=getattr(self,"ReraiseError",self.Error)
             raise ReraiseError(exc) from exc
     return wrapped
+
+def logerror(func):
+    """Wrapper for a backend method which logs if any errors escaped"""
+    @functools.wraps(func)
+    def wrapped(self, *args, **kwargs):
+        try:
+            return func(self,*args,**kwargs)
+        except self.Error as exc:
+            self._log("error",str(exc))
+            raise
+    return wrapped
+
+logger=None
 
 class IDeviceCommBackend:
     """
@@ -105,6 +119,10 @@ class IDeviceCommBackend:
         return self.is_opened()
     __nonzero__=__bool__ # Python 2 compatibility
 
+    def _log(self, operation, value):
+        """Log the operation (used for testing and debugging)"""
+        if logger:
+            logger.log(operation,value)
     
     def lock(self, timeout=None):
         """Lock the access to the device from other threads/processes (isn't necessarily implemented)"""
@@ -419,6 +437,7 @@ try:
             """Get operations timeout (in seconds)"""
             return self._get_timeout()
         
+        @logerror
         @reraise
         def readline(self, remove_term=True, timeout=None, skip_empty=True):
             """
@@ -439,7 +458,9 @@ try:
                     if (not skip_empty) or result:
                         break
             self.cooldown("read")
+            self._log("read",result)
             return self._to_datatype(result)
+        @logerror
         def read(self, size=None):
             """
             Read data from the device.
@@ -448,8 +469,10 @@ try:
             """
             result=self._read_all() if size is None else self._read_raw(size=size)
             self.cooldown("read")
+            self._log("read",result)
             return self._to_datatype(result)
         
+        @logerror
         @reraise
         def write(self, data, flush=True, read_echo=False, read_echo_delay=0, read_echo_lines=1):
             """
@@ -458,6 +481,7 @@ try:
             If ``flush==True``, flush the write buffer.
             If ``read_echo==True``, wait for `read_echo_delay` seconds and then perform :func:`readline` (`read_echo_lines` times).
             """
+            self._log("write",data)
             data=py3.as_builtin_bytes(data)
             if self.term_write:
                 data=data+py3.as_builtin_bytes(self.term_write)
@@ -625,6 +649,7 @@ try:
                             for t in terms:
                                 if result.endswith(t):
                                     return result
+        @logerror
         def readline(self, remove_term=True, timeout=None, skip_empty=True, error_on_timeout=True):
             """
             Read a single line from the device.
@@ -642,7 +667,9 @@ try:
                     result=remove_longest_term(result,self.term_read)
                 if not (skip_empty and remove_term and (not result)):
                     break
+            self._log("read",result)
             return self._to_datatype(result)
+        @logerror
         @reraise
         def read(self, size=None):
             """
@@ -658,7 +685,9 @@ try:
                     if len(result)!=size:
                         raise self.Error("read returned less than expected: {} instead of {}".format(len(result),size))
                 self.cooldown("read")
+                self._log("read",result)
                 return self._to_datatype(result)
+        @logerror
         def read_multichar_term(self, term, remove_term=True, timeout=None, error_on_timeout=True):
             """
             Read a single line with multiple possible terminators.
@@ -675,7 +704,9 @@ try:
             self.cooldown("read")
             if remove_term and term:
                 result=remove_longest_term(result,term)
+            self._log("read",result)
             return self._to_datatype(result)
+        @logerror
         @reraise
         def write(self, data, flush=True, read_echo=False, read_echo_delay=0, read_echo_lines=1):
             """
@@ -684,6 +715,7 @@ try:
             If ``flush==True``, flush the write buffer.
             If ``read_echo==True``, wait for `read_echo_delay` seconds and then perform :func:`readline` (`read_echo_lines` times).
             """
+            self._log("write",data)
             with self.single_op():
                 data=py3.as_builtin_bytes(data)
                 if self.term_write:
@@ -844,6 +876,7 @@ try:
                             for t in terms:
                                 if result.endswith(t):
                                     return result
+        @logerror
         def readline(self, remove_term=True, timeout=None, skip_empty=True, error_on_timeout=True):
             """
             Read a single line from the device.
@@ -861,7 +894,9 @@ try:
                     result=remove_longest_term(result,self.term_read)
                 if not (skip_empty and remove_term and (not result)):
                     break
+            self._log("read",result)
             return self._to_datatype(result)
+        @logerror
         @reraise
         def read(self, size=None):
             """
@@ -877,7 +912,9 @@ try:
                     if len(result)!=size:
                         raise self.Error("read returned less data than expected")
                 self.cooldown("read")
+                self._log("read",result)
                 return self._to_datatype(result)
+        @logerror
         def read_multichar_term(self, term, remove_term=True, timeout=None, error_on_timeout=True):
             """
             Read a single line with multiple possible terminators.
@@ -894,7 +931,9 @@ try:
             self.cooldown("read")
             if remove_term and term:
                 result=remove_longest_term(result,term)
+            self._log("read",result)
             return self._to_datatype(result)
+        @logerror
         @reraise
         def write(self, data, flush=True, read_echo=False, read_echo_delay=0, read_echo_lines=1):
             """
@@ -903,6 +942,7 @@ try:
             If ``flush==True``, flush the write buffer.
             If ``read_echo==True``, wait for `read_echo_delay` seconds and then perform :func:`readline` (`read_echo_lines` times).
             """
+            self._log("write",data)
             with self.single_op():
                 data=py3.as_builtin_bytes(data)
                 if self.term_write:
@@ -1028,6 +1068,7 @@ class NetworkDeviceBackend(IDeviceCommBackend):
         return self.socket.get_timeout()
     
 
+    @logerror
     @reraise
     def readline(self, remove_term=True, timeout=None, skip_empty=True):
         """
@@ -1046,7 +1087,9 @@ class NetworkDeviceBackend(IDeviceCommBackend):
                 result=remove_longest_term(result,self.term_read)
             if not (skip_empty and remove_term and (not result)):
                 break
+        self._log("read",result)
         return self._to_datatype(result)
+    @logerror
     @reraise
     def read(self, size=None):
         """
@@ -1057,9 +1100,11 @@ class NetworkDeviceBackend(IDeviceCommBackend):
         if size is None:
             return self.socket.recv_all()
         else:
-            data=self.socket.recv_fixedlen(size)
+            result=self.socket.recv_fixedlen(size)
         self.cooldown("read")
-        return self._to_datatype(data)
+        self._log("read",result)
+        return self._to_datatype(result)
+    @logerror
     @reraise
     def read_multichar_term(self, term, remove_term=True, timeout=None):
         """
@@ -1077,7 +1122,9 @@ class NetworkDeviceBackend(IDeviceCommBackend):
         self.cooldown("read")
         if remove_term and term:
             result=remove_longest_term(result,term)
+        self._log("read",result)
         return self._to_datatype(result)
+    @logerror
     @reraise
     def write(self, data, flush=True, read_echo=False, read_echo_delay=0, read_echo_lines=1):
         """
@@ -1086,6 +1133,7 @@ class NetworkDeviceBackend(IDeviceCommBackend):
         If ``read_echo==True``, wait for `read_echo_delay` seconds and then perform :func:`readline` (`read_echo_lines` times).
         `flush` parameter is ignored.
         """
+        self._log("write",data)
         self.socket.send_delimiter(data,self.term_write)
         self.cooldown("write")
         if read_echo_delay>0.:
@@ -1216,6 +1264,7 @@ try:
                     for t in terms:
                         if result.endswith(t):
                             return result
+        @logerror
         def readline(self, remove_term=True, timeout=None, skip_empty=True, error_on_timeout=True):
             """
             Read a single line from the device.
@@ -1233,7 +1282,9 @@ try:
                     result=remove_longest_term(result,self.term_read)
                 if not (skip_empty and remove_term and (not result)):
                     break
+            self._log("read",result)
             return self._to_datatype(result)
+        @logerror
         @reraise
         def read(self, size=None, max_read_size=65536):
             """
@@ -1248,7 +1299,9 @@ try:
                 if len(result)!=size and self.check_read_size:
                     raise self.Error("read returned less than expected {} instead of {}".format(len(result),size))
             self.cooldown("read")
+            self._log("read",result)
             return self._to_datatype(result)
+        @logerror
         def read_multichar_term(self, term, remove_term=True, timeout=None, error_on_timeout=True):
             """
             Read a single line with multiple possible terminators.
@@ -1265,7 +1318,9 @@ try:
             self.cooldown("read")
             if remove_term and term:
                 result=remove_longest_term(result,term)
+            self._log("read",result)
             return self._to_datatype(result)
+        @logerror
         @reraise
         def write(self, data, read_echo=False, read_echo_delay=0, read_echo_lines=1):
             """
@@ -1273,6 +1328,7 @@ try:
             
             If ``read_echo==True``, wait for `read_echo_delay` seconds and then perform :func:`readline` (`read_echo_lines` times).
             """
+            self._log("write",data)
             data=py3.as_builtin_bytes(data)
             if self.term_write:
                 data=data+py3.as_builtin_bytes(self.term_write)
@@ -1312,6 +1368,122 @@ except ImportError:
     pass
 _backend_errors["pyusb"]=_backend_install_message.format(name="PyUSB",pkg="pyusb",mod="usb")
     
+
+class DeviceRecordedError(DeviceBackendError):
+    """Recorded backend operation error"""
+
+class RecordedDeviceBackend(IDeviceCommBackend):
+    """
+    Recorded backend.
+    
+    Connection is automatically opened on creation.
+    
+    Args:
+        conn: connection parameters (recorded log path)
+        datatype (str): Type of the returned data; can be ``"bytes"`` (return `bytes` object), ``"str"`` (return `str` object),
+            or ``"auto"`` (default Python result: `str` in Python 2 and `bytes` in Python 3)
+        reraise_error: if not ``None``, specifies an error to be re-raised on any backend exception (by default, use backend-specific error);
+            should be a subclass of :exc:`DeviceBackendError`.
+    """
+    BackendError=IOError
+    _backend="recorded"
+    Error=DeviceRecordedError
+    
+    _conn_params=["path"]
+    _default_conn=[None]
+
+    def __init__(self, conn, datatype="auto", reraise_error=None):
+        conn_dict=self.combine_conn(conn,self._default_conn)
+        IDeviceCommBackend.__init__(self,conn_dict.copy(),datatype=datatype,reraise_error=reraise_error)
+        self.log=None
+        self.log_section=None
+        self.log_pos=0
+        try:
+            self.open()
+        except IOError as e:
+            raise self.Error(e) from e
+    
+    @reraise
+    def open(self):
+        """Open the connection"""
+        if self.log is None:
+            self.log=dict(backend_logger.load_logfile(self.conn["path"]))
+    def close(self):
+        """Close the connection"""
+        self.log=None
+    def is_opened(self):
+        return self.log is not None
+
+    def start(self, header):
+        """Start recorded section"""
+        if header not in self.log:
+            raise self.Error(IOError("header {} is missing from the record".format(header)))
+        self.log_section=header
+        self.log_pos=0
+    def stop(self):
+        """Stop logging section"""
+        self.log_section=None
+        self.log_pos=0
+    @contextlib.contextmanager
+    def section(self, header):
+        self.start(header)
+        try:
+            yield
+        finally:
+            self.stop()
+
+    def _get_value(self, operation):
+        if self.log is None:
+            raise self.Error(IOError("device is not opened"))
+        if self.log_section is None:
+            raise self.Error(IOError("log section is not selected"))
+        section=self.log[self.log_section]
+        if len(section)<=self.log_pos:
+            raise self.Error(IOError("section is over"))
+        op,val=section[self.log_pos]
+        self.log_pos+=1
+        if operation[0]!=op:
+            raise self.Error(IOError("requested operation {}, recorded {}".format(operation,op)))
+        return val
+    def readline(self, remove_term=True, timeout=None, skip_empty=True):
+        """
+        Read a single line from the device.
+        
+        Args:
+            remove_term (bool): If ``True``, remove terminal characters from the result.
+            timeout: Operation timeout. If ``None``, use the default device timeout.
+            skip_empty (bool): If ``True``, ignore empty lines (works only for ``remove_term==True``).
+        """
+        result=self._get_value("read")
+        return self._to_datatype(result)
+    def read(self, size=None):
+        """
+        Read data from the device.
+        
+        If `size` is not None, read `size` bytes (usual timeout applies); otherwise, read all available data (return immediately).
+        """
+        result=self._get_value("read")
+        return self._to_datatype(result)
+    def write(self, data, flush=True, read_echo=False, read_echo_delay=0, read_echo_lines=1):
+        """
+        Write data to the device.
+        
+        If ``flush==True``, flush the write buffer.
+        If ``read_echo==True``, wait for `read_echo_delay` seconds and then perform :func:`readline` (`read_echo_lines` times).
+        """
+        value=self._get_value("write")
+        if value!=data:
+            raise self.Error(IOError("requested write {}, recorded {}".format(data,value)))
+        return value
+
+    def __repr__(self):
+        return "RecordedDeviceBackend("+self.conn["path"]+")"
+
+    
+_backends["recorded"]=RecordedDeviceBackend
+
+
+
 
     
     
