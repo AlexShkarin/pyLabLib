@@ -88,8 +88,6 @@ def test_tables_saving(table_builder, tmpdir):
 
 ##### Table loading tests #####
 
-
-
 def test_tables_loading(table_builder):
     """Test loading consistency"""
     kind=table_builder.kind
@@ -114,3 +112,55 @@ def test_tables_loading(table_builder):
     if kind==pll.par["fileio/loadfile/csv/out_type"]:
         new_table=loadfile.load_csv(load_path)
         compare_tables(table,new_table)
+
+
+
+
+
+
+
+
+
+
+##### Test dictionary #####
+
+@pytest.fixture
+def test_dict():
+    pt=pd.DataFrame({"C1":["a","b","c"],"C2":[1,2,3+4j]})
+    return pll.Dictionary({'1 2 3/  /5': "value",
+    'c/f/g': 5,
+    'c/f/h': pt,
+    'c/f/n': 11,
+    'c/b': 5,
+    'c/d': 3,
+    'c/e': 4,
+    'c/n': 6,
+    'f/a': np.array([1.,2.,3.]),
+    'f/c': [(0, 0), (1, 1), (2, 3)],
+    'f/d': r"$\nu_0$",
+    '1': "a",
+    '[1,2,3]': 2,
+    'a': 1,
+    'b': 2,
+    'some table': pt })
+
+def compare_dicts(d1, d2):
+    d1=pll.as_dict(d1,"flat").copy()
+    d2=pll.as_dict(d2,"flat").copy()
+    for k in list(d1):
+        if isinstance(d1[k],(pd.DataFrame,np.ndarray)):
+            compare_tables(d1[k],d2[k])
+            del d1[k]
+            del d2[k]
+    assert d1==d2
+
+def test_dictionary_loading(test_dict):
+    """Test loading consistency"""
+    load_dict=loadfile.load_dict("core/fileio/dict_simple.dat")
+    compare_dicts(test_dict,load_dict)
+
+def test_dictionary_saving(test_dict, tmpdir):
+    path=os.path.join(tmpdir,"test.dat")
+    savefile.save_dict(test_dict,path,use_rep_classes=True)
+    load_dict=loadfile.load_dict(path)
+    compare_dicts(test_dict,load_dict)

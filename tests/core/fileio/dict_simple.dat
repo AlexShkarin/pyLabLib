@@ -1,0 +1,32 @@
+c/f/g	5
+c/d	3
+c/e	4
+1	a
+"1 2 3/  /5"	value
+"[1,2,3]"	2
+a	1
+b	2
+f/a array([1., 2., 3.])
+"some table"
+## Table start
+# C1 C2
+"a" 1
+"b" 2
+"c" 3+4j
+## Table end
+//c
+    b 5
+    n 6
+    //f
+        h 10
+        ## Table start
+        # C1 C2
+        "a" 1
+        "b" 2
+        "c" 3+4j
+        ## Table end
+    ///
+    f/n 11
+///
+f/c   [(0,0), (1,1), (2,3)]
+f/d  r"$\nu_0$"
