@@ -190,9 +190,12 @@ builtin_cmaps={ "gray":([0,1.],[(0.,0.,0.),(1.,1.,1.)]),
                 "hot":([0,0.3,0.7,1.],[(0.,0.,0.),(1.,0.,0.),(1.,1.,0.),(1.,1.,1.)]),
                 "hot_sat":([0,0.3,0.7,0.99,1.],[(0.,0.,0.),(1.,0.,0.),(1.,1.,0.),(1.,1.,1.),(0.,0.,1.)])
             }
-for cm in ["hot_sat","hot"]: # add custom cmaps to pyqtgraph widgets
-    ticks=[(p,(int(r*255),int(g*255),int(b*255),255)) for p,(r,g,b) in zip(*builtin_cmaps[cm])]
-    pyqtgraph.graphicsItems.GradientEditorItem.Gradients[cm]={"ticks":ticks,"mode":"rgb"}
+try:
+    for cm in ["hot_sat","hot"]: # add custom cmaps to pyqtgraph widgets
+        ticks=[(p,(int(r*255),int(g*255),int(b*255),255)) for p,(r,g,b) in zip(*builtin_cmaps[cm])]
+        pyqtgraph.graphicsItems.GradientEditorItem.Gradients[cm]={"ticks":ticks,"mode":"rgb"}
+except (TypeError,AttributeError):  # sphinx autodoc Mock can't handle assignment
+    pass
 class ImagePlotter(QtWidgets.QWidget):
     """
     Image plotter object.

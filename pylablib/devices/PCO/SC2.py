@@ -506,11 +506,6 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         """
         super().setup_acquisition(nframes=nframes)
     def start_acquisition(self, *args, **kwargs):
-        """
-        Start camera acquisition.
-
-        `nframes` specifies number of frames in the ring buffer (by default, 100).
-        """
         self.stop_acquisition()
         super().start_acquisition(*args,**kwargs)
         self._allocate_buffers(n=self._acq_params["nframes"])

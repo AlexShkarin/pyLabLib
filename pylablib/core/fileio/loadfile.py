@@ -111,7 +111,7 @@ class DictionaryInputFileFormat(ITextInputFileFormat):
         inline_dtype (str): dtype for inlined tables.
         inline_out_type (str): type of the result of the inline table:
             ``'array'`` for numpy array, ``'pandas'`` for pandas DataFrame,
-            ``'raw'`` for raw :class:`.InlineDictionary` data containing tuple ``(column_data, column_names)``,
+            ``'raw'`` for raw :class:`.InlineTable` data containing tuple ``(column_data, column_names)``,
             or ``'default'`` (determined by the library default; ``'pandas'`` by default).
         entry_format (str): Determines the way for dealing with :class:`.dict_entry.IDictionaryEntry` objects
             (objects transformed into dictionary branches with special recognition rules). Can be
@@ -340,7 +340,7 @@ def load_dict(path=None, case_normalization=None, inline_dtype="generic", entry_
         inline_dtype (str): dtype for inlined tables.
         inline_out_type (str): type of the result of the inline table:
             ``'array'`` for numpy array, ``'pandas'`` for pandas DataFrame,
-            ``'raw'`` for raw :class:`.InlineDictionary` data containing tuple ``(column_data, column_names)``,
+            ``'raw'`` for raw :class:`.InlineTable` data containing tuple ``(column_data, column_names)``,
             or ``'default'`` (determined by the library default; ``'pandas'`` by default).
         entry_format (str): Determines the way for dealing with :class:`.dict_entry.IDictionaryEntry` objects
             (objects transformed into dictionary branches with special recognition rules). Can be

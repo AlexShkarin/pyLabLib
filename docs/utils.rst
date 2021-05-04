@@ -60,7 +60,7 @@ A dictionary can be build from a Python ``dict``, which automatically normalizes
 File IO
 -------------------------
 
-:mod:`pylablib.core.fileio` contains several function for saving and loading data into different kinds of files: binary (:func:`.fileio.load_bin` and :func:`.fileio.save_bin`), csv (:func:`.fileio.load_csv` and :func:`.fileio.save_csv`), or dictionary (:func:`.fileio.load_dict` and :func:`.save_dict.save_bin`).
+:mod:`pylablib.core.fileio` contains several function for saving and loading data into different kinds of files: binary (:func:`.loadfile.load_bin` and :func:`.savefile.save_bin`), csv (:func:`.loadfile.load_csv` and :func:`.savefile.save_csv`), or dictionary (:func:`.loadfile.load_dict` and :func:`.savefile.save_dict`).
 
 Binary files
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -126,7 +126,7 @@ In addition, its default settings are a bit different: the column separator is a
 
     # Saved on 2021/01/01 12:00:00
 
-Note that currently it operates only with simple flat tables and does not support advanced pandas features such as index or multi-index. If these are required, you can use :func:`.fileio.save_csv_desc` and :func:`.fileio.load_csv_desc`. Similarly to :func:`.fileio.save_bin_desc` and :func:`.fileio.load_bin_desc`, it saves a dictionary containing additional description; however, the table is inlined by default, so only one file is generated::
+Note that currently it operates only with simple flat tables and does not support advanced pandas features such as index or multi-index. If these are required, you can use :func:`.savefile.save_csv_desc` and :func:`.loadfile.load_csv_desc`. Similarly to :func:`.savefile.save_bin_desc` and :func:`.loadfile.load_bin_desc`, it saves a dictionary containing additional description; however, the table is inlined by default, so only one file is generated::
 
     >> table = pd.DataFrame({ "C1":np.arange(3), "C2":[(i**2,i**3) for i in range(3)] }, index=np.arange(3)+10)
     >> table  # the second columns contains tuples

@@ -349,13 +349,6 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
         super().clear_acquisition()
 
     def start_acquisition(self, *args, **kwargs):
-        """
-        Start acquisition.
-
-        Can take the same keyword parameters as :meth:`setup_acquisition``.
-        If the acquisition is not set up yet, set it up using the supplied parameters (use default of :meth:`setup_acquisition``,if the parameter is ``None``).
-        Otherwise, if any supplied parameters are different from the current ones, change them and reset the acquisition.
-        """
         self.stop_acquisition()
         super().start_acquisition(*args,**kwargs)
         lib.dcamcap_start(self.handle,-1 if self._acq_params["mode"]=="sequence" else 0)

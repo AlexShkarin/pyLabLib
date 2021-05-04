@@ -467,13 +467,6 @@ class IMAQCamera(camera.IROICamera):
             self.clear_acquisition()
             self.setup_acquisition(**acq_params)
     def start_acquisition(self, *args, **kwargs):
-        """
-        Start acquisition.
-        
-        Can take the same keyword parameters as :meth:`setup_acquisition``.
-        If the acquisition is not set up yet, set it up using the supplied parameters (use default of :meth:`setup_acquisition``,if the parameter is ``None``).
-        Otherwise, if any supplied parameters are different from the current ones, change them and reset the acquisition.
-        """
         self.stop_acquisition()
         super().start_acquisition(*args,**kwargs)
         self._start_acq_count=self.get_attribute_value("FRAME_COUNT",0)
@@ -550,7 +543,7 @@ class IMAQCamera(camera.IROICamera):
         If ``peek==True``, return images but not mark them as read.
         `missing_frame` determines what to do with frames which are out of range (missing or lost):
         can be ``"none"`` (replacing them with ``None``), ``"zero"`` (replacing them with zero-filled frame), or ``"skip"`` (skipping them).
-        If ``return_info==True``, return tuple ``(frames, infos)``, where ``infos`` is a list of :class:`TFrameInfo` instances
+        If ``return_info==True``, return tuple ``(frames, infos)``, where ``infos`` is a list of ``TFrameInfo`` single-element tuples
         containing frame index; if some frames are missing and ``missing_frame!="skip"``, the corresponding frame info is ``None``.
         If ``fastbuff==False``, return a list of individual frames (2D numpy arrays).
         Otherwise, return a list of 'chunks', which are 3D numpy arrays containing several frames;

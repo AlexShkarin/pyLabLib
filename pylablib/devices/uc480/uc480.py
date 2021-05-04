@@ -330,11 +330,6 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         self._deallocate_buffers()
         super().clear_acquisition()
     def start_acquisition(self, *args, **kwargs):
-        """
-        Start camera acquisition.
-
-        `nframes` specifies number of frames in the ring buffer (by default, 100).
-        """
         self.stop_acquisition()
         super().start_acquisition(*args,**kwargs)
         lib.is_ResetCaptureStatus(self.hcam)
