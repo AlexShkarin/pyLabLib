@@ -77,7 +77,7 @@ class ITextOutputFileFormat(IOutputFileFormat):  # pylint: disable=abstract-meth
         self.new_time=new_time
     
     def make_comment_line(self, comment):
-        return "# "+string_utils.escape_string(comment,"parameter")
+        return "# "+string_utils.escape_string(comment,location="parameter")
     def make_prop_line(self, name, value):
         return "# {0} :\t{1}".format(name,string_utils.to_string(value,"parameter"))
     def make_savetime_line(self, time):
@@ -187,7 +187,7 @@ class DictionaryOutputFileFormat(ITextOutputFileFormat):
         self.use_rep_classes=use_rep_classes
     
     def get_dictionary_line(self, path, value):
-        path="/".join(path)
+        path=string_utils.escape_string("/".join(path),location="entry",escape_convertible=False)
         value=string_utils.to_string(value,"parameter",value_formats=self.param_formats,use_classes=self.use_rep_classes)
         return "{0}\t{1}".format(path,value)
     def _write_table_inline(self, stream, table):
@@ -307,6 +307,10 @@ def get_output_format(data, output_format, **kwargs):
         return data,output_format
     if output_format=="csv":
         return data,CSVTableOutputFileFormat(**kwargs)
+    elif output_format=="csv_desc":
+        data=dict_entry.InlineTableDictionaryEntry(data,**kwargs)
+        data=dictionary.Dictionary({"__data__":data})
+        return data,DictionaryOutputFileFormat()
     elif output_format=="dict":
         return data,DictionaryOutputFileFormat(**kwargs)
     elif output_format=="bin":
@@ -340,6 +344,21 @@ def save_csv(data, path, delimiters="\t", value_formats=None, use_rep_classes=Fa
     """
     data,output_format=get_output_format(data,"csv",delimiters=delimiters,value_formats=value_formats,use_rep_classes=use_rep_classes,save_columns=save_columns,
         save_props=save_props,save_comments=save_comments,save_time=save_time)
+    f=location.LocationFile(location.get_location(path,loc))
+    output_format.write(f,data)
+
+def save_csv_desc(data, path, loc="file"):
+    """
+    Save data table to a dictionary file with an inlined table.
+
+    Compared to :func:`save_csv`, supports more pandas features (index, column multi-index), but can only be directly read by pylablib.
+    
+    Args:
+        data: Data to be saved (2D numpy array, pandas DataFrame, or a `~datafile.DataFile` object containing this data).
+        path (str): Path to the file.
+        loc (str): Location type.
+    """
+    data,output_format=get_output_format(data,"csv_desc")
     f=location.LocationFile(location.get_location(path,loc))
     output_format.write(f,data)
 

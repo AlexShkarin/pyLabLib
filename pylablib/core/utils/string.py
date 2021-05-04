@@ -227,7 +227,7 @@ _parenthesis_pairs={"(":")", "[":"]", "{":"}"}
 
 
 _border_escaped=_quotation_characters+" "
-def escape_string(value, location="element", quote_type='"'):
+def escape_string(value, location="element", escape_convertible=True, quote_type='"'):
     """
     Escape string.
     
@@ -236,7 +236,8 @@ def escape_string(value, location="element", quote_type='"'):
             or ``_border_escaped`` (``"``, ``'`` or space) on the sides (suited for parameters taking the full string);
         - ``"entry"``: same as above, plus containing soft delimiters (``,`` or space) anywhere (suited for entries of a table);
         - ``"element"``: always escaped
-    
+    If ``escape_convertible==True``, escape strings which can be misinterpreted as other values, such as ``"1"`` or ``"[]"``;
+        otherwise, escape only strings which contain special characters.
     If `quote_type` is not ``None``, automatically put the string into the specified quotation marks;
         if `quote_type` is ``None``, all quotation marks are escaped; if it's not ``None``, only `quote_type` marks are escaped.
     """
@@ -250,7 +251,7 @@ def escape_string(value, location="element", quote_type='"'):
         for c in _hard_delimiters:
             if value.find(c)>=0:
                 process=True
-        if _is_convertible(value):
+        if escape_convertible and _is_convertible(value):
             process=True
     if location=="entry":
         for c in _soft_delimiters:
@@ -401,7 +402,7 @@ def extract_escaped_string(line, start=0):
     """
     Extract escaped string in quotation marks from the `line`, starting from `start`.
     
-    ``line[start]`` should be a quotation mark (``'`` or ``"``) or ``b`` followed by a quotation mark (for binary strings).
+    ``line[start]`` should be a quotation mark (``'`` or ``"``) or ``r`` or ``b`` followed by a quotation mark (for raw or binary strings).
     
     Returns:
         tuple ``(end position, un-escaped string)``.
@@ -412,11 +413,13 @@ def extract_escaped_string(line, start=0):
         raise ValueError("starting position is further than line length")
     quals=set()
     for _ in range(2):
-        if line[start].lower() in "rb" and line[start].lower() not in quals:
+        if len(line)>start and line[start].lower() in "rb" and line[start].lower() not in quals:
             quals.add(line[start])
             start+=1
     binary="b" in quals
     raw="r" in quals
+    if len(line)<=start:  # empty line, or line containing only r and b
+        raise ValueError("malformatted string representation")
     start_quote=line[start]
     if not (start_quote in _quotation_characters):
         raise ValueError("malformatted string representation")
@@ -459,9 +462,14 @@ def unescape_string(value):
     """
     Un-escape string.
     
-    Assume that all quotation marks have been escaped. 
+    Only attempt if the string starts a quotation mark ``"`` or ``'``.
+    Otherwise (including strings like ``'r""'`` or ``'b""'``), return the string as is.
+    Raise an error if the string starts with a quotation mark, but does not correspond to a proper escaped string
+    (e.g., ``'"abc`` or ``'"abc"def``).
     """
-    pos,unescaped=extract_escaped_string('"'+value+'"')
+    if not (value.startswith('"') or value.startswith("'")):
+        return value
+    pos,unescaped=extract_escaped_string(value)
     if pos!=len(value):
         raise ValueError("malformatted string representation")
     return unescaped

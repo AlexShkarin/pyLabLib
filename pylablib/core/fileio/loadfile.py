@@ -11,6 +11,7 @@ from ..utils.library_parameters import library_parameters
 import numpy as np
 
 library_parameters.update({"fileio/loadfile/csv/out_type":"pandas"})
+library_parameters.update({"fileio/loadfile/dict/inline_out_type":"pandas"})
 
 
 ##### File formats #####
@@ -108,26 +109,34 @@ class DictionaryInputFileFormat(ITextInputFileFormat):
         case_normalization (str): If ``None``, the dictionary paths are case-sensitive;
             otherwise, defines the way the entries are normalized (``'lower'`` or ``'upper'``).
         inline_dtype (str): dtype for inlined tables.
+        inline_out_type (str): type of the result of the inline table:
+            ``'array'`` for numpy array, ``'pandas'`` for pandas DataFrame,
+            ``'raw'`` for raw :class:`.InlineDictionary` data containing tuple ``(column_data, column_names)``,
+            or ``'default'`` (determined by the library default; ``'pandas'`` by default).
         entry_format (str): Determines the way for dealing with :class:`.dict_entry.IDictionaryEntry` objects
             (objects transformed into dictionary branches with special recognition rules). Can be
             ``'branch'`` (don't attempt to recognize those object, leave dictionary as in the file),
             ``'dict_entry'`` (recognize and leave as :class:`.dict_entry.IDictionaryEntry` objects) or
             ``'value'`` (recognize and keep the value).
+        allow_duplicate_keys (bool): if ``False`` and the same key is mentioned twice in the file, raise and error
         skip_lines (int): Number of lines to skip from the beginning of the file.
     """
-    def __init__(self, case_normalization=None, inline_dtype="generic", entry_format="value", skip_lines=0):
+    def __init__(self, case_normalization=None, inline_dtype="generic", inline_out_type="default", entry_format="value", allow_duplicate_keys=False, skip_lines=0):
         ITextInputFileFormat.__init__(self)
         self.case_normalization=case_normalization
         self.inline_dtype=inline_dtype
+        self.inline_out_type=library_parameters["fileio/loadfile/dict/inline_out_type"] if inline_out_type=="default" else inline_out_type
         if not entry_format in {"branch","dict_entry","value"}:
             raise ValueError("unrecognized entry format: {0}".format(entry_format))
         self.entry_format=entry_format
+        self.allow_duplicate_keys=allow_duplicate_keys
         self.skip_lines=skip_lines
     def read(self, location_file):
         with location_file.open("r") as stream:
             for _ in range(self.skip_lines):
                 stream.readline()
-            data,comments=loadfile_utils.read_dict_and_comments(stream,inline_dtype=self.inline_dtype,case_normalization=self.case_normalization)
+            data,comments=loadfile_utils.read_dict_and_comments(stream,inline_dtype=self.inline_dtype,
+                case_normalization=self.case_normalization,allow_duplicate_keys=self.allow_duplicate_keys)
         creation_time=loadfile_utils.find_savetime_comment(comments)
         def map_entries(ptr):
             if dict_entry.is_dict_entry_branch(ptr):
@@ -139,6 +148,14 @@ class DictionaryInputFileFormat(ITextInputFileFormat):
                 return ptr
         if self.entry_format!="branch":
             data.map_self(map_entries,to_visit="branches",topdown=False)
+        def map_inline_tables(ptr):
+            if not dict_entry.is_dict_entry_branch(ptr):  # check if there is an inline table not in the entry
+                for k,v in ptr.items():
+                    if isinstance(v,loadfile_utils.InlineTable):
+                        ptr[k],_=dict_entry.parse_stored_table_data(data=v,out_type=self.inline_out_type)
+            return ptr
+        if self.inline_out_type!="raw":
+            data.map_self(map_inline_tables,to_visit="branches",topdown=False)
         if len(data)==1 and list(data.keys())==["__data__"]: # special case of files with preamble
             data=data["__data__"]
         return datafile.DataFile(data=data,comments=comments,creation_time=creation_time,filetype="dict")
@@ -261,6 +278,19 @@ def load_csv(path=None, out_type="default", dtype="numeric", columns=None, delim
     data_file=file_format.read(location_file)
     return data_file if return_file else data_file.data
 
+def load_csv_desc(path=None, loc="file", return_file=False):
+    """
+    Load data from the extended CSV table file.
+
+    Analogous to :func:`load_dict`, but doesn't allow any additional parameters (which don't matter in this case).
+
+    Args:
+        path (str): path to the file
+        loc (str): location type (``"file"`` means the usual file location; see :func:`.location.get_location` for details)
+        return_file (bool): if ``True``, return :class:`.DataFile` object (contains some metainfo); otherwise, return just the file data
+    """
+    return load_dict(path=path,loc=loc,return_file=return_file)
+
 def load_bin(path=None, out_type="default", dtype="<f8", columns=None, packing="flatten", preamble=None, skip_bytes=0, loc="file", return_file=False):
     """
     Load data from the binary file.
@@ -299,7 +329,7 @@ def load_bin_desc(path=None, loc="file", return_file=False):
     """
     return load_dict(path=path,loc=loc,return_file=return_file)
 
-def load_dict(path=None, case_normalization=None, inline_dtype="generic", entry_format="value", skip_lines=0, loc="file", return_file=False):
+def load_dict(path=None, case_normalization=None, inline_dtype="generic", entry_format="value", inline_out_type="default", skip_lines=0, allow_duplicate_keys=False, loc="file", return_file=False):
     """
     Load data from the dictionary file.
 
@@ -308,17 +338,24 @@ def load_dict(path=None, case_normalization=None, inline_dtype="generic", entry_
         case_normalization (str): If ``None``, the dictionary paths are case-sensitive;
             otherwise, defines the way the entries are normalized (``'lower'`` or ``'upper'``).
         inline_dtype (str): dtype for inlined tables.
+        inline_out_type (str): type of the result of the inline table:
+            ``'array'`` for numpy array, ``'pandas'`` for pandas DataFrame,
+            ``'raw'`` for raw :class:`.InlineDictionary` data containing tuple ``(column_data, column_names)``,
+            or ``'default'`` (determined by the library default; ``'pandas'`` by default).
         entry_format (str): Determines the way for dealing with :class:`.dict_entry.IDictionaryEntry` objects
             (objects transformed into dictionary branches with special recognition rules). Can be
             ``'branch'`` (don't attempt to recognize those object, leave dictionary as in the file),
             ``'dict_entry'`` (recognize and leave as :class:`.dict_entry.IDictionaryEntry` objects) or
             ``'value'`` (recognize and keep the value).
+        allow_duplicate_keys (bool): if ``False`` and the same key is mentioned twice in the file, raise and error
         skip_lines (int): Number of lines to skip from the beginning of the file.
         loc (str): location type (``"file"`` means the usual file location; see :func:`.location.get_location` for details)
         return_file (bool): if ``True``, return :class:`.DataFile` object (contains some metainfo); otherwise, return just the file data
     """
     location_file=location.LocationFile(location.get_location(path,loc))
-    file_format=DictionaryInputFileFormat(case_normalization=case_normalization,inline_dtype=inline_dtype,entry_format=entry_format,skip_lines=skip_lines)
+    file_format=DictionaryInputFileFormat(case_normalization=case_normalization,
+        inline_dtype=inline_dtype,inline_out_type=inline_out_type,
+        entry_format=entry_format,skip_lines=skip_lines,allow_duplicate_keys=allow_duplicate_keys)
     data_file=file_format.read(location_file)
     return data_file if return_file else data_file.data
 

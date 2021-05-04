@@ -244,6 +244,25 @@ class Dictionary:
                     dest[key]=branch
         except ValueError:
             dest[key]=value
+    def _clear_root(self, keep_dict=True):
+        if keep_dict:
+            for k in list(self._data):
+                del self._data[k]
+        else:
+            self._data={}
+    def _replace_root(self, value, branch_option="normalize", keep_dict=True):
+        try:
+            value=Dictionary._get_root(value)
+        except ValueError:
+            raise ValueError("can't replace root with a leaf")
+        if value: # adding empty dictionary doesn't change anything
+            if branch_option=="attach" and not keep_dict:
+                self._root=value
+            else:
+                self._clear_root(keep_dict=keep_dict)
+                self._insert_branch(value,self._data,normalize_paths=(branch_option=="normalize"))
+        else:
+            self._clear_root(keep_dict=keep_dict)
         
     
     def add_entry(self, path, value, force=False, branch_option="normalize"):
@@ -263,13 +282,14 @@ class Dictionary:
                     - ``'normalize'`` -- copy while normalizing all the keys according to the current rules.
         """
         funcargparse.check_parameter_range(branch_option,"branch_option",{"attach","copy","normalize"})
+        path=self._normalize_path(path)
+        if path==[]:  # replacing/removing the root
+            self._replace_root(value,branch_option=branch_option)
+            return self
         if self._is_empty(value):
             if force:
                 self.del_entry(path)
             return self
-        path=self._normalize_path(path)
-        if path==[]:
-            raise KeyError("can't reassign root")
         if force:
             branch=self._get_branch(path[:-1],append=True,overwrite_leaves=True)
         else:
@@ -688,21 +708,32 @@ class Dictionary:
         return DictionaryPointer._fast_build(self,norm_path,node,case_normalization=self._case_normalization,copy=False)
     
     
+    def _map_root(self, func, pass_path, branch_option):
+        ptr=self._fast_build_branch_pointer([],self._data)
+        res=func(ptr.get_path(),ptr) if pass_path else func(ptr)
+        if res is not ptr:
+            self._replace_root(res,branch_option=branch_option)
     def map_self(self, func, to_visit="leafs", pass_path=False, topdown=False, branch_option="normalize"):
         """
         Apply `func` to the nodes in the dictionary.
         
+        Note that any pointers to the replaced branches or their sub-branches will become invalid.
+
         Args:
             func (callable): Mapping function. Leafs are passed by value, branches (if visited) are passed as :class:`DictionaryPointer`.
             to_visit (str): Can be ``'leafs'``, ``'branches'`` or ``'all'`` and determines which parts of the dictionary passed to the map function.
             pass_path (bool): If ``True``, pass the node path (in the form of a normalized list) as a first argument to `func`.
             topdown (bool): If ``True``, visit node and its leafs before its subtrees leafs.
-            branch_option (str): If the function returns a dict-like object, determines how to 
+            branch_option (str): If the function returns a dict-like object, determines how to incorporate into the dictionary;
+                can be ``"normalize"`` (make a copy with normalized paths and insert that), ``"copy"`` (make a copy without normalization),
+                or ``"attach"`` (simply replace the value without copying and normalization)
         """
         funcargparse.check_parameter_range(to_visit,"to_visit",{"branches","leafs","all"})
         funcargparse.check_parameter_range(branch_option,"branch_option",{"attach","copy","normalize"})
         visit_branches=to_visit in {"branches","all"}
         visit_leafs=to_visit in {"leafs","all"}
+        if topdown and visit_branches:
+            self._map_root(func,pass_path,branch_option)
         for br in self._iterbranches(topdown=topdown):
             path=br.get_path()
             source=br._data
@@ -717,6 +748,8 @@ class Dictionary:
                     res=func(path+[k],v) if pass_path else func(v)
                     if res is not v:
                         self._attach_node(source,k,res,branch_option=branch_option)
+        if not topdown and visit_branches:
+            self._map_root(func,pass_path,branch_option)
         return self
     def filter_self(self, pred, to_visit="leafs", pass_path=False, topdown=False):
         """
@@ -974,7 +1007,7 @@ class DictionaryPointer(Dictionary):
         if len(pointer)==0:
             self._path=[]
         else:
-            self.move(pointer)
+            self.move_to(pointer)
         
     def __str__(self):
         iterleafs=self.iternodes(ordered=True,to_visit="leafs",include_path=True)
@@ -983,12 +1016,21 @@ class DictionaryPointer(Dictionary):
         return "{0}(location = '{1}'; {2})".format(type(self).__name__,"/".join(self.get_path()),content)
     __repr__=__str__
     
+    def _replace_root(self, value, branch_option="normalize", keep_dict=True):
+        if self._path:
+            self._data=self._root
+            self._data=self._get_branch(self._path[:-1])
+            self._attach_node(self._data,self._path[-1],value,branch_option=branch_option)
+            self._data=self._data[self._path[-1]]
+        else:
+            Dictionary._replace_root(self,value,branch_option=branch_option,keep_dict=keep_dict)
+            self._root=self._data
     def get_path(self):
         """
         Return pointer path in the whole dictionary.
         """
         return self._path
-    def move(self, path="", absolute=True):
+    def move_to(self, path="", absolute=True):
         """
         Move the pointer to a new path.
         
@@ -1003,6 +1045,19 @@ class DictionaryPointer(Dictionary):
         self._path=path
         self._data=self._root
         self._data=self._get_branch(self._path)
+        return self
+    def move_up(self, levels, strict=True):
+        """
+        Move the pointer by the given number of levels up.
+        
+        If ``strict==True`` and there are not enough levels above, raise an error.
+        Otherwise, stop at the top dictionary level.
+        """
+        if levels>0:
+            if strict and len(self._path)<levels:
+                raise KeyError("can not move the pointer {} levels up; only {} levels available".format(levels,len(self._path)))
+            return self.move_to(self._path[:-levels])
+        return self
         
     @staticmethod
     def _fast_build(root, norm_path, node, case_normalization=None, copy=False):

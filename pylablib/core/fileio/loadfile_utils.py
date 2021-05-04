@@ -125,21 +125,36 @@ def find_columns_lines(corrupted, comments, cols_num):
 
 
 
-def parse_dict_line(line):
-    s=line.split(None,1)
-    if len(s)==0:
-        return None
-    if len(s)==1:
-        return tuple(s)
-    key,value=tuple(s)
-    value=string.from_string(value)
-    return key,value
+class InlineTable:
+    """Simple marker class that denotes that the wrapped numpy 2D array should be written inline"""
+    def __init__(self, table):
+        self.table=table
+    def __repr__(self):
+        return "InlineTable({})".format(self.table)
 
-_dicttable_start=r"^#+\s*(table\s+start|start\s+table)"
+def parse_dict_line(line):
+    """Parse stripped dictionary file line"""
+    if not line:
+        return None
+    try:
+        vpos,key=string.from_string_partial(line,delimiters=r"\s+",return_string=True)
+    except ValueError:  # assume not-value line
+        return (line,)
+    try:
+        key=string.unescape_string(key)
+    except ValueError:  # leave the key as is
+        pass
+    if vpos==len(line):
+        return (key,)
+    else:
+        value=string.from_string(line[vpos:].strip())
+        return key,value
+
+_dicttable_start=r"^#+\s*(table\s+(start|begin)|(start|begin)\s+table|table)"
 _dicttable_start_regexp=re.compile(_dicttable_start,re.IGNORECASE)
-_dicttable_end=r"^#+\s*(table\s+end|end\s+table)"
+_dicttable_end=r"^#+\s*(table\s+(end|finish)|(end|finish)\s+table|end)[\s#]*$"
 _dicttable_end_regexp=re.compile(_dicttable_end,re.IGNORECASE)
-def read_dict_and_comments(f, case_normalization=None, inline_dtype="generic"):
+def read_dict_and_comments(f, case_normalization=None, inline_dtype="generic", allow_duplicate_keys=False):
     """
     Load dictionary entries and comments from the file stream.
 
@@ -147,6 +162,7 @@ def read_dict_and_comments(f, case_normalization=None, inline_dtype="generic"):
         f: file stream
         case_normalization: case normalization for the returned dictionary; ``None`` means that it's case sensitive, ``"upper"`` and ``"lower"`` determine how they are normalized
         inline_dtype: dtype for inline tables; by default, use the most generic type (can include Python objects such as lists or strings)
+        allow_duplicate_keys: if ``False`` and the same key is listed twice, raise and error
 
     Return tuple ``(data, comment_lines)``, where ``data`` is a dictionary with parsed entries (tables are still represented as 'raw', i.e., as a tuple of columns list and column names list),
     and ``comment_lines`` is a list of comment lines
@@ -160,24 +176,26 @@ def read_dict_and_comments(f, case_normalization=None, inline_dtype="generic"):
         line=line.strip()
         if line!="":
             if line[:1]!='#': #dict row
-                parsed=parse_dict_line(line)
-                if parsed is not None:
-                    if len(parsed)==1:
-                        key=parsed[0]
-                        if key.startswith("///"): # root key one level up
-                            root_keys=root_keys[:-1]
-                        elif key.startswith("//"): # new nested root key
-                            root_keys.append(key[2:])
-                        else:
+                if line.startswith("///"): # root key one level up
+                    root_keys=root_keys[:-1]
+                elif line.startswith("//"): # new nested root key
+                    root_keys.append(line[2:])
+                else:
+                    parsed=parse_dict_line(line)
+                    if parsed is not None:
+                        if len(parsed)==1:
+                            key=parsed[0]
                             if root_keys:
                                 key="/".join(root_keys)+"/"+key
                             prev_key=(key,) # single-key line possibly means that an inline table follows
-                    else:
-                        key,value=parsed
-                        if root_keys:
-                            key="/".join(root_keys)+"/"+key
-                        data[key]=value
-                        prev_key=key
+                        else:
+                            key,value=parsed
+                            if root_keys:
+                                key="/".join(root_keys)+"/"+key
+                            if not allow_duplicate_keys and key in data:
+                                raise IOError("entry {} is already present in the dictionary".format(key))
+                            data[key]=value
+                            prev_key=key
             else:
                 if _dicttable_start_regexp.match(line[1:]) is not None:
                     table,comments,corrupted=parse_csv.read_table(f,dtype=inline_dtype,stop_comment=_dicttable_end_regexp)
@@ -188,7 +206,7 @@ def read_dict_and_comments(f, case_normalization=None, inline_dtype="generic"):
                         table=table[0],columns
                     comment_lines=comment_lines+comments
                     if prev_key is not None:
-                        data[prev_key]=table
+                        data[prev_key]=InlineTable(table)
                     else:
                         raise IOError("inline table isn't attributed to any dict node")
                 else:

@@ -1,6 +1,7 @@
 import os
 from .core.utils import module as module_utils
-from .core.utils.library_parameters import library_parameters as par
+from .core.utils import library_parameters
+from .core.utils.library_parameters import library_parameters as par, temp_library_parameters as temp_par
 
 from .core import *
 
@@ -13,7 +14,7 @@ def reload_all(from_load_path=True, keep_parameters=True):
     If ``keep_parameters==True``, keep the current library parameters (``pylablib.par``); otherwise, reset them to default.
     """
     if keep_parameters:
-        old_par=par[""].as_dict("flat")
+        old_par=library_parameters.library_parameters.as_dict("flat")
     if from_load_path:
         cur_dir=os.path.abspath(os.curdir)
         os.chdir(_load_path)
@@ -24,8 +25,7 @@ def reload_all(from_load_path=True, keep_parameters=True):
     else:
         module_utils.reload_package_modules(__name__)
     if keep_parameters:
-        del par[""]
-        par.update(old_par)
+        library_parameters.library_parameters[""]=old_par
 
 def unload_all():
     """

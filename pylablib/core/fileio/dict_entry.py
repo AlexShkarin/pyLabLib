@@ -6,6 +6,7 @@ Used to redefine how certain objects (e.g., tables) inside dictionaries are writ
 
 from ..utils import dictionary, py3
 from . import location, parse_csv
+from .loadfile_utils import InlineTable
 
 import numpy as np
 import pandas as pd
@@ -20,12 +21,6 @@ def is_dict_entry_branch(branch):
         return "__data_type__" in branch
     except TypeError:
         return False
-
-
-class InlineTable:
-    """Simple marker class that denotes that the wrapped numpy 2D array should be written inline"""
-    def __init__(self, table):
-        self.table=table
 
 
 
@@ -212,6 +207,48 @@ class IDictionaryEntry:
 
 ###  Table formatters  ###
 
+def parse_stored_table_data(desc=None, data=None, out_type="pandas"):
+    """
+    Parse table data corresponding to the given description dictionary and data.
+
+    Args:
+        desc: description dictionary; can be ``None``, if no description is given
+        data: separately loaded data; can be ``None``, if no data is given (in this case assume that it is stored in the description dictionary);
+            can be a tuple ``(column_data, column_names)`` (such as the one returned by :func:`.parse_csv.read_table`),
+            or a an :class:`.InlineTable` object containing such tuple.
+        out_type (str): Output format of the data (``'array'`` for numpy arrays or  ``'pandas'`` for pandas DataFrame objects).
+    
+    Return:
+        tuple ``(data, columns)``, where ``data`` is the data table in the specified format, and ``columns`` is the list of columns
+    """
+    desc=desc or {}
+    data=desc.get("data",data)
+    if data is None:
+        raise ValueError("can't load {0} with format {1}".format(desc,"inline"))
+    if isinstance(data,InlineTable):
+        data=data.table
+    data,columns=data
+    columns=desc.get("columns",columns)
+    out_type=desc.get("__cont_type__",out_type)
+    if out_type in {"datatable","table"}: # legacy file formats
+        out_type="pandas"
+    if len(data)==0:
+        data=parse_csv.columns_to_table([],columns=columns,out_type=out_type)
+    if out_type=="pandas":
+        data=pd.DataFrame(dict(zip(columns,data)),columns=columns)
+        if "index_columns" in desc:
+            index_width=len(desc["index_columns"])
+            data=data.set_index(columns[:index_width])
+            data.index.names=desc["index_columns"]
+            columns=columns[index_width:]
+        if desc.get("column_multiindex",False):
+            data.columns=pd.MultiIndex.from_tuples(columns)
+    else:
+        if columns and len(columns)!=len(data):
+            raise ValueError("columns number doesn't agree with the table size")
+        data=np.column_stack(data)
+    return data,columns
+
 class ITableDictionaryEntry(IDictionaryEntry):
     """
     A generic table Dictionary entry.
@@ -257,34 +294,6 @@ class ITableDictionaryEntry(IDictionaryEntry):
         if columns is not None:
             desc["columns"]=columns
         return desc, data
-    @classmethod
-    def _parse_desc_data(cls, desc, data=None, out_type="pandas"):
-        data=desc.get("data",data)
-        if data is None:
-            raise ValueError("can't load {0} with format {1}".format(desc,"inline"))
-        if isinstance(data,np.ndarray) and out_type=="array":
-            return data
-        data,columns=data
-        columns=desc.get("columns",columns)
-        out_type=desc.get("__cont_type__",out_type)
-        if out_type in {"datatable","table"}: # legacy file formats
-            out_type="pandas"
-        if len(data)==0:
-            data=parse_csv.columns_to_table([],columns=columns,out_type=out_type)
-        if out_type=="pandas":
-            data=pd.DataFrame(dict(zip(columns,data)),columns=columns)
-            if "index_columns" in desc:
-                index_width=len(desc["index_columns"])
-                data=data.set_index(columns[:index_width])
-                data.index.names=desc["index_columns"]
-                columns=columns[index_width:]
-            if desc.get("column_multiindex",False):
-                data.columns=pd.MultiIndex.from_tuples(columns)
-        else:
-            if columns and len(columns)!=len(data):
-                raise ValueError("columns number doesn't agree with the table size")
-            data=np.column_stack(data)
-        return data,columns
         
     @classmethod
     def from_dict(cls, dict_ptr, loc, out_type="pandas"):
@@ -340,7 +349,7 @@ class InlineTableDictionaryEntry(ITableDictionaryEntry):
             loc: Location for the data to be loaded.
             out_type (str): Output format of the data (``'array'`` for numpy arrays or ``'pandas'`` for pandas DataFrame objects).
         """
-        data,columns=cls._parse_desc_data(dict_ptr,out_type=out_type)
+        data,columns=parse_stored_table_data(dict_ptr,out_type=out_type)
         return InlineTableDictionaryEntry(data,columns)
 
 class IExternalTableDictionaryEntry(ITableDictionaryEntry):
@@ -411,7 +420,7 @@ class ExternalTextTableDictionaryEntry(IExternalTableDictionaryEntry):
         load_file=location.LocationFile(loc,file_path)
         file_out_type="array" if out_type=="array" else "columns"
         data=loadfile.build_file_format(load_file,file_format=file_type,out_type=file_out_type,dtype="generic").read(load_file).data
-        data,_=cls._parse_desc_data(dict_ptr,data=data,out_type=out_type)
+        data,_=parse_stored_table_data(dict_ptr,data=data,out_type=out_type)
         return ExternalTextTableDictionaryEntry(data,name=load_file.name)
 class ExternalBinTableDictionaryEntry(IExternalTableDictionaryEntry):
     """
@@ -461,7 +470,7 @@ class ExternalBinTableDictionaryEntry(IExternalTableDictionaryEntry):
         data=loadfile.build_file_format(load_file,file_format=file_type,preamble=preamble,out_type=file_out_type).read(load_file).data
         if out_type=="pandas" and len(data[0]):
             data=[(c.astype(c.dtype.type,copy=False) if isinstance(c,np.ndarray) else c) for c in data[0]],data[1] # convert data to native byteorder (required for pandas indexing)
-        data,_=cls._parse_desc_data(dict_ptr,data=data,out_type=out_type)
+        data,_=parse_stored_table_data(dict_ptr,data=data,out_type=out_type)
         return ExternalBinTableDictionaryEntry(data,name=load_file.name)
 
 def table_entry_builder(table_format="inline"):
