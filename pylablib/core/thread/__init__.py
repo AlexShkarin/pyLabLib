@@ -8,6 +8,6 @@ if qt_present:
     from .controller import QThreadController, QTaskThread, get_controller, sync_controller, get_gui_controller, stop_controller, stop_all_controllers, stop_app
 
     from .synchronizing import QThreadNotifier, QMultiThreadNotifier
-    from .announcement_pool import AnnouncementPool
+    from .multicast_pool import MulticastPool
 
     from . import callsync

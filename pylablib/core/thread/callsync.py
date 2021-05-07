@@ -63,7 +63,7 @@ class QCallResultSynchronizer(QThreadNotifier):
             return default
 
 class QDummyResultSynchronizer:
-    """Dummy result synchronizer for call which don't require result synchronization (e.g., announcements)"""
+    """Dummy result synchronizer for call which don't require result synchronization (e.g., multicasts)"""
     def notify(self, value):
         pass
 
@@ -485,7 +485,7 @@ class QThreadCallScheduler(QScheduler):
         self.thread._place_call(call,tag=self.tag,priority=self.priority,interrupt=self.interrupt)
         return True
 
-class QAnnouncementThreadCallScheduler(QThreadCallScheduler):
+class QMulticastThreadCallScheduler(QThreadCallScheduler):
     """
     Extended call scheduler via thread calls, which can limit number of queued calls.
 

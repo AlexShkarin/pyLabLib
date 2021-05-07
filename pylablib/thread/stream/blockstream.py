@@ -140,13 +140,13 @@ class StreamFormerThread(controller.QTaskThread):
 
     Channels can be added using :meth:`add_channel` function. Every time the new row is complete, it is added to the current block.
     When the block is complete (determined by ``block_period`` attribute), :meth:`on_new_block` is called.
-    Accumulated data can be accessed with :meth:`get_data` and :meth:`pop_data`, or by default through ``"stream/data"`` announcement.
+    Accumulated data can be accessed with :meth:`get_data` and :meth:`pop_data`, or by default through ``"stream/data"`` multicast.
 
     Args:
         name: thread name
         args: args supplied to :meth:`setup` method
         kwargs: keyword args supplied to :meth:`setup` method
-        announcement_pool: :class:`.AnnouncementPool` for this thread (by default, use the default common pool)
+        multicast_pool: :class:`.MulticastPool` for this thread (by default, use the default common pool)
 
     Attributes:
         block_period: size of a row block which causes :meth:`on_new_block` call
@@ -158,12 +158,12 @@ class StreamFormerThread(controller.QTaskThread):
         - ``clear_all``: remove all data (table and all filled channels)
         - ``configure_channel``: configure a channel behavior (enable or disable)
         - ``get_channel_status``: get channel status (number of datapoints in the queue, maximal queue size, etc.)
-        - ``get_source_status``: get lengths of announcement queues for all the data sources
+        - ``get_source_status``: get lengths of multicast queues for all the data sources
 
     Methods to overload:
         - :meth:`setup`: set up the thread
         - :meth:`cleanup`: clean up the thread 
-        - :meth:`on_new_block`: called every time a new block is completed; by default, send an announcement with the new block's data
+        - :meth:`on_new_block`: called every time a new block is completed; by default, send an multicast with the new block's data
         - :meth:`prepare_new_data`: modify a new data chunk (dictionary of columns) before adding it to the storage
     """
     def setup(self):
@@ -181,7 +181,7 @@ class StreamFormerThread(controller.QTaskThread):
     def on_new_block(self):
         """Gets called every time a new block is complete"""
         data=self.pop_data()
-        self.send_announcement(tag="stream/data",value=DataBlockMessage(data,metainfo={"source":"stream_former"}))
+        self.send_multicast(tag="stream/data",value=DataBlockMessage(data,metainfo={"source":"stream_former"}))
     def cleanup(self):
         """Clean up the thread"""
 
@@ -331,7 +331,7 @@ class StreamFormerThread(controller.QTaskThread):
         Add a new channel to the queue.
 
         If `func` is defined, the channel is usually filled automatically on start/completeion of a new row, and no further actions are needed.
-        If `func` is ``None``, the channel is supposed to get data from a announcement. In this case, :meth:`subscribe_source` needs to be called to set up this channel.
+        If `func` is ``None``, the channel is supposed to get data from a multicast. In this case, :meth:`subscribe_source` needs to be called to set up this channel.
 
         Args:
             name (str): channel name
@@ -360,33 +360,33 @@ class StreamFormerThread(controller.QTaskThread):
         self.table[name]=[]
     def subscribe_source(self, name, srcs, dsts="any", tags=None, filt=None, parse="default"):
         """
-        Subscribe a source announcement to a channels.
+        Subscribe a source multicast to a channels.
 
         Called automatically for subscribed channels, so it is rarely called explicitly.
 
         Args:
             name (str): source name
-            srcs(str or [str]): announcement source name or list of source names to filter the subscription;
-                can be ``"any"`` (any source) or ``"all"`` (only announcements specifically having ``"all"`` as a source).
-            dsts(str or [str]): announcement destination name or list of destination names to filter the subscription;
+            srcs(str or [str]): multicast source name or list of source names to filter the subscription;
+                can be ``"any"`` (any source) or ``"all"`` (only multicasts specifically having ``"all"`` as a source).
+            dsts(str or [str]): multicast destination name or list of destination names to filter the subscription;
                 can be ``"any"`` (any destination) or ``"all"`` (only source specifically having ``"all"`` as a destination).
-            tags: announcement tag or list of tags to filter the subscription (any tag by default);
+            tags: multicast tag or list of tags to filter the subscription (any tag by default);
                 can also contain Unix shell style pattern (``"*"`` matches everything, ``"?"`` matches one symbol, etc.)
             filt(callable): additional filter function which takes 4 arguments: source, destination, tag, and value,
-                and checks whether announcement passes the requirements.
+                and checks whether multicast passes the requirements.
             parse: if not ``None``, specifies a parsing function which takes 3 arguments (`src`, `tag` and `value`)
                 and returns a dictionary ``{name: value}`` of channel values to add
-                (useful is a single announcement contains multiple channel values, e.g., multiple daq channels)
-                The function is called in the announcement source thread, so it should be quick and non-blocking
+                (useful is a single multicast contains multiple channel values, e.g., multiple daq channels)
+                The function is called in the multicast source thread, so it should be quick and non-blocking
                 By default, any dictionary and :class:`.DataBlockMessage` messages are treated as sets of channels with corresponding names and values,
                 while all other values are interpreted as single-channel values for a channel with the given `name`.
         """
         if parse=="default":
             parse=self._parse_default
-        def on_announcement(src, tag, value):
+        def on_multicast(src, tag, value):
             self._add_data(name,value,src=src,tag=tag,parse=parse)
-        uid=self.subscribe_commsync(on_announcement,srcs=srcs,dsts=dsts,tags=tags,filt=filt,limit_queue=-1)
-        self.source_schedulers[name]=self._announcement_schedulers[uid]
+        uid=self.subscribe_commsync(on_multicast,srcs=srcs,dsts=dsts,tags=tags,filt=filt,limit_queue=-1)
+        self.source_schedulers[name]=self._multicast_schedulers[uid]
     
     def _parse_default(self, src, tag, value):
         if isinstance(value,DataBlockMessage):
@@ -405,8 +405,8 @@ class StreamFormerThread(controller.QTaskThread):
             tag (str): specifies values tag; supplied to the `parse` function
             parse: if not ``None``, specifies a parsing function which takes 3 arguments (`src`, `tag` and `value`)
                 and returns a dictionary ``{name: value}`` of channel values to add
-                (useful is a single announcement contains multiple channel values, e.g., multiple daq channels)
-                The function is called in the announcement source thread, so it should be quick and non-blocking
+                (useful is a single multicast contains multiple channel values, e.g., multiple daq channels)
+                The function is called in the multicast source thread, so it should be quick and non-blocking
         """
         _max_queued_before=0
         _max_queued_after=0

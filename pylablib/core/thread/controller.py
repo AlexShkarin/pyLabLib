@@ -1,6 +1,6 @@
 from __future__ import print_function # Python 2 compatibility
 from ..utils import general, funcargparse, dictionary, functions as func_utils
-from . import announcement_pool as apool, threadprop, synchronizing, callsync
+from . import multicast_pool as mpool, threadprop, synchronizing, callsync
 
 from ..gui import QtCore, Slot, Signal
 
@@ -10,7 +10,7 @@ import time
 import sys, traceback
 import heapq
 
-_default_announcement_pool=apool.AnnouncementPool()
+_default_multicast_pool=mpool.MulticastPool()
 
 _created_threads={}
 _running_threads={}
@@ -157,7 +157,7 @@ class QThreadController(QtCore.QObject):
             this name can be used to obtain thread controller via :func:`get_controller`
         kind(str): thread kind; can be ``"loop"`` (thread is running in the Qt message loop; behavior is implemented in :meth:`process_message` and remote calls),
             ``"run"`` (thread executes :meth:`run` method and quits after it is complete), or ``"main"`` (can only be created in the main GUI thread)
-        announcement_pool: :class:`.AnnouncementPool` for this thread (by default, use the default common pool)
+        multicast_pool: :class:`.MulticastPool` for this thread (by default, use the default common pool)
 
     Methods to overload:
         - :meth:`on_start`: executed on the thread startup (between synchronization points ``"start"`` and ``"run"``)
@@ -172,7 +172,7 @@ class QThreadController(QtCore.QObject):
         - ``started``: emitted on thread start (after :meth:`on_start` is executed)
         - ``finished``: emitted on thread finish (before :meth:`on_finish` is executed)
     """
-    def __init__(self, name=None, kind="loop", announcement_pool=None):
+    def __init__(self, name=None, kind="loop", multicast_pool=None):
         QtCore.QObject.__init__(self)
         funcargparse.check_parameter_range(kind,"kind",{"loop","run","main"})
         if kind=="main":
@@ -218,8 +218,8 @@ class QThreadController(QtCore.QObject):
         # set up high-level synchronization
         self._exec_notes={}
         self._exec_notes_lock=threading.Lock()
-        self._announcement_pool=announcement_pool or _default_announcement_pool
-        self._announcement_pool_sids=[]
+        self._multicast_pool=multicast_pool or _default_multicast_pool
+        self._multicast_pool_sids=[]
         self._stop_notifiers=[]
         # set up life control
         self._stop_requested=(self.kind!="main")
@@ -347,8 +347,8 @@ class QThreadController(QtCore.QObject):
             for sn in self._stop_notifiers:
                 sn()
             self._stop_notifiers=[]
-            for sid in self._announcement_pool_sids:
-                self._announcement_pool.unsubscribe(sid)
+            for sid in self._multicast_pool_sids:
+                self._multicast_pool.unsubscribe(sid)
             self.notify_exec_point("stop")
             _unregister_controller(self)
             self.thread.quit() # stop event loop (no regular messages processed after this call)
@@ -558,12 +558,12 @@ class QThreadController(QtCore.QObject):
         """
 
 
-    ### Managing announcement pool interaction ###
+    ### Managing multicast pool interaction ###
     def subscribe_sync(self, callback, srcs="any", dsts=None, tags=None, filt=None, priority=0, limit_queue=1, call_interrupt=True, add_call_info=False, sid=None):
         """
-        Subscribe synchronous callback to an announcement.
+        Subscribe a synchronous callback to a multicast.
 
-        If announcement is sent, `callback` is called from the `dest_controller` thread (by default, thread which is calling this function)
+        If a multicast is sent, `callback` is called from the `dest_controller` thread (by default, thread which is calling this function)
         via the thread call mechanism (:meth:`.QThreadController.call_in_thread_callback`).
         In Qt, analogous to making a signal connection with a queued call.
         By default, the subscribed destination is the thread's name.
@@ -571,49 +571,52 @@ class QThreadController(QtCore.QObject):
 
         Args:
             callback: callback function, which takes 3 arguments: source, tag, and value.
-            srcs(str or [str]): announcement source name or list of source names to filter the subscription;
-                can be ``"any"`` (any source) or ``"all"`` (only announcements specifically having ``"all"`` as a source).
-            dsts(str or [str]): announcement destination name or list of destination names to filter the subscription;
+            srcs(str or [str]): multicast source name or list of source names to filter the subscription;
+                can be ``"any"`` (any source) or ``"all"`` (only multicasts specifically having ``"all"`` as a source).
+            dsts(str or [str]): multicast destination name or list of destination names to filter the subscription;
                 can be ``"any"`` (any destination) or ``"all"`` (only source specifically having ``"all"`` as a destination).
-            tags: announcement tag or list of tags to filter the subscription (any tag by default);
+            tags: multicast tag or list of tags to filter the subscription (any tag by default);
                 can also contain Unix shell style pattern (``"*"`` matches everything, ``"?"`` matches one symbol, etc.)
             filt(callable): additional filter function which takes 4 arguments: source, destination, tag, and value,
-                and checks whether announcement passes the requirements.
+                and checks whether multicast passes the requirements.
+            limit_queue(int): limits the maximal number of scheduled calls
+                (if the multicast is sent while at least `limit_queue` callbacks are already in queue to be executed, ignore it)
+                0 or negative value means no limit (not recommended, as it can unrestrictedly bloat the queue)
+            call_interrupt: whether the call is an interrupt (call inside any loop, e.g., during waiting or sleeping), or it should be called in the main event loop
             priority(int): subscription priority (higher priority subscribers are called first).
-            scheduler: if defined, announcement call gets scheduled using this scheduler instead of being called directly (which is the default behavior)
             sid(int): subscription ID (by default, generate a new unique id and return it).
         """
-        if self._announcement_pool:
-            sid=self._announcement_pool.subscribe_sync(callback,srcs=srcs,dsts=dsts or self.name,tags=tags,filt=filt,priority=priority,call_interrupt=call_interrupt,
+        if self._multicast_pool:
+            sid=self._multicast_pool.subscribe_sync(callback,srcs=srcs,dsts=dsts or self.name,tags=tags,filt=filt,priority=priority,call_interrupt=call_interrupt,
                 limit_queue=limit_queue,add_call_info=add_call_info,dest_controller=self,sid=sid)
-            self._announcement_pool_sids.append(sid)
+            self._multicast_pool_sids.append(sid)
             return sid
     def subscribe_direct(self, callback, srcs="any", dsts=None, tags=None, filt=None, priority=0, scheduler=None, sid=None):
         """
-        Subscribe asynchronous callback to an announcement.
+        Subscribe asynchronous callback to a multicast.
         
-        If announcement is sent, `callback` is called from the sending thread (not subscribed thread). Therefore, should be used with care.
+        If a multicast is sent, `callback` is called from the sending thread (not subscribed thread). Therefore, should be used with care.
         In Qt, analogous to making a signal connection with a direct call.
         By default, the subscribed destination is the thread's name.
         Local call method.
 
         Args:
             callback: callback function, which takes 3 arguments: source, tag, and value.
-            srcs(str or [str]): announcement source name or list of source names to filter the subscription;
-                can be ``"any"`` (any source) or ``"all"`` (only announcements specifically having ``"all"`` as a source).
-            dsts(str or [str]): announcement destination name or list of destination names to filter the subscription;
+            srcs(str or [str]): multicast source name or list of source names to filter the subscription;
+                can be ``"any"`` (any source) or ``"all"`` (only multicasts specifically having ``"all"`` as a source).
+            dsts(str or [str]): multicast destination name or list of destination names to filter the subscription;
                 can be ``"any"`` (any destination) or ``"all"`` (only source specifically having ``"all"`` as a destination).
-            tags: announcement tag or list of tags to filter the subscription (any tag by default);
+            tags: multicast tag or list of tags to filter the subscription (any tag by default);
                 can also contain Unix shell style pattern (``"*"`` matches everything, ``"?"`` matches one symbol, etc.)
             filt(callable): additional filter function which takes 4 arguments: source, destination, tag, and value,
-                and checks whether announcement passes the requirements.
+                and checks whether multicast passes the requirements.
             priority(int): subscription priority (higher priority subscribers are called first).
-            scheduler: if defined, announcement call gets scheduled using this scheduler instead of being called directly (which is the default behavior)
+            scheduler: if defined, multicast call gets scheduled using this scheduler instead of being called directly (which is the default behavior)
             sid(int): subscription ID (by default, generate a new unique id and return it).
         """
-        if self._announcement_pool:
-            sid=self._announcement_pool.subscribe_direct(callback,srcs=srcs,dsts=dsts or self.name,tags=tags,filt=filt,priority=priority,scheduler=scheduler,sid=sid)
-            self._announcement_pool_sids.append(sid)
+        if self._multicast_pool:
+            sid=self._multicast_pool.subscribe_direct(callback,srcs=srcs,dsts=dsts or self.name,tags=tags,filt=filt,priority=priority,scheduler=scheduler,sid=sid)
+            self._multicast_pool_sids.append(sid)
             return sid
     def unsubscribe(self, sid):
         """
@@ -621,17 +624,24 @@ class QThreadController(QtCore.QObject):
         
         Local call method.
         """
-        self._announcement_pool_sids.pop(sid)
-        self._announcement_pool.unsubscribe(sid)
-    def send_announcement(self, dst="any", tag=None, value=None, src=None):
+        self._multicast_pool_sids.pop(sid)
+        self._multicast_pool.unsubscribe(sid)
+    def send_multicast(self, dst="any", tag=None, value=None, src=None):
         """
-        Send an announcement to the announcement pool.
+        Send a multicast to the multicast pool.
 
-        See :meth:`.AnnouncementPool.send_announcement` for details.
-        By default, the announcement source is the thread's name.
+        By default, the multicast source is the thread's name.
         Local call method.
+
+        Args:
+            dst(str): multicast destination; can be a name, ``"all"`` (will pass all subscribers' destination filters),
+                or ``"any"`` (will only be passed to subscribers specifically subscribed to multicast with ``"any"`` destination).
+            tag(str): multicast tag.
+            value: multicast value.
+            src(str): multicast source; can be ``None`` (current thread name), a specific name, ``"all"`` (will pass all subscribers' source filters),
+                or ``"any"`` (will only be passed to subscribers specifically subscribed to multicast with ``"any"`` source).
         """
-        self._announcement_pool.send_announcement(src or self.name,dst,tag,value)
+        self._multicast_pool.send(src or self.name,dst,tag,value)
 
 
     ### Variable management ###
@@ -641,7 +651,7 @@ class QThreadController(QtCore.QObject):
         Set thread variable.
 
         Can be called in any thread (controlled or external).
-        If ``notify==True``, send an announcement with the given `notify_tag` (where ``"*"`` symbol is replaced by the variable name).
+        If ``notify==True``, send an multicast with the given `notify_tag` (where ``"*"`` symbol is replaced by the variable name).
         Local call method.
         """
         split_name=tuple(dictionary.normalize_path(name))
@@ -658,7 +668,7 @@ class QThreadController(QtCore.QObject):
                 ctl.send_interrupt(self._variable_change_tag,val)
         if notify:
             notify_tag.replace("*",name)
-            self.send_announcement("any",notify_tag,value)
+            self.send_multicast("any",notify_tag,value)
     def delete_variable(self, name, missing_error=False):
         """
         Delete thread variable.
@@ -1022,7 +1032,7 @@ class QMultiRepeatingThread(QThreadController):
 
     Args:
         name(str): thread name (by default, generate a new unique name)
-        announcement_pool: :class:`.AnnouncementPool` for this thread (by default, use the default common pool)
+        multicast_pool: :class:`.MulticastPool` for this thread (by default, use the default common pool)
 
     Methods to overload:
         - ``on_start``: executed on the thread startup (between synchronization points ``"start"`` and ``"run"``)
@@ -1030,8 +1040,8 @@ class QMultiRepeatingThread(QThreadController):
         - :meth:`check_commands`: executed once a scheduling cycle to check for new commands / events and execute them
     """
     _new_jobs_check_period=0.02 # command refresh period if no jobs are scheduled (otherwise, after every job)
-    def __init__(self, name=None, announcement_pool=None):
-        QThreadController.__init__(self,name,kind="run",announcement_pool=announcement_pool)
+    def __init__(self, name=None, multicast_pool=None):
+        QThreadController.__init__(self,name,kind="run",multicast_pool=multicast_pool)
         self.sync_period=0
         self._last_sync_time=0
         self.jobs={}
@@ -1255,7 +1265,7 @@ class QTaskThread(QMultiRepeatingThread):
         name(str): thread name (by default, generate a new unique name)
         args: args supplied to :meth:`setup_task` method
         kwargs: keyword args supplied to :meth:`setup_task` method
-        announcement_pool: :class:`.AnnouncementPool` for this thread (by default, use the default common pool)
+        multicast_pool: :class:`.MulticastPool` for this thread (by default, use the default common pool)
 
     Attributes:
         ca: asynchronous command accessor, which makes calls more function-like;
@@ -1276,21 +1286,21 @@ class QTaskThread(QMultiRepeatingThread):
     Methods to overload:
         - :meth:`setup_task`: executed on the thread startup (between synchronization points ``"start"`` and ``"run"``)
         - :meth:`finalize_task`: executed on thread cleanup (attempts to execute in any case, including exceptions)
-        - :meth:`process_announcement`: process a directed announcement (announcement with ``dst`` equal to this thread name); by default, does nothing
+        - :meth:`process_multicast`: process a directed multicast (multicast with ``dst`` equal to this thread name); by default, does nothing
     """
     ## Action performed when another thread explicitly calls a method corresponding to a command (which is usually a typo)
     ## Can be used to overload default behavior in children classes or instances
     ## Can be ``"warning"``, which prints warning about this call (default),
     ## or one of the accessor names (e.g., ``"c"`` or ``"q"``), which routes the call through this accessor
     _direct_comm_call_action="warning"
-    def __init__(self, name=None, args=None, kwargs=None, announcement_pool=None):
-        QMultiRepeatingThread.__init__(self,name=name,announcement_pool=announcement_pool)
+    def __init__(self, name=None, args=None, kwargs=None, multicast_pool=None):
+        QMultiRepeatingThread.__init__(self,name=name,multicast_pool=multicast_pool)
         self.args=args or []
         self.kwargs=kwargs or {}
-        self._directed_announcement.connect(self._on_directed_announcement,QtCore.Qt.QueuedConnection)
+        self._directed_multicast.connect(self._on_directed_multicast,QtCore.Qt.QueuedConnection)
         self._commands={}
         self._sched_order=[]
-        self._announcement_schedulers={}
+        self._multicast_schedulers={}
         self._command_warned=set()
         self.ca=self.CommandAccess(self,sync=False)
         self.cs=self.CommandAccess(self,sync=True)
@@ -1328,9 +1338,9 @@ class QTaskThread(QMultiRepeatingThread):
         
         Local call method, called automatically.
         """
-    def process_announcement(self, src, tag, value):
+    def process_multicast(self, src, tag, value):
         """
-        Process a named announcement (with `dst` equal to the thread name) from the announcement pool.
+        Process a named multicast (with `dst` equal to the thread name) from the multicast pool.
         
         Local call method, called automatically.
         """
@@ -1349,34 +1359,34 @@ class QTaskThread(QMultiRepeatingThread):
         `kind` is the status kind and `status` is its value.
         Status variable name is ``"status/"+kind``.
         If ``text is not None``, it specifies new status text stored in ``"status/"+kind+"_text"``.
-        If ``notify==True``, send an announcement about the status change.
+        If ``notify==True``, send an multicast about the status change.
         Local call method.
         """
         status_str="status/"+kind if kind else "status"
         self.v[status_str]=status
         if notify:
-            self.send_announcement("any",status_str,status)
+            self.send_multicast("any",status_str,status)
         if text:
             self.set_variable(status_str+"_text",text)
-            self.send_announcement("any",status_str+"_text",text)
+            self.send_multicast("any",status_str+"_text",text)
 
     ### Start/stop control (called automatically) ###
     def on_start(self):
         QMultiRepeatingThread.on_start(self)
         self.setup_task(*self.args,**self.kwargs)
-        self.subscribe_direct(self._recv_directed_announcement)
+        self.subscribe_direct(self._recv_directed_multicast)
     def on_finish(self):
         QMultiRepeatingThread.on_finish(self)
         self.finalize_task()
         for name in self._commands:
             self._commands[name][1].clear()
 
-    _directed_announcement=Signal(object)
+    _directed_multicast=Signal(object)
     @toploopSlot(object)
-    def _on_directed_announcement(self, msg):
-        self.process_announcement(*msg)
-    def _recv_directed_announcement(self, tag, src, value):
-        self._directed_announcement.emit((tag,src,value))
+    def _on_directed_multicast(self, msg):
+        self.process_multicast(*msg)
+    def _recv_directed_multicast(self, tag, src, value):
+        self._directed_multicast.emit((tag,src,value))
 
     ### Command control ###
     def _add_scheduler(self, scheduler, priority):
@@ -1407,7 +1417,7 @@ class QTaskThread(QMultiRepeatingThread):
                 ``"skip_newest"`` (skip the most recent call, place the current), ``"skip_oldest"`` (skip the oldest call in the queue, place the current),
                 ``"wait"`` (wait until queue has at least one free spot, place the call),
                 or ``"call"`` (execute the call directly in the calling thread; should be used with caution).
-            priority: command priority; higher-priority announcementss and commands are always executed before the lower-priority ones.
+            priority: command priority; higher-priority multicasts and commands are always executed before the lower-priority ones.
         """
         if name in self._commands:
             raise ValueError("command {} already exists".format(name))
@@ -1426,7 +1436,7 @@ class QTaskThread(QMultiRepeatingThread):
         Unlike regular commands, the call is executed directly in the caller thread (i.e., it is identical to the direct method call).
         Useful for lightweight and/or lock-wrapped methods, which can be called in a thread-safe way, but which still use command interface for consistency.
         Note that this kind of commands doesn't have the same level of synchronization as regular commands
-        (e.g., it can be executed during execution of another command, or commsync announcement method).
+        (e.g., it can be executed during execution of another command, or commsync multicast method).
         Local call method.
 
         Args:
@@ -1454,24 +1464,26 @@ class QTaskThread(QMultiRepeatingThread):
 
     def subscribe_commsync(self, callback, srcs="any", dsts=None, tags=None, filt=None, priority=0, scheduler=None, limit_queue=1, on_full_queue="skip_current", add_call_info=False, sid=None):
         """
-        Subscribe callback to an announcement which is synchronized with commands and jobs execution.
+        Subscribe a callback to a multicast which is synchronized with commands and jobs execution.
 
         Unlike the standard :meth:`.QThreadController.subscribe_sync` method, the subscribed callback will only be executed between jobs or commands, not during one of these.
         Local call method.
         
         Args:
             callback: callback function, which takes 3 arguments: source, tag, and value.
-            srcs(str or [str]): announcement source name or list of source names to filter the subscription;
-                can be ``"any"`` (any source) or ``"all"`` (only announcements specifically having ``"all"`` as a source).
-            dsts(str or [str]): announcement destination name or list of destination names to filter the subscription;
+            srcs(str or [str]): multicast source name or list of source names to filter the subscription;
+                can be ``"any"`` (any source) or ``"all"`` (only multicasts specifically having ``"all"`` as a source).
+            dsts(str or [str]): multicast destination name or list of destination names to filter the subscription;
                 can be ``"any"`` (any destination) or ``"all"`` (only source specifically having ``"all"`` as a destination).
-            tags: announcement tag or list of tags to filter the subscription (any tag by default);
+            tags: multicast tag or list of tags to filter the subscription (any tag by default);
                 can also contain Unix shell style pattern (``"*"`` matches everything, ``"?"`` matches one symbol, etc.)
             filt(callable): additional filter function which takes 4 arguments: source, destination, tag, and value,
-                and checks whether announcement passes the requirements.
+                and checks whether multicast passes the requirements.
             priority(int): subscription priority (higher priority subscribers are called first).
+            scheduler: if defined, multicast call gets scheduled using this scheduler;
+                by default, create a new call queue scheduler with the given `limit_queue`, `on_full_queue` and `add_call_info` arguments.
             limit_queue(int): limits the maximal number of scheduled calls
-                (if the announcement is sent while at least `limit_queue` callbacks are already in queue to be executed, ignore it)
+                (if the multicast is sent while at least `limit_queue` callbacks are already in queue to be executed, ignore it)
                 0 or negative value means no limit (not recommended, as it can unrestrictedly bloat the queue)
             on_full_queue: action to be taken if the call can't be scheduled (i.e., :meth:`.QQueueScheduler.can_schedule` returns ``False``);
                 can be ``"skip_current"`` (skip the call which is being scheduled), ``"skip_newest"`` (skip the most recent call; place the current)
@@ -1481,19 +1493,19 @@ class QTaskThread(QMultiRepeatingThread):
             add_call_info(bool): if ``True``, add a fourth argument containing a call information (tuple with a single element, a timestamps of the call).
             sid(int): subscription ID (by default, generate a new unique id and return it).
         """
-        if self._announcement_pool:
+        if self._multicast_pool:
             if scheduler is None:
                 scheduler=callsync.QQueueLengthLimitScheduler(max_len=limit_queue or 0,on_full_queue=on_full_queue,call_info_argname="call_info" if add_call_info else None)
             sid=self.subscribe_direct(callback,srcs=srcs,dsts=dsts or self.name,tags=tags,filt=filt,priority=priority,scheduler=scheduler,sid=sid)
-            self._announcement_schedulers[sid]=scheduler
+            self._multicast_schedulers[sid]=scheduler
             self._add_scheduler(scheduler,priority)
             return sid
 
     def unsubscribe(self, sid):
         QMultiRepeatingThread.unsubscribe(self,sid)
-        if sid in self._announcement_schedulers:
-            self._remover_scheduler(self._announcement_schedulers[sid])
-            del self._announcement_schedulers[sid]
+        if sid in self._multicast_schedulers:
+            self._remover_scheduler(self._multicast_schedulers[sid])
+            del self._multicast_schedulers[sid]
 
     ##########  EXTERNAL CALLS  ##########
     ## Methods to be called by functions executing in other thread ##

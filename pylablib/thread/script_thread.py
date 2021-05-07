@@ -1,4 +1,4 @@
-from ..core.thread import controller, announcement_pool
+from ..core.thread import controller, multicast_pool
 from ..core.utils import functions
 
 from ..core.gui import QtCore, Slot, Signal
@@ -10,7 +10,7 @@ import collections
 class ScriptStopException(Exception):
     """Exception for stopping script execution"""
 
-TAnnouncementWaitResult=collections.namedtuple("TAnnouncementWaitResult",["monitor","message"])
+TMulticastWaitResult=collections.namedtuple("TMulticastWaitResult",["monitor","message"])
 class ScriptThread(controller.QTaskThread):
     """
     A script thread.
@@ -24,7 +24,7 @@ class ScriptThread(controller.QTaskThread):
         name (str): thread name
         args: args supplied to :meth:`setup_script` method
         kwargs: keyword args supplied to :meth:`setup_script` method
-        announcement_pool: :class:`.SignalPool` for this thread (by default, use the default common pool)
+        multicast_pool: :class:`.SignalPool` for this thread (by default, use the default common pool)
 
     Attributes:
         executing (bool): shows whether the script is executing right now;
@@ -44,8 +44,8 @@ class ScriptThread(controller.QTaskThread):
         - :meth:`run_script`: execute the script (can be run several times per script lifetime)
         - :meth:`interrupt_script`: executed when the script is finished or forcibly shut down (including due to exception or application shutdown)
     """
-    def __init__(self, name=None, args=None, kwargs=None, announcement_pool=None):
-        controller.QTaskThread.__init__(self,name=name,args=args,kwargs=kwargs,announcement_pool=announcement_pool)
+    def __init__(self, name=None, args=None, kwargs=None, multicast_pool=None):
+        controller.QTaskThread.__init__(self,name=name,args=args,kwargs=kwargs,multicast_pool=multicast_pool)
         self._monitor_signal.connect(self._on_monitor_signal,QtCore.Qt.QueuedConnection)
         self._monitored_signals={}
         self.executing=False
@@ -130,7 +130,7 @@ class ScriptThread(controller.QTaskThread):
         except KeyError:
             pass
     
-    class MonitoredSignal(object): # TODO: signal -> announcement; put in separate class?
+    class MonitoredSignal(object): # TODO: signal -> multicast; put in separate class?
         def __init__(self, uid):
             object.__init__(self)
             self.uid=uid
@@ -145,7 +145,7 @@ class ScriptThread(controller.QTaskThread):
         """
         if mon in self._monitored_signals:
             raise KeyError("signal monitor {} already exists".format(mon))
-        uid=self.subscribe_nonsync(lambda *msg: self._monitor_signal.emit((mon,announcement_pool.TAnnouncement(*msg))),srcs=srcs,dsts=dsts,tags=tags,filt=filt)
+        uid=self.subscribe_nonsync(lambda *msg: self._monitor_signal.emit((mon,multicast_pool.TMulticast(*msg))),srcs=srcs,dsts=dsts,tags=tags,filt=filt)
         self._monitored_signals[mon]=self.MonitoredSignal(uid)
     def remove_signal_monitor(self, mon):
         """Remove signal monitor with a given name"""
@@ -168,7 +168,7 @@ class ScriptThread(controller.QTaskThread):
         def check_monitors(pop=False):
             for mon in mons:
                 if self._monitored_signals[mon].messages:
-                    return TAnnouncementWaitResult(mon,self._monitored_signals[mon].messages.pop(0)) if pop else True
+                    return TMulticastWaitResult(mon,self._monitored_signals[mon].messages.pop(0)) if pop else True
         result=check_monitors(pop=True)
         if result is not None:
             return result

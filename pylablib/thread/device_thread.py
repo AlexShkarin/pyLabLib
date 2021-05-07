@@ -14,7 +14,7 @@ class DeviceThread(controller.QTaskThread):
         name: thread name
         rgs: args supplied to :meth:`setup_task` method
         kwargs: keyword args supplied to :meth:`setup_task` method
-        announcement_pool: :class:`.AnnouncementPool` for this thread (by default, use the default common pool)
+        multicast_pool: :class:`.MulticastPool` for this thread (by default, use the default common pool)
 
     Attributes:
         device: managed device. Its opening should be specified in an overloaded :meth:`connect_device` method,
@@ -46,8 +46,8 @@ class DeviceThread(controller.QTaskThread):
         - ``get_settings``: get device settings
         - ``get_full_info``: get full info of the device
     """
-    def __init__(self, name=None, args=None, kwargs=None, announcement_pool=None):
-        controller.QTaskThread.__init__(self,name=name,announcement_pool=announcement_pool,args=args,kwargs=kwargs)
+    def __init__(self, name=None, args=None, kwargs=None, multicast_pool=None):
+        controller.QTaskThread.__init__(self,name=name,multicast_pool=multicast_pool,args=args,kwargs=kwargs)
         self.device=None
         self.add_command("open",self.open)
         self.add_command("close",self.close)
