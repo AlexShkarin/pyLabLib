@@ -1,6 +1,6 @@
 from .base import AndorError, AndorTimeoutError, AndorNotSupportedError
 from . import atcore_lib
-from .atcore_lib import lib, AndorSDK3LibError, feature_types, nb_read_uint12
+from .atcore_lib import lib, AndorSDK3LibError, feature_types, read_uint12
 
 from ...core.utils import py3, dictionary
 from ...core.devio import interface
@@ -571,7 +571,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
             if len(img)<exp_len or len(img)>=exp_len+8: # sometimes image size gets rounded to nearest 4/8 bytes
                 raise AndorError("unexpected image byte size: expected {}x{}={}, got {}".format(stride,height,int(stride*height),len(img)))
         if bpp==1.5:
-            img=nb_read_uint12(np.frombuffer(img,"u1",count=exp_len).reshape(-1,stride),width=width)
+            img=read_uint12(np.frombuffer(img,"u1",count=exp_len).reshape(-1,stride),width=width)
         else:
             dtype="<u{}".format(int(bpp))
             if stride==bpp*width:

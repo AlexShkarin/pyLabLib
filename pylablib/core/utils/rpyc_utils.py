@@ -172,7 +172,7 @@ class DeviceService(SocketTunnelService):
         """
         try:
             module=importlib.import_module(module)
-        except ModuleNotFoundError:
+        except ImportError:
             module=importlib.import_module(module_utils.get_library_name()+".devices."+module)
         module._rpyc=True
         return getattr(module,cls)

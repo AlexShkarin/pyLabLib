@@ -8,6 +8,7 @@ from ...core.utils import ctypes_wrap
 from ..utils import load_lib
 
 import ctypes
+import warnings
 import numpy as np
 
 
@@ -183,26 +184,14 @@ class AndorSDK3Lib(object):
 
 
 
-def read_uint12(raw_data, width):
-    """
-    Convert packed 12bit data (3 bytes per 2 pixels) into unpacked 16bit data (2 bytes per pixel).
-
-    `raw_data` is a 2D numpy array with the raw frame data of dimensions ``(nrows, stride)``, where ``stride`` is the size of one row in bytes.
-    `width` is the size of the resulting row in pixels; if it is 0, assumed to be maximal possible size.
-    """
-    data=raw_data.astype("<u2")
-    fst_uint8,mid_uint8,lst_uint8=data[:,::3],data[:,1::3],data[:,2::3]
-    result=np.empty(shape=(fst_uint8.shape[0],lst_uint8.shape[1]+mid_uint8.shape[1]),dtype="<u2")
-    result[:,::2]=(fst_uint8[:,:mid_uint8.shape[1]]<<4)|(mid_uint8&0x0F)
-    result[:,1::2]=(mid_uint8[:,:lst_uint8.shape[1]]>>4)|(lst_uint8<<4)
-    return result[:,:width] if width else result
-
+NBError=ImportError
 try:
     import numba as nb
+    NBError=nb.errors.NumbaError
     nb_uint8_ro=nb.typeof(np.frombuffer(b"\x00",dtype="u1").reshape((1,1))) # for readonly attribute of a numpy array
     nb_width=nb.typeof(np.empty([0]).shape[0]) # pylint: disable=unsubscriptable-object
     @nb.njit(nb.uint16[:,:](nb_uint8_ro,nb_width),parallel=False)
-    def nb_read_uint12(raw_data, width):
+    def read_uint12(raw_data, width):
         """
         Convert packed 12bit data (3 bytes per 2 pixels) into unpacked 16bit data (2 bytes per pixel).
 
@@ -228,7 +217,20 @@ try:
                 mid_uint8=nb.uint16(raw_data[i,chwidth*3+1])
                 out[i,width-1]=(fst_uint8<<4)|(mid_uint8&0x0F)
         return out
-except (ModuleNotFoundError,nb.errors.NumbaError):
-    nb_read_uint12=read_uint12
+except NBError:
+    def read_uint12(raw_data, width):
+        """
+        Convert packed 12bit data (3 bytes per 2 pixels) into unpacked 16bit data (2 bytes per pixel).
+
+        `raw_data` is a 2D numpy array with the raw frame data of dimensions ``(nrows, stride)``, where ``stride`` is the size of one row in bytes.
+        `width` is the size of the resulting row in pixels; if it is 0, assumed to be maximal possible size.
+        """
+        warnings.warn("Numba is missing, so the 12-bit data unpacking is implemented via Numpy; the performance might suffer")
+        data=raw_data.astype("<u2")
+        fst_uint8,mid_uint8,lst_uint8=data[:,::3],data[:,1::3],data[:,2::3]
+        result=np.empty(shape=(fst_uint8.shape[0],lst_uint8.shape[1]+mid_uint8.shape[1]),dtype="<u2")
+        result[:,::2]=(fst_uint8[:,:mid_uint8.shape[1]]<<4)|(mid_uint8&0x0F)
+        result[:,1::2]=(mid_uint8[:,:lst_uint8.shape[1]]>>4)|(lst_uint8<<4)
+        return result[:,:width] if width else result
 
 lib=AndorSDK3Lib()

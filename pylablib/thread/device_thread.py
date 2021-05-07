@@ -114,7 +114,7 @@ class DeviceThread(controller.QTaskThread):
         if host is None:
             try:
                 module=importlib.import_module(module)
-            except ModuleNotFoundError:
+            except ImportError:
                 module=importlib.import_module(module_utils.get_library_name()+".devices."+module)
             return getattr(module,cls)
         else:
