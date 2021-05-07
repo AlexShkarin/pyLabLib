@@ -25,7 +25,7 @@ class StreamFormer(helpers.StreamFormerThread):
         - ``pause``: pause signal sending
         - ``reset``: reset the channels and the acquired rows
     
-    Announcements:
+    Multicasts:
         - ``point``: sent when a new data block is acquired; value is a dictionary of columns
         - ``reset``: sent when the stream former is reset
     """

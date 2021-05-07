@@ -17,10 +17,10 @@ class FramePreprocessorThread(controller.QTaskThread):
 
     Setup args:
         - ``src``: name of the source thread (usually, a camera)
-        - ``tag_in``: receiving announcement tag (for the source announcement)
-        - ``tag_out``: emitting announcement tag (for the announcement emitted by the processor)
+        - ``tag_in``: receiving multicast tag (for the source multicast)
+        - ``tag_out``: emitting multicast tag (for the multicast emitted by the processor)
 
-    Announcements:
+    Multicasts:
         - ``<tag_out>``: emitted with pre-processed frames
 
     Variables:
@@ -33,7 +33,7 @@ class FramePreprocessorThread(controller.QTaskThread):
         - ``setup_binning``: setup binning parameters
     """
     def setup_task(self, src, tag_in, tag_out=None):
-        self.subscribe_commsync(self.process_announcement,srcs=src,dsts="any",tags=tag_in,limit_queue=1,on_full_queue="wait",priority=-1)
+        self.subscribe_commsync(self.process_multicast,srcs=src,dsts="any",tags=tag_in,limit_queue=1,on_full_queue="wait",priority=-1)
         self.tag_out=tag_out or tag_in
         self.spat_bin=(1,1)
         self.spat_bin_mode="skip"
@@ -43,16 +43,16 @@ class FramePreprocessorThread(controller.QTaskThread):
         self.acc_frame=None
         self.acc_frame_num=0
         self.result_type=None
-        self["enabled"]=False
+        self.v["enabled"]=False
         self.add_command("setup_binning")
         self.add_command("enable_binning")
 
     def _setup_bin_params(self):
-        self["bin_params"]=(self.spat_bin,self.spat_bin_mode,self.time_bin,self.time_bin_mode)
-        self["result_type"]=self.result_type
+        self.v["bin_params"]=(self.spat_bin,self.spat_bin_mode,self.time_bin,self.time_bin_mode)
+        self.v["result_type"]=self.result_type
     def enable_binning(self, enabled=True):
         """Enable or disable the binning"""
-        self["enabled"]=enabled
+        self.v["enabled"]=enabled
     def setup_binning(self, spat_bin, spat_bin_mode, time_bin, time_bin_mode, result_type=None):
         """
         Setup binning parameters.
@@ -142,10 +142,10 @@ class FramePreprocessorThread(controller.QTaskThread):
         frames=frames.astype(res_dtype)
         return frames
             
-    def process_announcement(self, src, tag, msg):
-        """Process frame announcement from the camera"""
-        if not self["enabled"]:
-            self.send_announcement(dst="any",tag=self.tag_out,value=msg)
+    def process_multicast(self, src, tag, msg):
+        """Process frame multicast from the camera"""
+        if not self.v["enabled"]:
+            self.send_multicast(dst="any",tag=self.tag_out,value=msg)
             return
         processed=[]
         if msg.first_frame_index()==0:
@@ -158,7 +158,7 @@ class FramePreprocessorThread(controller.QTaskThread):
         if processed:
             indices,frames=list(zip(*processed))
             msg=msg.copy(frames=frames,indices=indices,source="preprocessor",step=self.time_bin)
-            self.send_announcement(dst="any",tag=self.tag_out,value=msg)
+            self.send_multicast(dst="any",tag=self.tag_out,value=msg)
 
 
 
@@ -170,10 +170,10 @@ class FrameSlowdownThread(controller.QTaskThread):
 
     Setup args:
         - ``src``: name of the source thread (usually, a camera)
-        - ``tag_in``: receiving announcement tag (for the source announcement)
-        - ``tag_out``: emitting show announcement tag (for the announcement emitted by the processor)
+        - ``tag_in``: receiving multicast tag (for the source multicast)
+        - ``tag_out``: emitting show multicast tag (for the multicast emitted by the processor)
 
-    Announcements:
+    Multicasts:
         - ``<tag_out>``: emitted with slowed frames
 
     Variables:
@@ -190,28 +190,28 @@ class FrameSlowdownThread(controller.QTaskThread):
         - ``setup_slowdown``: setup slowdown parameters
     """
     def setup_task(self, src, tag_in, tag_out=None):
-        self.subscribe_commsync(self.process_announcement,srcs=src,dsts="any",tags=tag_in,limit_queue=1)
+        self.subscribe_commsync(self.process_multicast,srcs=src,dsts="any",tags=tag_in,limit_queue=1)
         self.tag_out=tag_out or tag_in
         self.frames_buffer=[]
         self.buffer_size=1
-        self["buffer/filled"]=0
-        self["buffer/used"]=0
-        self["buffer/empty"]=False
-        self["enabled"]=False
+        self.v["buffer/filled"]=0
+        self.v["buffer/used"]=0
+        self.v["buffer/empty"]=False
+        self.v["enabled"]=False
         self._last_emitted_time=None
         self._in_fps_calc=[None,0]
         self._out_fps_calc=[None,0]
         self.fps_period=1.
-        self["fps/in"]=0
-        self["fps/out"]=0
+        self.v["fps/in"]=0
+        self.v["fps/out"]=0
         self.add_command("enable_slowdown")
         self.add_command("setup_slowdown")
 
     def _reset(self):
         self.frames_buffer=[]
-        self["buffer/filled"]=0
-        self["buffer/used"]=0
-        self["buffer/empty"]=False
+        self.v["buffer/filled"]=0
+        self.v["buffer/used"]=0
+        self.v["buffer/empty"]=False
         self._reset_fps(self._out_fps_calc,"fps/out")
         self._last_emitted_time=None
     def _update_fps(self, fps_calc, key, nframes):
@@ -222,17 +222,17 @@ class FrameSlowdownThread(controller.QTaskThread):
             fps_calc[1]+=nframes
             if t-fps_calc[0]>self.fps_period:
                 dt=t-fps_calc[0]
-                self[key]=fps_calc[1]/dt
+                self.v[key]=fps_calc[1]/dt
                 fps_calc[:]=[t,0]
     def _reset_fps(self, fps_calc, key):
         fps_calc[:]=[None,0]
-        self[key]=0
+        self.v[key]=0
 
     def enable_slowdown(self, enabled=True):
         """Enable or disable the slowdown"""
-        if enabled!=self["enabled"]:
+        if enabled!=self.v["enabled"]:
             self._reset()
-            self["enabled"]=enabled
+            self.v["enabled"]=enabled
     def setup_slowdown(self, target_fps, buffer_size):
         """
         Setup slowdown parameters.
@@ -246,17 +246,17 @@ class FrameSlowdownThread(controller.QTaskThread):
         self.buffer_size=buffer_size
         self.target_fps=target_fps
             
-    def process_announcement(self, src, tag, msg):
-        """Process frame announcement from the camera"""
+    def process_multicast(self, src, tag, msg):
+        """Process frame multicast from the camera"""
         self._update_fps(self._in_fps_calc,"fps/in",msg.nframes())
-        if not self["enabled"]:
-            self.send_announcement(dst="any",tag=self.tag_out,value=msg)
+        if not self.v["enabled"]:
+            self.send_multicast(dst="any",tag=self.tag_out,value=msg)
             return
-        if self["buffer/filled"]<self.buffer_size:
+        if self.v["buffer/filled"]<self.buffer_size:
             self.frames_buffer.append(msg.copy(source="slowdown"))
-            if msg.nframes()>self.buffer_size-self["buffer/filled"]:
-                self.frames_buffer[-1].cut_to_size(self.buffer_size-self["buffer/filled"])
-            self["buffer/filled"]+=self.frames_buffer[-1].nframes()
+            if msg.nframes()>self.buffer_size-self.v["buffer/filled"]:
+                self.frames_buffer[-1].cut_to_size(self.buffer_size-self.v["buffer/filled"])
+            self.v["buffer/filled"]+=self.frames_buffer[-1].nframes()
         t=time.time()
         if self._last_emitted_time is None:
             self._last_emitted_time=t
@@ -272,11 +272,11 @@ class FrameSlowdownThread(controller.QTaskThread):
                     out_msg=self.frames_buffer.pop(0)
                 nframes_out=out_msg.nframes()
                 nframes-=nframes_out
-                self["buffer/used"]+=nframes_out
+                self.v["buffer/used"]+=nframes_out
                 self._update_fps(self._out_fps_calc,"fps/out",nframes_out)
-                self.send_announcement(dst="any",tag=self.tag_out,value=out_msg)
-            if not self.frames_buffer and self["buffer/filled"]==self.buffer_size:
-                self["buffer/empty"]=True
+                self.send_multicast(dst="any",tag=self.tag_out,value=out_msg)
+            if not self.frames_buffer and self.v["buffer/filled"]==self.buffer_size:
+                self.v["buffer/empty"]=True
             self._last_emitted_time=t
 
 
@@ -294,7 +294,7 @@ class FrameSlowdownThread(controller.QTaskThread):
 
 #     Setup args:
 #         src: name of the source thread (usually, a camera)
-#         tag: receiving announcement tag (for the source announcement)
+#         tag: receiving multicast tag (for the source multicast)
 #         settings: dictionary with the accumulator settings
 
 #     Commands:
@@ -351,8 +351,8 @@ class FrameSlowdownThread(controller.QTaskThread):
 
 #         Args:
 #             name: source name (used for switching source)
-#             src: frame announcement source
-#             tag: frame announcement tag
+#             src: frame multicast source
+#             tag: frame multicast tag
 #             sync: if ``True``, the subscription is synchronized to the source (i.e, if processing takes too much time, the frame source waits);
 #                 otherwise, the subscription is not synchronized (if processing takes too much time, frames are skipped)
 #             kind: source kind; can be ``"raw"`` (plotted vs. frame index, reset on source restart), ``"show"`` (plotted vs. time, only reset explicitly),
