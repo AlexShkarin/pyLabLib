@@ -249,7 +249,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
         
 
     _p_trigger_mode=interface.EnumParameterClass("trigger_mode",
-        {"int":"Internal","ext":"External","software":"Software","ext_start":"External start","ext_exp":"External Exposure"},match_prefix=False)
+        {"int":"Internal","ext":"External","software":"Software","ext_start":"External start","ext_exp":"External Exposure"})
     @interface.use_parameters(_returns="trigger_mode")
     def get_trigger_mode(self):
         """

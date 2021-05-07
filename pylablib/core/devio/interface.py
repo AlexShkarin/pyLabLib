@@ -415,7 +415,7 @@ class IEnumParameterClass(ICheckingParameterClass):
             in the case of ambiguity (several map values are prefixes for the same converted value), the exact match takes priority;
             useful for some SCPI devices, where the shorter version of the value can sometimes be returned.
     """
-    def __init__(self, name, allowed_alias="device_values", allowed_value="exact", alias_case="lower", value_case=None, match_prefix=True):
+    def __init__(self, name, allowed_alias="device_values", allowed_value="exact", alias_case=None, value_case=None, match_prefix=False):
         funcargparse.check_parameter_range(alias_case,"alias_case",["lower","upper",None])
         funcargparse.check_parameter_range(value_case,"value_case",["lower","upper",None])
         funcargparse.check_parameter_range(allowed_alias,"allowed_alias",["exact","device_values","all"])
@@ -498,7 +498,7 @@ class EnumParameterClass(IEnumParameterClass):
             so in the value-to-alias conversion the converted value matches the map value if it just starts with it;
             useful for some SCPI devices, where the shorter version of the value can sometimes be returned.
     """
-    def __init__(self, name, alias_map, value_map=None, allowed_alias="device_values", allowed_value="exact", alias_case="lower", value_case=None, match_prefix=True):
+    def __init__(self, name, alias_map, value_map=None, allowed_alias="device_values", allowed_value="exact", alias_case=None, value_case=None, match_prefix=False):
         IEnumParameterClass.__init__(self,name=name,allowed_alias=allowed_alias,allowed_value=allowed_value,alias_case=alias_case,value_case=value_case,match_prefix=match_prefix)
         if isinstance(alias_map,dict):
             self._alias_map=alias_map

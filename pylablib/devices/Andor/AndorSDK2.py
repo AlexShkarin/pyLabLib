@@ -533,7 +533,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         return self.get_shutter_parameters()[0]
 
     ### Misc controls ###
-    _p_fan_mode=interface.EnumParameterClass("fan_mode",[("full",0),("low",1),("off",2)],allowed_alias="exact")
+    _p_fan_mode=interface.EnumParameterClass("fan_mode",[("full",0),("low",1),("off",2)])
     @_camfunc(setpar="fan",option=("feat",AC_FEATURES.AC_FEATURES_FANCONTROL))
     @interface.use_parameters(mode="fan_mode",_returns="fan_mode")
     def set_fan_mode(self, mode):
@@ -567,7 +567,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         ("software",10,AC_TRIGGERMODE.AC_TRIGGERMODE_INTERNAL),
         ("ext_charge_shift",12,AC_TRIGGERMODE.AC_TRIGGERMODE_EXTERNAL_CHARGESHIFTING),
     ]
-    _p_trigger_mode=interface.EnumParameterClass("trigger_mode",{n:v for (n,v,_) in _trigger_desc},allowed_alias="exact")
+    _p_trigger_mode=interface.EnumParameterClass("trigger_mode",{n:v for (n,v,_) in _trigger_desc})
     _trigger_caps={v:c for (_,v,c) in _trigger_desc}
     @_camfunc(setpar="trigger")
     @interface.use_parameters(mode="trigger_mode",_returns="trigger_mode")
@@ -644,7 +644,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         ("fast_kinetic",4,AC_ACQMODE.AC_ACQMODE_FASTKINETICS),
         ("cont",5,AC_ACQMODE.AC_ACQMODE_VIDEO),
     ]
-    _p_acq_mode=interface.EnumParameterClass("acq_mode",{n:v for (n,v,_) in _acqmode_desc},allowed_alias="exact")
+    _p_acq_mode=interface.EnumParameterClass("acq_mode",{n:v for (n,v,_) in _acqmode_desc})
     _acqmode_caps={v:c for (_,v,c) in _acqmode_desc}
     @_camfunc(setpar="acq_mode")
     @interface.use_parameters(mode="acq_mode",_returns="acq_mode")
@@ -802,7 +802,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         ("single_track",3,AC_READMODE.AC_READMODE_SINGLETRACK),
         ("image",4,AC_READMODE.AC_READMODE_FULLIMAGE),
     ]
-    _p_read_mode=interface.EnumParameterClass("read_mode",{n:v for (n,v,_) in _readmode_desc},allowed_alias="exact")
+    _p_read_mode=interface.EnumParameterClass("read_mode",{n:v for (n,v,_) in _readmode_desc})
     _readmode_caps={v:c for (_,v,c) in _readmode_desc}
     @_camfunc(setpar="read_mode")
     @interface.use_parameters(mode="read_mode",_returns="read_mode")

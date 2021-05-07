@@ -23,20 +23,22 @@ class GenericAWG(SCPI.SCPIDevice):
     _default_operation_cooldown={"write":1E-2}
     _channels_number=1
     _default_load=50
-    _inf_load=1E10
+    _inf_load=1E6
     _range_mode="high_low"  # range setting mode; can be "high_low" or "amp_off"
     _function_aliases={"sine":"SIN","square":"SQU","ramp":"RAMP","pulse":"PULS","noise":"NOIS","prbs":"PRBS","dc":"DC","user":"USER","arb":"ARB"}
     _supported_functions=list(_function_aliases)
     Error=GenericAWGError
     ReraiseError=GenericAWGBackendError
+    _bool_selector=("OFF","ON")
     def __init__(self, addr):
         SCPI.SCPIDevice.__init__(self,addr)
-        self._channels_number=self._get_channels_number()
+        self._channels_number=self._detect_channels_number()
+        self._add_info_variable("channels_number",self.get_channels_number)
         functions={k:v for (k,v) in self._function_aliases.items() if k in self._supported_functions}
         if "*" in self._supported_functions:
-            self._add_parameter_class(interface.EnumParameterClass("function",functions,match_prefix=True,allowed_alias="all",allowed_value="all",alias_case=None))
+            self._add_parameter_class(interface.EnumParameterClass("function",functions,allowed_alias="all",allowed_value="all",match_prefix=True))
         else:
-            self._add_parameter_class(interface.EnumParameterClass("function",functions,value_case="upper",match_prefix=True))
+            self._add_parameter_class(interface.EnumParameterClass("function",functions,match_prefix=True))
         for ch in range(1,self._channels_number+1):
             self._add_scpi_parameter("output_on","",kind="bool",channel=ch,comm_kind="output",add_variable=True)
             self._add_scpi_parameter("output_polarity","POLARITY",kind="param",parameter="polarity",channel=ch,comm_kind="output",add_variable=True)
@@ -71,20 +73,26 @@ class GenericAWG(SCPI.SCPIDevice):
                         "trigger_source","trigger_slope","trigger_output","output_trigger_slope"}  # not used, but good for reference / use in derived classes
 
     _p_polarity=interface.EnumParameterClass("polarity",["norm","inv"],value_case="upper",match_prefix=True)
-    _p_burst_mode=interface.EnumParameterClass("burst_mode",{"trig":"TRIG","gate":"GATE"},value_case="upper",match_prefix=True)
+    _p_burst_mode=interface.EnumParameterClass("burst_mode",["trig","gate"],value_case="upper",match_prefix=True)
     _p_trigger_source=interface.EnumParameterClass("trigger_source",["imm","ext","bus"],value_case="upper",match_prefix=True)
     _p_slope=interface.EnumParameterClass("slope",["pos","neg"],value_case="upper",match_prefix=True)
-    def _get_channels_number(self):
+    def _detect_channels_number(self):
         if self._channels_number=="auto":
             return 2 if self._is_command_valid("OUTPUT2?") else 1
         else:
             return self._channels_number
+    def get_channels_number(self):
+        """Get the number of channels"""
+        return self._channels_number
     def _can_add_command(self, name, channel=1):
         return not (name in self._exclude_commands or (name in self._single_channel_commands and channel>1))
-    def _check_command(self, name, channel=1):
+    def _check_command(self, name, channel=1, raise_error=True):
         channel=self._get_channel(channel)
         if not self._can_add_command(name,channel=channel):
-            raise self.Error("option '{}' for channel {} is not supported by this device".format(name,channel))
+            if raise_error:
+                raise self.Error("option '{}' for channel {} is not supported by this device".format(name,channel))
+            return False
+        return True
     def _add_scpi_parameter(self, name, comm, kind="float", parameter=None, set_delay=0, channel=None, comm_kind="source", add_variable=False):
         if channel is not None and name not in self._all_channel_commands:
             if not self._can_add_command(name,channel):

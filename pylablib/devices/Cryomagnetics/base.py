@@ -82,7 +82,7 @@ class LM500(SCPI.SCPIDevice):
         if self.get_type(channel)=="ln":
             raise CryomagneticsError("LN channel doesn't support {}".format(op))
     
-    _p_mode=interface.EnumParameterClass("mode",{"sample_hold":"s","continuous":"c"})
+    _p_mode=interface.EnumParameterClass("mode",{"sample_hold":"S","continuous":"C"},value_case="upper",match_prefix=True)
     @interface.use_parameters(_returns="mode")
     def get_mode(self, channel=None):
         """
@@ -92,7 +92,7 @@ class LM500(SCPI.SCPIDevice):
         """
         self._select_channel(channel)
         self._check_channel_LHe("measurement modes")
-        return self.ask("MODE?").upper()
+        return self.ask("MODE?")
     @interface.use_parameters
     def set_mode(self, mode, channel=None):
         """

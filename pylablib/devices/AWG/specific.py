@@ -30,7 +30,7 @@ class InstekAFG2225(GenericAWG):
     Compared to 2000/2100 series, has one extra channel and a bit more capabilities
     (burst trigger, pulse function)
     """
-    _exclude_commands={"output_polarity","output_sync","trigger_output","output_trigger_slope","voltage_unit"}
+    _exclude_commands={"output_polarity","output_sync","trigger_output","output_trigger_slope"}
     _supported_functions={"sine","square","noise","ramp","pulse","user"}
     _set_angle_unit=False
     _force_channel_source_pfx=True
@@ -47,8 +47,9 @@ class InstekAFG2225(GenericAWG):
             self._modify_scpi_parameter("trigger_source","BURST:TRIG:SOURCE",channel=ch)
             self._modify_scpi_parameter("trigger_slope","BURST:TRIG:SLOPE",channel=ch)
     def _set_vpp_unit(self, channel=None):
-        if self._ask_channel("VOLTAGE:UNIT?",name="voltage_unit",channel=channel).upper()!="VPP":
-            self._write_channel("VOLTAGE:UNIT","VPP",name="voltage_unit",channel=channel)
+        if self._check_command("voltage_unit",channel,raise_error=False):
+            if self._ask_channel("VOLTAGE:UNIT?",name="voltage_unit",channel=channel).upper()!="VPP":
+                self._write_channel("VOLTAGE:UNIT","VPP",name="voltage_unit",channel=channel)
     def get_offset(self, channel=None):
         self._set_vpp_unit(channel=channel)
         return self._ask_channel("DCOFFSET?","float",name="offset",channel=channel)

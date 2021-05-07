@@ -130,7 +130,7 @@ class ITektronixScope(SCPI.SCPIDevice):
         return self.get_edge_trigger_source()
     _p_coupling=interface.EnumParameterClass("coupling",["ac","dc","gnd"],value_case="upper")
     _p_trigger_coupling=interface.EnumParameterClass("trigger_coupling",["ac","dc"],value_case="upper")
-    _p_slope=interface.EnumParameterClass("slope",["rise",("rise","ris"),"fall"],value_case="upper")
+    _p_slope=interface.EnumParameterClass("slope",["rise",("rise","ris"),"fall"],value_case="upper",match_prefix=True)
     @interface.use_parameters(_returns="trigger_coupling")
     def get_edge_trigger_coupling(self):
         """Get edge trigger coupling (``"ac"`` or ``"dc"``)"""
@@ -171,7 +171,7 @@ class ITektronixScope(SCPI.SCPIDevice):
         self.write(self._trig_comm+":LEVEL",level)
         self.write(self._trig_comm+":TYPE","EDGE")
         return self._get_edge_trigger_params()
-    _p_trigger_mode=interface.EnumParameterClass("trigger_mode",["auto","norm"],value_case="upper")
+    _p_trigger_mode=interface.EnumParameterClass("trigger_mode",["auto","norm"],value_case="upper",match_prefix=True)
     @interface.use_parameters(_returns="trigger_mode")
     def get_trigger_mode(self):
         """
@@ -190,7 +190,7 @@ class ITektronixScope(SCPI.SCPIDevice):
         self.write(self._trig_comm+":MODE",trigger_mode)
         return self.get_trigger_mode()
     
-    _p_trigger_state=interface.EnumParameterClass("trigger_state",[("armed","arm"),"ready",("trigger","trig"),"auto",("save","sav"),"scan"],value_case="upper")
+    _p_trigger_state=interface.EnumParameterClass("trigger_state",[("armed","arm"),"ready",("trigger","trig"),"auto",("save","sav"),"scan"],value_case="upper",match_prefix=True)
     @interface.use_parameters(_returns="trigger_state")
     def get_trigger_state(self):
         """
