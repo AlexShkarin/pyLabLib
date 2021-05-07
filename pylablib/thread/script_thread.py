@@ -145,7 +145,7 @@ class ScriptThread(controller.QTaskThread):
         """
         if mon in self._monitored_signals:
             raise KeyError("signal monitor {} already exists".format(mon))
-        uid=self.subscribe_nonsync(lambda *msg: self._monitor_signal.emit((mon,multicast_pool.TMulticast(*msg))),srcs=srcs,dsts=dsts,tags=tags,filt=filt)
+        uid=self.subscribe_nonsync(lambda *msg: self._monitor_signal.emit((mon,multicast_pool.TMulticast(*msg))),srcs=srcs,tags=tags,dsts=dsts,filt=filt)
         self._monitored_signals[mon]=self.MonitoredSignal(uid)
     def remove_signal_monitor(self, mon):
         """Remove signal monitor with a given name"""

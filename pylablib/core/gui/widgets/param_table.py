@@ -630,4 +630,4 @@ class StatusTable(ParamTable):
             else:
                 text=value
             self.v[name]=text
-        threadprop.current_controller().subscribe_sync(update_text,srcs=srcs,dsts="any",tags=tags,filt=filt,limit_queue=10)
+        threadprop.current_controller().subscribe_sync(update_text,srcs=srcs,tags=tags,dsts="any",filt=filt,limit_queue=10)

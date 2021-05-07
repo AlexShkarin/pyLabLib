@@ -358,7 +358,7 @@ class StreamFormerThread(controller.QTaskThread):
         self.channels[name]=self.ChannelQueue(func,max_queue_len=max_queue_len,required=required,background=background,enabled=enabled,
             fill_on=fill_on,latching=latching,expand_list=expand_list,pure_func=pure_func,initial=initial)
         self.table[name]=[]
-    def subscribe_source(self, name, srcs, dsts="any", tags=None, filt=None, parse="default"):
+    def subscribe_source(self, name, srcs, tags=None, dsts="any", filt=None, parse="default"):
         """
         Subscribe a source multicast to a channels.
 
@@ -368,10 +368,10 @@ class StreamFormerThread(controller.QTaskThread):
             name (str): source name
             srcs(str or [str]): multicast source name or list of source names to filter the subscription;
                 can be ``"any"`` (any source) or ``"all"`` (only multicasts specifically having ``"all"`` as a source).
-            dsts(str or [str]): multicast destination name or list of destination names to filter the subscription;
-                can be ``"any"`` (any destination) or ``"all"`` (only source specifically having ``"all"`` as a destination).
             tags: multicast tag or list of tags to filter the subscription (any tag by default);
                 can also contain Unix shell style pattern (``"*"`` matches everything, ``"?"`` matches one symbol, etc.)
+            dsts(str or [str]): multicast destination name or list of destination names to filter the subscription;
+                can be ``"any"`` (any destination) or ``"all"`` (only source specifically having ``"all"`` as a destination).
             filt(callable): additional filter function which takes 4 arguments: source, destination, tag, and value,
                 and checks whether multicast passes the requirements.
             parse: if not ``None``, specifies a parsing function which takes 3 arguments (`src`, `tag` and `value`)
@@ -385,7 +385,7 @@ class StreamFormerThread(controller.QTaskThread):
             parse=self._parse_default
         def on_multicast(src, tag, value):
             self._add_data(name,value,src=src,tag=tag,parse=parse)
-        uid=self.subscribe_commsync(on_multicast,srcs=srcs,dsts=dsts,tags=tags,filt=filt,limit_queue=-1)
+        uid=self.subscribe_commsync(on_multicast,srcs=srcs,tags=tags,dsts=dsts,filt=filt,limit_queue=-1)
         self.source_schedulers[name]=self._multicast_schedulers[uid]
     
     def _parse_default(self, src, tag, value):

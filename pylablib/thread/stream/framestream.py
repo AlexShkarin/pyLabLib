@@ -512,7 +512,7 @@ class FrameSaveThread(controller.QTaskThread):
         - ``setup_queue_ram``: setup maximal saving queue RAM
     """
     def setup_task(self, src, tag, settings_mgr=None, frame_processor=None):
-        self.subscribe_commsync(self.receive_frames,srcs=src,dsts="any",tags=tag,limit_queue=100)
+        self.subscribe_commsync(self.receive_frames,srcs=src,tags=tag,dsts="any",limit_queue=100)
         self.settings_mgr=settings_mgr
         self._cam_settings_time="before" # ``"before"`` - get full camera settings in the beginning of saving; ``"after"`` - get them in the end of saving
         self.frame_processor=frame_processor

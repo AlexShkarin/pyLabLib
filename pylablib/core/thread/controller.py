@@ -559,7 +559,7 @@ class QThreadController(QtCore.QObject):
 
 
     ### Managing multicast pool interaction ###
-    def subscribe_sync(self, callback, srcs="any", dsts=None, tags=None, filt=None, priority=0, limit_queue=1, call_interrupt=True, add_call_info=False, sid=None):
+    def subscribe_sync(self, callback, srcs="any", tags=None, dsts=None, filt=None, priority=0, limit_queue=1, call_interrupt=True, add_call_info=False, sid=None):
         """
         Subscribe a synchronous callback to a multicast.
 
@@ -573,10 +573,10 @@ class QThreadController(QtCore.QObject):
             callback: callback function, which takes 3 arguments: source, tag, and value.
             srcs(str or [str]): multicast source name or list of source names to filter the subscription;
                 can be ``"any"`` (any source) or ``"all"`` (only multicasts specifically having ``"all"`` as a source).
-            dsts(str or [str]): multicast destination name or list of destination names to filter the subscription;
-                can be ``"any"`` (any destination) or ``"all"`` (only source specifically having ``"all"`` as a destination).
             tags: multicast tag or list of tags to filter the subscription (any tag by default);
                 can also contain Unix shell style pattern (``"*"`` matches everything, ``"?"`` matches one symbol, etc.)
+            dsts(str or [str]): multicast destination name or list of destination names to filter the subscription;
+                can be ``"any"`` (any destination) or ``"all"`` (only source specifically having ``"all"`` as a destination).
             filt(callable): additional filter function which takes 4 arguments: source, destination, tag, and value,
                 and checks whether multicast passes the requirements.
             limit_queue(int): limits the maximal number of scheduled calls
@@ -591,7 +591,7 @@ class QThreadController(QtCore.QObject):
                 limit_queue=limit_queue,add_call_info=add_call_info,dest_controller=self,sid=sid)
             self._multicast_pool_sids.append(sid)
             return sid
-    def subscribe_direct(self, callback, srcs="any", dsts=None, tags=None, filt=None, priority=0, scheduler=None, sid=None):
+    def subscribe_direct(self, callback, srcs="any", tags=None, dsts=None, filt=None, priority=0, scheduler=None, sid=None):
         """
         Subscribe asynchronous callback to a multicast.
         
@@ -604,10 +604,10 @@ class QThreadController(QtCore.QObject):
             callback: callback function, which takes 3 arguments: source, tag, and value.
             srcs(str or [str]): multicast source name or list of source names to filter the subscription;
                 can be ``"any"`` (any source) or ``"all"`` (only multicasts specifically having ``"all"`` as a source).
-            dsts(str or [str]): multicast destination name or list of destination names to filter the subscription;
-                can be ``"any"`` (any destination) or ``"all"`` (only source specifically having ``"all"`` as a destination).
             tags: multicast tag or list of tags to filter the subscription (any tag by default);
                 can also contain Unix shell style pattern (``"*"`` matches everything, ``"?"`` matches one symbol, etc.)
+            dsts(str or [str]): multicast destination name or list of destination names to filter the subscription;
+                can be ``"any"`` (any destination) or ``"all"`` (only source specifically having ``"all"`` as a destination).
             filt(callable): additional filter function which takes 4 arguments: source, destination, tag, and value,
                 and checks whether multicast passes the requirements.
             priority(int): subscription priority (higher priority subscribers are called first).
@@ -1462,7 +1462,7 @@ class QTaskThread(QMultiRepeatingThread):
                 return
             self.check_messages(top_loop=True)
 
-    def subscribe_commsync(self, callback, srcs="any", dsts=None, tags=None, filt=None, priority=0, scheduler=None, limit_queue=1, on_full_queue="skip_current", add_call_info=False, sid=None):
+    def subscribe_commsync(self, callback, srcs="any", tags=None, dsts=None, filt=None, priority=0, scheduler=None, limit_queue=1, on_full_queue="skip_current", add_call_info=False, sid=None):
         """
         Subscribe a callback to a multicast which is synchronized with commands and jobs execution.
 
@@ -1473,10 +1473,10 @@ class QTaskThread(QMultiRepeatingThread):
             callback: callback function, which takes 3 arguments: source, tag, and value.
             srcs(str or [str]): multicast source name or list of source names to filter the subscription;
                 can be ``"any"`` (any source) or ``"all"`` (only multicasts specifically having ``"all"`` as a source).
-            dsts(str or [str]): multicast destination name or list of destination names to filter the subscription;
-                can be ``"any"`` (any destination) or ``"all"`` (only source specifically having ``"all"`` as a destination).
             tags: multicast tag or list of tags to filter the subscription (any tag by default);
                 can also contain Unix shell style pattern (``"*"`` matches everything, ``"?"`` matches one symbol, etc.)
+            dsts(str or [str]): multicast destination name or list of destination names to filter the subscription;
+                can be ``"any"`` (any destination) or ``"all"`` (only source specifically having ``"all"`` as a destination).
             filt(callable): additional filter function which takes 4 arguments: source, destination, tag, and value,
                 and checks whether multicast passes the requirements.
             priority(int): subscription priority (higher priority subscribers are called first).
@@ -1496,7 +1496,7 @@ class QTaskThread(QMultiRepeatingThread):
         if self._multicast_pool:
             if scheduler is None:
                 scheduler=callsync.QQueueLengthLimitScheduler(max_len=limit_queue or 0,on_full_queue=on_full_queue,call_info_argname="call_info" if add_call_info else None)
-            sid=self.subscribe_direct(callback,srcs=srcs,dsts=dsts or self.name,tags=tags,filt=filt,priority=priority,scheduler=scheduler,sid=sid)
+            sid=self.subscribe_direct(callback,srcs=srcs,tags=tags,dsts=dsts or self.name,filt=filt,priority=priority,scheduler=scheduler,sid=sid)
             self._multicast_schedulers[sid]=scheduler
             self._add_scheduler(scheduler,priority)
             return sid

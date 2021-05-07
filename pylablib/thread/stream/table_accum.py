@@ -141,9 +141,9 @@ class TableAccumulatorThread(controller.QTaskThread):
         self.channels=channels
         self.fmt=[None]*len(channels)
         self.table_accum=TableAccumulator(channels=channels,memsize=memsize)
-        self.subscribe_sync(self._accum_data,srcs=src,dsts="any",tags=tag,limit_queue=100)
+        self.subscribe_sync(self._accum_data,srcs=src,tags=tag,dsts="any",limit_queue=100)
         if reset_tag is not None:
-            self.subscribe_sync(self._on_source_reset,srcs=src,dsts="any",tags=reset_tag)
+            self.subscribe_sync(self._on_source_reset,srcs=src,tags=reset_tag,dsts="any")
         self.data_lock=threading.Lock()
         self.add_direct_call_command("get_data")
         self.add_direct_call_command("reset",error_on_async=False)

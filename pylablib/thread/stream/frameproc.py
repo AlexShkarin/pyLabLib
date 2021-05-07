@@ -33,7 +33,7 @@ class FramePreprocessorThread(controller.QTaskThread):
         - ``setup_binning``: setup binning parameters
     """
     def setup_task(self, src, tag_in, tag_out=None):
-        self.subscribe_commsync(self.process_multicast,srcs=src,dsts="any",tags=tag_in,limit_queue=1,on_full_queue="wait",priority=-1)
+        self.subscribe_commsync(self.process_multicast,srcs=src,tags=tag_in,dsts="any",limit_queue=1,on_full_queue="wait",priority=-1)
         self.tag_out=tag_out or tag_in
         self.spat_bin=(1,1)
         self.spat_bin_mode="skip"
@@ -190,7 +190,7 @@ class FrameSlowdownThread(controller.QTaskThread):
         - ``setup_slowdown``: setup slowdown parameters
     """
     def setup_task(self, src, tag_in, tag_out=None):
-        self.subscribe_commsync(self.process_multicast,srcs=src,dsts="any",tags=tag_in,limit_queue=1)
+        self.subscribe_commsync(self.process_multicast,srcs=src,tags=tag_in,dsts="any",limit_queue=1)
         self.tag_out=tag_out or tag_in
         self.frames_buffer=[]
         self.buffer_size=1
