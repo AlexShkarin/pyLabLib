@@ -88,7 +88,7 @@ class Solstis(interface.IDevice):
         return self.socket and self.socket.is_connected()
     @reraise
     def set_timeout(self, timeout):
-        """Set timeout for connecting or sending/receiving."""
+        """Set timeout for connecting or sending/receiving"""
         self.timeout=timeout
         self.socket.set_timeout(timeout)
 
@@ -175,7 +175,7 @@ class Solstis(interface.IDevice):
         return preply
     @reraise
     def update_reports(self, timeout=0.):
-        """Check for fresh operation reports."""
+        """Check for fresh operation reports"""
         timeout=max(timeout,0.001)
         try:
             with self.socket.using_timeout(timeout):
@@ -214,7 +214,7 @@ class Solstis(interface.IDevice):
 
     @reraise
     def start_link(self):
-        """Initialize device link (called automatically on creation)."""
+        """Initialize device link (called automatically on creation)"""
         reply=self.query("start_link",{"ip_address":self.socket.get_local_name()[0]})[1]
         if reply["status"]!="ok":
             raise M2Error("could not establish link: reply status '{}'".format(reply["status"]))
@@ -385,7 +385,7 @@ class Solstis(interface.IDevice):
         """
         return self.get_full_fine_tuning_status()["current_wavelength"][0]*1E-9
     def stop_fine_tuning(self):
-        """Stop fine wavelength tuning."""
+        """Stop fine wavelength tuning"""
         _,reply=self.query("stop_wave_m",{})
         if reply["status"][0]==1:
             raise M2Error("could not stop tuning: no wavemeter link")
@@ -426,7 +426,7 @@ class Solstis(interface.IDevice):
         """
         return self.get_full_coarse_tuning_status()["current_wavelength"][0]*1E-9
     def stop_coarse_tuning(self):
-        """Stop coarse wavelength tuning."""
+        """Stop coarse wavelength tuning"""
         self.query("stop_move_wave_t",{})
 
 

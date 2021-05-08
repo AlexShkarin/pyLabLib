@@ -1,3 +1,5 @@
+# pylint: disable=wrong-spelling-in-comment
+
 from . import pfcam_defs  # pylint: disable=unused-import
 from .pfcam_defs import define_functions
 
@@ -233,7 +235,7 @@ class PFCamLib:
         elif ptype=="PF_STRING":
             value=py3.as_builtin_bytes(str(value))
             if buffer is None or len(buffer)<len(value)+1:
-                raise PFCamError("buffer is not suppled or too short")
+                raise PFCamError("buffer is not supplied or too short")
             buffer[:len(value)]=value
             buffer[len(value)]=b"\x00"
             plen=len(value)+1
@@ -254,7 +256,7 @@ class PFCamLib:
             value=PFValueUI(ivalue=0)
         elif ptype=="PF_STRING":
             if buffer is None:
-                raise PFCamError("buffer is not suppled")
+                raise PFCamError("buffer is not supplied")
             value=PFValueUI(pvalue=ctypes.addressof(buffer))
             plen=len(buffer)
         elif ptype in {"PF_INVALID","PF_ROOT","PF_STRUCT"}:

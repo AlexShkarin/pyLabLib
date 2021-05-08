@@ -1,3 +1,5 @@
+# pylint: disable=wrong-spelling-in-comment
+
 from . import uc480_defs
 from .uc480_defs import ERROR, drERROR  # pylint: disable=unused-import
 from .uc480_defs import UC480_CAMERA_INFO

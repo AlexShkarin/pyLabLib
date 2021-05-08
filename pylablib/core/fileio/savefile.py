@@ -379,7 +379,7 @@ def save_bin(data, path, dtype=None, transposed=False, loc="file"):
 
 def save_bin_desc(data, path, loc="file"):
     """
-    Save data to a binary file with an additional diescription file, which contains all of the data related to loading (shape, dtype, columns, etc.)
+    Save data to a binary file with an additional description file, which contains all of the data related to loading (shape, dtype, columns, etc.)
     
     Args:
         data: Data to be saved (2D numpy array, pandas DataFrame, or a `~datafile.DataFile` object containing this data).

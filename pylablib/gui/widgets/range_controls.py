@@ -225,8 +225,8 @@ class ROICtl(QtWidgets.QWidget):
             name (str): widget name
             xlim (tuple): limit for x-axis min and max values
             ylim (tuple): limit for y-axis min and max values
-            sizelim (int or tuple): minimal allowed size (int imples same for both axes)
-            maxsize (int or tuple): maximal allowed size (int imples same for both axes)
+            sizelim (int or tuple): minimal allowed size (int implies same for both axes)
+            maxsize (int or tuple): maximal allowed size (int implies same for both axes)
             kind (str): can be either ``"minmax"`` (each axis control are min, max, and bin) or ``"minsize"`` (each axis control are min, size and bin)
             validate: if not ``None``, a function which takes tuple ``(xparams, yparams)`` of two axes parameters (each is a 3-tuple ``(min, max, bin)``)
                 and return their constrained versions.
@@ -411,9 +411,9 @@ class BinROICtl(ROICtl):
             name (str): widget name
             xlim (tuple): limit for x-axis min and max values
             ylim (tuple): limit for y-axis min and max values
-            maxbin (int or tuple): maximal allowed binning (int imples same for both axes)
-            minsize (int or tuple): minimal allowed size (int imples same for both axes)
-            maxsize (int or tuple): maximal allowed size (int imples same for both axes)
+            maxbin (int or tuple): maximal allowed binning (int implies same for both axes)
+            minsize (int or tuple): minimal allowed size (int implies same for both axes)
+            maxsize (int or tuple): maximal allowed size (int implies same for both axes)
             kind (str): can be either ``"minmax"`` (each axis control are min, max, and bin) or ``"minsize"`` (each axis control are min, size and bin)
             validate: if not ``None``, a function which takes tuple ``(xparams, yparams)`` of two axes parameters (each is a 3-tuple ``(min, max, bin)``)
                 and return their constrained versions.

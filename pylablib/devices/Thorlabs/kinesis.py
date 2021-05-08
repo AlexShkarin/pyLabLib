@@ -16,10 +16,10 @@ import collections
 
 def list_kinesis_devices(filter_ids=True):
     """
-    List all Thorlabs APT/Kinesis devices connected ot this PC.
+    List all Thorlabs APT/Kinesis devices connected to this PC.
 
     Return list of tuples ``(conn, description)``.
-        If ``filter_ids==True``, only leave devices with Tholabs-like IDs (8-digit numbers).
+        If ``filter_ids==True``, only leave devices with Thorlabs-like IDs (8-digit numbers).
         Otherwise, show all devices (some of them might not be Thorlabs-related).
     """
     return KinesisDevice.list_devices(filter_ids=filter_ids)
@@ -52,7 +52,7 @@ class BasicKinesisDevice(comm_backend.ICommBackendWrapper):
         List all connected devices.
 
         Return list of tuples ``(conn, description)``.
-        If ``filter_ids==True``, only leave devices with Tholabs-like IDs (8-digit numbers).
+        If ``filter_ids==True``, only leave devices with Thorlabs-like IDs (8-digit numbers).
         Otherwise, show all devices (some of them might not be Thorlabs-related).
         """
         def _is_thorlabs_id(did):
@@ -112,7 +112,7 @@ class BasicKinesisDevice(comm_backend.ICommBackendWrapper):
         Send a query to the device and receive the reply.
 
         A combination of :meth:`send_comm` and :meth:`recv_comm`.
-        If `replyID` is not ``None``, specifies the exepected reply message ID; if -1 (default), set to te be ``messageID+1`` (the standard convention).
+        If `replyID` is not ``None``, specifies the expected reply message ID; if -1 (default), set to te be ``messageID+1`` (the standard convention).
         """
         if replyID<0:
             replyID=messageID+1
@@ -126,7 +126,7 @@ class BasicKinesisDevice(comm_backend.ICommBackendWrapper):
         """
         self._bg_msg_counters.setdefault(messageID,(0,None))
     def check_background_comm(self, messageID):
-        """Return message counter and the last message value (``None`` if not message received yet) of a given 'background' message."""
+        """Return message counter and the last message value (``None`` if not message received yet) of a given 'background' message"""
         return self._bg_msg_counters[messageID]
 
     _device_SN={   20:"BSC001", 21:"BPC001", 22:"BNT001", 25:"BMS001", 26:"KST101", 27:"KDC101", 28:"KBD101", 29:"KPZ101",

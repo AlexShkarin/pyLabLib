@@ -311,7 +311,7 @@ class IMAQCamera(camera.IROICamera):
         """
         Disable all triggers of the session
         
-        If the input triggers configuration has been changed, acquisition needs to be restart; if ``reset_acquisition==True``, perform it automaticall
+        If the input triggers configuration has been changed, acquisition needs to be restart; if ``reset_acquisition==True``, perform it automatically.
         """
         lib.imgSessionTriggerClear(self.sid)
         self._triggers_in={}
@@ -325,7 +325,7 @@ class IMAQCamera(camera.IROICamera):
         Setup default serial communication parameters.
 
         Args:
-            write_term: default termintor character to be added to the sent messages
+            write_term: default terminator character to be added to the sent messages
             datatype: type of the result of read commands; can be ``"bytes"`` (return raw bytes), or ``"str"`` (convert into UTF-8 string)
         """
         self._serial_term_write=write_term
@@ -434,7 +434,7 @@ class IMAQCamera(camera.IROICamera):
         """
         Setup acquisition mode.
 
-        `mode` can be either ``"snap"`` (since frame or sequency acquisition) or ``"sequence"`` (continuous acquisition).
+        `mode` can be either ``"snap"`` (single frame or a fixed number of frames) or ``"sequence"`` (continuous acquisition).
         (note that :meth:`.IMAQCamera.acquisition_in_progress` would still return ``True`` in this case, even though new frames are no longer acquired).
         `nframes` sets up number of frame buffers.
         """

@@ -301,7 +301,7 @@ class FrameSlowdownThread(controller.QTaskThread):
 #         enable: enable or disable accumulation
 #         add_source: add a frame source
 #         select_source: select one of frame sources for calculation
-#         setup_processing: setup processing paramters
+#         setup_processing: setup processing parameters
 #         setup_roi: setup averaging ROI
 #         reset_roi: reset averaging ROI to the whole image
 #         get_data: get the accumulated data as a dictionary of 1D numpy arrays

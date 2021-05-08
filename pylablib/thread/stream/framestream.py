@@ -62,7 +62,7 @@ class FramesMessage:
         """
         Make a copy of the message
         
-        Any specified keword parameter replaces the current message parameter.
+        Any specified keyword parameter replaces the current message parameter.
         Frames and indices are not deep copied.
         """
         kwargs.setdefault("frames",self.frames)
@@ -384,7 +384,7 @@ class PretriggerBuffer:
         """
         Get buffer status.
 
-        Return tuple ``(frames, skipped, nbytes, size)`` with, correspondingly, number of frames in the buffer, number of skipped frames amongst them,
+        Return tuple ``(frames, skipped, nbytes, size)`` with, correspondingly, number of frames in the buffer, number of skipped frames among them,
         size of the buffer in bytes, and maximal buffer size.
         """ 
         last_frame_idx=None

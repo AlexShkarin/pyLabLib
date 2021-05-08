@@ -13,7 +13,7 @@ Class :class:`.fitting.Fitter` is a user-friendly wrapper around :func:`scipy.op
 
 - it is easy to specify the x-parameter name (in the case it is not the first parameter), or specify multiple x-parameters;
 - all of the fit and fixed parameters are specified by name; it is easy to switch between any parameter being fit or fixed;
-- the wrapper automatically handles complex parameters (split into real and imaginary parts), numpy arrays, lists, ot tuples (including nested structures);
+- the wrapper automatically handles complex parameters (split into real and imaginary parts), numpy arrays, lists, or tuples (including nested structures);
 - the final parameters (fit and fixed) are returned in a single dictionary indexed by their names;
 - the wrapper also returns the fit function with all of the parameters bound to the final fit and fixed values;
 - the fit function result is flattened during fitting, so it, for example, works for functions returning 2D arrays.

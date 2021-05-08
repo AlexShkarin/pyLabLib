@@ -336,7 +336,7 @@ class IMAQdxCamera(camera.IROICamera):
         """
         Setup acquisition mode.
 
-        `mode` can be either ``"snap"`` (since frame or sequency acquisition) or ``"sequence"`` (continuous acquisition).
+        `mode` can be either ``"snap"`` (single frame or a fixed number of frames) or ``"sequence"`` (continuous acquisition).
         (note that :meth:`.IMAQdxCamera.acquisition_in_progress` would still return ``True`` in this case, even though new frames are no longer acquired).
         `nframes` sets up number of frame buffers.
         """

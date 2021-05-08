@@ -35,7 +35,7 @@ class NumLabel(QtWidgets.QLabel):
     """
     Labview-style numerical label.
 
-    Supports different number representations and metric perfixes.
+    Supports different number representations and metric prefixes.
 
     Args:
         parent: parent widget
@@ -73,7 +73,7 @@ class NumLabel(QtWidgets.QLabel):
         """
         Change current numerical formatter.
 
-        Formatter can be a callable object turining value into a string, a string (``"float"``, ``"int"``, or a format string, e.g., ``".5f"``),
+        Formatter can be a callable object turning value into a string, a string (``"float"``, ``"int"``, or a format string, e.g., ``".5f"``),
         or a tuple starting with ``"float"`` which contains arguments to the :class:`.formatter.FloatFormatter`.
         """
         self.formatter=as_formatter(formatter)

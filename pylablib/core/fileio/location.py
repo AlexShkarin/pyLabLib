@@ -171,7 +171,7 @@ class LocationFile(object):
         self.opened=True
         return self
     def close(self):
-        """Close the file."""
+        """Close the file"""
         if not self.opened:
             raise RuntimeError("closing non-opened file {0}".format(self.name.to_string()))
         self.loc.close(self.name)
@@ -194,7 +194,7 @@ class IDataLocation(object):
     Generic location.
     """
     def is_free(self, name=None):
-        """Check if the name is unoccupied."""
+        """Check if the name is unoccupied"""
         raise NotImplementedError("IDataLocation.is_free")
     def generate_new_name(self, prefix_name, idx=0):
         """
@@ -287,7 +287,7 @@ class IFileSystemDataLocation(IDataLocation):
             raise ValueError("unrecognized open mode: {0}".format(mode))
         return s
     def close(self, name):
-        """Close a location file."""
+        """Close a location file"""
         name_str=LocationName.from_object(name).to_string()
         if not name_str in self.opened_files:
             raise ValueError("name {0} is not opened".format(self.get_filesystem_path(name,"relative")))

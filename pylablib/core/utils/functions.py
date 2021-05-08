@@ -211,7 +211,7 @@ class FunctionSignature(object):
         """
         Merge two signatures (used for wrapping functions).
 
-        The signature describes the function would take arguments according to the `outer` signature and pass them accroding to the `inner` signature.
+        The signature describes the function would take arguments according to the `outer` signature and pass them according to the `inner` signature.
         
         The arguments are combined:
             - if ``add_place=='front'``, the outer arguments are placed in the beginning, followed by inner arguments not already listed;
@@ -330,7 +330,7 @@ def setattr_call(obj, attr_name, *args, **vargs):
     """
     Call the setter for the attribute `attr_name` of `obj`.
 
-    If the attribute is a propert, pass ``*args`` and ``**kwargs`` to the setter (`fset`);
+    If the attribute is a property, pass ``*args`` and ``**kwargs`` to the setter (`fset`);
     otherwise, the set value is assumed to be either the first argument, or the keyword argument with the name ``'value'``.
     """
     try:
@@ -404,7 +404,7 @@ class AttrObjectCall(IObjectCall):
         Access this attribute of the object `obj`.
 
         If it is a simple attribute, than the getter gets no arguments and the setter gets one argument
-        (either thw first argument, or thw keyword argument named ``'value'``).
+        (either the first argument, or the keyword argument named ``'value'``).
         If it's a property, pass all the parameters to the property call (`fget` or `fset`).
         """
         if self.as_getter:
@@ -549,7 +549,7 @@ def obj_prop(*args, **kwargs):
     """
     Build an object property wrapper.
     
-    If no arguments (or a single ``None`` argument) are suppled, return a dummy property.
+    If no arguments (or a single ``None`` argument) are supplied, return a dummy property.
     If one argument is supplied, return :class:`AttrObjectProperty` for a property with a given name.
     Otherwise, return :class:`MethodObjectProperty` property.
     """

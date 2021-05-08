@@ -532,7 +532,7 @@ class IExternalFileDictionaryEntry(IDictionaryEntry):
             name=loc.generate_new_name(name,idx=None)
         return name
     def to_dict(self, dict_ptr, loc):
-        """Convert the data to a dictionary branch and save the data to an external file."""
+        """Convert the data to a dictionary branch and save the data to an external file"""
         name=self._get_name(dict_ptr,loc)
         d=dictionary.Dictionary()
         d["__data_type__"]="external_file"
@@ -600,12 +600,12 @@ class ExternalNumpyDictionaryEntry(IExternalFileDictionaryEntry):
         """Generate preamble (dictionary with supplementary data which allows to load the data from the file)"""
         return {"shape":self.data.shape,"dtype":self.data.dtype.str}
     def save_file(self, loc_file):
-        """Save stored data into the given location."""
+        """Save stored data into the given location"""
         with loc_file.open("wb") as stream:
             self.data.tofile(stream)
     @classmethod
     def load_file(cls, loc_file, preamble):
-        """Load stored data from the given location, using the supplied preamble."""
+        """Load stored data from the given location, using the supplied preamble"""
         with loc_file.open("rb") as stream:
             return np.fromfile(stream,dtype=preamble["dtype"]).reshape(preamble["shape"])
 IExternalFileDictionaryEntry.add_file_format(ExternalNumpyDictionaryEntry)
@@ -626,7 +626,7 @@ class ExpandedContainerDictionaryEntry(IDictionaryEntry):
     """
     _data_type="exp_container" # data type marker (a string marker of the entry class which is saved in the dictionary under ``__data_type__```)
     def to_dict(self, dict_ptr, loc):
-        """Convert the stored container to a dictionary branch."""
+        """Convert the stored container to a dictionary branch"""
         if isinstance(self.data,list):
             clabel="list"
         elif isinstance(self.data,tuple):
@@ -647,7 +647,7 @@ class ExpandedContainerDictionaryEntry(IDictionaryEntry):
         return d
     @classmethod
     def from_dict(cls, dict_ptr, loc):
-        """Build an :class:`ExpandedContainerDictionaryEntry` object from the dictionary."""
+        """Build an :class:`ExpandedContainerDictionaryEntry` object from the dictionary"""
         clabel=dict_ptr["container_type"]
         if clabel in ["list","tuple"]:
             value=[dict_ptr[k] for k in range(len(dict_ptr)-2)]

@@ -1087,7 +1087,7 @@ def combine_dictionaries(dicts, func, select="all", pass_missing=False):
     Args:
         dicts(list or tuple): list of dictionaries (:class:`Dictionary` or ``dict``) to be combined
         func(callable): combination function. Takes a single argument, which is a list of elements to be combined.
-        select(str): determins which keys are selected for the resulting dictionary.
+        select(str): determines which keys are selected for the resulting dictionary.
             Can be either ``"all"`` (only keep keys which are present in all the dictionaries), or ``"any"`` (keep keys which are present in at least one dictionary).
             Only keys that point to leafs count; if a key points to a non-leaf branch in some dictionary, it is considered absent from this dictionary.
         pass_missing(bool): if ``select=="any"``, this parameter determines whether missing elements will be passed to `func` as ``None``, or omitted entirely.

@@ -46,7 +46,7 @@ Operation
 
 This controller has several features and differences compared to most other stages and sliders:
 
-    - The controller is inherently multi-axis, hence it always take the axis as the first argument. The axes are numbered starting from 1, and are addressed according ot the chassis spaces, so some can be skipped or missing. To update the list of connected axes, use :meth:`.ANC300.update_available_axes` (called automatically on connection).
+    - The controller is inherently multi-axis, hence it always take the axis as the first argument. The axes are numbered starting from 1, and are addressed according to the chassis spaces, so some can be skipped or missing. To update the list of connected axes, use :meth:`.ANC300.update_available_axes` (called automatically on connection).
     - Different control modules provide different functionality. Hence, not all methods would work for all axes: offset voltage commands such as :meth:`.ANC300.set_offset` do not work with ANM150 module, while stepping commands such as :meth:`.ANC300.move_by` do not work with ANM200 module. To get the module kinds and serial numbers, use :meth:`.ANC300.get_axis_serial`.
     - The most important stepping parameters are step voltage amplitude and step frequency (number of steps per second). These can be controlled with, correspondingly, :meth:`.ANC300.get_voltage`/:meth:`.ANC300.set_voltage` and :meth:`.ANC300.get_frequency`/:meth:`.ANC300.set_frequency`.
     - Different axes can be enabled and disabled using :meth:`.ANC300.enable_axis` and :meth:`.ANC300.disable_axis`, which completely shuts off the connection to the positioner and usually reduces noise. In addition, there can be different operation modes for only offset, only stepping, or combination of the two.

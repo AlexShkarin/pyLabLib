@@ -247,7 +247,7 @@ class Range(object):
     def __str__(self): return "({0}, {1})".format(*self._rng)
     def __repr__(self): return "Range({0}, {1})".format(*self._rng)
     def contains(self, x):
-        """Check if `x` is in the range."""
+        """Check if `x` is in the range"""
         if self is None:
             return (x!=x) # all False
         if (self._rng[0] is not None) and (self._rng[1] is not None):
@@ -380,7 +380,7 @@ def find_closest_value(xs, x, approach="both", ordered=False):
 
 def get_range_indices(xs, xs_range, ordered=False):
     """
-    Find trace indices correspoding to the given range.
+    Find trace indices corresponding to the given range.
     
     The range is defined as ``xs_range[0]:xs_range[1]``, or infinite if ``xs_range=None`` (so the data is returned unchanged in that case).
     If ``ordered_x==True``, then the function assumes that `xs` in ascending order.
@@ -412,7 +412,7 @@ def cut_to_range(t, xs_range, x_column=None, ordered=False):
     Cut the table to the given range based on `x_column`.
     
     The range is defined as ``xs_range[0]:xs_range[1]``, or infinite if ``xs_range=None``.
-    `x_column` is used to determine which colmn's values to use to check if the point is in range (see :func:`.get_x_column`).
+    `x_column` is used to determine which column's values to use to check if the point is in range (see :func:`.get_x_column`).
     If ``ordered_x==True``, then the function assumes that `x_column` in ascending order.
     """
     x_column=get_x_column(t,x_column)
@@ -423,7 +423,7 @@ def cut_out_regions(t, regions, x_column=None, ordered=False, multi_pass=True):
     """
     Cut the regions out of the `t` based on `x_column`.
     
-    `x_column` is used to determine which colmn's values to use to check if the point is in range (see :func:`.get_x_column`).
+    `x_column` is used to determine which column's values to use to check if the point is in range (see :func:`.get_x_column`).
     If ``ordered_x==True``, then the function assumes that `x_column` in ascending order.
     If ``multi_pass==False``, combine all indices before deleting the data in a single operation (works faster, but only for non-intersecting regions). 
     """
@@ -497,8 +497,8 @@ def expand_trace(trace, size=0, mode="constant", cval=0., side="both"):
     Args:
         trace: 1D array-like object.
         size (int): Expansion size. Can't be greater than ``len(trace)`` (truncated automatically).
-        mode (str): Expansion mode. Can be ``'constant'`` (added values are determined by `cval`), ``'nearest'`` (added values are endvalues of the trace),
-            ``'reflect'`` (reflect trace wrt its endpoint) or ``'wrap'`` (wrap the values from the other size).
+        mode (str): Expansion mode. Can be ``'constant'`` (added values are determined by `cval`), ``'nearest'`` (added values are end values of the trace),
+            ``'reflect'`` (reflect trace with respect to its endpoint) or ``'wrap'`` (wrap the values from the other size).
         cval (float): If ``mode=='constant'``, determines the expanded values.
         side (str): Expansion side. Can be ``'left'``, ``'right'`` or ``'both'``.
     """

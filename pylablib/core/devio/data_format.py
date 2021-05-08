@@ -27,12 +27,12 @@ class DataFormat:
         self.byteorder=byteorder
     
     def flip_byteorder(self):
-        """Flip byteorder of the description."""
+        """Flip byteorder of the description"""
         if self.byteorder is not None:
             self.byteorder="<" if self.byteorder==">" else ">"
     
     def is_ascii(self):
-        """Check of the format is textual."""
+        """Check of the format is textual"""
         return self.kind=="ascii"
     @staticmethod
     def from_desc(desc, str_type="numpy"):

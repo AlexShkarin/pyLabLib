@@ -220,7 +220,7 @@ def as_formatter(formatter):
     """
     Turn an object into a formatter.
 
-    Can be a callable object turining value into a string, a string (``"float"``, ``"int"``, or a format string, e.g., ``".5f"``),
+    Can be a callable object turning value into a string, a string (``"float"``, ``"int"``, or a format string, e.g., ``".5f"``),
     or a tuple starting with ``"float"`` which contains arguments to the :class:`FloatFormatter`.
     """
     if hasattr(formatter,"__call__"):

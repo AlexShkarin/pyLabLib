@@ -70,7 +70,7 @@ class NumEdit(QtWidgets.QLineEdit):
     Labview-style numerical edit.
 
     Maintains internally stored consistent value (which can be, e.g., accessed from different threads).
-    Supports different number representations, metric perfixes (in input or output), keyboard shortcuts (up/down for changing number, escape for cancelling).
+    Supports different number representations, metric prefixes (in input or output), keyboard shortcuts (up/down for changing number, escape for cancelling).
 
     Args:
         parent: parent widget
@@ -164,7 +164,7 @@ class NumEdit(QtWidgets.QLineEdit):
         """
         Change current numerical formatter.
 
-        Formatter can be a callable object turining value into a string, a string (``"float"``, ``"int"``, or a format string, e.g., ``".5f"``),
+        Formatter can be a callable object turning value into a string, a string (``"float"``, ``"int"``, or a format string, e.g., ``".5f"``),
         or a tuple starting with ``"float"`` which contains arguments to the :class:`.formatter.FloatFormatter`.
         """
         self.formatter=as_formatter(formatter)

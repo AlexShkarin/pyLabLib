@@ -132,7 +132,7 @@ class StreamFormer(helpers.StreamFormerThread):
         for name,_ in self.daq_channels:
             self.configure_channel(name,enable=enable,required=required,clear=clear)
     def configure_cam_channels(self, camera=None, enable=True, required="auto", clear=True):
-        """Configure all camera channels belogning to the same camera (usually, turn on or off)"""
+        """Configure all camera channels belonging to the same camera (usually, turn on or off)"""
         if camera is None:
             for camera in self.cam_channels:
                 self.configure_cam_channels(camera,enable=enable,required=required,clear=clear)
@@ -244,7 +244,7 @@ class CamChannelGenerator(controller.QThreadController):
 #     Args:
 #         roi: ROI for mean calculation (:class:`.image.ROI` object), or ``"full"`` (use full frame mean)
 #         x_source: source for the x-axis; can be ``"index"`` (frame index), or ``"time"`` (time of the incoming frame message)
-#         calc_period: preiodicity for frames for which mean is calculated (e.g., with ``calc_period=3`` only every 3rd frame is used)
+#         calc_period: periodically for frames for which mean is calculated (e.g., with ``calc_period=3`` only every 3rd frame is used)
 #         accum_size: size of the trace accumulator; can also be ``None``, which means that no accumulator is used
 #     """
 #     def __init__(self, roi="full", x_source="index", calc_period=1, accum_size=None):
@@ -368,7 +368,7 @@ class CamChannelGenerator(controller.QThreadController):
 #         channels: channels in the incoming data; can also be ``None``, in which case channels are extracted from the data when it's received
 #         x_source: source for the x-axis; can be ``"index"`` (frame index), ``"time"`` (time of the incoming points), or ``"none"`` (no additional x-channel is added)
 #         x_channel: name of the added x-channel (by default it's ``"idx"`` with an added index axis; for ``x_source=="none"`` it can be any of the incoming channel names)
-#         calc_period: preiodicity for data points which are accumulated (e.g., with ``calc_period=3`` only every 3rd datapoint is used)
+#         calc_period: periodically for data points which are accumulated (e.g., with ``calc_period=3`` only every 3rd datapoint is used)
 #         accum_size: size of the trace accumulator
 #         autoupdate_channels: if ``True`` and incoming data channels are different from the stored ones, re-create the accumulator with the new channels;
 #             otherwise, keep the accumulator, which ignores extra columns and raises errors if some are missing
@@ -480,17 +480,17 @@ class CamChannelGenerator(controller.QThreadController):
 #     Thread for controlling and accumulating plotting data.
 
 #     Each plot data consists of plot (main joining element which needs to be added first, includes general properties such as caption), source (e.g., signal or direct update call),
-#         processor of th esource (mean frame, accumulate points, direct update), and appearance (trace labels, x- and y-axis labels, plot visibility).
+#         processor of the source (mean frame, accumulate points, direct update), and appearance (trace labels, x- and y-axis labels, plot visibility).
 #     These four parts are set up and removed using separate commands:
-#         ``add_plot``/``delete_plot``: add and delete plots; the plot needs to be added before settings up other elements (source, processor, appearence); deleting the plot also deletes the associated elements
+#         ``add_plot``/``delete_plot``: add and delete plots; the plot needs to be added before settings up other elements (source, processor, appearance); deleting the plot also deletes the associated elements
 #         ``setup_source``/``delete_source``: setup and delete source; if the source is not set up, no data is fed to the processor
 #         ``setup_processor``/``delete_processor``: setup and delete processor; if the processor is not set up, the incoming data is not processed and is ignored
-#         ``setup_appearance``/``delete_appearance``: setup and delete appearance; if the processor is not set up, default apperance is used (generic axes labels, plot names are the same as channel names)
+#         ``setup_appearance``/``delete_appearance``: setup and delete appearance; if the processor is not set up, default appearance is used (generic axes labels, plot names are the same as channel names)
 #     In addition, there are several specific command for different elements:
 #         ``get_plot_parameters``: get generic plot parameters (e.g., plot caption)
 #         ``get_processor_parameters``: get specific processor parameters (e.g., accumulator size)
 #         ``reset_processor``: reset accumulating processor state
-#         ``get_appearance``: get appearence parameters; can be incomplete, since the channel names might not be know at this point (for complete appearance, use ``get_data`` with ``appearance=True``)
+#         ``get_appearance``: get appearance parameters; can be incomplete, since the channel names might not be know at this point (for complete appearance, use ``get_data`` with ``appearance=True``)
 #         ``get_data``: get data of the given plot (can also return the corresponding appearance)
 #         ``enable``/``disable``: since source processing can take considerable resources, this allows to pause it in case it's not needed
 #     """
@@ -598,7 +598,7 @@ class CamChannelGenerator(controller.QThreadController):
 #         Args:
 #             roi: ROI for mean calculation (:class:`.image.ROI` object), or ``"full"`` (use full frame mean)
 #             x_source: source for the x-axis; can be ``"index"`` (frame index), or ``"time"`` (time of the incoming frame message)
-#             calc_period: preiodicity for frames for which mean is calculated (e.g., with ``calc_period=3`` only every 3rd frame is used)
+#             calc_period: periodically for frames for which mean is calculated (e.g., with ``calc_period=3`` only every 3rd frame is used)
 #         """
 #         if name not in self.processors or self.processors[name][0]!="frame/roi_mean":
 #             self.delete_processor(name)
@@ -620,7 +620,7 @@ class CamChannelGenerator(controller.QThreadController):
 #             channels: channels in the incoming data; can also be ``None``, in which case channels are extracted from the data when it's received
 #             x_source: source for the x-axis; can be ``"index"`` (frame index), ``"time"`` (time of the incoming points), or ``None`` (no additional x-channel is added)
 #             x_channel: name of the added x-channel (by default it's ``"idx"`` with an added index axis; for ``x_source==None`` it can be any of the incoming channel names)
-#             calc_period: preiodicity for data points which are accumulated (e.g., with ``calc_period=3`` only every 3rd datapoint is used)
+#             calc_period: periodically for data points which are accumulated (e.g., with ``calc_period=3`` only every 3rd datapoint is used)
 #             autoupdate_channels: if ``True`` and incoming data channels are different from the stored ones, re-create the accumulator with the new channels;
 #                 otherwise, keep the accumulator, which ignores extra columns and raises errors if some are missing
 #         """
@@ -734,12 +734,12 @@ class CamChannelGenerator(controller.QThreadController):
 #                 app["visible"]={ch:v for ch,v in vis.items() if ch in channels}
 #         return app
 #     def delete_appearance(self, name):
-#         """Delte (i.e., reset to default) appearance parameters as dictionary for a plot with a given name"""
+#         """Delete (i.e., reset to default) appearance parameters as dictionary for a plot with a given name"""
 #         if name in self.appearance:
 #             del self.appearance[name]
 
 #     def delete_plot(self, name):
-#         """Delte a plot with a given name, together with all its elements"""
+#         """Delete a plot with a given name, together with all its elements"""
 #         self._check_plot(name)
 #         self.delete_source(name)
 #         self.delete_processor(name)
@@ -794,7 +794,7 @@ class CamChannelGenerator(controller.QThreadController):
 #         """
 #         Disable a plot with a given name.
 
-#         If ``single==True``, then in addition diable all other plots.
+#         If ``single==True``, then in addition disable all other plots.
 #         If ``reset_on_change==True`` and the enabled plot has been previously disabled, reset its processor.
 #         """
 #         if name is None:

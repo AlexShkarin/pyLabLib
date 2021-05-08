@@ -29,7 +29,7 @@ def _obtain_single(proxy, serv):
 _numpy_block_size=int(2**20)
 def obtain(proxy, serv=None):
     """
-    Obtain a remote netfref object by value (i.e., copy it to the local Python instance).
+    Obtain a remote netref object by value (i.e., copy it to the local Python instance).
 
     Wrapper around :func:`rpyc.utils.classic.obtain` with some special cases handling.
     `serv` specifies the current remote service. If it is of type :class:`SocketTunnelService`, use its socket tunnel for faster transfer.

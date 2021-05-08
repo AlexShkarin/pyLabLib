@@ -61,10 +61,10 @@ class ClientSocket(object):
         - ``'decllen'``: data is prepended by a length, and receiving reads this length and doesn't need predetermined length info.
         
     Attributes:
-        sock (socket.socket): Correpsonding Python socket.
-        decllen_bo (str): Byteorder of the prependend length for ``'decllen'`` sending method.
+        sock (socket.socket): Corresponding Python socket.
+        decllen_bo (str): Byteorder of the prepended length for ``'decllen'`` sending method.
             Can be either ``'>'`` (big-endian, default) or ``'<'``.
-        decllen_ll (int): Length of the prependend length for ``'decllen'`` sending method; default is 4 bytes (corresponding to maximum of 4Gb per single length-prepended message)
+        decllen_ll (int): Length of the prepended length for ``'decllen'`` sending method; default is 4 bytes (corresponding to maximum of 4Gb per single length-prepended message)
     """
     _default_wait_callback_timeout=0.1
     def __init__(self, sock=None, timeout=None, wait_callback=None, send_method="decllen", recv_method="decllen", datatype="auto", nodelay=False):
@@ -188,7 +188,7 @@ class ClientSocket(object):
         `lmax` specifies the maximal received length (`None` means no limit).
         `chunk_l` specifies the size of data chunk to be read in one try.
         If ``strict==False``, keep receiving as much data as possible until a delimiter is found in the end (only works properly if a single line is expected);
-        otherwise, receive the data byte-by-byte and stop as soon as a delimiter is found (equivalent ot setting ``chunk_l=1``).
+        otherwise, receive the data byte-by-byte and stop as soon as a delimiter is found (equivalent to setting ``chunk_l=1``).
         """
         buf=b""
         if isinstance(delim, py3.anystring):
@@ -297,7 +297,7 @@ def recv_JSON(sock, chunk_l=1024, strict=True):
 
     `chunk_l` specifies the size of data chunk to be read in one try.
     If ``strict==False``, keep receiving as much data as possible until the received data forms a complete JSON token.
-    otherwise, receive the data byte-by-byte and stop as soon as a token is formed (equivalent ot setting ``chunk_l=1``).
+    otherwise, receive the data byte-by-byte and stop as soon as a token is formed (equivalent to setting ``chunk_l=1``).
     """
     msg="" if sock.datatype=="str" else b""
     while True:

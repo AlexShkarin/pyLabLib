@@ -303,7 +303,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
         self._check_feature("SensorTemperature")
         return self.get_value("SensorTemperature")
     def get_temperature_setpoint(self):
-        """Get current temperature setpoint."""
+        """Get current temperature setpoint"""
         self._check_feature("TargetSensorTemperature")
         return self.get_value("TargetSensorTemperature")
     @camera.acqstopped
@@ -467,7 +467,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
         """
         Setup acquisition.
 
-        `mode` can be either ``"snap"`` (since frame or sequency acquisition) or ``"sequence"`` (continuous acquisition).
+        `mode` can be either ``"snap"`` (single frame or a fixed number of frames) or ``"sequence"`` (continuous acquisition).
         `nframes` determines number of frames to acquire in the single mode, or size of the ring buffer in the ``"sequence"`` mode (by default, 100).
         """
         super().setup_acquisition(mode=mode,nframes=nframes)

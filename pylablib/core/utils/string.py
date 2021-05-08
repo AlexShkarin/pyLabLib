@@ -736,7 +736,7 @@ def from_string_partial(value, delimiters=_delimiters_regexp, case_sensitive=Tru
     """
     Convert the first part of the supplied string (bounded by `delimiters`) into a value.
     
-    `delimites` is a string or a regexp (default is ``"\\s*,\\s*|\\s+"``, i.e., comma or spaces).
+    `delimiters` is a string or a regexp (default is ``"\\s*,\\s*|\\s+"``, i.e., comma or spaces).
     If ``return_string==False``, convert the value string and return tuple ``(end_position, converted_value)``; otherwise, return tuple ``(end_position, value_string)``.
     
     The rest of the parameters is the same as in :func:`from_string`.

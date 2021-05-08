@@ -1,26 +1,26 @@
 import threading
 
-class ISkipableNotifier(object):
+class ISkippableNotifier(object):
     """
-    Generic skipable notifier.
+    Generic skippable notifier.
 
-    The main methods are :meth:`wait` (wait until the event happend) and :meth:`notify` (notify that the event happend).
+    The main methods are :meth:`wait` (wait until the event happened) and :meth:`notify` (notify that the event happened).
     Only calls underlying waiting and notifying methods once, duplicate calls are ignored.
 
     Args:
-        skipable (bool): if ``True``, allows for skipable wait events
+        skippable (bool): if ``True``, allows for skippable wait events
             (if :meth:`notify` is called before :meth:`wait`, neither methods are actually called).
     """
-    def __init__(self, skipable=False):
+    def __init__(self, skippable=False):
         object.__init__(self)
         self._lock=threading.Lock()
         self._waiting="init"
         self._notifying="init"
-        self._skipable=skipable # if skipable and Notifier.notify() is called before Notifier.wait(), doesn't call the internal _notify and _wait functions
+        self._skippable=skippable # if skippable and Notifier.notify() is called before Notifier.wait(), doesn't call the internal _notify and _wait functions
     
     def _pre_wait(self, *args, **kwargs):  # pylint: disable=unused-argument
         """
-        Check if the waiting initialization is successfull.
+        Check if the waiting initialization is successful.
 
         Called inside an internal lock section, so should be short and preferably non-blocking.
         If return value is ``False``, waiting aborts and returns `False``, and the waiting status is marked as ``"failed"``.
@@ -37,7 +37,7 @@ class ISkipableNotifier(object):
         """
         Perform post-waiting actions.
 
-        Only called if the :meth:`_pre_wait` was successfull.
+        Only called if the :meth:`_pre_wait` was successful.
         """
         pass
     def wait(self, *args, **kwargs):
@@ -93,7 +93,7 @@ class ISkipableNotifier(object):
             if self._notifying!="init":
                 raise RuntimeError("notifier can only be called once")
             self._pre_notify(*args,**kwargs)
-            if self._skipable and self._waiting=="init":
+            if self._skippable and self._waiting=="init":
                 self._notifying="skip"
             else:
                 self._notifying="proc"
@@ -104,19 +104,19 @@ class ISkipableNotifier(object):
         self._post_notify(*args,**kwargs)
             
     def waiting(self):
-        """Check if waiting is in progress."""
+        """Check if waiting is in progress"""
         with self._lock:
             return self._waiting=="proc"
     def done_wait(self):
-        """Check if waiting is done."""
+        """Check if waiting is done"""
         with self._lock:
             return self._waiting in {"skip","done","fail"}
     def success_wait(self):
-        """Check if waiting is done successfully."""
+        """Check if waiting is done successfully"""
         with self._lock:
             return self._waiting in {"skip","done"}
     def done_notify(self):
-        """Check if notifying is done."""
+        """Check if notifying is done"""
         with self._lock:
             return self._notifying in {"done","skip"}
     def waiting_state(self):

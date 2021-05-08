@@ -109,7 +109,7 @@ class PFCamProperty:
                     raise
         return self.get_value()
     def call_command(self, arg=0):
-        """If property is a command, call it with a given argument; otherwise, raise an error."""
+        """If property is a command, call it with a given argument; otherwise, raise an error"""
         if not self.is_command:
             raise PFCamError("{} is not a PF_COMMAND property".format(self.name))
         lib.pfDevice_SetProperty(self.port,self._token,arg)
@@ -285,7 +285,7 @@ class PhotonFocusIMAQCamera(IMAQCamera):
         if self.get_value(name)!=value:
             self.set_value(name,value,ignore_missing=ignore_missing,truncate=truncate)
     def call_command(self, name, arg=0, ignore_missing=False):
-        """If property is a command, call it with a given argument; otherwise, raise an error."""
+        """If property is a command, call it with a given argument; otherwise, raise an error"""
         name=name.replace(".","/")
         if (name in self.properties) or (not ignore_missing):
             self.properties[name].call_command(arg=arg)
@@ -342,7 +342,7 @@ class PhotonFocusIMAQCamera(IMAQCamera):
         return ox,ox+w,oy,oy+h
     def fast_shift_roi(self, hstart=0, vstart=0):
         """
-        Shift ROI by only chaning its origin, but keeping the shape the same.
+        Shift ROI by only changing its origin, but keeping the shape the same.
 
         Note that if the ROI is invalid, it won't be truncated (as is the standard behavior of :meth:`set_roi`), which might lead to errors later.
         """
@@ -499,7 +499,7 @@ def get_status_lines(frames, check_transposed=True, drop_magic=True):
     If ``drop_magic==True``, remove the first status line entry, which is simply a special number marking the status line presence.
     Return a 1D or 2D numpy array, where the first axis (if present) is the frame number, and the last is the status line entry
     The entries after the magic are the frame index, timestamp (in us), missed trigger counters (up to 255),
-    average frame value, and the intergation time (in pixel clock cycles, which depend on the camera).
+    average frame value, and the integration time (in pixel clock cycles, which depend on the camera).
     """
     if isinstance(frames,list):
         return [get_status_lines(f,check_transposed=check_transposed,drop_magic=drop_magic) for f in frames]

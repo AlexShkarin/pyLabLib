@@ -109,7 +109,7 @@ class MulticastPool(object):
             priority(int): subscription priority (higher priority subscribers are called first).
             limit_queue(int): limits the maximal number of scheduled calls
                 (if the multicast is sent while at least `limit_queue` callbacks are already in queue to be executed, ignore it)
-                0 or negative value means no limit (not recommended, as it can unrestrictedly bloat the queue)
+                0 or negative value means no limit (not recommended, as it can increase the queue indefinitely if the multicast rate is high enough)
             call_tag(str or None): tag used for the synchronized call; by default, use the interrupt call (which is the default of ``call_in_thread``).
             call_interrupt: whether the call is an interrupt (call inside any loop, e.g., during waiting or sleeping), or it should be called in the main event loop
             add_call_info(bool): if ``True``, add a fourth argument containing a call information (tuple with a single element, a timestamps of the call).
@@ -122,7 +122,7 @@ class MulticastPool(object):
             tag=call_tag,interrupt=call_interrupt,call_info_argname="call_info" if add_call_info else None)
         return self.subscribe_direct(callback,srcs=srcs,dsts=dsts,tags=tags,filt=filt,priority=priority,scheduler=scheduler,sid=sid)
     def unsubscribe(self, sid):
-        """Unsubscribe from a subscription with a given ID."""
+        """Unsubscribe from a subscription with a given ID"""
         self._pool.remove_observer(sid)
         if sid in self._schedulers:
             scheduler=self._schedulers.pop(sid)

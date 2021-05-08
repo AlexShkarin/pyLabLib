@@ -1,3 +1,5 @@
+# pylint: disable=wrong-spelling-in-comment
+
 from . import dcamprop_defs, dcamapi4_defs  # pylint: disable=unused-import
 from .dcamapi4_defs import DCAMAPI_INIT, DCAMDEV_OPEN, DCAMDEV_CAPABILITY
 from .dcamapi4_defs import DCAMDEV_STRING, DCAMDATA_HDR

@@ -182,7 +182,7 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
                 time.sleep(10.)
 
     def get_full_camera_data(self):
-        """Get a dictionary the all camera data available through the SDK."""
+        """Get a dictionary the all camera data available through the SDK"""
         cam_data=dictionary.Dictionary()
         for (i,name) in enumerate(["interface","camera","sensor","serial_number","fw_build","fw_rev"]):
             try:
@@ -212,7 +212,7 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         """
         Update internal full camera data settings.
         
-        Takes some time (about 50ms), so more specific function are preferrables for specific parameters.
+        Takes some time (about 50ms), so more specific function are preferable for specific parameters.
         """
         self._arm()
         self._full_camera_data=self.get_full_camera_data()
@@ -637,7 +637,7 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         return self.get_roi()
     def requires_symmetric_roi(self):
         """
-        Check if the camera requires horizontall or vertically symmetric ROI.
+        Check if the camera requires horizontally or vertically symmetric ROI.
 
         Return a tuple ``(horizontal, vertical)``.
         If ``True``, one might still set up an asymmetric ROI for some cameras using the software ROI feature, but it does not affect camera readout rate

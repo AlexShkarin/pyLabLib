@@ -137,7 +137,7 @@ class TracePlotter(QtWidgets.QWidget):
         Args:
             name (str): widget name
             add_end_marker (bool): if ``True``, point markers are added at the position of the last point (makes easier to track plotting progress).
-            update_only_on_visible (bool): ig ``True``, only update plot if the widget is visible.
+            update_only_on_visible (bool): if ``True``, only update plot if the widget is visible.
         """
         self.name=name
         self.setObjectName(self.name)

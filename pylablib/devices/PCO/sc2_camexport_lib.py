@@ -1,3 +1,5 @@
+# pylint: disable=wrong-spelling-in-comment
+
 from . import sc2_camexport_defs
 from .sc2_camexport_defs import define_functions
 from .PCO_err_defs import PCO_ERR, drPCO_ERR  # pylint: disable=unused-import

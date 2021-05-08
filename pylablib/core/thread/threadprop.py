@@ -16,7 +16,7 @@ class ThreadError(RuntimeError):
         RuntimeError.__init__(self, msg)
         
 class NoControllerThreadError(ThreadError):
-    """Thread error for a case of thread having no conrollers"""
+    """Thread error for a case of thread having no controllers"""
     def __init__(self, msg=None):
         msg=msg or "thread has no controller"
         ThreadError.__init__(self, msg)
@@ -31,7 +31,7 @@ class TimeoutThreadError(ThreadError):
         msg=msg or "waiting has timed out"
         ThreadError.__init__(self, msg)
 class NoMessageThreadError(ThreadError):
-    """Thread error for a case of trying to get a non-existant message"""
+    """Thread error for a case of trying to get a non-existing message"""
     def __init__(self, msg=None):
         msg=msg or "no message available"
         ThreadError.__init__(self, msg)

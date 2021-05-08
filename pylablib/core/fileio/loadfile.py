@@ -23,7 +23,7 @@ class IInputFileFormat(object):
     
     Based on `file_format` or autodetection, calls one of its subclasses to read the file.
 
-    Defines a single static mehtod
+    Defines a single static method
     """
     @staticmethod
     def detect_file_format(location_file):
@@ -174,7 +174,7 @@ class BinaryTableInputFileFormatter(IInputFileFormat):
         packing (str): The way the 2D array is packed. Can be either
             ``'flatten'`` (data is stored row-wise) or
             ``'transposed'`` (data is stored column-wise).
-        preamble (dict): If not ``None``, defines binary file parameters that supersede the parameteres supplied to the function.
+        preamble (dict): If not ``None``, defines binary file parameters that supersede the parameters supplied to the function.
             The defined parameters are ``'dtype'``, ``'packing'``, ``'ncols'`` (number of columns) and ``'nrows'`` (number of rows).
         skip_bytes (int): Number of bytes to skip from the beginning of the file.
     """
@@ -304,7 +304,7 @@ def load_bin(path=None, out_type="default", dtype="<f8", columns=None, packing="
         packing (str): The way the 2D array is packed. Can be either
             ``'flatten'`` (data is stored row-wise) or
             ``'transposed'`` (data is stored column-wise).
-        preamble (dict): If not ``None``, defines binary file parameters that supersede the parameteres supplied to the function.
+        preamble (dict): If not ``None``, defines binary file parameters that supersede the parameters supplied to the function.
             The defined parameters are ``'dtype'``, ``'packing'``, ``'ncols'`` (number of columns) and ``'nrows'`` (number of rows).
         skip_bytes (int): Number of bytes to skip from the beginning of the file.
         loc (str): location type (``"file"`` means the usual file location; see :func:`.location.get_location` for details)

@@ -94,7 +94,7 @@ class Finesse(comm_backend.ICommBackendWrapper):
         return self.get_shutter_status()
 
     def is_enabled(self):
-        """Check if the output is enabled."""
+        """Check if the output is enabled"""
         return self.get_output_status()=="enabled"
     def enable(self, enabled=True):
         """Turn the output on or off"""

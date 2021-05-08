@@ -80,7 +80,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
     Most of these parameters are chosen as reasonable defaults: full ROI, minimal exposure time, closed shutter,
     internal trigger, fastest recommended verticals shift speed, no EMCCD gain.
     However, some should be supplied during the connection: temperature setpoint (where appropriate), fan mode, and amplifier mode;
-    while there is still a possibility to have default values of these paramters, they might not be appropriate in some settings, and frequently need to be changed.
+    while there is still a possibility to have default values of these parameters, they might not be appropriate in some settings, and frequently need to be changed.
 
     Caution: the manufacturer DLL is designed such that if the camera is not closed on the program termination, the allocated resources are never released.
     If this happens, these resources are blocked until the complete OS restart.
@@ -379,7 +379,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
     @_camfunc
     def get_all_amp_modes(self):
         """
-        Get all available pream modes.
+        Get all available preamp modes.
 
         Each preamp mode is characterized by an AD channel index, amplifier index, channel speed (horizontal scan speed) index and preamp gain index.
         Return list of tuples ``(channel, channel_bitdepth, oamp, oamp_kind, hsspeed, hsspeed_MHz, preamp, preamp_gain)``,
@@ -987,7 +987,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         """
         Get acquisition progress.
 
-        Return tuple ``(frames_done, acc_done)`` with the number of full transferred framaes
+        Return tuple ``(frames_done, acc_done)`` with the number of full transferred frames
         and the number of acquired sub-frames in the current accumulation cycle.
         """
         acc_done,frames_done=lib.GetAcquisitionProgress()

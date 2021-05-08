@@ -1,3 +1,5 @@
+# pylint: disable=wrong-spelling-in-comment
+
 feature_types={
 	"AcquisitionStart": "comm",
 	"AcquisitionStop": "comm",

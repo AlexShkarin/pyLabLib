@@ -1,5 +1,5 @@
 """
-A simple observer pool (notification pool) implementeation.
+A simple observer pool (notification pool) implementation.
 """
 
 from . import general
@@ -81,7 +81,7 @@ class ObserverPool:
             return callback(tag,value)
     def notify(self, tag, value=()):
         """
-        Notify the obserevers by calling their callbacks.
+        Notify the observers by calling their callbacks.
 
         Return a dictionary of the callback results.
         By default the value is an empty tuple: for ``expand_tuple==True`` this means that only one argument (`tag`) is passed to the callbacks.

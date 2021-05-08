@@ -249,8 +249,8 @@ class ParamTable(QtWidgets.QWidget):
             name (str): widget name (used to reference its value in the values table)
             widget: widget to add
             value_handler: value handler of the widget; by default, use auto-detected value handler (works for many simple built-in or custom widgets)
-            indicator_handler: indicator handler of the widget; by default, use auto-detected indciator handler
-                (use ``set/get_indicator`` methods if present, or no indicator otherwises)
+            indicator_handler: indicator handler of the widget; by default, use auto-detected indicator handler
+                (use ``set/get_indicator`` methods if present, or no indicator otherwise)
             location (tuple): tuple ``(row, column, rowspan, colspan)`` specifying location of the widget;
                 by default, add to a new row in the end and into the first column, span one row and all table columns
                 can also be a string ``"skip"``, which means that the widget is added to some other location manually later
@@ -305,7 +305,7 @@ class ParamTable(QtWidgets.QWidget):
 
         Args:
             name (str): widget name (used to reference its value in the values table)
-            caption (str or list): text on the button; can be a single string, or a list of two strings which specifies the captiona for off and on states
+            caption (str or list): text on the button; can be a single string, or a list of two strings which specifies the caption for off and on states
             value (bool): specifies initial value
             virtual (bool): if ``True``, the widget is not added, and a virtual handler is added instead
 
@@ -440,7 +440,7 @@ class ParamTable(QtWidgets.QWidget):
             name (str): widget name (used to reference its value in the values table)
             value (bool): specifies initial value
             options (list): list of string specifying box options
-            index_values (list): list of values correpsonding to box options; if supplies, these number are used when setting/getting values or sending singals.
+            index_values (list): list of values corresponding to box options; if supplies, these number are used when setting/getting values or sending signals.
             virtual (bool): if ``True``, the widget is not added, and a virtual handler is added instead
             
         Rest of the arguments and the return value are the same as :meth:`add_simple_widget`.

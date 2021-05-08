@@ -5,22 +5,22 @@ from ..utils import general
 import threading
 
 
-class QThreadNotifier(notifier.ISkipableNotifier):
+class QThreadNotifier(notifier.ISkippableNotifier):
     """
-    Wait-notify thread synchronizer for controlled Qt threads based on :class:`.notifier.ISkipableNotifier`.
+    Wait-notify thread synchronizer for controlled Qt threads based on :class:`.notifier.ISkippableNotifier`.
 
-    Like :class:`.notifier.ISkipableNotifier`, the main functions are :meth:`.ISkipableNotifier.wait` (wait in a message loop until notified or until timeout expires)
-    and :meth:`.ISkipableNotifier.notify` (notify the waiting thread). Both of these can only be called once and will raise and error on repeating calls.
+    Like :class:`.notifier.ISkippableNotifier`, the main functions are :meth:`.ISkippableNotifier.wait` (wait in a message loop until notified or until timeout expires)
+    and :meth:`.ISkippableNotifier.notify` (notify the waiting thread). Both of these can only be called once and will raise and error on repeating calls.
     Along with notifying a variable can be passed, which can be accessed using :meth:`get_value` and :meth:`get_value_sync`.
 
     Args:
-        skipable (bool): if ``True``, allows for skipable wait events
-            (if :meth:`.ISkipableNotifier.notify` is called before :meth:`.ISkipableNotifier.wait`, neither methods are actually called).
+        skippable (bool): if ``True``, allows for skippable wait events
+            (if :meth:`.ISkippableNotifier.notify` is called before :meth:`.ISkippableNotifier.wait`, neither methods are actually called).
     """
     _uid_gen=general.UIDGenerator(thread_safe=True)
     _notify_tag="#sync.notifier"
-    def __init__(self, skipable=True):
-        notifier.ISkipableNotifier.__init__(self,skipable=skipable)
+    def __init__(self, skippable=True):
+        notifier.ISkippableNotifier.__init__(self,skippable=skippable)
         self._uid=None
         self.value=None
     def _pre_wait(self, *args, **kwargs):  # pylint: disable=unused-argument
@@ -53,7 +53,7 @@ class QMultiThreadNotifier(object):
     Wait-notify thread synchronizer that can be used for multiple threads and called multiple times.
 
     Performs similar function to conditional variables.
-    The synchronizer has an internal counter which is incread by 1 every time it is notified.
+    The synchronizer has an internal counter which is increased by 1 every time it is notified.
     The wait functions have an option to wait until the counter reaches the specific counter value (usually, 1 above the last wait call).
     """
     def __init__(self):

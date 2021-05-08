@@ -46,7 +46,7 @@ class ParamTableBox(IBox):
     Args:
         box: box widget
         name: box name
-        kwargs: argumetns passesd to ``setupUI`` method of the parameters table
+        kwargs: arguments passed to ``setupUI`` method of the parameters table
     """
     def __init__(self, box, name, **kwargs):
         IBox.__init__(self,box,name)
@@ -87,7 +87,7 @@ class BoxManager:
     Args:
         frame_widget: base widget (class :class:`.QWidget` or :class:`.QFrame` with a :class:`QBoxLayout` layout) which is the parent widget of the new boxes
         layout: layout into which the boxes are added; by default, `frame_widget` layout
-        index_offset: index offset for appending to the new box (by default, put the new boxes to the end; ``index_offset=1`` means that they are added into the next to the last palce)
+        index_offset: index offset for appending to the new box (by default, put the new boxes to the end; ``index_offset=1`` means that they are added into the next to the last place)
     """
     def __init__(self, frame_widget, layout=None, index_offset=0):
         self.frame_widget=frame_widget
@@ -116,7 +116,7 @@ class BoxManager:
         return self.boxes[name]
     @controller.call_in_gui_thread
     def add_empty_box(self, name, caption, index=None):
-        """Add an empty box (:class:`IBox`); called synchronously in the GUI thread."""
+        """Add an empty box (:class:`IBox`); called synchronously in the GUI thread"""
         return self._add_class_box(IBox,name,caption,index=index)
     @controller.call_in_gui_thread
     def add_param_table_box(self, name, caption, index=None, **kwargs):
@@ -218,7 +218,7 @@ class BoxTab(ITab):
 
 class IAutoupdateTab(ITab):
     """
-    Auto-updatable tab.
+    Auto-updateable tab.
 
     Can be set up to be updated periodically in the GUI thread.
 
@@ -292,7 +292,7 @@ class ImageTab(IAutoupdateTab):
         Set a new image to display.
 
         The method is thread-safe, but the displayed image only changes on the update (either explicit, or autoupdate).
-        If ``update==True``, update after stting the image.
+        If ``update==True``, update after setting the image.
         """
         self.imview.set_image(img)
         if update:
@@ -315,7 +315,7 @@ class LinePlotTab(IAutoupdateTab):
     Line plotter tab.
 
     The tab which contains a :class:`.LinePlotter` widget to show line plots.
-    The plot traces can be changed in a thread-safe manner, and updated automaitcally or explicitly.
+    The plot traces can be changed in a thread-safe manner, and updated automatically or explicitly.
     """
     def __init__(self, frame, name):
         IAutoupdateTab.__init__(self,frame,name)

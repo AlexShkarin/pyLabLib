@@ -93,7 +93,7 @@ class ROICameraTester(CameraTester):
     In addition to the basic camera tests, also performs ROI-related testing.
     """
     rois=[]
-    # a list of 2-tuples ``(roi_set, roi_get)``, where the first is the ROI suppled to the camera,
+    # a list of 2-tuples ``(roi_set, roi_get)``, where the first is the ROI supplied to the camera,
     # and the second is the expected resulting ROI (can also be ``"same"``)
     @pytest.mark.devchange(3)
     def test_roi(self, device):

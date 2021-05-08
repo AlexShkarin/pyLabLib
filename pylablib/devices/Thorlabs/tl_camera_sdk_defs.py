@@ -1,6 +1,6 @@
 ##########   This file is generated automatically based on tl_camera_sdk.h, thorlabs_unified_sdk_error.h, tl_color_error.h   ##########
 
-# pylint: disable=unused-import, unused-argument
+# pylint: disable=unused-import, unused-argument, wrong-spelling-in-comment
 
 
 import ctypes

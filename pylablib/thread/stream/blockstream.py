@@ -37,7 +37,7 @@ class DataBlockMessage:
         """
         Make a copy of the message
         
-        Any specified keword parameter replaces the current message parameter.
+        Any specified keyword parameter replaces the current message parameter.
         Channels are not deep copied.
         """
         kwargs.setdefault("channels",dict(self.channels))
@@ -330,12 +330,12 @@ class StreamFormerThread(controller.QTaskThread):
         """
         Add a new channel to the queue.
 
-        If `func` is defined, the channel is usually filled automatically on start/completeion of a new row, and no further actions are needed.
+        If `func` is defined, the channel is usually filled automatically on start/completion of a new row, and no further actions are needed.
         If `func` is ``None``, the channel is supposed to get data from a multicast. In this case, :meth:`subscribe_source` needs to be called to set up this channel.
 
         Args:
             name (str): channel name
-            func: function used to get the channel value if no data has been suppled
+            func: function used to get the channel value if no data has been supplied
             max_queue_len (int): maximal queue length (``None`` means no length limit; not recommended)
             enabled (bool): determines if the channel is enabled by default (disabled channel always returns ``None``)
             required: determines if the channel is required to receive the value to complete the row;

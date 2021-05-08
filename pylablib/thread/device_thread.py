@@ -12,7 +12,7 @@ class DeviceThread(controller.QTaskThread):
 
     Args:
         name: thread name
-        rgs: args supplied to :meth:`setup_task` method
+        args: args supplied to :meth:`setup_task` method
         kwargs: keyword args supplied to :meth:`setup_task` method
         multicast_pool: :class:`.MulticastPool` for this thread (by default, use the default common pool)
 
@@ -161,7 +161,7 @@ class DeviceThread(controller.QTaskThread):
         """
         Close the device.
 
-        Automatically called on the thread finalization, ususally shouldn't be called explicitly.
+        Automatically called on the thread finalization, usually shouldn't be called explicitly.
         """
         if self.device is not None and self.device.is_opened():
             self.update_status("connection","closing","Disconnecting...")

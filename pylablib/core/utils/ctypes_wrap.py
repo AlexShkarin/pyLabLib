@@ -362,7 +362,7 @@ class CStructWrapper:
         - ``_tup_add``: list of values to add to the resulting tuple (these values must then exist either as attributes, or as entries in ``_tup`` dictionary)
         - ``_tup_order``: order of fields in the returned tuple (by default, same as structure order)
     
-    Also specifies two overloaded methods for a more flexible preparation/converstion of structures.
+    Also specifies two overloaded methods for a more flexible preparation/conversion of structures.
     :meth:`.conv` takes no arguments and is called in the end of wrapper creation to finish setting up attributes.
     :meth:`.prep` takes a single argument (C structure) and is called when converting into a C structure to finish setting up the fields (e.g., size field).
 

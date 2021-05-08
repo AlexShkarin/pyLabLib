@@ -24,16 +24,16 @@ class ICallable:
     This way, ``callable(**p)`` should be equivalent to ``callable.bind(p.keys())(*p.values())``.
     """
     def has_arg(self, arg_name):
-        """Determine if the function has an argument `arg_name` (of all 3 categories)."""
+        """Determine if the function has an argument `arg_name` (of all 3 categories)"""
         raise NotImplementedError("ICallable.has_arg")
     def filter_args_dict(self, args):
-        """Filter argument names dictionary to leave only the arguments that are used."""
+        """Filter argument names dictionary to leave only the arguments that are used"""
         return dict((k,v) for (k,v) in viewitems(args) if self.has_arg(k))
     def get_mandatory_args(self):
-        """Return list of mandatory arguments (these are the ones without default values)."""
+        """Return list of mandatory arguments (these are the ones without default values)"""
         raise NotImplementedError("ICallable.get_mandatory_args")
     def is_mandatory_arg(self, arg_name):
-        """Check if the argument `arg_name` is mandatory.""" 
+        """Check if the argument `arg_name` is mandatory""" 
         return arg_name in self.get_mandatory_args()
     def get_arg_default(self, arg_name):
         """
@@ -46,7 +46,7 @@ class ICallable:
     def __call__(self, **params):
         raise NotImplementedError("ICallable.__call__")
     def bind(self, arg_names, **bound_params):
-        """Bind function to a given parameters set, leaving `arg_names` as free parameters (in the given order)."""
+        """Bind function to a given parameters set, leaving `arg_names` as free parameters (in the given order)"""
         bound_params=bound_params.copy()
         covered_args=set(bound_params)
         covered_args.update(arg_names)

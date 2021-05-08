@@ -1,5 +1,5 @@
 class LimitError(ArithmeticError):
-    """Error raised when the value is out of limits and can't be coerced."""
+    """Error raised when the value is out of limits and can't be coerced"""
     def __init__(self, value, lower_limit=None, upper_limit=None):
         ArithmeticError.__init__(self)
         self.value=value
@@ -70,7 +70,7 @@ class NumberLimit(object):
 
 def filter_limiter(pred):
     """
-    Turn a predicator into a limiter.
+    Turn a predicate into a limiter.
 
     Returns a function that raises :exc:`LimitError` if the predicate is false.
     """

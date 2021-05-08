@@ -376,7 +376,7 @@ class RetryOnException:
     Useful for filesystem or communication operations, where retrying a failed operation is a valid option.
     
     Args:
-        tries (int): Determines how many time will the chunk of code execute before re-rasing the exception;
+        tries (int): Determines how many time will the chunk of code execute before re-raising the exception;
             ``None`` (default) means no limit
         exceptions (Exception or list): A single exception class or a ``list`` of exception classes which are going to be silenced.
         
@@ -447,7 +447,7 @@ class SilenceException:
     Args:
         exceptions (Exception or list): A single exception class or a list of exception classes which are going to be silenced.
         on_exception (callable): A callback to be invoked if an exception occurs.
-        reraise (bool): Defines if the exception is re-rased after the callback has been invoked.
+        reraise (bool): Defines if the exception is re-raised after the callback has been invoked.
         
     A simple bit of syntax sugar. The code::
     
@@ -559,7 +559,7 @@ def call_limit(func, period=1, cooldown=0., limit=None, default=None):
     `default` specifies return value if `func` wasn't called.
     Returned function also has an added method ``reset``, which resets the internal call and time counters.
     """
-    state=[period,0,-cooldown] # misses since last call, successfull calls, last call time
+    state=[period,0,-cooldown] # misses since last call, successful calls, last call time
     @functions.getargsfrom(func)
     def wrapped(*args, **kwargs):
         curr_t=time.time()
@@ -808,7 +808,7 @@ class AccessIterator:
     
     Args:
         obj: Container to be iterated over.
-        access_function (callable): A function which takes two parameteres `obj` and `idx`
+        access_function (callable): A function which takes two parameters `obj` and `idx`
             and either returns the element or raises :exc:`IndexError`. By default, a simple ``__getitem__`` operation.
     """
     def __init__(self, obj, access_function=None):
@@ -843,7 +843,7 @@ def muxcall(argname, all_arg_value="all", all_arg_func=None, mux_argnames=None, 
         return_kind: method to combined multiple returned values; can be ``"list"``, ``"dict"`` (return dict ``{arg: result}``),
             or ``"none"`` (simply return ``None``)
         allow_partial: if ``True`` and some of `mux_argnames` argument do not specify value for the full range of `argname` value,
-            do not call the function for those unspecified values; otherwise (`allow_partial` is ``True``), the error wil be raised
+            do not call the function for those unspecified values; otherwise (`allow_partial` is ``True``), the error will be raised
     """
     if return_kind not in ["list","dict","none"]:
         raise ValueError("unrecognized return type: {}; can be 'list', 'dict', or 'none'".format(return_kind))

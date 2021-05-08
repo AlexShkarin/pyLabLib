@@ -1,3 +1,5 @@
+# pylint: disable=wrong-spelling-in-comment
+
 from . import NIIMAQdx_defs
 from .NIIMAQdx_defs import drIMAQdxError, IMAQdxError as IMAQdxErrorCode
 from .NIIMAQdx_defs import IMAQdxBusType, IMAQdxCameraControlMode, IMAQdxBufferNumberMode  # pylint: disable=unused-import

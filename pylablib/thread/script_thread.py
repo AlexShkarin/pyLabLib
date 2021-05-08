@@ -17,14 +17,14 @@ class ScriptThread(controller.QTaskThread):
     
     Designed to provide means of writing code which interacts with multiple device threads,
     but reads similar to a standard single-threaded script.
-    To do that, it provides a mechanism of signal montors: one can suspend execution until a signal with certain properties has been received.
+    To do that, it provides a mechanism of multicast monitors: one can suspend execution until a multicast with certain properties has been received.
     This can be used to implement, e.g., waiting until the next stream_format/daq sample or a next camera frame.
 
     Args:
         name (str): thread name
         args: args supplied to :meth:`setup_script` method
         kwargs: keyword args supplied to :meth:`setup_script` method
-        multicast_pool: :class:`.SignalPool` for this thread (by default, use the default common pool)
+        multicast_pool: :class:`.MulticastPool` for this thread (by default, use the default common pool)
 
     Attributes:
         executing (bool): shows whether the script is executing right now;
@@ -141,7 +141,7 @@ class ScriptThread(controller.QTaskThread):
         Add a new signal monitor.
 
         The monitoring isn't started until :meth:`start_monitoring` is called.
-        `mon` specifies monitor name; the rest of the arguments are the same as :meth:`.SignalPool.subscribe`
+        `mon` specifies monitor name; the rest of the arguments are the same as :meth:`.MulticastPool.subscribe`
         """
         if mon in self._monitored_signals:
             raise KeyError("signal monitor {} already exists".format(mon))

@@ -1,6 +1,6 @@
 ##########   This file is generated automatically based on dcamprop.h   ##########
 
-# pylint: disable=unused-import, unused-argument
+# pylint: disable=unused-import, unused-argument, wrong-spelling-in-comment
 
 
 import ctypes

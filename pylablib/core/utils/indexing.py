@@ -206,7 +206,7 @@ class ListIndex(IIndex):
 
 class ListIndexNoSlice(ListIndex):
     """
-    List compatible index with slice unwrapped into bultin.range: allows for integers, numpy integer arrays, integer lists or builtin.ranges.
+    List compatible index with slice unwrapped into builtin.range: allows for integers, numpy integer arrays, integer lists or builtin.ranges.
 
     Args:
         idx: raw index

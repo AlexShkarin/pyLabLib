@@ -1,3 +1,5 @@
+# pylint: disable=wrong-spelling-in-comment
+
 from . import niimaq_defs
 from .niimaq_defs import IMG_BUFF, IMG_CMD, IMG_TRIG_ACTION  # pylint: disable=unused-import
 from .niimaq_defs import IMG_TRIG_POL, IMG_INT_SIG, IMG_TRIG_DRIVE  # pylint: disable=unused-import

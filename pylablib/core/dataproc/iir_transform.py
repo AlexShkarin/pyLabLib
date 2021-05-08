@@ -1,7 +1,7 @@
 """
 Digital recursive infinite impulse response filter.
 
-Implemented using Numba library (JIT high-performance compilation) if oissible.
+Implemented using Numba library (JIT high-performance compilation) if possible.
 """
 
 import numpy as np

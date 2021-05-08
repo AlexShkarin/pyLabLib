@@ -139,11 +139,11 @@ def relative_path(a, b, check_paths=True):
     a_split=fullsplit(os.path.abspath(a))
     b_split=fullsplit(os.path.abspath(b))
     blen=len(b_split)
-    if check_paths and not ( paths_equal(os.path.join(*a_split[:blen]),os.path.join(*b_split)) and len(a_split)>=blen ):
+    if check_paths and not ( paths_equal(os.path.join(*a_split[:blen]),os.path.join(*b_split)) and len(a_split)>=blen ):  # pylint: disable=no-value-for-parameter
         raise OSError("path {0} is not contained in a path {1}".format(a,b))
     if len(a_split)==blen:
         return ""
-    return os.path.join(*a_split[blen:])
+    return os.path.join(*a_split[blen:])  # pylint: disable=no-value-for-parameter
     
 
 
@@ -156,7 +156,7 @@ class TempFile(object):
     Upon entry, create the file using supplied mode and return self.
     Upon exit, close and remove the file.
 
-    Can be mostly subsitituted by :func:`tempfile.TemporaryFile`, but generates file locally, and with specified/determined name.
+    Can be mostly substituted by :func:`tempfile.TemporaryFile`, but generates file locally, and with specified/determined name.
     Preserved largely for legacy reasons.
     
     Args:

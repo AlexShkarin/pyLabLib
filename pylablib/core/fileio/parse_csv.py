@@ -237,7 +237,7 @@ class ChunksAccumulator(object):
             for row in trimmed_chunk:
                 try:
                     #filtered_chunk.append([_try_convert_element(e,dt) for e,dt in zip(row,dtype)])
-                    # check convertability, but otherwise leave in raw state
+                    # check convertibility, but otherwise leave in raw state
                     for e,dt in zip(row,dtype):
                         _try_convert_element(e,dt)
                     filtered_chunk.append(row)

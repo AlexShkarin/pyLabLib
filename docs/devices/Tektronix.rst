@@ -41,7 +41,7 @@ The method names are usually pretty self-explanatory. A typical operation involv
     osc.set_vertical_span("CH1", 1)
     osc.set_vertical_span("CH2", 0.1)
     osc.setup_edge_trigger("CH1", 0., "dc", "rise")  # set up edge trigger on channel 1 at 0V threshold
-    osc.grab_single(wait_timeout=10.)  # grab a single waveform and wait for up to 10s to finish acuqisition
+    osc.grab_single(wait_timeout=10.)  # grab a single waveform and wait for up to 10s to finish acquisition
     sweeps = osc.read_multiple_sweeps([1,2])  # read out the waveforms
     osc.close()
 

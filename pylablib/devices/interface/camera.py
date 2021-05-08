@@ -56,7 +56,7 @@ class ICamera(interface.IDevice):
         """
         Check how the currently set up acquisition parameters should be updated with the new ones.
         
-        Return tuple ``(updated, full)``, where ``updated`` is a dictionary of parametes which are different from the ones set up,
+        Return tuple ``(updated, full)``, where ``updated`` is a dictionary of parameters which are different from the ones set up,
         and ``full`` is the full dictionary of acquisition parameters after applying.
         """
         kwargs=function_utils.funcsig(self.setup_acquisition).as_kwargs(args,kwargs,add_defaults=False)
@@ -175,7 +175,7 @@ class ICamera(interface.IDevice):
         Wait for one or several new camera frames.
 
         `since` specifies the reference point for waiting to acquire `nframes` frames;
-        can be "lastread"`` (from the last read frame), ``"lastwait"`` (wait for the last successfull :meth:`wait_for_frame` call),
+        can be "lastread"`` (from the last read frame), ``"lastwait"`` (wait for the last successful :meth:`wait_for_frame` call),
         ``"now"`` (from the start of the current call), or ``"start"`` (from the acquisition start, i.e., wait until `nframes` frames have been acquired).
         `timeout` can be either a number, ``None`` (infinite timeout), or a tuple ``(timeout, frame_timeout)``,
         in which case the call times out if the total time exceeds ``timeout``, or a single frame wait exceeds ``frame_timeout``.
@@ -432,7 +432,7 @@ class FrameCounter:
         """
         Reset the counters.
 
-        If ``buffer_size is None``, assume the the buffer is dealocated.
+        If ``buffer_size is None``, assume the the buffer is deallocated.
         Otherwise, it specifies the frame buffer size (in frames).
         """
         self.buffer_size=buffer_size

@@ -32,7 +32,7 @@ def has_methods(widget, methods_sets):
     """
     Chick if the widget has methods from given set.
 
-    `methods_sets` is a list of method sets. The function returns ``True`` iff the widget has at least one method from each of the sets.
+    `methods_sets` is a list of method sets. The function returns ``True`` if the widget has at least one method from each of the sets.
     """
     for ms in methods_sets:
         if not any([hasattr(widget,m) for m in ms]):
@@ -490,7 +490,7 @@ class LabelIndicatorHandler(IIndicatorHandler):
     (by default, use the standard string conversion).
 
     Args:
-        label: widget or value hander used to represent the value (takes string values)
+        label: widget or value handler used to represent the value (takes string values)
         formatter: specifies a way to turn values into string representation;
             can be a widget handler or a widget (its ``repr_func`` method is used to represent its value),
             a function (it takes either a single value argument or two arguments ``name`` and ``value`` and returns string value),
@@ -589,7 +589,7 @@ class GUIValues:
         """Remove the value handler with a given name"""
         del self.handlers[name]
     def get_handler(self, name):
-        """Get the value hander with the given name"""
+        """Get the value handler with the given name"""
         return self.handlers[name]
 
     def __contains__(self, name):
@@ -703,7 +703,7 @@ class GUIValues:
         Get a value or a set of values in a subtree under a given name (all values by default).
 
         Automatically handles complex widgets and sub-names.
-        If `name` refers to a branchm return a :class:`.Dictionary` object containing tree structure of the names.
+        If `name` refers to a branch, return a :class:`.Dictionary` object containing tree structure of the names.
         If supplied, `include` is a container specifies which specifies names (relative to the root) to include in the result; by default, include everything.
         """
         name=name or ""

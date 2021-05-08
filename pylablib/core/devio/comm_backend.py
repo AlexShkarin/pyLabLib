@@ -234,7 +234,7 @@ class IDeviceCommBackend:
     @staticmethod
     def list_resources(desc=False):  # pylint: disable=unused-argument
         """
-        List all availabe resources for this backend.
+        List all available resources for this backend.
 
         If ``desc==False``, return list of connections (usually strings or tuples), which can be used to connect to the device.
         Otherwise, return a list of descriptions, which have more info, but can be backend-dependent.
@@ -1573,7 +1573,7 @@ def list_backend_resources(backend=None, desc=False):
 
 
 
-### Interface for a generic device class employing a coomunication backend ###
+### Interface for a generic device class employing a communication backend ###
 
 class ICommBackendWrapper(interface.IDevice):
     """

@@ -109,7 +109,7 @@ def get_imported_modules(module, explicit=False):
 
 def get_reload_order(modules):
     """
-    Find reload order for modules which respects dependencies (a module is loaded before its dependants).
+    Find reload order for modules which respects dependencies (a module is loaded before its dependents).
     
     `modules` is a dict ``{name: module}``.
     
@@ -162,7 +162,7 @@ def get_library_path():
     """
     module_path=sys.modules[__name__].__file__
     module_path=file_utils.normalize_path(module_path)
-    return os.path.join(*file_utils.fullsplit(module_path)[:-3])
+    return os.path.join(*file_utils.fullsplit(module_path)[:-3])  # pylint: disable=no-value-for-parameter
 
 
 def get_library_name():

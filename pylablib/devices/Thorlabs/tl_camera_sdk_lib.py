@@ -1,3 +1,5 @@
+# pylint: disable=wrong-spelling-in-comment
+
 from . import tl_camera_sdk_defs  # pylint: disable=unused-import
 from .tl_camera_sdk_defs import drtl_error_codes
 from .tl_camera_sdk_defs import define_functions

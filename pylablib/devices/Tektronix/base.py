@@ -352,7 +352,7 @@ class ITektronixScope(SCPI.SCPIDevice):
 
         ``kind`` defines the context.
         It can be ``"acq"`` (number of points acquired),
-        ``"trace"`` (number of points in the source of the read-out trace; can be lower than ``"acq"`` if the data resultion is reduced, or if the source is not a channel data),
+        ``"trace"`` (number of points in the source of the read-out trace; can be lower than ``"acq"`` if the data resolution is reduced, or if the source is not a channel data),
         or ``"send"`` (number of points in the sent waveform; can be lower than ``"trace"`` if :meth:`get_data_pts_range` is used to specify and incomplete range).
         Not all kinds are defined for all scope model (e.g., ``"trace"`` is not defined for TDS2000 series oscilloscopes).
         

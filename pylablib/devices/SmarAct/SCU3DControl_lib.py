@@ -1,3 +1,5 @@
+# pylint: disable=wrong-spelling-in-comment
+
 from ...core.utils import ctypes_wrap
 from .SCU3DControl_defs import Error, drError
 from .SCU3DControl_defs import EConfiguration  # pylint: disable=unused-import

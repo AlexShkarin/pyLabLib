@@ -9,7 +9,7 @@ library_parameters=dictionary.Dictionary()
 @contextlib.contextmanager
 def temp_library_parameters(restore=None):
     """
-    Context manager, which resores library parameters upon exit.
+    Context manager, which restores library parameters upon exit.
 
     If ``rester is not None``, it can specify a list of parameters to be restored (by default, all parameters).
     """

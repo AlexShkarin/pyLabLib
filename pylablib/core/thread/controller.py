@@ -98,7 +98,7 @@ class QThreadControllerThread(QtCore.QThread):
                 self.exec_() # main execution event loop
             finally:
                 self.finalized.emit()
-                self.exec_() # finalizing event loop (exitted after finalizing event is processed)
+                self.exec_() # finalizing event loop (exited after finalizing event is processed)
                 self.controller._kill_poke_timer()
     @Slot()
     def _do_quit(self):
@@ -581,7 +581,7 @@ class QThreadController(QtCore.QObject):
                 and checks whether multicast passes the requirements.
             limit_queue(int): limits the maximal number of scheduled calls
                 (if the multicast is sent while at least `limit_queue` callbacks are already in queue to be executed, ignore it)
-                0 or negative value means no limit (not recommended, as it can unrestrictedly bloat the queue)
+                0 or negative value means no limit (not recommended, as it can increase the queue indefinitely if the multicast rate is high enough)
             call_interrupt: whether the call is an interrupt (call inside any loop, e.g., during waiting or sleeping), or it should be called in the main event loop
             priority(int): subscription priority (higher priority subscribers are called first).
             sid(int): subscription ID (by default, generate a new unique id and return it).
@@ -1117,7 +1117,7 @@ class QMultiRepeatingThread(QThreadController):
         The parameters are the same as for :meth:`add_batch_job`. If any of them are ``None``, don't change them.
         If ``stop==True``, stop the job before changing the parameters;
         otherwise the job is continued with the previous parameters (including cleanup) until it is stopped and restarted.
-        If ``restart==True``, restart the job after changing the parameteres.
+        If ``restart==True``, restart the job after changing the parameters.
         Local call method.
         """
         if name not in self.batch_jobs:
@@ -1278,7 +1278,7 @@ class QTaskThread(QMultiRepeatingThread):
             useful for sending queries during thread finalizing / application shutdown, when it's not guaranteed that the command recipient is running
             (commands already ignore any errors, unless their results are specifically requested);
             useful for synchronous commands in finalizing functions, where other threads might already be stopped
-        m: method accessor; directly calles the method corresponding to the command;
+        m: method accessor; directly calls the method corresponding to the command;
             ``ctl.m.comm(*args,**kwarg)`` is equivalent to ``ctl.call_command("comm",*args,**kwargs)``, which is often also equivalent to ``ctl.comm(*args,**kwargs)``;
             for most practical purposes it's the same as directly invoking the class method, but it makes intent more explicit
             (as command methods are usually not called directly from other threads), and it doesn't invoke warning about calling method instead of command from another thread.
@@ -1484,7 +1484,7 @@ class QTaskThread(QMultiRepeatingThread):
                 by default, create a new call queue scheduler with the given `limit_queue`, `on_full_queue` and `add_call_info` arguments.
             limit_queue(int): limits the maximal number of scheduled calls
                 (if the multicast is sent while at least `limit_queue` callbacks are already in queue to be executed, ignore it)
-                0 or negative value means no limit (not recommended, as it can unrestrictedly bloat the queue)
+                0 or negative value means no limit (not recommended, as it can increase the queue indefinitely if the multicast rate is high enough)
             on_full_queue: action to be taken if the call can't be scheduled (i.e., :meth:`.QQueueScheduler.can_schedule` returns ``False``);
                 can be ``"skip_current"`` (skip the call which is being scheduled), ``"skip_newest"`` (skip the most recent call; place the current)
                 ``"skip_oldest"`` (skip the oldest call in the queue; place the current),

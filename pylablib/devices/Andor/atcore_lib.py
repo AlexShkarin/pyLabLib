@@ -1,3 +1,5 @@
+# pylint: disable=wrong-spelling-in-comment
+
 from . import atcore_defs
 from .atcore_defs import AT_ERR, drAT_ERR
 from .atcore_defs import define_functions

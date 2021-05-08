@@ -337,7 +337,7 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
         """
         Setup acquisition.
 
-        `mode` can be either ``"snap"`` (since frame or sequency acquisition) or ``"sequence"`` (continuous acquisition).
+        `mode` can be either ``"snap"`` (single frame or a fixed number of frames) or ``"sequence"`` (continuous acquisition).
         `nframes` determines number of frames to acquire in the single mode, or size of the ring buffer in the ``"sequence"`` mode (by default, 100).
         """
         super().setup_acquisition(mode=mode,nframes=nframes)

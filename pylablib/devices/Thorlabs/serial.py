@@ -163,7 +163,7 @@ class MDT69xA(ThorlabsSerialInterface):
         return self._wip.get_voltage(channel=channel)
 
     def get_voltage_range(self):
-        """Get the selected voltage range in Volts (75, 100 or 150)."""
+        """Get the selected voltage range in Volts (75, 100 or 150)"""
         resp=self.ask("%")
         resp=resp.strip()[2:-1].strip()
         return float(resp)

@@ -204,7 +204,7 @@ def sliding_filter(trace, n=1, dec_mode="bin", mode="reflect", cval=0.):
                 - ``'min'`` - leave min point;
                 - ``'max'`` - leave max point;
                 - ``'median'`` - leave median point (works as a median filter).
-        mode (str): Expansion mode. Can be ``'constant'`` (added values are determined by `cval`), ``'nearest'`` (added values are endvalues of the trace),
+        mode (str): Expansion mode. Can be ``'constant'`` (added values are determined by `cval`), ``'nearest'`` (added values are end values of the trace),
             ``'reflect'`` (reflect trace with respect to its endpoint) or ``'wrap'`` (wrap the values from the other size).
         cval (float): If ``mode=='constant'``, determines the expanded values.
     """

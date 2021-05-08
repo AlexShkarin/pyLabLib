@@ -32,7 +32,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
     """
     # All of the following _default_* parameters can be redefined in subclasses
     # Most of these parameters are used to define object attributes, which can be altered individually for different objects (i.e., connections)
-    _default_failsafe_operation_timeout=5. # timeout for an operaton (read/write/ask) in the failsafe mode
+    _default_failsafe_operation_timeout=5. # timeout for an operation (read/write/ask) in the failsafe mode
     _default_backend_timeout=3. # timeout for a single backend operation attempt in the failsafe mode (one operation can be attempted several times)
     _default_retry_delay=5. # delay between retrying an operation (in seconds)
     _default_retry_times=5 # maximal number of operation attempts
@@ -161,7 +161,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
             self.instr.open()
         
     def sleep(self, delay):
-        """Wait for `delay` seconds."""
+        """Wait for `delay` seconds"""
         if delay is not None and delay>0:
             time.sleep(delay)
     
@@ -265,7 +265,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
     
     _id_comm="*IDN?"
     def get_id(self, timeout=None):
-        """Get the device IDN. (query SCPI ``'*IDN?'`` command)."""
+        """Get the device IDN. (query SCPI ``'*IDN?'`` command)"""
         return self.ask(self._id_comm,timeout=timeout) if self._id_comm else None
     _reset_comm="*RST"
     def reset(self):

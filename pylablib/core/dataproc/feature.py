@@ -206,8 +206,8 @@ def find_local_extrema(wf, region_width=3, kind="max", min_distance=None):
     `kind` can be ``"min"`` or ``"max"`` and determines the kind of the extrema. 
     Local minima (maxima) are defined as points which are smaller (greater) than all other points in the region of width `region_width` around it.
     `region_width` is always round up to an odd integer.
-    `min_distance` defines the minimal distance between the exterma (``region_width//2`` by default).
-    If there are several exterma within `min_distance`, their positions are averaged together.
+    `min_distance` defines the minimal distance between the extrema (``region_width//2`` by default).
+    If there are several extrema within `min_distance`, their positions are averaged together.
     """
     if np.ndim(wf)!=1:
         raise ValueError("function only works with 1D arrays")

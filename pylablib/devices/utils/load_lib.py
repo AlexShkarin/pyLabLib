@@ -64,7 +64,7 @@ def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, depe
         check_order(str): determines the order in which possible combinations of names and locations are looped over;
             can be ``"location"`` (loop over locations, and for each location loop over names), ``"name"``  (loop over names, and for each name loop over locations),
             or a list of tuples ``[(loc,name)]`` specifying order of checking
-            (in the latter case, `name` and `location` arguments are ignored, except for generating error mesage).
+            (in the latter case, `name` and `location` arguments are ignored, except for generating error message).
         return_location(bool): if ``True``, return a tuple ``(dll, location, folder)`` instead of a single dll.
     """
     if platform.system()!="Windows":
@@ -199,7 +199,7 @@ class LibraryController:
         """
         Mark device closing.
         
-        Return tuple ``(close_result, uninit_result)`` with the results of the closing and the shotdown.
+        Return tuple ``(close_result, uninit_result)`` with the results of the closing and the shutdown.
         If library does not need to be shut down yet, set ``uninit_result=None``
         """
         with self.lock:
@@ -228,6 +228,6 @@ class LibraryController:
             if opid is not None:
                 self.close(opid)
     def shutdown(self):
-        """Close all opeend connections and shutdown the library"""
+        """Close all opened connections and shutdown the library"""
         for opid in list(self.opened):
             self.close(opid)

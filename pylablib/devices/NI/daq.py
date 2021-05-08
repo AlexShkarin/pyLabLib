@@ -134,7 +134,7 @@ class NIDAQ(interface.IDevice):
         return self.ai_task is not None
     @reraise
     def reset(self):
-        """Reset the device. All channels will be removed."""
+        """Reset the device. All channels will be removed"""
         self.close()
         self.dev.reset_device()
         self.open()
@@ -205,7 +205,7 @@ class NIDAQ(interface.IDevice):
         self.ai_task.export_signals.export_signal(nidaqmx.constants.Signal.SAMPLE_CLOCK,terminal)
     @reraise
     def get_export_clock_terminal(self):
-        """Return terminal which outputs system clock (``None`` if none is connected)."""
+        """Return terminal which outputs system clock (``None`` if none is connected)"""
         if not self.ai_channels:
             return None
         term=self.ai_task.export_signals.samp_clk_output_term
@@ -549,10 +549,10 @@ class NIDAQ(interface.IDevice):
         self._update_channel_names()
         self.set_voltage_outputs([],[])
     def get_voltage_output_channels(self):
-        """Get names of all analog voltage output channels."""
+        """Get names of all analog voltage output channels"""
         return self.ao_names
     def get_voltage_output_parameters(self):
-        """Get parameters (names, channels and output ranges) of all analog voltage output channels."""
+        """Get parameters (names, channels and output ranges) of all analog voltage output channels"""
         params=[]
         for n in self.ao_names:
             ch=[ch for ch in self.ao_task.ao_channels if ch.name==n][0]

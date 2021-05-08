@@ -1,3 +1,5 @@
+# pylint: disable=spelling
+
 from . import atmcd32d_defs
 from .atmcd32d_defs import DRV_STATUS, drDRV_STATUS
 from .atmcd32d_defs import define_functions
@@ -637,7 +639,7 @@ class AndorSDK2Lib(object):
         return TAmpModeFull(ch,bit_depth,oamp,oamp_kind,hssp,hsspeed_hz,pa,preamp_gain)
     def get_all_amp_modes(self):
         """
-        Get all available pream modes.
+        Get all available preamp modes.
 
         Each preamp mode is characterized by an AD channel index, amplifier index, channel speed (horizontal scan speed) index and preamp gain index.
         Return list of tuples ``(channel, channel_bitdepth, oamp, oamp_kind, hsspeed, hsspeed_MHz, preamp, preamp_gain)``,

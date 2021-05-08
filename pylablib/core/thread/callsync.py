@@ -39,7 +39,7 @@ class QCallResultSynchronizer(QThreadNotifier):
         """
         res=QThreadNotifier.get_value_sync(self,timeout=timeout)
         if res is not None:
-            kind,value=res
+            kind,value=res  # pylint: disable=unpacking-non-sequence
             if kind=="result":
                 return value
             elif kind=="exception":
@@ -198,7 +198,7 @@ class QScheduler:
 
     Two methods are used by the external scheduling routines: :meth:`build_call` to create a :class:`QScheduledCall` with appropriate parameters,
     and :meth:`schedule`, which takes a call and schedules it.
-    The :meth:`schedule` method should return ``True`` if the scheduling was successfull (at least, for now), and ``False`` otherwise.
+    The :meth:`schedule` method should return ``True`` if the scheduling was successful (at least, for now), and ``False`` otherwise.
 
     Args:
         call_info_argname: if not ``None``, supplies a name of a keyword argument
@@ -220,7 +220,7 @@ class QScheduler:
             callback: optional callback to be called when `func` is done
             pass_result (bool): if ``True``, pass `func` result as a single argument to the callback; otherwise, give no arguments
             callback_on_fail (bool): if ``True``, execute the callback on call fail or skip (if it requires an argument, ``None`` is supplied);
-                otherwise, only execute it if the call was successfull
+                otherwise, only execute it if the call was successful
             sync_result: if ``True``, the call has a default result synchronizer; otherwise, no synchronization is made.
         """
         result_synchronizer=None if sync_result else "async"

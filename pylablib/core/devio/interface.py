@@ -86,7 +86,7 @@ class IDevice:
         else:
             return method(*args,**kwargs)
     class NoParameterCaller:
-        """Class to simplify caliing functions without a parameter"""
+        """Class to simplify calling functions without a parameter"""
         def __init__(self, device, kind):
             self.device=device
             self.kind=kind
@@ -252,7 +252,7 @@ class IParameterClass:
     Deals with converting device interface representation and the 'internal' representation (e.g., names used in SCPI commands or integer indices).
     Also responsible for validating the user-passed and device-returned parameters.
 
-    Needs to define to methods: ``__call__`` for coverting user parameters ('alias') into the device parameters ('value')
+    Needs to define to methods: ``__call__`` for converting user parameters ('alias') into the device parameters ('value')
     and :meth:`i` for the opposite conversion.
     In addition, it provides :meth:`using_device` context manager to temporarily change the ``device`` attribute,
     which can be used by some parameter classes for device-dependent conversions.
@@ -293,7 +293,7 @@ class IParameterClass:
 
 class ICheckingParameterClass(IParameterClass):
     """
-    Parameter class which separately handles checking and coversion.
+    Parameter class which separately handles checking and conversion.
 
     Specifies six methods: :meth:`check_value`, :meth:`to_alias` and ``_value_error_str`` for handling value-to-alias conversion,
     and :meth:`check_alias`, :meth:`to_value` and ``_alias_error_str`` for handling alias-to-value conversion.
@@ -576,9 +576,9 @@ def use_parameters(*args, **kwargs):
     """
     Wrapper to indicate that a device class method uses device parameter classes.
 
-    The correspnding parameters classes are automatically determined if the argument name matches the parameter class name.
+    The corresponding parameters classes are automatically determined if the argument name matches the parameter class name.
     The parameters classes can also be defined explicitly using keywords arguments ``arg=parameter`` supplied to the wrapper,
-    where ``arg`` is the argument, and ``parameter`` is either a parameter class instance, or a parameter class name (the more preferrable way).
+    where ``arg`` is the argument, and ``parameter`` is either a parameter class instance, or a parameter class name (the more preferable way).
     In addition, an argument ``_returns`` can be used to define the parameter class for the return value;
     it can also be a list or a tuple of parameter classes, indicating that the returned value is also a list or a tuple.
     """

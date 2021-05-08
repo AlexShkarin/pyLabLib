@@ -1,6 +1,6 @@
 """
 Utils for converting variables into standard python objects (lists, dictionaries, strings, etc.) and back (e.g., for a more predictable LAN transfer).
-Provides an extension for pickle for more customized classes (numpy arrays, Datatable, Dictionary).
+Provides an extension for pickle for more customized classes (numpy arrays, Dictionary).
 """
 
 from future.utils import viewitems

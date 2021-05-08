@@ -120,27 +120,27 @@ class Fitter(object):
             self.xarg_name=[xarg_name]
             self.single_xarg=True
     def use_xarg(self):
-        """Return ``True`` if the function requires x arguments."""
+        """Return ``True`` if the function requires x arguments"""
         return len(self.xarg_name)>0
     def set_fixed_parameters(self, fixed_parameters):
-        """Change fixed parameters."""
+        """Change fixed parameters"""
         self.fixed_parameters=dict(fixed_parameters or {})
     def update_fixed_parameters(self, fixed_parameters):
-        """Update the dictionary of fixed parameters."""
+        """Update the dictionary of fixed parameters"""
         self.fixed_parameters.update(fixed_parameters)
     def del_fixed_parameters(self, fixed_parameters):
-        """Remove fixed parameters."""
+        """Remove fixed parameters"""
         for name in fixed_parameters:
             self.fixed_parameters.pop(name,None)
     def set_fit_parameters(self, fit_parameters):
-        """Change fit parameters."""
+        """Change fit parameters"""
         self.fit_parameters=self._prepare_parameters(fit_parameters)
     def update_fit_parameters(self, fit_parameters):
-        """Update the dictionary of fit parameters."""
+        """Update the dictionary of fit parameters"""
         fit_parameters=self._prepare_parameters(fit_parameters)
         self.fit_parameters.update(fit_parameters)
     def del_fit_parameters(self, fit_parameters):
-        """Remove fit parameters."""
+        """Remove fit parameters"""
         for name in fit_parameters:
             self.fit_parameters.pop(name,None)
             
@@ -185,7 +185,7 @@ class Fitter(object):
                 - `params`: a dictionary ``{name: value}`` of the parameters supplied to the function (both fit and fixed).
                 - `bound_func`: the fit function with all the parameters bound (i.e., it only requires x parameters).
                 - `stderr`: a dictionary ``{name: error}`` of standard deviation for fit parameters to the return parameters.
-                    If the fitting routine returns no residuals (usually for a bad or an underconstrained fit), all residuals are set to NaN.
+                    If the fitting routine returns no residuals (usually for a bad or an under-constrained fit), all residuals are set to NaN.
                 - `residual`: either a full array of residuals ``func(x,**params)-y`` (if ``return_residual=='full'``),
                     a mean magnitude of the residuals ``mean(abs(func(x,**params)-y)**2)`` (if ``return_residual==True`` or ``return_residual=='mean'``),
                     or the total residuals including weights ``mean(abs((func(x,**params)-y)*weights)**2)`` (if ``return_residual=='weighted'``).
