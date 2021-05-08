@@ -30,7 +30,7 @@ def _read_cam_frame(f, skip=False):
         f.seek(w*h*2,1)
         return None
 
-class CamReader(object):
+class CamReader:
     """
     Reader class for .cam files.
 
@@ -43,7 +43,6 @@ class CamReader(object):
             otherwise, the first time the length is determined or a large-index frame is accessed can take a long time (all subsequent calls are faster).
     """
     def __init__(self, path, same_size=False):
-        object.__init__(self)
         self.path=file_utils.normalize_path(path)
         self.frame_offsets=[0]
         self.frames_num=None

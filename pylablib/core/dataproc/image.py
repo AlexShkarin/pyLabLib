@@ -65,9 +65,8 @@ def convert_image_indexing(img, src, dst, axes=(0,1)):
         return _flip(img.swapaxes(*axes),axes[0])
     
 
-class ROI(object):
+class ROI:
     def __init__(self, imin=0, imax=None, jmin=0, jmax=None):
-        object.__init__(self)
         self.imin=imin
         self.imax=imax
         self.jmin=jmin

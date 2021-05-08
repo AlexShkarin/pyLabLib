@@ -105,10 +105,9 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
         return TDeviceInfo(vendor,model,serial_number,camera_version)
 
 
-    class Property(object):
+    class Property:
         """Camera property handler"""
         def __init__(self, cam_handle, name, pid, vmin, vmax, step, default, unit):
-            object.__init__(self)
             self.cam_handle=cam_handle
             self.name=name
             self.pid=pid

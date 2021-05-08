@@ -130,9 +130,8 @@ class ScriptThread(controller.QTaskThread):
         except KeyError:
             pass
     
-    class MonitoredSignal(object): # TODO: signal -> multicast; put in separate class?
+    class MonitoredSignal: # TODO: signal -> multicast; put in separate class?
         def __init__(self, uid):
-            object.__init__(self)
             self.uid=uid
             self.messages=[]
             self.paused=True

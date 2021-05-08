@@ -148,7 +148,7 @@ def relative_path(a, b, check_paths=True):
 
 
 ### Temp file ###
-class TempFile(object):
+class TempFile:
     """
     Temporary file context manager.
     

@@ -17,7 +17,7 @@ library_parameters.update({"fileio/loadfile/dict/inline_out_type":"pandas"})
 ##### File formats #####
 
 
-class IInputFileFormat(object):
+class IInputFileFormat:
     """
     Generic class for an input file format.
     

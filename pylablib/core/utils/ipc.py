@@ -13,7 +13,7 @@ import numpy as np
 from . import strpack
 
 
-class IIPCChannel(object):
+class IIPCChannel:
     """
     Generic IPC channel interface
     """
@@ -138,7 +138,7 @@ class SharedMemIPCChannel(PipeIPCChannel):
 
 
 TShmemVarDesc=collections.namedtuple("TShmemVarDesc",["offset","size","kind","fixed_size"])
-class SharedMemIPCTable(object):
+class SharedMemIPCTable:
     """
     Shared memory table for exchanging shared variables between processes.
 
@@ -147,7 +147,6 @@ class SharedMemIPCTable(object):
     """
     _default_array_size=2**24
     def __init__(self, pipe_conn=None, arr=None, arr_size=None, lock=True):
-        object.__init__(self)
         self.pipe=PipeIPCChannel(pipe_conn)
         if arr is None:
             self.arr_size=arr_size+4 or self._default_array_size

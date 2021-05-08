@@ -42,7 +42,7 @@ def get_local_hostname():
     """Get a local host name"""
     return socket.gethostbyname_ex(socket.gethostname())[0]
 
-class ClientSocket(object):
+class ClientSocket:
     """
     A client socket (used to connect to a server socket).
     
@@ -71,7 +71,6 @@ class ClientSocket(object):
         funcargparse.check_parameter_range(send_method,"send_method",{"fixedlen","decllen"})
         funcargparse.check_parameter_range(recv_method,"recv_method",{"fixedlen","decllen"})
         funcargparse.check_parameter_range(datatype,"datatype",{"auto","str","bytes"})
-        object.__init__(self)
         self.nodelay=nodelay
         self.sock=sock or socket.socket(socket.AF_INET,socket.SOCK_STREAM)
         if self.nodelay:

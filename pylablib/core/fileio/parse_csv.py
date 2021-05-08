@@ -146,7 +146,7 @@ def _make_empty_column(dtype):
     else:
         return _try_convert_column([],dtype,min_dtype=dtype)[0]
 
-class ChunksAccumulator(object):
+class ChunksAccumulator:
     """
     Class for accumulating data chunks into a single array.
     
@@ -160,7 +160,6 @@ class ChunksAccumulator(object):
         trim_rows: if ``True`` and the row length is larger than expected, drop extra entries; otherwise, treat the row as corrupted
     """
     def __init__(self, dtype="numeric", ignore_corrupted_lines=True, trim_rows=False):
-        object.__init__(self)
         self.dtype=dtype
         self.row_size=len(dtype) if funcargparse.is_sequence(dtype,"builtin;nostring") else None
         self.min_dtype=None if self.row_size is None else ["int"]*self.row_size

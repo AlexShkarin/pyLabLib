@@ -152,7 +152,7 @@ def translate_string_filter(filt, syntax, match_case=True, default=False):
     else:
         return filt
 
-class StringFilter(object):
+class StringFilter:
     """
     String filter function.
     
@@ -165,7 +165,6 @@ class StringFilter(object):
         match_case (bool): Determines whether filter ignores case when matching.
     """
     def __init__(self, include=None, exclude=None, syntax="re", match_case=False):
-        object.__init__(self)
         self.include=translate_string_filter(include,syntax,match_case=match_case,default=True)
         self.exclude=translate_string_filter(exclude,syntax,match_case=match_case,default=False)
     def __call__(self, s):
@@ -200,12 +199,10 @@ def filter_string_list(l, filt):
 
 ##### Conversion routines #####
 
-class _EmptyString(object):
+class _EmptyString:
     """
     Dummy object to represent an empty string for conversion purposes.
     """
-    def __init__(self):
-        object.__init__(self)
     def __str__(self):
         return ""
     def __repr__(self):

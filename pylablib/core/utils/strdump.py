@@ -10,7 +10,7 @@ import collections
 
 import numpy as np
 
-class StrDumper(object):
+class StrDumper:
     """
     Class for dumping and loading an object.
     
@@ -18,7 +18,6 @@ class StrDumper(object):
     conversion from complex classes (such as :class:`.Dictionary`) to simple built-in classes (such as :class:`dict` or :class:`str`).
     """
     def __init__(self):
-        object.__init__(self)
         self._classes={}
         self.add_class(tuple,name="t",loadf=lambda t: tuple(self.load(v) for v in t)) # to distinguish from packed value tuples
     

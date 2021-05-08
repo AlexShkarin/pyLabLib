@@ -48,7 +48,7 @@ class QThreadNotifier(notifier.ISkippableNotifier):
         return self.get_value()
 
 
-class QMultiThreadNotifier(object):
+class QMultiThreadNotifier:
     """
     Wait-notify thread synchronizer that can be used for multiple threads and called multiple times.
 
@@ -57,7 +57,6 @@ class QMultiThreadNotifier(object):
     The wait functions have an option to wait until the counter reaches the specific counter value (usually, 1 above the last wait call).
     """
     def __init__(self):
-        object.__init__(self)
         self._lock=threading.Lock()
         self._cnt=0
         self._failed=False

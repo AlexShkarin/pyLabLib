@@ -43,7 +43,7 @@ def errcheck(passing=None):
 AT_pWC=ctypes.c_wchar_p
 AT_H=atcore_defs.AT_H
 
-class AndorSDK3Lib(object):
+class AndorSDK3Lib:
     def __init__(self):
         self._initialized=False
 

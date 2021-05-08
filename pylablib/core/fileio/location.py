@@ -130,7 +130,7 @@ class LocationName:
 ##### Location file #####
 
 _default_file_modes={"r":("read","text"),"rb":("read","binary"),"w":("write","text"),"wb":("write","binary"),"a":("append","text"),"ab":("append","binary")}
-class LocationFile(object):
+class LocationFile:
     """
     A file at a location.
     
@@ -147,7 +147,6 @@ class LocationFile(object):
         opened: Whether the file is currently opened.
     """
     def __init__(self, loc, name=None):
-        object.__init__(self)
         self.loc=loc
         self.name=LocationName.from_object(name)
         self.opened=False
@@ -189,7 +188,7 @@ class LocationFile(object):
 
 ##### Data location #####
 
-class IDataLocation(object):
+class IDataLocation:
     """
     Generic location.
     """

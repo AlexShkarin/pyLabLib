@@ -13,7 +13,7 @@ import numpy as np
 import scipy.optimize
 
 
-class Fitter(object):
+class Fitter:
     """
     Fitter object.
     
@@ -41,7 +41,6 @@ class Fitter(object):
             in which case it's interpreted as a weights matrix (which matrix-multiplies residuals before they are squared).
     """
     def __init__(self, func, xarg_name=None, fit_parameters=None, fixed_parameters=None, scale=None, limits=None, weights=None):
-        object.__init__(self)
         self.func=callable_func.to_callable(func)
         self.set_xarg_name(xarg_name or [])
         self.set_fixed_parameters(fixed_parameters)

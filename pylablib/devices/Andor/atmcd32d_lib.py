@@ -49,7 +49,7 @@ class CAndorCapabilities(atmcd32d_defs.CAndorCapabilities):
 
 TAmpModeSimple=collections.namedtuple("TAmpModeSimple",["channel","oamp","hsspeed","preamp"])
 TAmpModeFull=collections.namedtuple("TAmpModeFull",["channel","channel_bitdepth","oamp","oamp_kind","hsspeed","hsspeed_MHz","preamp","preamp_gain"])
-class AndorSDK2Lib(object):
+class AndorSDK2Lib:
     def __init__(self):
         self._initialized=False
 

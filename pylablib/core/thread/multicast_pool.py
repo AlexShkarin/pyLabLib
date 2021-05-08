@@ -22,7 +22,7 @@ def _match_pattern_list(lst, v):
             return True
     return False
 TMulticast=collections.namedtuple("TMulticast",["src","tag","value"])
-class MulticastPool(object):
+class MulticastPool:
     """
     Multicast dispatcher (somewhat similar in functionality to Qt signals).
 
@@ -32,7 +32,6 @@ class MulticastPool(object):
     If a multicast is emitted, it is checked against filters for all subscribers, and the passing ones are then called.
     """
     def __init__(self):
-        object.__init__(self)
         self._pool=observer_pool.ObserverPool()
         self._schedulers={}
 

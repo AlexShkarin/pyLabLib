@@ -4,7 +4,7 @@ import time
 import os
 
 
-class TableStreamFile(object):
+class TableStreamFile:
     """
     Expanding table file.
 
@@ -20,7 +20,6 @@ class TableStreamFile(object):
         add_timestamp (bool): If ``True``, add the UNIX timestamp in the beginning of each line (columns and format are expanded accordingly)
     """
     def __init__(self, path, columns=None, delimiter="\t", fmt=None, add_timestamp=False):
-        object.__init__(self)
         self.path=path
         self.delimiter=delimiter
         self.columns=columns

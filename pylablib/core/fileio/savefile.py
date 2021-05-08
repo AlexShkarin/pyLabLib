@@ -34,7 +34,7 @@ def _table_row_iterator(value):
 
 ##### FILE FORMAT #####
 
-class IOutputFileFormat(object):
+class IOutputFileFormat:
     """
     Generic class for an output file format.
     
@@ -42,7 +42,6 @@ class IOutputFileFormat(object):
         format_name (str): The name of the format (to be defined in subclasses).
     """
     def __init__(self, format_name):
-        object.__init__(self)
         self.format_name=format_name
     
     def write_file(self, location_file, to_save):

@@ -209,7 +209,7 @@ def merge(ts, idx=None, as_array=True):
 
 ##### Limits and ranges #####
 
-class Range(object):
+class Range:
     """
     Single data range.
     
@@ -217,7 +217,6 @@ class Range(object):
     If the range object is ``None``, it's implied that the range is empty
     """
     def __init__(self, start=None, stop=None):
-        object.__init__(self)
         if isinstance(start,(list,tuple)):
             start,stop=start
         self._rng=[start,stop]

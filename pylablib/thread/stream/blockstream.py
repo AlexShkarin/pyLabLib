@@ -202,7 +202,7 @@ class StreamFormerThread(controller.QTaskThread):
     def finalize_task(self):
         self.cleanup()
 
-    class ChannelQueue(object):
+    class ChannelQueue:
         """
         Queue for a single channel.
 
@@ -210,7 +210,6 @@ class StreamFormerThread(controller.QTaskThread):
         For arguments, see :meth:`.StreamFormerThread.add_channel`.
         """
         def __init__(self, func=None, max_queue_len=10, required="auto", background=False, enabled=True, fill_on="started", latching=True, expand_list=False, pure_func=True, initial=None):
-            object.__init__(self)
             funcargparse.check_parameter_range(fill_on,"fill_on",{"started","completed"})
             self.func=func
             self.queue=collections.deque()

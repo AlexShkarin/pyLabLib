@@ -12,7 +12,7 @@ from types import MethodType
 
 ### Function arguments introspection ###
 
-class FunctionSignature(object):
+class FunctionSignature:
     """
     Description of a function signature, including name, argument names, default values, names of varg and kwarg arguments, class and object (for methods) and docstring.
     
@@ -353,14 +353,12 @@ def delattr_call(obj, attr_name, *args, **vargs):
 
 ### Universal wrappers for object calls (includes methods, attributes and properties) ###
 
-class IObjectCall(object):
+class IObjectCall:
     """
     Universal interface for object method call (makes methods, attributes and properties look like methods).
     
     Should be called with an object as a first argument.
     """
-    def __init__(self):
-        object.__init__(self)
     def __call__(self, obj, *args, **vargs):
         raise NotImplementedError("IEventCallback.__call__")
     
@@ -423,14 +421,12 @@ class AttrObjectCall(IObjectCall):
 
 ### Universal interfaces for object properties (includes methods, attributes and properties) ###
 
-class IObjectProperty(object):
+class IObjectProperty:
     """
     Universal interface for an object property (makes methods, attributes and properties look like properties).
     
     Can be used to get, set or remove a property.
     """
-    def __init__(self):
-        object.__init__(self)
     def __call__(self, obj, *args):
         if len(args)==0:
             return self.get(obj)

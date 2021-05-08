@@ -75,7 +75,7 @@ def limit_to_range(x, min_val=None, max_val=None, default=0):
     return sorted([min_val,x,max_val])[1] if x is not None else (max_val+min_val)/2.
 
 
-class infinite_list(object):
+class infinite_list:
     """
     Mimics the behavior of the usual list, but is infinite and immutable.
     
@@ -87,7 +87,6 @@ class infinite_list(object):
         step: List step. 
     """
     def __init__(self, start=0, step=1):
-        object.__init__(self)
         self.start=start
         self.step=step
     def __len__(self):
@@ -126,9 +125,8 @@ class infinite_list(object):
         else:
             return ((value-self.start)*self.step>=0) and ((value-self.start)%self.step==0)
         
-    class counter(object):
+    class counter:
         def __init__(self, lst):
-            object.__init__(self)
             self.lst=lst
             self.idx=0
         def __iter__(self):

@@ -1546,14 +1546,13 @@ class QTaskThread(QMultiRepeatingThread):
         else:
             return synchronizer
 
-    class CommandAccess(object):
+    class CommandAccess:
         """
         Accessor object designed to simplify command syntax.
 
         Automatically created by the thread, so doesn't need to be invoked externally.
         """
         def __init__(self, parent, sync, direct=False, timeout=None, safe=False, ignore_errors=False):
-            object.__init__(self)
             self.parent=parent
             self.sync=sync
             self.direct=direct

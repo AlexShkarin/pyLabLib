@@ -1,6 +1,6 @@
 import threading
 
-class ISkippableNotifier(object):
+class ISkippableNotifier:
     """
     Generic skippable notifier.
 
@@ -12,7 +12,6 @@ class ISkippableNotifier(object):
             (if :meth:`notify` is called before :meth:`wait`, neither methods are actually called).
     """
     def __init__(self, skippable=False):
-        object.__init__(self)
         self._lock=threading.Lock()
         self._waiting="init"
         self._notifying="init"

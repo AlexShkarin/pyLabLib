@@ -13,7 +13,7 @@ class LimitError(ArithmeticError):
         if hb==None:
             hb="+Inf"
         return "value {0} is out of limits ({1}, {2})".format(self.value, lb,hb)
-class NumberLimit(object):
+class NumberLimit:
     """
     Number limiter, which checks validity of user inputs.
 
@@ -28,7 +28,6 @@ class NumberLimit(object):
         value_type (str): determines value type coercion; can be ``None`` (do nothing, only check limits), ``"float"`` (cast to float), or ``"int"`` (cast to integer).
     """
     def __init__(self, lower_limit=None, upper_limit=None, action="coerce", value_type=None):
-        object.__init__(self)
         if not value_type in [None,"float","int"]:
             raise ValueError("unrecognized value type: {0}".format(value_type))
         self.value_type=value_type

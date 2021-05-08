@@ -207,14 +207,13 @@ class DeviceThread(controller.QTaskThread):
         if self.open_device():
             return getattr(self.device,name)(*args,**kwargs)
         return None
-    class DeviceMethodAccessor(object):
+    class DeviceMethodAccessor:
         """
         Accessor object designed to simplify calling device commands.
 
         Automatically created by the thread, so doesn't need to be invoked externally.
         """
         def __init__(self, parent, ignore_errors=False):
-            object.__init__(self)
             self.parent=parent
             self.ignore_errors=ignore_errors
             self._calls={}

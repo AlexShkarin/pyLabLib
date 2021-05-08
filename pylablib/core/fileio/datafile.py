@@ -4,7 +4,7 @@ import os
 import datetime
 
 
-class DataFile(object):
+class DataFile:
     """
     Describes a single datafile.
     
@@ -17,7 +17,6 @@ class DataFile(object):
         comments (list): all the comments excluding the ones containing props
     """
     def __init__(self, data, filepath=None, filetype=None, creation_time=None, comments=None, props=None):
-        object.__init__(self)
         self.data=data
         if filepath is not None:
             self.filepath=os.path.abspath(filepath)

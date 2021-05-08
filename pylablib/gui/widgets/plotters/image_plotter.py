@@ -209,9 +209,8 @@ class ImagePlotter(QtWidgets.QWidget):
         super().__init__(parent)
         self.ctl=None
 
-    class Rectangle(object):
+    class Rectangle:
         def __init__(self, rect, center=None, size=None):
-            object.__init__(self)
             self.rect=rect
             self.center=center or (0,0)
             self.size=size or (0,0)

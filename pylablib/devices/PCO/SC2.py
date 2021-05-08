@@ -322,10 +322,9 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         return bool(lib.PCO_ForceTrigger(self.handle))
 
     ### Acquisition controls ###
-    class Buffer(object):
+    class Buffer:
         """Single frame buffer object, which controls setup, cleanup, and synchronization"""
         def __init__(self, size, metadata_size=0):
-            object.__init__(self)
             self.buff=ctypes.create_string_buffer(size)
             self.event=lib.CreateEvent()
             self.size=size
