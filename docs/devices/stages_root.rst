@@ -1,10 +1,9 @@
 .. _stages_root:
 
-.. note::
-    General stage communication concepts are described on the corresponding :ref:`page <stages_basics>`
-
 Stages
 ======================================
+
+Basic concepts are described at the :ref:`stages communication page <stages_basics>`.
 
 Currently supported stages:
 

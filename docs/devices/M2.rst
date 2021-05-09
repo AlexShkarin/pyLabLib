@@ -15,6 +15,18 @@ Software requirements
 
 The device provides a bare network interface, so no additional software is required. However, the device and the local network need to be appropriately configured, such that the PC is and the laser are in the same local network and have static IPs.
 
+In order to access some advanced features, you will need a ``websocket-client`` package, which is not installed with pylablib by default. You can obtain it from PyPi either separately as
+
+.. code-block:: none
+
+    pip install websocket-client
+
+or with the expanded pylablib version
+
+.. code-block:: none
+
+    pip install pylablib[devio-full]
+
 
 Connection
 -----------------------

@@ -13,7 +13,17 @@ The main daq class is :class:`pylablib.devices.NI.NIDAQ<.NI.daq.NIDAQ>`.
 Software requirements
 -----------------------
 
-This interface uses NI DAQmx library, which is freely available on the `National Instruments website <https://www.ni.com/en-us/support/downloads/drivers/download.ni-daqmx.html>`__. Additionally, it needs `python-nidaqmx <https://nidaqmx-python.readthedocs.io/en/latest/>`__ package (not to be confused with pydaqmx), which is automatically installed, if pylablib is installed from PyPi.
+This interface uses NI DAQmx library, which is freely available on the `National Instruments website <https://www.ni.com/en-us/support/downloads/drivers/download.ni-daqmx.html>`__. Additionally, it needs `python-nidaqmx <https://nidaqmx-python.readthedocs.io/en/latest/>`__ package (not to be confused with pydaqmx). It is not automatically installed with the base version of pylablib, and can be obtained from PyPi either separately as
+
+.. code-block:: none
+
+    pip install nidaqmx
+
+or with the expanded pylablib version
+
+.. code-block:: none
+
+    pip install pylablib[devio-full]
 
 
 Connection

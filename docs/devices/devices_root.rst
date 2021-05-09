@@ -3,8 +3,7 @@
 Devices overview
 ======================================
 
-.. note::
-    General device communication concepts are described on the corresponding :ref:`page <devices_basics>`.
+Basic concepts are described at the :ref:`general device communication page <devices_basics>`.
 
 Currently supported devices:
 

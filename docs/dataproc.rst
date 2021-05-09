@@ -1,13 +1,11 @@
 .. _dataproc:
 
-=========================
 Data processing utilities
 =========================
 
 
--------
 Fitting
--------
+-------------------------
 
 Class :class:`.fitting.Fitter` is a user-friendly wrapper around :func:`scipy.optimize.least_squares` routine. Dealing with fitting is made more convenient in a couple of ways:
 

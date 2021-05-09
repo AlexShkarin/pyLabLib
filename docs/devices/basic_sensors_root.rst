@@ -1,10 +1,9 @@
 .. _basic_sensors_root:
 
-.. note::
-    Basic sensors communication concepts are described on the corresponding :ref:`page <basic_sensors_basics>`
-
 Basic sensors
 ======================================
+
+Basic concepts are described at the :ref:`basic sensors communication page <basic_sensors_basics>`.
 
 Currently supported sensors:
     

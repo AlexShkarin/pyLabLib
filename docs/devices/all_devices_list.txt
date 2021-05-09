@@ -1,8 +1,8 @@
-- :ref:`Cameras <cameras_root>`
+- :ref:`Cameras <cameras_basics>`
     .. include:: cameras_list.txt
-- :ref:`Stages <stages_root>`
+- :ref:`Stages <stages_basics>`
     .. include:: stages_list.txt
-- :ref:`Basic sensors <basic_sensors_root>`
+- :ref:`Basic sensors <basic_sensors_basics>`
     .. include:: basic_sensors_list.txt
 - :ref:`Basic lasers <basic_lasers>`
     - :ref:`Lighthouse Photonics SproutG <basic_lasers_lp_sprout>`

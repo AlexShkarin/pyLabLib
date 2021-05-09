@@ -1,10 +1,9 @@
 .. _cameras_root:
 
-.. note::
-    General camera communication concepts are described on the corresponding :ref:`page <cameras_basics>`
-
 Cameras
 ======================================
+
+Basic concepts are described at the :ref:`cameras communication page <cameras_basics>`.
 
 Currently supported cameras:
 

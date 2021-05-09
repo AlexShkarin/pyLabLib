@@ -129,13 +129,19 @@ In addition, its default settings are a bit different: the column separator is a
 Note that currently it operates only with simple flat tables and does not support advanced pandas features such as index or multi-index. If these are required, you can use :func:`.savefile.save_csv_desc` and :func:`.loadfile.load_csv_desc`. Similarly to :func:`.savefile.save_bin_desc` and :func:`.loadfile.load_bin_desc`, it saves a dictionary containing additional description; however, the table is inlined by default, so only one file is generated::
 
     >> table = pd.DataFrame({ "C1":np.arange(3), "C2":[(i**2,i**3) for i in range(3)] }, index=np.arange(3)+10)
-    >> table  # the second columns contains tuples
+    >> table  # non-trivial index colum
         C1      C2
     10   0  (0, 0)
     11   1  (1, 1)
     12   2  (4, 8)
+    >> pll.save_csv(table, "table.csv")
+    >> pll.load_csv("table.csv", dtype="generic")  # index is lost
+        C1      C2
+    0    0  (0, 0)
+    1    1  (1, 1)
+    2    2  (4, 8)
     >> pll.save_csv_desc(table, "table.dat")
-    >> pll.load_csv_desc("table.dat")
+    >> pll.load_csv_desc("table.dat")  # index is preserved (also note that here dtype is "generic" by default)
         C1      C2
     10   0  (0, 0)
     11   1  (1, 1)
