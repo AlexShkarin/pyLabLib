@@ -22,7 +22,7 @@ except ImportError:
 
 def _check_nidaqmx():
     if nidaqmx is None:
-        msg=(   "operation requires Python nidaqmx library. You can install it via PyPi as 'pip install nidaqmx'"
+        msg=(   "operation requires Python nidaqmx library. You can install it via PyPi as 'pip install nidaqmx'. "
                 "If it is installed, check if it imports correctly by running 'import nidaqmx'")
         raise ImportError(msg)
 

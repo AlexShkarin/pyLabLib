@@ -2,7 +2,12 @@
 
 from . import module as module_utils, net, strpack
 
-import rpyc
+try:
+    import rpyc
+except ImportError as err:
+    msg=(   "operation requires Python RPyC library. You can install it via PyPi as 'pip install rpyc'. "
+            "If it is installed, check if it imports correctly by running 'import rpyc'")
+    raise ImportError(msg) from err
 import numpy as np
 
 import importlib
@@ -27,16 +32,24 @@ def _obtain_single(proxy, serv):
 
 
 _numpy_block_size=int(2**20)
-def obtain(proxy, serv=None):
+def obtain(proxy, serv=None, deep=True):
     """
     Obtain a remote netref object by value (i.e., copy it to the local Python instance).
 
     Wrapper around :func:`rpyc.utils.classic.obtain` with some special cases handling.
     `serv` specifies the current remote service. If it is of type :class:`SocketTunnelService`, use its socket tunnel for faster transfer.
+    If ``deep==True`` and ``proxy`` is a container (tuple, list, or dict), run the function recursively for all its sub-elements.
     """
+    if deep and isinstance(proxy,tuple): # tuples are not passed as netrefs, so they need to be checked first
+        return tuple([obtain(v,serv=serv) for v in proxy])
     if not isinstance(proxy,rpyc.BaseNetref):
         return proxy
-    if isinstance(proxy, np.ndarray):
+    if deep:
+        if isinstance(proxy,list):
+            return [obtain(v,serv=serv) for v in proxy]
+        if isinstance(proxy,dict):
+            return {obtain(k,serv=serv):obtain(v,serv=serv) for k,v in proxy.items()}
+    if isinstance(proxy,np.ndarray) or (type(proxy).__name__=="numpy.ndarray" and all([hasattr(proxy,a) for a in ["shape","dtype","tostring","flatten"]])):
         elsize=np.prod(proxy.shape,dtype="u8")
         bytesize=proxy.dtype.itemsize*elsize
         if bytesize>_numpy_block_size:
@@ -61,6 +74,12 @@ def transfer(obj, serv):
     A 'reversed' version of :func:`obtain`.
     """
     return serv.transfer(obj)
+def _get_conn_address(conn, peer=False):
+    """Get connection IP address"""
+    s=socket.fromfd(conn.fileno(),socket.AF_INET,socket.SOCK_STREAM)
+    addr=s.getpeername()[0] if peer else s.getsockname()[0]
+    s.close()
+    return addr
 
 class SocketTunnelService(rpyc.SlaveService):
     """
@@ -127,10 +146,7 @@ class SocketTunnelService(rpyc.SlaveService):
         rpyc.SlaveService.on_connect(self,conn)
         self.peer=conn.root
         if not self.server:
-            s=socket.fromfd(conn.fileno(),socket.AF_INET,socket.SOCK_STREAM)
-            src_addr=s.getsockname()[0]
-            s.close()
-            self._recv_socket(src_addr)
+            self._recv_socket(_get_conn_address(conn))
     def on_disconnect(self, conn):
         try:
             self.tunnel_socket.close()
@@ -148,11 +164,12 @@ class DeviceService(SocketTunnelService):
     def __init__(self, verbose=False):
         SocketTunnelService.__init__(self,server=True)
         self.verbose=verbose
+        self.devices=[]
     def on_connect(self, conn):
         SocketTunnelService.on_connect(self,conn)
         self.devices=[]
         if self.verbose:
-            print("Connected client {}".format(self._conn))
+            print("Connected client {} from {}".format(self._conn,_get_conn_address(self._conn,peer=True)))
     def on_disconnect(self, conn):
         for dev in self.devices:
             try:
@@ -161,30 +178,31 @@ class DeviceService(SocketTunnelService):
                 pass
         self.devices=[]
         if self.verbose:
-            print("Disconnected client {}".format(self._conn))
+            print("Disconnected client {} from {}".format(self._conn,_get_conn_address(self._conn,peer=True)))
         SocketTunnelService.on_disconnect(self,conn)
-    def get_device_class(self, module, cls):
+    def get_device_class(self, cls):
         """
         Get remote device class.
 
-        `cls` and `module` are names of the device class and the containing module
-        (for module name the ``"pylablib.devices"`` prefix can be omitted)
+        `cls` is the full class name, including the module within ``pylablib.devices``
+        (e.g., ``Attocube.ANC300``).
         """
+        module,cls=cls.rsplit(".",maxsplit=1)
         try:
             module=importlib.import_module(module)
         except ImportError:
             module=importlib.import_module(module_utils.get_library_name()+".devices."+module)
         module._rpyc=True
         return getattr(module,cls)
-    def get_device(self, module, cls, *args, **kwargs):
+    def get_device(self, cls, *args, **kwargs):
         """
         Connect to a device.
 
-        `cls` and `module` are names of the device class and the containing module
-        (for module name the ``"pylablib.devices"`` prefix can be omitted).
+        `cls` is the full class name, including the module within ``pylablib.devices``
+        (e.g., ``Attocube.ANC300``).
         Stores reference to the connected device and closes it automatically on disconnect.
         """
-        cls=self.get_device_class(module,cls)
+        cls=self.get_device_class(cls)
         dev=cls(*args,**kwargs)
         self.devices.append(dev)
         return dev
@@ -193,12 +211,13 @@ def run_device_service(port=18812, verbose=False):
     """Start :class:`DeviceService` at the given port"""
     rpyc.ThreadedServer(rpyc.utils.helpers.classpartial(DeviceService,verbose=verbose),port=port).start()
 
-def connect_device_service(addr, port=18812, timeout=3, attempts=2):
+def connect_device_service(addr, port=18812, timeout=3, attempts=2, error_on_fail=True):
     """
     Connect to the :class:`DeviceService` running at the given address and port
     
     `timeout` and `attempts` define respectively timeout of a single connection attempt, and the number of attempts
     (RPyC default is 3 seconds timeout and 6 attempts).
+    If ``error_on_fail==True``, raise error if the connection failed; otherwise, return ``None``
     """
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -206,4 +225,6 @@ def connect_device_service(addr, port=18812, timeout=3, attempts=2):
             s=rpyc.SocketStream.connect(addr,port,timeout=timeout,attempts=attempts)
             return rpyc.connect_stream(s,SocketTunnelService).root
         except net.socket.timeout:
+            if error_on_fail:
+                raise
             return None

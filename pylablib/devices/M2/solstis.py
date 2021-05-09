@@ -14,7 +14,7 @@ import threading
 
 def _check_websocket():
     if websocket is None:
-        msg=(   "operation requires Python wbsocket-client library. You can install it via PyPi as 'pip install websocket-client'"
+        msg=(   "operation requires Python websocket-client library. You can install it via PyPi as 'pip install websocket-client'. "
                 "If it is installed, check if it imports correctly by running 'import websocket'")
         raise ImportError(msg)
 

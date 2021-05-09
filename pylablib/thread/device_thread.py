@@ -96,7 +96,7 @@ class DeviceThread(controller.QTaskThread):
         """
         self.device.close()
 
-    def rpyc_devclass(self, module, cls, host=None, port=18812):
+    def rpyc_devclass(self, cls, host=None, port=18812):
         """
         Get a local or remote device class on a different PC via RPyC.
 
@@ -105,23 +105,23 @@ class DeviceThread(controller.QTaskThread):
         one would call ``self.device=self.rpyc_devclass("DeviceModule","DeviceClass",host,port)(*args,**kwargs)``.
 
         Args:
-            module: device class module name
-            cls: device class name
+            cls: full device class name, including the containing module (``pylablib.devices`` can be omitted)
             host: address of the remote host (it should be running RPyC server; see :func:`.rpyc_utils.run_device_service` for details);
                 if ``None`` (default), use local device class, which is exactly the same as simply creating device class without using this function
             port: port of the remote host
         """
         if host is None:
+            module,cls=cls.rsplit(".",maxplit=1)
             try:
                 module=importlib.import_module(module)
             except ImportError:
                 module=importlib.import_module(module_utils.get_library_name()+".devices."+module)
             return getattr(module,cls)
         else:
-            self.rpyc_serv=rpyc_utils.connect_device_service(host,port=port)
+            self.rpyc_serv=rpyc_utils.connect_device_service(host,port=port,error_on_fail=False)
             if not self.rpyc_serv:
                 return None
-            return self.rpyc_serv.get_device_class(module,cls)
+            return self.rpyc_serv.get_device_class(cls)
     def rpyc_obtain(self, obj):
         """
         Obtain (i.e., transfer to the local PC) an object returned by the device.
