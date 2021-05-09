@@ -3,7 +3,6 @@ Tree-like multi-level dictionary with advanced indexing options.
 """
 
 from functools import reduce
-from future.utils import viewitems as viewitems_, viewvalues as viewvalues_
 
 from . import funcargparse, general, strdump
 import re
@@ -397,7 +396,7 @@ class Dictionary:
         """Return the total size of the dictionary (number of nodes)"""
         def _branch_size(branch):
             if self._is_branch(branch):
-                return sum(_branch_size(v) for v in viewvalues_(branch))
+                return sum(_branch_size(v) for v in branch.values())
             else:
                 return 1
         return _branch_size(self._data)
@@ -427,9 +426,9 @@ class Dictionary:
         except KeyError:
             self.__setitem__(path, default)
             return default
-    def viewitems(self, ordered=False, leafs=False, path_kind="split", wrap_branches=True):
+    def items(self, ordered=False, leafs=False, path_kind="split", wrap_branches=True):
         """
-        Analog of ``dict.viewitems()``, by default iterating only over the immediate children of the root.
+        Analog of ``dict.items()``, by default iterating only over the immediate children of the root.
         
         Args:
             ordered (bool): If ``True``, loop over keys in alphabetic order.
@@ -444,18 +443,18 @@ class Dictionary:
             for p,v in self.iternodes(to_visit="leafs",ordered=ordered,include_path=True):
                 yield makep(p),v
         else:
-            items_=sorted(viewitems_(self._data)) if ordered else viewitems_(self._data)
+            items_=sorted(self._data.items()) if ordered else self._data.items()
             if wrap_branches:
                 makev=lambda p,v: (self._fast_build_branch_pointer([p],v) if self._is_branch(v) else v)
             else:
                 makev=lambda p,v: v
             for p,v in items_:
                 yield p,makev(p,v)
-    iteritems=viewitems # for compatibility
-    items=viewitems
-    def viewvalues(self, ordered=False, leafs=False, wrap_branches=True):
+    iteritems=items # for compatibility
+    viewitems=items # for compatibility
+    def values(self, ordered=False, leafs=False, wrap_branches=True):
         """
-        Analog of ``dict.viewvalues()``, iterating only over the immediate children of the root.
+        Analog of ``dict.values()``, iterating only over the immediate children of the root.
 
         Args:
             ordered (bool): If ``True``, loop over keys in alphabetic order.
@@ -465,11 +464,11 @@ class Dictionary:
         """
         for _,v in self.items(ordered=ordered,leafs=leafs,wrap_branches=wrap_branches):
             yield v
-    itervalues=viewvalues
-    values=viewvalues
-    def viewkeys(self, ordered=False, leafs=False, path_kind="split"):
+    viewvalues=values
+    itervalues=values
+    def keys(self, ordered=False, leafs=False, path_kind="split"):
         """
-        Analog of ``dict.viewkeys()``, iterating only over the immediate children of the root.
+        Analog of ``dict.keys()``, iterating only over the immediate children of the root.
         
         Args:
             ordered (bool): If ``True``, loop over keys in alphabetic order.
@@ -484,10 +483,10 @@ class Dictionary:
             ks=sorted(self._data) if ordered else list(self._data)
             for k in ks:
                 yield k
-    iterkeys=viewkeys # for compatibility
+    viewkeys=keys # for compatibility
+    iterkeys=keys # for compatibility
     def __iter__(self):
         return self._data.__iter__()
-    keys=viewkeys
     def paths(self, ordered=False, topdown=False, path_kind="split"):
         """
         Return list of all paths (leafs and nodes).
@@ -508,10 +507,7 @@ class Dictionary:
             yield self
         source=self._data
         path=self.get_path()
-        if ordered:
-            iter_range=sorted(viewitems_(source))
-        else:
-            iter_range=viewitems_(source)
+        iter_range=sorted(source.items()) if ordered else source.items()
         for k,v in iter_range:
             if self._is_branch(v):
                 ptr=self._fast_build_branch_pointer(path+[k],v)
@@ -539,7 +535,7 @@ class Dictionary:
             if topdown and (to_visit in {"branches","all"}):
                 yield (path,br) if include_path else br
             if to_visit in {"leafs","all"}:
-                for k,v in br.viewitems(ordered=ordered,wrap_branches=False):
+                for k,v in br.items(ordered=ordered,wrap_branches=False):
                     if not self._is_branch(v):
                         yield (path+[k],v) if include_path else v
             if (not topdown) and (to_visit in {"branches","all"}):
@@ -554,7 +550,7 @@ class Dictionary:
     __repr__=__str__
     
     def _insert_branch(self, source, dest, overwrite=True, normalize_paths=True):
-        for k,v in viewitems_(source):
+        for k,v in source.items():
             if normalize_paths:
                 k=self._normalize_path(k)
                 if len(k)>1:
@@ -623,7 +619,7 @@ class Dictionary:
     def _deep_copy(leaf):
         if Dictionary._is_branch(leaf):
             res={}
-            for k,v in viewitems_(leaf):
+            for k,v in leaf.items():
                 res[k]=Dictionary._deep_copy(v)
         else:
             res=leaf
@@ -737,7 +733,7 @@ class Dictionary:
         for br in self._iterbranches(topdown=topdown):
             path=br.get_path()
             source=br._data
-            for k,v in viewitems_(source):
+            for k,v in source.items():
                 if self._is_branch(v):
                     if visit_branches:
                         ptr=self._fast_build_branch_pointer(path+[k],v)
@@ -873,7 +869,7 @@ class Dictionary:
 
     def _add_dict(self, d1, d2):
         if self._is_branch(d1):
-            for k,v in viewitems_(d2):
+            for k,v in d2.items():
                 if k in d1:
                     self._add_dict(d1[k],v)
                 else:
@@ -888,7 +884,7 @@ class Dictionary:
             return res, (len(path)==1 and path[0]==wildpath)
         if path[0]==wildkey:
             res={}
-            for k,v in viewitems_(root):
+            for k,v in root.items():
                 mv,succ=self._dfs_pattern(path[1:],v,wildkey,wildpath,match_leaves,wrap_nodes=wrap_nodes)
                 if succ:
                     res[k]=mv
@@ -896,7 +892,7 @@ class Dictionary:
         elif path[0]==wildpath:
             mvd,succd=self._dfs_pattern(path[1:],root,wildkey,wildpath,match_leaves,wrap_nodes=wrap_nodes)
             mvk={}
-            for k,v in viewitems_(root):
+            for k,v in root.items():
                 mv,succ=self._dfs_pattern(path,v,wildkey,wildpath,match_leaves,wrap_nodes=wrap_nodes)
                 if succ:
                     mvk[k]=mv
@@ -928,7 +924,7 @@ class Dictionary:
             return []
         def _get_paths(d):
             if self._is_branch(d):
-                return [ [k]+p for k,v in viewitems_(d) for p in _get_paths(v)]
+                return [ [k]+p for (k,v) in d.items() for p in _get_paths(v)]
             else:
                 return [[]]
         paths=_get_paths(dfs_tree)
@@ -1317,7 +1313,7 @@ class PrefixShortcutTree:
         
         Arguments are the same as in :meth:`PrefixShortcutTree.add_shortcut`.
         """
-        for s,d in viewitems_(shortcuts):
+        for s,d in shortcuts.items():
             self.add_shortcut(s,d,exact=exact)
         return self
     def remove_shortcut(self, source):
@@ -1365,7 +1361,7 @@ class PrefixShortcutTree:
 ## local here means that object is created based only on its immediate children, not on grand children or parents
 class DictionaryNode:
     def __init__(self, **vargs):
-        for name, value in viewitems_(vargs):
+        for name,value in vargs.items():
             setattr(self,name,value)
     def __str__(self):
         return str(self.__dict__)
@@ -1375,7 +1371,7 @@ def _default_object_generator(data, name=None):  # pylint: disable=unused-argume
     return DictionaryNode(**data)
 def dict_to_object_local(data, name=None, object_generator=_default_object_generator):
     obj_dict={}
-    for name,value in viewitems_(data):
+    for name,value in data.items():
         if Dictionary._is_branch(value):
             obj_dict[name]=dict_to_object_local(value,name=name,object_generator=object_generator)
         else:

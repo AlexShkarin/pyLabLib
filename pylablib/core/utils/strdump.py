@@ -3,8 +3,6 @@ Utils for converting variables into standard python objects (lists, dictionaries
 Provides an extension for pickle for more customized classes (numpy arrays, Dictionary).
 """
 
-from future.utils import viewitems
-
 import pickle
 import collections
 
@@ -43,7 +41,7 @@ class StrDumper:
     def _find_cls(self, obj):
         ocls=type(object)
         found=None
-        for n,v in viewitems(self._classes):
+        for n,v in self._classes.items():
             cls=v.cls
             if v.allow_subclass:
                 sat=isinstance(obj,cls)
@@ -64,7 +62,7 @@ class StrDumper:
         elif isinstance(value,list):
             return list(self.dump(v) for v in value)
         elif isinstance(value,dict):
-            return dict([(k,self.dump(v)) for k,v in viewitems(value)])
+            return dict([(k,self.dump(v)) for k,v in value.items()])
         return value
     def dump(self, obj):
         """Convert an object into a dumped value"""
@@ -88,7 +86,7 @@ class StrDumper:
         if isinstance(obj,list):
             return list(self.load(v) for v in obj)
         if isinstance(obj,dict):
-            return dict([(k,self.load(v)) for k,v in viewitems(obj)])
+            return dict([(k,self.load(v)) for k,v in obj.items()])
         return obj
     def load(self, obj):
         """Convert a dumped value into an object"""

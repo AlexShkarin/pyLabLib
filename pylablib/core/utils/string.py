@@ -1,7 +1,6 @@
 """
 String search, manipulation and conversion routines.
 """
-from future.utils import viewvalues
 from .py3 import textstring, as_builtin_bytes, as_str
 
 from . import funcargparse
@@ -381,7 +380,7 @@ def is_convertible(value):
         if isinstance(value,t):
             return all(is_convertible(v) for v in value)
     if isinstance(value,dict):
-        return all(is_convertible(v) for v in viewvalues(value)) and all(is_convertible(v) for v in value) 
+        return all(is_convertible(v) for v in value.values()) and all(is_convertible(v) for v in value) 
     if isinstance(value,np.ndarray) and np.ndim(value)<2:
         return True
     return (value is None)

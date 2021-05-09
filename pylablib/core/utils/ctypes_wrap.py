@@ -382,7 +382,7 @@ class CStructWrapper:
         struct=struct or self._struct()
         if not isinstance(struct,self._struct):
             raise ValueError("source should be of type {}".format(self._struct.__name__))
-        fnames,ftypes=zip(*self._struct._fields_)
+        fnames,_=zip(*self._struct._fields_)
         for f in fnames:
             cv=getattr(struct,f)
             if f in self._conv:

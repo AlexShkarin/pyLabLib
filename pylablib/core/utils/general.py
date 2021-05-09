@@ -3,7 +3,6 @@ Collection of small utilities.
 """
 
 from builtins import input
-from future.utils import viewitems, viewvalues
 
 import time
 import threading
@@ -97,7 +96,7 @@ def map_container(value, func):
     if isinstance(value,list):
         return list(func(v) for v in value)
     if isinstance(value,dict):
-        return dict([(k,func(v)) for k,v in viewitems(value)])
+        return dict([(k,func(v)) for k,v in value.items()])
     raise ValueError("value {} is not a container")
 def as_container(val, t):
     """
@@ -120,7 +119,7 @@ def recursive_map(value, func):
     if isinstance(value,list):
         return list(recursive_map(v,func) for v in value)
     if isinstance(value,dict):
-        return dict([(k,recursive_map(v,func)) for k,v in viewitems(value)])
+        return dict([(k,recursive_map(v,func)) for k,v in value.items()])
     return func(value)
 
 
@@ -129,7 +128,7 @@ def recursive_map(value, func):
 
 def any_item(d):
     """Return arbitrary tuple ``(key, value)`` contained in the dictionary (works both in Python 2 and 3)"""
-    return next(iter(viewitems(d)))
+    return next(iter(d.items()))
 def merge_dicts(*dicts):
     """
     Combine multiple ``dict`` objects together.
@@ -152,16 +151,16 @@ def filter_dict(pred, d, exclude=False):
         return d.copy() if exclude else {}
     pred=to_predicate(pred)
     filtered={}
-    for k,v in viewitems(d):
+    for k,v in d.items():
         if ( (not exclude) and pred(k) ) or ( exclude and not pred(k) ):
             filtered[k]=v
     return filtered
 def map_dict_keys(func, d):
     """Map dictionary keys with `func`"""
-    return dict((func(k),v) for k,v in viewitems(d))
+    return dict((func(k),v) for k,v in d.items())
 def map_dict_values(func, d):
     """Map dictionary values with `func`"""
-    return dict((k,func(v)) for k,v in viewitems(d))
+    return dict((k,func(v)) for k,v in d.items())
 def to_dict(d, default=None):
     """
     Convert a ``dict`` or a ``list`` of pairs or single keys (or mixed) into a ``dict``.
@@ -189,7 +188,7 @@ def to_pairs_list(d, default=None):
     if d is None:
         return []
     if isinstance(d,dict):
-        collection=viewitems(d)
+        collection=d.items()
     else:
         collection=d
     res=[]
@@ -205,7 +204,7 @@ def invert_dict(d, kmap=None):
 
     If `kmap` is supplied, it's a function mapping dictionary values into inverted dictionary keys (identity by default).
     """
-    return dict([(kmap(v),k) for (k,v) in viewitems(d)]) if kmap else dict([(v,k) for (k,v) in viewitems(d)])
+    return dict([(kmap(v),k) for (k,v) in d.items()]) if kmap else dict([(v,k) for (k,v) in d.items()])
 
 
 
@@ -262,7 +261,7 @@ def split_in_groups(key_func, l, continuous=True, max_group_size=None):
         groups={}
         for e in l:
             groups.get(key_func(e),[]).append(e)
-        return list(viewvalues(groups))
+        return list(groups.values())
 def sort_set_by_list(s, l, keep_duplicates=True):
     """
     Convert the set `s` into a list ordered by a list `l`.

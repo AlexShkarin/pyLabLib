@@ -2,7 +2,6 @@
 Utilities for dealing with function, methods and function signatures.
 """
 
-from future.utils import viewitems
 from .py3 import textstring
 
 import inspect
@@ -302,7 +301,7 @@ def call_cut_args(func, *args, **kwargs):
     else:
         cut_kwargs={}
         arg_names=sig.arg_names+sig.kwonly_arg_names
-        for n,v in viewitems(kwargs):
+        for n,v in kwargs.items():
             if n in arg_names:
                 cut_kwargs[n]=v
     max_args_num=sig.max_args_num()

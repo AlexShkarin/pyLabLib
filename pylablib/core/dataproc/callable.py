@@ -1,4 +1,3 @@
-from future.utils import viewitems
 from builtins import zip
 
 from ..utils import functions as function_utils
@@ -28,7 +27,7 @@ class ICallable:
         raise NotImplementedError("ICallable.has_arg")
     def filter_args_dict(self, args):
         """Filter argument names dictionary to leave only the arguments that are used"""
-        return dict((k,v) for (k,v) in viewitems(args) if self.has_arg(k))
+        return dict((k,v) for (k,v) in args.items() if self.has_arg(k))
     def get_mandatory_args(self):
         """Return list of mandatory arguments (these are the ones without default values)"""
         raise NotImplementedError("ICallable.get_mandatory_args")
@@ -264,7 +263,7 @@ class FunctionCallable(ICallable):
         self._masked=set()
         if alias is not None:
             self._masked.update(alias.values())
-            self._rev_alias=dict((v,k) for (k,v) in viewitems(self._alias) if v is not None)
+            self._rev_alias=dict((v,k) for (k,v) in self._alias.items() if v is not None)
         else:
             self._rev_alias=None
     def _apply_alias(self, params):
@@ -289,7 +288,7 @@ class FunctionCallable(ICallable):
         alias=self._alias
         masked=self._masked
         unalias_params={}
-        for k,v in viewitems(params):
+        for k,v in params.items():
             if k in alias:
                 unalias_params[alias[k]]=v
             elif k in masked:
@@ -433,7 +432,7 @@ class MethodCallable(FunctionCallable):
             named_params.update(func._apply_unalias_dict(bound_params))
             self._object_params=[]
             self._named_params={}
-            for n,p in viewitems(named_params):
+            for n,p in named_params.items():
                 if func._is_func_arg(n):
                     self._named_params[n]=p
                 elif hasattr(func._obj,n):

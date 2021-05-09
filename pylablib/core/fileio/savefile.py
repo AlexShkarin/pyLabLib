@@ -2,8 +2,6 @@
 Utilities for writing data files.
 """
 
-from future.utils import viewitems
-
 from . import datafile
 from . import location
 from . import dict_entry
@@ -94,7 +92,7 @@ class ITextOutputFileFormat(IOutputFileFormat):  # pylint: disable=abstract-meth
     def write_props(self, stream, props):
         if self.save_props and len(props)>0:
             self.write_line(stream,"")
-            for name,value in viewitems(props):
+            for name,value in props.items():
                 self.write_line(stream,self.make_prop_line(name,value))
     def write_savetime(self, stream, time):
         if self.save_time:

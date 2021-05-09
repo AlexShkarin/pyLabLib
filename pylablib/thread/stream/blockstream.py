@@ -3,7 +3,6 @@ from ...core.utils import general, funcargparse
 
 import numpy as np
 import collections
-from future.utils import viewitems
 
 
 
@@ -415,7 +414,7 @@ class StreamFormerThread(controller.QTaskThread):
                 row={name:row}
         else:
             row={name:value}
-        for name,value in viewitems(row):
+        for name,value in row.items():
             ch=self.channels[name]
             if not ch.background:
                 _max_queued_before=max(_max_queued_before,ch.queued_len())
@@ -423,7 +422,7 @@ class StreamFormerThread(controller.QTaskThread):
             if not ch.background:
                 _max_queued_after=max(_max_queued_after,ch.queued_len())
         new_rows=None
-        for _,ch in viewitems(self.channels):
+        for _,ch in self.channels.items():
             nready=ch.ready_len()
             if nready==0:
                 new_rows=0
@@ -432,17 +431,17 @@ class StreamFormerThread(controller.QTaskThread):
                 new_rows=nready if new_rows is None else min(new_rows,nready)
         if new_rows is not None and new_rows>0:
             new_columns={}
-            for n,ch in viewitems(self.channels):
+            for n,ch in self.channels.items():
                 new_columns[n]=ch.get(new_rows)
             new_columns=self.prepare_new_data(new_columns)
-            for n,ch in viewitems(new_columns):
+            for n,ch in new_columns.items():
                 self.table[n]+=new_columns[n]
             self._row_cnt+=new_rows
             if self._row_cnt>=self.block_period:
                 self._row_cnt=0
                 self.on_new_block()
         elif _max_queued_after>_max_queued_before:
-            for _,ch in viewitems(self.channels):
+            for _,ch in self.channels.items():
                 chl=ch.queued_len()
                 if chl<_max_queued_after:
                     ch.add_from_func(_max_queued_after-chl)
@@ -467,7 +466,7 @@ class StreamFormerThread(controller.QTaskThread):
         if nrows is None:
             nrows=len(general.any_item(self.table)[1])
         if columns is None:
-            return dict((n,v[:nrows]) for n,v in viewitems(self.table))
+            return dict((n,v[:nrows]) for n,v in self.table.items())
         else:
             return np.column_stack([self.table[c][:nrows] for c in columns])
     def pop_data(self, nrows=None, columns=None):
@@ -480,12 +479,12 @@ class StreamFormerThread(controller.QTaskThread):
             table=self.table
             self.table=dict([(n,[]) for n in table])
             if columns is None:
-                return dict((n,v) for n,v in viewitems(table))
+                return dict((n,v) for n,v in table.items())
             else:
                 return np.column_stack([table[c] for c in columns])
         else:
             res=self.get_data(nrows=nrows,columns=columns)
-            for _,c in viewitems(self.table):
+            for _,c in self.table.items():
                 del c[:nrows]
             return res
 
@@ -495,7 +494,7 @@ class StreamFormerThread(controller.QTaskThread):
     def clear_all(self):
         """Clear everything: table of complete rows and all channel queues"""
         self.table=dict([(n,[]) for n in self.table])
-        for _,ch in viewitems(self.channels):
+        for _,ch in self.channels.items():
             ch.clear()
         self._partial_rows=[]
 
@@ -521,7 +520,7 @@ class StreamFormerThread(controller.QTaskThread):
         Return dictionary ``{name: status}``, where ``status`` is a tuple ``(enabled, queue_len, max_queue_len)``.
         """
         status={}
-        for n,ch in viewitems(self.channels):
+        for n,ch in self.channels.items():
             status[n]=ch.get_status()
         return status
     def get_source_status(self):
@@ -531,6 +530,6 @@ class StreamFormerThread(controller.QTaskThread):
         Return dictionary ``{name: queue_len}``.
         """
         status={}
-        for n,sch in viewitems(self.source_schedulers):
+        for n,sch in self.source_schedulers.items():
             status[n]=sch.get_current_len()
         return status
