@@ -1,6 +1,7 @@
 from . import utils
 from .utils import is_ascending, is_descending, is_ordered, is_linear
 from .utils import get_x_column, get_y_column
+from .utils import sort_by, filter_by, unique_slices
 from .utils import find_closest_arg, find_closest_value, get_range_indices, cut_to_range, cut_out_regions
 from .utils import find_discrete_step, unwrap_mod_data
 from .utils import xy2c, c2xy
@@ -25,7 +26,7 @@ from . import specfunc
 from .specfunc import get_kernel_func, get_window_func
 
 from . import feature as feature_detect
-from .feature import get_baseline_simple, subtract_baseline, find_peaks_cutoff, multi_scale_peakdet, rescale_peak, peaks_sum_func, find_local_extrema, find_state_hysteretic, trigger_hysteretic
+from .feature import get_baseline_simple, subtract_baseline, find_peaks_cutoff, multi_scale_peakdet, rescale_peak, peaks_sum_func, find_local_extrema, latching_trigger
 
 from . import image as image_utils
 from .image import ROI, get_region, get_region_sum

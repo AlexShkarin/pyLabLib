@@ -2,8 +2,6 @@
 Routines for filtering arrays (mostly 1D data).
 """
 
-from __future__ import division
-from builtins import range
 
 from . import fourier
 from .table_wrap import wrap
@@ -23,7 +21,7 @@ def convolve1d(trace, kernel, mode="reflect", cval=0.):
     Convolution filter.
     
     Convolves `trace` with the given `kernel` (1D array). `mode` and `cval` determine how the endpoints are handled.
-    Simply a wrapper around the standard :func:`scipy.ndimage.convolve` that handles complex arguments.
+    Simply a wrapper around the standard :func:`scipy.ndimage.convolve1d` that handles complex arguments.
     """
     trace=np.asarray(trace)
     kernel=np.asarray(kernel)
@@ -31,16 +29,18 @@ def convolve1d(trace, kernel, mode="reflect", cval=0.):
     kernel_complex=np.iscomplexobj(kernel)
     if wf_complex and kernel_complex:
         cval=complex(cval)
-        real_part=ndimage.convolve1d(trace.real, kernel.real, mode=mode, cval=cval.real)-ndimage.convolve1d(trace.imag, kernel.imag, mode=mode, cval=cval.imag)
-        imag_part=ndimage.convolve1d(trace.real, kernel.imag, mode=mode, cval=cval.real)+ndimage.convolve1d(trace.imag, kernel.real, mode=mode, cval=cval.imag)
+        real_part=ndimage.convolve1d(trace.real,kernel.real,mode=mode,cval=cval.real)-ndimage.convolve1d(trace.imag,kernel.imag,mode=mode,cval=cval.imag)
+        imag_part=ndimage.convolve1d(trace.real,kernel.imag,mode=mode,cval=cval.real)+ndimage.convolve1d(trace.imag,kernel.real,mode=mode,cval=cval.imag)
         res=real_part+1j*imag_part
     elif wf_complex:
         cval=complex(cval)
-        res=ndimage.convolve1d(trace.real, kernel, mode=mode, cval=cval.real)+1j*ndimage.convolve1d(trace.imag, kernel, mode=mode, cval=cval.imag)
+        res=ndimage.convolve1d(trace.real,kernel,mode=mode,cval=cval.real)+1j*ndimage.convolve1d(trace.imag,kernel,mode=mode,cval=cval.imag)
     elif kernel_complex:
-        res=ndimage.convolve1d(trace, kernel.real, mode=mode, cval=cval)+1j*ndimage.convolve1d(trace, kernel.imag, mode=mode, cval=cval)
+        trace=trace.astype(np.find_common_type([trace.dtype,float],[]))
+        res=ndimage.convolve1d(trace,kernel.real,mode=mode,cval=cval)+1j*ndimage.convolve1d(trace,kernel.imag,mode=mode,cval=cval)
     else:
-        res=ndimage.convolve1d(trace, kernel, mode=mode, cval=cval)
+        trace=trace.astype(np.find_common_type([trace.dtype,kernel.dtype],[]))
+        res=ndimage.convolve1d(trace,kernel,mode=mode,cval=cval)
     return wrap(trace).array_replaced(res,wrapped=False)
         
 def convolution_filter(a, width=1., kernel="gaussian", kernel_span="auto", mode="reflect", cval=0., kernel_height=None):
@@ -52,7 +52,8 @@ def convolution_filter(a, width=1., kernel="gaussian", kernel_span="auto", mode=
         width (float): kernel width (second parameter to the kernel function).
         kernel: either a string defining the kernel function (see :func:`.specfunc.get_kernel_func` for possible kernels),
             or a function taking 3 arguments ``(pos, width, height)``, where `height` can be ``None`` (assumes normalization by area). 
-        kernel_span: the cutoff for the kernel function. Either an integer (number of points) or ``'auto'``.
+        kernel_span: the cutoff for the kernel function. Either an integer (number of points)
+            or ``'auto'`` (autodetect for ``"gaussian"``, ``"rectangle"`` and ``"exp_decay"``, full trace width for all other kernels).
         mode (str): convolution mode (see :func:`scipy.ndimage.convolve`).
         cval (float): convolution fill value (see :func:`scipy.ndimage.convolve`).
         kernel_height: height parameter to be passed to the kernel function. ``None`` means normalization by area.
@@ -63,22 +64,24 @@ def convolution_filter(a, width=1., kernel="gaussian", kernel_span="auto", mode=
             for i in range(wrapped.shape()[1])],wrapped=False)
     elif wrapped.ndim()!=1:
         raise ValueError("this function accepts only 1D or 2D arrays")
-    if kernel_span=="auto":
-        if kernel=="gaussian":
-            kernel_span=int(np.ceil(width*6))
-        elif kernel=="rectangle":
-            kernel_span=int(np.ceil(width))
-        elif kernel=="exp_decay":
-            kernel_span=int(np.ceil(width*18)) #accuracy of 10^(-6)
-        else:
+    if kernel=="rectangle":
+        width=int(np.ceil(width))
+        kernel_wf=np.ones(width)*(kernel_height or 1)
+    else:
+        if kernel_span=="auto":
+            if kernel=="gaussian":
+                kernel_span=int(np.ceil(width*6))
+            elif kernel=="exp_decay":
+                kernel_span=int(np.ceil(width*18)) #accuracy of 10^(-6)
+            else:
+                kernel_span=len(a)
+        if kernel_span>len(a):
             kernel_span=len(a)
-    if kernel_span>len(a):
-        kernel_span=len(a)
-    kernel=specfunc.get_kernel_func(kernel)
-    kernel_wf=kernel(np.arange(-kernel_span,kernel_span+1.),width,kernel_height) # pylint: disable=invalid-unary-operand-type
+        kernel=specfunc.get_kernel_func(kernel)
+        kernel_wf=kernel(np.arange(-kernel_span,kernel_span+1.),width,kernel_height) # pylint: disable=invalid-unary-operand-type
     if kernel_height is None:
         kernel_wf=kernel_wf/kernel_wf.sum() #normalize kernel; non-normalized kernel might be useful e.g. for low-pass filtering when width is close len(a)
-    return wrap(a).from_array(convolve1d(a, kernel_wf, mode=mode, cval=cval),wrapped=False)
+    return wrap(a).from_array(convolve1d(a,kernel_wf,mode=mode,cval=cval),wrapped=False)
 
 def gaussian_filter(a, width=1., mode="reflect", cval=0.):
     """
@@ -111,7 +114,7 @@ def low_pass_filter(trace, t=1., mode="reflect", cval=0.):
     Works only for 1D arrays.
     """
     expand_size=min(int(np.ceil(t*20)),len(trace))
-    trace=utils.expand_trace(trace, size=expand_size, mode=mode, cval=cval, side="left")
+    trace=utils.pad_trace(trace,pad=(expand_size,0),mode=mode,cval=cval)
     beta=np.exp(np.double(-1.)/np.double(t))
     alpha=np.double(1.)-beta
     filtered_wf=iir_transform.iir_apply_complex(trace,np.array([alpha]),np.array([beta]))
@@ -158,7 +161,7 @@ def sliding_average(a, width=1., mode="reflect", cval=0.):
     
     Equivalent to convolution with a rectangle peak function.
     """
-    return convolution_filter(a, width, kernel="rectangle", mode=mode, cval=cval)
+    return convolution_filter(a,width,kernel="rectangle",mode=mode,cval=cval)
 
 def median_filter(a, width=1, mode="reflect", cval=0.):
     """
@@ -187,41 +190,43 @@ def _sliding_func(trace, filtering_function, width=1, mode="reflect", cval=0.):
         return trace
     l=len(trace)
     width=(int(width)//2)*2+1
-    trace=utils.expand_trace(trace,width//2,mode,cval)
+    trace=utils.pad_trace(trace,pad=width//2,mode=mode,cval=cval)
     return np.array([filtering_function(trace[i-width//2:i+width//2+1]) for i in range(width//2,l+width//2)])
 
-def sliding_filter(trace, n=1, dec_mode="bin", mode="reflect", cval=0.):
+def sliding_filter(trace, n=1, dec="bin", mode="reflect", cval=0.):
     """
     Perform sliding filtering on the data.
     
     Args:
         trace: 1D array-like object.
         n (int): bin width.
-        dec_mode (str):
-            Decimation mode. Can be
+        dec (str): decimation method. Can be
                 - ``'bin'`` or ``'mean'`` - do a binning average;
                 - ``'sum'`` - sum points;
                 - ``'min'`` - leave min point;
                 - ``'max'`` - leave max point;
                 - ``'median'`` - leave median point (works as a median filter).
+                - a function which takes a single 1D array and compresses it into a number
         mode (str): Expansion mode. Can be ``'constant'`` (added values are determined by `cval`), ``'nearest'`` (added values are end values of the trace),
             ``'reflect'`` (reflect trace with respect to its endpoint) or ``'wrap'`` (wrap the values from the other size).
         cval (float): If ``mode=='constant'``, determines the expanded values.
     """
     wrapper=wrap(trace)
     trace=np.asarray(trace)
-    if dec_mode=="bin" or dec_mode=="mean":
+    if dec=="bin" or dec=="mean":
         res=_sliding_func(trace,np.mean,n,mode=mode,cval=cval)
-    elif dec_mode=="sum":
+    elif dec=="sum":
         res=_sliding_func(trace,np.sum,n,mode=mode,cval=cval)
-    elif dec_mode=="min":
+    elif dec=="min":
         res=_sliding_func(trace,np.min,n,mode=mode,cval=cval)
-    elif dec_mode=="max":
+    elif dec=="max":
         res=_sliding_func(trace,np.max,n,mode=mode,cval=cval)
-    elif dec_mode=="median":
+    elif dec=="median":
         res=_sliding_func(trace,np.median,n,mode=mode,cval=cval)
+    elif hasattr(dec,"__call__"):
+        res=_sliding_func(trace,dec,n,mode=mode,cval=cval)
     else:
-        raise ValueError("unrecognized decimation type: {0}".format(dec_mode))
+        raise ValueError("unrecognized decimation method: {0}".format(dec))
     return wrapper.array_replaced(res,wrapped=False)
 
 
@@ -258,97 +263,104 @@ def _decimation_filter(a, decimation_function, width=1, axis=0, mode="drop"):
         return np.append(dec_wf,dec_rest,axis=axis)
         
 
-def decimate(a, n=1, dec_mode="skip", axis=0, mode="drop"):
+def decimate(a, n=1, dec="skip", axis=0, mode="drop"):
     """
     Decimate the data.
     
     Args:
         a: data array.
         n (int): decimation factor.
-        dec_mode (str): decimation mode. Can be
+        dec (str): decimation method. Can be
                 - ``'skip'`` - just leave every n'th point while completely omitting everything else;
                 - ``'bin'`` or ``'mean'`` - do a binning average;
                 - ``'sum'`` - sum points;
                 - ``'min'`` - leave min point;
                 - ``'max'`` - leave max point;
                 - ``'median'`` - leave median point (works as a median filter).
-        axis (int): axis along which to perform the decimation; can also be a tuple, in which case the same decimation is performed along several axes.
+                - a function which takes two arguments (nD numpy array and an axis) and compresses the array along the given axis
+        axis (int): axis along which to perform the decimation; can also be a tuple, in which case the same decimation is performed sequentially along several axes.
         mode (str): determines what to do with the last bin if it's incomplete. Can be either ``'drop'`` (omit the last bin) or ``'leave'`` (keep it).
     """
     if isinstance(axis,tuple):
         result=a
         for ax in axis:
-            result=decimate(result,n=n,dec_mode=dec_mode,axis=ax,mode=mode)
+            result=decimate(result,n=n,dec=dec,axis=ax,mode=mode)
         return result
     a,wf_orig=np.asarray(a),a
     wrapper=wrap(wf_orig) if a.ndim<3 else None
-    if dec_mode=="bin" or dec_mode=="mean":
+    if dec=="bin" or dec=="mean":
         res=_decimation_filter(a,np.mean,n,axis=axis,mode=mode)
-    elif dec_mode=="sum":
+    elif dec=="sum":
         res=_decimation_filter(a,np.sum,n,axis=axis,mode=mode)
-    elif dec_mode=="min":
+    elif dec=="min":
         res=_decimation_filter(a,np.min,n,axis=axis,mode=mode)
-    elif dec_mode=="max":
+    elif dec=="max":
         res=_decimation_filter(a,np.max,n,axis=axis,mode=mode)
-    elif dec_mode=="median":
+    elif dec=="median":
         res=_decimation_filter(a,np.median,n,axis=axis,mode=mode)
-    elif dec_mode=="skip":
+    elif dec=="skip":
         def _dec_fun(a, axis):
             slices=[slice(s) for s in np.shape(a)]
             slices[axis]=0
             return a[tuple(slices)]
         res=_decimation_filter(a,_dec_fun,n,axis=axis,mode=mode)
+    elif hasattr(dec,"__call__"):
+        res=_decimation_filter(a,dec,n,axis=axis,mode=mode)
     else:
-        raise ValueError("unrecognized decimation type: {0}".format(dec_mode))
+        raise ValueError("unrecognized decimation function: {0}".format(dec))
     return wrapper.array_replaced(res,wrapped=False) if res.ndim<3 else res
 
 def binning_average(a, width=1, axis=0, mode="drop"):
     """
     Binning average filter.
     
-    Equivalent to :func:`decimate` with ``dec_mode=='bin'``.
+    Equivalent to :func:`decimate` with ``dec=='bin'``.
     """
-    return decimate(a,width,"mean",axis=axis,mode=mode)
+    return decimate(a,width,"bin",axis=axis,mode=mode)
 
-def decimate_full(a, dec_mode="skip", axis=0):
+def decimate_full(a, dec="skip", axis=0):
     """
-    Completely decimate the data along a given axis
+    Completely decimate the data along a given axis.
     
     Args:
         a: data array.
-        dec_mode (str): decimation mode. Can be
+        dec (str): decimation method. Can be
                 - ``'skip'`` - just leave every n'th point while completely omitting everything else;
                 - ``'bin'`` or ``'mean'`` - do a binning average;
                 - ``'sum'`` - sum points;
                 - ``'min'`` - leave min point;
                 - ``'max'`` - leave max point;
                 - ``'median'`` - leave median point (works as a median filter).
+                - a function which takes two arguments (nD numpy array and an axis) and compresses the array along the given axis
         axis (int): axis along which to perform the decimation; can also be a tuple, in which case the same decimation is performed along several axes.
     """
     a=np.asarray(a)
-    if dec_mode=="bin" or dec_mode=="mean":
+    if dec=="bin" or dec=="mean":
         return np.mean(a,axis=axis)
-    elif dec_mode=="sum":
+    elif dec=="sum":
         return np.sum(a,axis=axis)
-    elif dec_mode=="min":
+    elif dec=="min":
         return np.min(a,axis=axis)
-    elif dec_mode=="max":
+    elif dec=="max":
         return np.max(a,axis=axis)
-    elif dec_mode=="median":
+    elif dec=="median":
         return np.median(a,axis=axis)
-    elif dec_mode=="skip":
+    elif dec=="skip":
         slices=[slice(s) for s in np.shape(a)]
         slices[axis]=0
         return a[tuple(slices)]
+    elif hasattr(dec,"__call__"):
+        return dec(a,axis)
     else:
-        raise ValueError("unrecognized decimation type: {0}".format(dec_mode))
+        raise ValueError("unrecognized decimation method: {0}".format(dec))
 
 
-def decimate_datasets(arrs, dec_mode="mean"):
+def decimate_datasets(arrs, dec="mean"):
     """
     Decimate datasets with the same shape element-wise (works only for 1D or 2D arrays).
     
-    `dec_mode` has the same values and meaning as in :func:`decimate`.
+    `dec` has the same values and meaning as in :func:`decimate`.
+    The format of the output (numpy or pandas, and the name of columns in pandas DataFrame) is determined by the first array in the list.
     """
     if len(arrs)==0:
         raise ValueError("can't decimate an empty list of datasets")
@@ -363,7 +375,7 @@ def decimate_datasets(arrs, dec_mode="mean"):
             if w.shape()!=shape:
                 raise ValueError("can't decimate arrays of different shape")
             dec_array.append(a)
-        decimated=decimate(np.column_stack(dec_array),n=len(arrs),dec_mode=dec_mode,axis=1)[:,0]
+        decimated=decimate(np.column_stack(dec_array),n=len(arrs),dec=dec,axis=1)[:,0]
         return wrapped.array_replaced(decimated,wrapped=False)
     else:
         column_arrays=[[] for _ in range(shape[1])]
@@ -375,7 +387,7 @@ def decimate_datasets(arrs, dec_mode="mean"):
                 column_arrays[i].append(c)
         decimated=[]
         for c in column_arrays:
-            decimated_column=decimate(np.column_stack(c),n=len(arrs),dec_mode=dec_mode,axis=1)
+            decimated_column=decimate(np.column_stack(c),n=len(arrs),dec=dec,axis=1)
             decimated.append(decimated_column[:,0])
         return wrapped.columns_replaced(decimated,wrapped=False)
 

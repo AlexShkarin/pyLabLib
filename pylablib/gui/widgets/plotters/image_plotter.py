@@ -239,7 +239,7 @@ class ImagePlotter(QtWidgets.QWidget):
         self.do_image_update=False
         self.xbin=1
         self.ybin=1
-        self.dec_mode="mean"
+        self.dec="mean"
         self._updating_image=False
         self._last_paint_time=None
         self._last_img_paint_cnt=None
@@ -339,10 +339,10 @@ class ImagePlotter(QtWidgets.QWidget):
         """
         Set image binning (useful for showing large images).
         """
-        bin_changes=(xbin!=self.xbin) or (ybin!=self.ybin) or (mode!=self.dec_mode)
+        bin_changes=(xbin!=self.xbin) or (ybin!=self.ybin) or (mode!=self.dec)
         self.xbin=xbin
         self.ybin=ybin
-        self.dec_mode=mode
+        self.dec=mode
         if bin_changes and update_image:
             self.update_image(update_controls=True,do_redraw=True)
     def set_image(self, img):
@@ -506,9 +506,9 @@ class ImagePlotter(QtWidgets.QWidget):
                 self.single_acquired=False
             draw_img=self.img
             if self.xbin>1:
-                draw_img=filters.decimate(draw_img,self.xbin,dec_mode=self.dec_mode,axis=0)
+                draw_img=filters.decimate(draw_img,self.xbin,dec=self.dec,axis=0)
             if self.ybin>1:
-                draw_img=filters.decimate(draw_img,self.ybin,dec_mode=self.dec_mode,axis=1)
+                draw_img=filters.decimate(draw_img,self.ybin,dec=self.dec,axis=1)
             if values.v["transpose"]:
                 draw_img=draw_img.transpose()
             if values.v["flip_x"]:

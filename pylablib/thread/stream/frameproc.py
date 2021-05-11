@@ -83,23 +83,23 @@ class FramePreprocessorThread(controller.QTaskThread):
         if self.spat_bin!=(1,1):
             sl=framestream.extract_status_line(frames,status_line,copy=False)
             if self.spat_bin[0]>1:
-                frames=filters.decimate(frames,self.spat_bin[0],dec_mode=self.spat_bin_mode,axis=1)
+                frames=filters.decimate(frames,self.spat_bin[0],dec=self.spat_bin_mode,axis=1)
             if self.spat_bin[1]>1:
-                frames=filters.decimate(frames,self.spat_bin[1],dec_mode=self.spat_bin_mode,axis=2)
+                frames=filters.decimate(frames,self.spat_bin[1],dec=self.spat_bin_mode,axis=2)
             if sl is not None:
                 sl=sl[:,:frames.shape[1],:frames.shape[2]]
                 frames=framestream.insert_status_line(frames,status_line,sl,copy=(self.spat_bin_mode=="skip"))
         return frames
-    def _decimate_with_status_line(self, frames, dec_mode, status_line):
-        res=filters.decimate(frames,self.time_bin,dec_mode=dec_mode,axis=0)
-        if dec_mode!="skip" and status_line is not None:
+    def _decimate_with_status_line(self, frames, dec, status_line):
+        res=filters.decimate(frames,self.time_bin,dec=dec,axis=0)
+        if dec!="skip" and status_line is not None:
             binned_n=self.time_bin*(len(frames)//self.time_bin)
             sl=framestream.extract_status_line(frames[:binned_n:self.time_bin],status_line,copy=False)
             res=framestream.insert_status_line(res,status_line,sl,copy=False)
         return res
-    def _decimate_full_with_status_line(self, frames, dec_mode, status_line):
-        res=filters.decimate_full(frames,dec_mode)
-        if dec_mode!="skip" and status_line is not None:
+    def _decimate_full_with_status_line(self, frames, dec, status_line):
+        res=filters.decimate_full(frames,dec)
+        if dec!="skip" and status_line is not None:
             sl=framestream.extract_status_line(frames[0],status_line,copy=False)
             res=framestream.insert_status_line(res,status_line,sl,copy=False)
         return res
@@ -110,25 +110,25 @@ class FramePreprocessorThread(controller.QTaskThread):
             if self.acc_frame is not None and frames.shape[1:]!=self.acc_frame.shape:
                 self._clear_buffer()
             binned_frames=[]
-            time_dec_mode=self.time_bin_mode if self.time_bin_mode!="mean" else "sum"
-            if time_dec_mode=="sum":
+            time_dec=self.time_bin_mode if self.time_bin_mode!="mean" else "sum"
+            if time_dec=="sum":
                 frames=frames.astype("float")
             if self.acc_frame is not None and self.acc_frame_num+len(frames)>=self.time_bin: # complete current chunk
                 chunk=frames[:self.time_bin-self.acc_frame_num]
                 frames=frames[self.time_bin-self.acc_frame_num:]
-                chunk=filters.decimate_full(chunk,time_dec_mode) if len(chunk)>1 else chunk[0]
+                chunk=filters.decimate_full(chunk,time_dec) if len(chunk)>1 else chunk[0]
                 if self.acc_frame is not None:
-                    chunk=self._decimate_full_with_status_line([self.acc_frame,chunk],time_dec_mode,status_line)
+                    chunk=self._decimate_full_with_status_line([self.acc_frame,chunk],time_dec,status_line)
                 binned_frames.append(chunk)
                 self._clear_buffer()
             if len(frames):
-                binned_frames+=list(self._decimate_with_status_line(frames,time_dec_mode,status_line)) # decimate all complete chunks
+                binned_frames+=list(self._decimate_with_status_line(frames,time_dec,status_line)) # decimate all complete chunks
             frames_left=len(frames)%self.time_bin
             if frames_left: # update accumulator
                 chunk=frames[-frames_left:]
-                chunk=self._decimate_full_with_status_line(chunk,time_dec_mode,status_line) if len(chunk)>1 else chunk[0]
+                chunk=self._decimate_full_with_status_line(chunk,time_dec,status_line) if len(chunk)>1 else chunk[0]
                 if self.acc_frame is not None:
-                    chunk=self._decimate_full_with_status_line([self.acc_frame,chunk],time_dec_mode,status_line)
+                    chunk=self._decimate_full_with_status_line([self.acc_frame,chunk],time_dec,status_line)
                 self.acc_frame=chunk
                 self.acc_frame_num+=frames_left
             frames=np.asarray(binned_frames)

@@ -2,7 +2,6 @@
 Specific useful functions.
 """
 
-from __future__ import division
 from ..utils.py3 import textstring
 
 
@@ -30,9 +29,9 @@ def rectangle_k(x, width=1., height=None):
     Normalized by the area if `height` is ``None``, otherwise `height` is the value at 0.
     """
     if height is None:
-        return (abs(x)<width)/(2.*width)
+        return (abs(x)<width/2)/width
     else:
-        return (abs(x)<width)*height
+        return (abs(x)<width/2)*height
 
 def lorentzian_k(x, gamma=1., height=None):
     """

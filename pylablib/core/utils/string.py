@@ -291,7 +291,7 @@ def add_conversion_class(label, cls, rep, conv):
         if c.label==label or c.cls is cls:
             raise ValueError("specified conversion class already exists: {}".format(c))
     _conversion_classes.append(TConversionClass(label,cls,rep,conv))
-def add_nametuple_class(cls):
+def add_namedtuple_class(cls):
     """
     Add conversion class for a given named tuple class.
 

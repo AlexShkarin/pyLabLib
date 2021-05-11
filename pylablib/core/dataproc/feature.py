@@ -2,8 +2,6 @@
 Traces feature detection: peaks, baseline, local extrema.
 """
 
-from builtins import range
-
 from ..utils import funcargparse
 from . import utils, specfunc, filters
 
@@ -222,7 +220,7 @@ def find_local_extrema(wf, region_width=3, kind="max", min_distance=None):
     else:
         raise ValueError("unrecognized extremum kind: {}".format(kind))
     if region_width<len(wf)*10 and len(wf)*region_width<=1E7: # faster workaround
-        ewf=utils.expand_trace(wf,size=dist,mode="nearest")
+        ewf=utils.pad_trace(wf,pad=dist,mode="edge")
         regions=np.column_stack([ewf[i:l+i] for i in range(dist*2+1)])
         ext_values=extf(regions,axis=1)
         ext_idx=np.nonzero(wf==ext_values)[0]
@@ -246,46 +244,19 @@ def find_local_extrema(wf, region_width=3, kind="max", min_distance=None):
 
 ##### Threshold detection with hysteresis
 
-def find_state_hysteretic(wf, threshold_off, threshold_on, normalize=True):
+def latching_trigger(wf, threshold_on, threshold_off, init_state="undef", result_kind="separate"):
     """
-    Determine on/off state in 1D array with hysteretic threshold algorithm.
-    
-    Return a state array containing ``+1`` for 'on' states and ``-1`` for 'off' states.
-    The states switches from 'off' to 'on' when the value goes above `threshold_on`, and from 'on' to 'off' when the value goes below `threshold_off`.
-    The intermediate states are determined by the nearest neighbor.
-    """
-    if threshold_off>threshold_on:
-        raise ValueError("threshold_off can't be greater than threshold_on")
-    if normalize:
-        span=wf.max()-wf.min()
-        if not span:
-            return np.zeros(len(wf))
-        wf=(wf-wf.min())/span
-    states=1*(wf>threshold_on)+(-1)*(wf<threshold_off)
-    if not states.any():
-        return states
-    unspec=(states==0).nonzero()[0]
-    for u in unspec:
-        if u>0:
-            states[u]=states[u-1]
-    unspec=(states==0).nonzero()[0] # in case the points in the beginning were undefined
-    for u in unspec[::-1]:
-        if u<len(states)-1:
-            states[u]=states[u+1]
-    return states
-
-def trigger_hysteretic(wf, threshold_on, threshold_off, init_state="undef", result_kind="separate"):
-    """
-    Determine indices of rise and fall trigger events with hysteresis thresholds.
+    Determine indices of rise and fall trigger events with hysteresis (latching) thresholds.
     
     Return either two arrays ``(rise_trig, fall_trig)`` containing trigger indices (if ``result_kind=="separate"``),
     or a single array of tuples ``[(dir,pos)]``, where `dir` is the trigger direction (``+1`` or ``-1``) and `pos` is its index  (if ``result_kind=="joined"``).
     Triggers happen when a state switch from 'high' to 'low' (rising) or vice versa (falling).
     The state switches from 'low' to 'high' when the trace value goes above `threshold_on`, and from 'high' to 'low' when the trace value goes below `threshold_off`.
+    For a stable hysteresis effect, `threshold_on` should be larger than `threshold_off`, which means that the trace values between these two thresholds can not change the state.
     `init_state` specifies the initial state: ``"low"``, ``"high"``, or ``"undef"`` (undefined state).
     """
     if threshold_off>threshold_on:
-        raise ValueError("off threshold level should be below on threshold level")
+        raise ValueError("the off threshold level should be below the on threshold level")
     trace_pos=wf>threshold_on
     trace_rise=trace_pos[1:]&(~trace_pos[:-1])
     trace_neg=wf<threshold_off

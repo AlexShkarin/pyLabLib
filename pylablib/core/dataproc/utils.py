@@ -2,8 +2,6 @@
 Generic utilities for dealing with numerical arrays.
 """
 
-from __future__ import division
-
 from .table_wrap import wrap
 from ..utils import general as general_utils
 from ..utils import numerical
@@ -113,7 +111,7 @@ def sort_by(t, x_column=None, reverse=False, stable=False):
     Sort a table using selected column as a key and preserving rows.
     
     If ``reverse==True``, sort in descending order. `x_column` values are described in :func:`.get_x_column`.
-    If ``stable==True``, use stable sort (could be slower and uses more memory)
+    If ``stable==True``, use stable sort (could be slower and uses more memory, but preserves the order of elements for the same key)
     """
     x_column=get_x_column(t,x_column)
     if reverse:
@@ -489,50 +487,30 @@ def unwrap_mod_data(trace, wrap_range):
 
 ##### Trace expansion on the edges #####
 
-def expand_trace(trace, size=0, mode="constant", cval=0., side="both"):
+def pad_trace(trace, pad, mode="constant", cval=0.):
     """
-    Expand 1D trace for different convolution techniques.
+    Expand 1D trace or a multi-column table for different convolution techniques.
     
+    Wrapper around :func:`numpy.pad`, but can handle pandas dataframes or multi-column arrays.
+
     Args:
         trace: 1D array-like object.
-        size (int): Expansion size. Can't be greater than ``len(trace)`` (truncated automatically).
-        mode (str): Expansion mode. Can be ``'constant'`` (added values are determined by `cval`), ``'nearest'`` (added values are end values of the trace),
+        pad (int or tuple): Expansion size. Can be an integer, if pad on both sides is equal, or a 2-tuple ``(left, right)`` for pads on opposite sides.
+        mode (str): Expansion mode. Takes the same values as :func:`numpy.pad`.
+            Common values are ``'constant'`` (added values are determined by `cval`), ``'edge'`` (added values are end values of the trace),
             ``'reflect'`` (reflect trace with respect to its endpoint) or ``'wrap'`` (wrap the values from the other size).
         cval (float): If ``mode=='constant'``, determines the expanded values.
-        side (str): Expansion side. Can be ``'left'``, ``'right'`` or ``'both'``.
     """
     wrapped=wrap(trace)
     if wrapped.ndim()==2:
-        return wrapped.columns_replaced([expand_trace(wrapped.c[i],size=size,mode=mode,cval=cval,side=side)
+        return wrapped.columns_replaced([pad_trace(wrapped.c[i],pad=pad,mode=mode,cval=cval)
             for i in range(wrapped.shape()[1])],wrapped=False)
     elif wrapped.ndim()!=1:
         raise ValueError("this function accepts only 1D or 2D arrays")
-    if len(trace)==0 or size==0:
+    if len(trace)==0 or pad==0:
         return trace
-    if size>len(trace):
-        size=len(trace)
-    if mode=="constant":
-        left_part=np.zeros(size)+cval
-        right_part=left_part
-    elif mode=="nearest":
-        left_part=np.zeros(size)+trace[0]
-        right_part=np.zeros(size)+trace[-1]
-    elif mode=="reflect":
-        left_part=trace[size-1::-1]
-        right_part=trace[-1:-size-1:-1]
-    elif mode=="wrap":
-        left_part=trace[-size:]
-        right_part=trace[:size]
-    else:
-        raise ValueError("unrecognized boundary mode '{0}'".format(mode))
-    if side=="left":
-        res=np.concatenate(( left_part,trace ))
-    elif side=="right":
-        res=np.concatenate(( left_part,trace,right_part ))
-    elif side=="both":
-        res=np.concatenate(( left_part,trace,right_part ))
-    else:
-        raise ValueError("unrecognized side mode: {0}".format(side))
+    kwargs={"constant_values":cval} if mode=="constant" else {}
+    res=np.pad(trace,pad,mode=mode,**kwargs)
     return wrapped.array_replaced(res,wrapped=False)
 
 

@@ -2,8 +2,6 @@
 Utilities for working with the file system: creating/removing/listing folders, comparing folders and files, working with zip archives.
 """
 
-from builtins import range
-
 from . import general, string, funcargparse
 
 import os
@@ -73,26 +71,27 @@ def generate_indexed_filename(name_format, idx_start=0, folder=""):
     """
     Generate an unused indexed filename in `folder`.
     
-    The name has `name_format` (using standard Python :func:`format()` rules), with index starting with `idx_start`.
+    The name has `name_format` (using standard Python :func:`format()` rules, e.g., ``"data_{:03d}.dat"``), 
+    and the index starts with `idx_start`.
     """
     while True:
         name=name_format.format(idx_start)
         if not os.path.exists(os.path.join(folder,name)):
             return name
         idx_start=idx_start+1
-def generate_prefix_filename(prefix="", suffix="", idx_start=None, folder=""):
+def generate_prefixed_filename(prefix="", suffix="", idx_start=None, idx_fmt="d", folder=None):
     """
-    Generate an unused filename in `folder` with the given prefix and suffix.
+    Generate an unused filename with the given `prefix` and `suffix` in the given `folder`.
     
-    The format is ``prefix_{:d}_suffix``, where the parameter is the index starting with `idx_start`.
-    If `idx_start` is ``None`` first check ``prefix+suffix`` name before using numbered indices. 
+    By default, the format is ``prefix_{:d}_suffix``, where the parameter is the index starting with `idx_start`.
+    If `idx_start` is ``None``, first check simply ``prefix+suffix`` name before using numbered indices.
     """
     if idx_start is None:
         name=prefix+suffix
         if not os.path.exists(os.path.join(folder,name)):
             return name
         idx_start=0
-    return generate_indexed_filename(prefix+"_{:d}"+suffix,idx_start=idx_start,folder=folder)
+    return generate_indexed_filename(prefix+"_{:"+idx_fmt+"}"+suffix,idx_start=idx_start,folder=folder)
 def generate_temp_filename(prefix="__tmp__", idx_start=0, idx_template="d", folder=""):
     """
     Generate a temporary filename with a given prefix. 
@@ -305,9 +304,7 @@ def clean_dir(path, error_on_file=True):
 
 ### Folder walking, extension of os.walk ###
 class FolderList(collections.namedtuple("FolderList",["folders","files"])): # making Sphinx autodoc generate correct docstring
-    """
-    Describes folder content.
-    """
+    """Describes folder content"""
 
 def list_dir(folder="", folder_filter=None, file_filter=None, separate_kinds=True, error_on_file=True):
     """
