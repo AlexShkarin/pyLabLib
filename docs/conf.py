@@ -67,6 +67,7 @@ nitpick_ignore=[("py:class","callable"),
                 ]
 intersphinx_mapping = {'python': ('https://docs.python.org/3', None),
                        'numpy': ('https://numpy.org/doc/stable/', None),
+                       'pandas': ('https://pandas.pydata.org/pandas-docs/dev/', None),
                        'scipy': ('https://docs.scipy.org/doc/scipy/reference/', None),
                        'matplotlib': ('https://matplotlib.org/stable/', None),
                        'rpyc': ('https://rpyc.readthedocs.io/en/latest/', None),

@@ -1,5 +1,7 @@
-Utilities
+Data storage
 =========================
+
+Complex data storage in pylablib centers around 2 main components: the multi-level dictionary for representing hierarchical data within the code, and file IO to (among other things) load and store it in a human-readable format.
 
 Multi-level dictionary
 -------------------------

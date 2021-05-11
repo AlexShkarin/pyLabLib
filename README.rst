@@ -1,17 +1,13 @@
 Overview
 =======================
 
-PyLabLib is a collection of code intended to simplify some of the coding tasks encountered in a physics laboratory.
+PyLabLib is a collection of code for external device control, data acquisition, and experiment automation.
 
 Some major parts include:
-    - Simpler loading and saving of data in text or binary files.
-    - Data tables with heterogeneous columns and more universal indexing (heavy overlap with pandas).
-    - Some data processing utilities: filtering, decimating, peak detection, FFT (mostly wrappers around NumPy and SciPy).
-    - Classes for device control (universal wrapper for pyVISA, pySerial and network backends).
-    - Classes for many specific devices (cameras, lasers, translation stages, etc).
-    - More user-friendly fitting interface.
-    - Multi-level dictionaries which are convenient for storing heterogeneous data and settings in human-readable format.
-    - A bunch more utilities dealing with file system (creating, moving and removing folders, zipping/unzipping, path normalization), network (simplified interface for client and server sockets), strings (serializing and de-serializing values), function introspection, and more.
-    - Additional tools for GUI generation and simpler multithreading built on top PyQt5 *(still in development stage: not completely documented, code organization and interfaces can change in later versions)*.
+    - A variety of `devices <http://pylablib.readthedocs.io/en/latest/devices/devices_root.html>`__, including several different `camera interfaces <http://pylablib.readthedocs.io/en/latest/devices/cameras_root.html>`__, `translational stages <http://pylablib.readthedocs.io/en/latest/devices/stages_root.html>`__, `oscilloscopes <http://pylablib.readthedocs.io/en/latest/devices/Tektronix.html>`__, `AWGs <http://pylablib.readthedocs.io/en/latest/devices/generic_awgs.html>`__, `sensors <http://pylablib.readthedocs.io/en/latest/devices/basic_sensors_root.html>`__, etc. The set is constantly expanding.
+    - Simplified data processing utilities: convenient `fitting <http://pylablib.readthedocs.io/en/latest/dataproc.html#fitting>`__, `filtering <http://pylablib.readthedocs.io/en/latest/dataproc.html#filtering-and-decimation>`__, `feature detection <http://pylablib.readthedocs.io/en/latest/dataproc.html#feature-detection>`__, `FFT <http://pylablib.readthedocs.io/en/latest/dataproc.html#fourier-transform>`__ (mostly wrappers around NumPy and SciPy).
+    - Universal multi-level `dictionaries <http://pylablib.readthedocs.io/en/latest/storage.html#multi-level-dictionary>`__ which are convenient for `storing <http://pylablib.readthedocs.io/en/latest/storage.html#dictionary-files>`__ heterogeneous data and settings in human-readable format.
+    - Assorted functions for dealing with `file system <http://pylablib.readthedocs.io/en/latest/misc_utils.html#file-system>`__ (creating, moving and removing folders, zipping/unzipping, path normalization), `network <http://pylablib.readthedocs.io/en/latest/misc_utils.html#network>`__ (simplified interface for client and server sockets), `strings <http://pylablib.readthedocs.io/en/latest/misc_utils.html#strings>`__ (conversion of various Python objects to and from string), and more.
+    - Tools for GUI generation and advanced multi-threading built on top of Qt5 *(still in development stage: the documentation is incomplete, and the interfaces can change in later versions)*
 
 The most recent version of the library is available on GitHub (https://github.com/AlexShkarin/pyLabLib), and the documentation can be found at http://pylablib.readthedocs.io/ .

@@ -3,12 +3,14 @@ Welcome to pylablib documentation!
 
 .. toctree::
    :maxdepth: 2
+   :includehidden:
    :caption: Contents:
 
    install
-   dataproc
-   utils
    devices/devices_root
+   dataproc
+   storage
+   misc_utils
    changelog
    API reference <.apidoc/modules>
 
