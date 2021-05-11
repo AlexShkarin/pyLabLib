@@ -2,8 +2,6 @@
 Routines for conversion of physical units.
 """
 
-from __future__ import division
-
 import numpy as np
 from . import string as string_utils
 import re

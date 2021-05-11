@@ -61,10 +61,10 @@ class ITextOutputFileFormat(IOutputFileFormat):  # pylint: disable=abstract-meth
     
     Args:
         format_name (str): The name of the format (to be defined in subclasses).
-        save_props (bool): If ``True`` and saving `~datafile.DataFile` object, save its props metainfo.
-        save_comments (bool): If ``True`` and saving `~datafile.DataFile` object, save its comments metainfo.
+        save_props (bool): If ``True`` and saving :class:`.datafile.DataFile` object, save its props metainfo.
+        save_comments (bool): If ``True`` and saving :class:`.datafile.DataFile` object, save its comments metainfo.
         save_time (bool): If ``True``, append the file creation time in the end.
-        new_time (bool): If saving `~datafile.DataFile` object, determines if the time should be updated to the current time.
+        new_time (bool): If saving :class:`.datafile.DataFile` object, determines if the time should be updated to the current time.
     """
     def __init__(self, format_name, save_props=True, save_comments=True, save_time=True, new_time=True):
         IOutputFileFormat.__init__(self,format_name)
@@ -116,8 +116,8 @@ class CSVTableOutputFileFormat(ITextOutputFileFormat):
         use_rep_classes (bool): If ``True``, use representation classes for Dictionary entries (e.g., numpy arrays will be represented as ``"array([1, 2, 3])"`` instead of just ``"[1, 2, 3]"``);
             This improves storage fidelity, but makes result harder to parse (e.g., by external string parsers).
         save_columns (bool): If ``True``, save column names as a comment line in the beginning of the file.
-        save_props (bool): If ``True`` and saving `~datafile.DataFile` object, save its props metainfo.
-        save_comments (bool): If ``True`` and saving `~datafile.DataFile` object, save its comments metainfo.
+        save_props (bool): If ``True`` and saving :class:`.datafile.DataFile` object, save its props metainfo.
+        save_comments (bool): If ``True`` and saving :class:`.datafile.DataFile` object, save its comments metainfo.
         save_time (bool): If ``True``, append the file creation time in the end.
     """
     def __init__(self, delimiters="\t", value_formats=None, use_rep_classes=False, save_columns=True, save_props=True, save_comments=True, save_time=True):
@@ -171,8 +171,8 @@ class DictionaryOutputFileFormat(ITextOutputFileFormat):
             ``'bin'`` (external binary file).
         inline_delimiters (str): Used to separate entries in a row for inline tables.
         inline_formats (str): If not ``None``, defines value formats to be passed to :func:`.utils.string.to_string` function when writing inline tables.
-        save_props (bool): If ``True`` and saving `~datafile.DataFile` object, save its props metainfo.
-        save_comments (bool): If ``True`` and saving `~datafile.DataFile` object, save its comments metainfo.
+        save_props (bool): If ``True`` and saving :class:`.datafile.DataFile` object, save its props metainfo.
+        save_comments (bool): If ``True`` and saving :class:`.datafile.DataFile` object, save its comments metainfo.
         save_time (bool): If ``True``, append the file creation time in the end.
     """
     def __init__(self, param_formats=None, use_rep_classes=False, table_format="inline", inline_delimiters="\t", inline_formats=None, save_props=True, save_comments=True, save_time=True):
@@ -309,7 +309,7 @@ def get_output_format(data, output_format, **kwargs):
         data=dictionary.Dictionary({"__data__":data})
         return data,DictionaryOutputFileFormat()
     elif output_format=="dict":
-        return data,DictionaryOutputFileFormat(**kwargs)
+        return dictionary.as_dictionary(data),DictionaryOutputFileFormat(**kwargs)
     elif output_format=="bin":
         return data,TableBinaryOutputFileFormat(**kwargs)
     elif output_format=="bin_desc":
@@ -327,15 +327,15 @@ def save_csv(data, path, delimiters="\t", value_formats=None, use_rep_classes=Fa
     Save data to a CSV file.
     
     Args:
-        data: Data to be saved (2D numpy array, pandas DataFrame, or a `~datafile.DataFile` object containing this data).
+        data: Data to be saved (2D numpy array, pandas DataFrame, or a :class:`.datafile.DataFile` object containing this data).
         path (str): Path to the file.
         delimiters (str): Used to separate entries in a row.
         value_formats (str): If not ``None``, defines value formats to be passed to :func:`.utils.string.to_string` function.
         use_rep_classes (bool): If ``True``, use representation classes for Dictionary entries (e.g., numpy arrays will be represented as ``"array([1, 2, 3])"`` instead of just ``"[1, 2, 3]"``);
             This improves storage fidelity, but makes result harder to parse (e.g., by external string parsers).
         save_columns (bool): If ``True``, save column names as a comment line in the beginning of the file.
-        save_props (bool): If ``True`` and saving `~datafile.DataFile` object, save its props metainfo.
-        save_comments (bool): If ``True`` and saving `~datafile.DataFile` object, save its comments metainfo.
+        save_props (bool): If ``True`` and saving :class:`.datafile.DataFile` object, save its props metainfo.
+        save_comments (bool): If ``True`` and saving :class:`.datafile.DataFile` object, save its comments metainfo.
         save_time (bool): If ``True``, append the file creation time in the end.
         loc (str): Location type.
     """
@@ -351,7 +351,7 @@ def save_csv_desc(data, path, loc="file"):
     Compared to :func:`save_csv`, supports more pandas features (index, column multi-index), but can only be directly read by pylablib.
     
     Args:
-        data: Data to be saved (2D numpy array, pandas DataFrame, or a `~datafile.DataFile` object containing this data).
+        data: Data to be saved (2D numpy array, pandas DataFrame, or a :class:`.datafile.DataFile` object containing this data).
         path (str): Path to the file.
         loc (str): Location type.
     """
@@ -364,7 +364,7 @@ def save_bin(data, path, dtype=None, transposed=False, loc="file"):
     Save data to a binary file.
     
     Args:
-        data: Data to be saved (2D numpy array, pandas DataFrame, or a `~datafile.DataFile` object containing this data).
+        data: Data to be saved (2D numpy array, pandas DataFrame, or a :class:`.datafile.DataFile` object containing this data).
         path (str): Path to the file.
         dtype: :class:`numpy.dtype` describing the data. By default, use little-endian (``"<"``) variant kind of the supplied data array dtype.
         transposed (bool): If ``False``, write the data row-wise; otherwise, write it column-wise.
@@ -379,7 +379,7 @@ def save_bin_desc(data, path, loc="file"):
     Save data to a binary file with an additional description file, which contains all of the data related to loading (shape, dtype, columns, etc.)
     
     Args:
-        data: Data to be saved (2D numpy array, pandas DataFrame, or a `~datafile.DataFile` object containing this data).
+        data: Data to be saved (2D numpy array, pandas DataFrame, or a :class:`.datafile.DataFile` object containing this data).
         path (str): Path to the file.
         loc (str): Location type.
     """
@@ -403,8 +403,8 @@ def save_dict(data, path, param_formats=None, use_rep_classes=False, table_forma
             ``'bin'`` (external binary file).
         inline_delimiters (str): Used to separate entries in a row for inline tables.
         inline_formats (str): If not ``None``, defines value formats to be passed to :func:`.utils.string.to_string` function when writing inline tables.
-        save_props (bool): If ``True`` and saving `~datafile.DataFile` object, save its props metainfo.
-        save_comments (bool): If ``True`` and saving `~datafile.DataFile` object, save its comments metainfo.
+        save_props (bool): If ``True`` and saving :class:`.datafile.DataFile` object, save its props metainfo.
+        save_comments (bool): If ``True`` and saving :class:`.datafile.DataFile` object, save its comments metainfo.
         save_time (bool): If ``True``, append the file creation time in the end.
         loc (str): Location type.
     """
@@ -434,15 +434,16 @@ def save_generic(data, path="", output_format=None, loc="file", **kwargs):
     (see :class:`CSVTableOutputFileFormat`, :class:`DictionaryOutputFileFormat` and :class:`TableBinaryOutputFileFormat` for the possible arguments).
     The default format names are:
     
-        - ``'csv'``: CSV file, corresponds to :class:`CSVTableOutputFileFormat`;
-        - ``'dict'``: Dictionary file, corresponds to :class:`DictionaryOutputFileFormat`;
-        - ``'bin'``: Binary  file, corresponds to :class:`TableBinaryOutputFileFormat`
-        - ``'bin_desc'``: Binary  file with an additional dictionary containing format description, corresponds to :class:`DictionaryOutputFileFormat`
+        - ``'csv'``: CSV file, corresponds to :class:`CSVTableOutputFileFormat` and :func:`save_csv`;
+        - ``'csv'``: CSV filewith an additional dictionary containing format description, corresponds to :class:`DictionaryOutputFileFormat` and :func:`save_csv_desc`;
+        - ``'bin'``: Binary file, corresponds to :class:`TableBinaryOutputFileFormat` and :func:`save_bin`;
+        - ``'bin_desc'``: Binary file with an additional dictionary containing format description, corresponds to :class:`DictionaryOutputFileFormat` and :func:`save_bin_desc`;
+        - ``'dict'``: Dictionary file, corresponds to :class:`DictionaryOutputFileFormat` and :func:`save_dict`
     """
     if output_format is None:
         if _is_table(data,allow_1D=True) or (_is_file(data) and _is_table(data.data)):
             output_format="csv"
-        elif dictionary.is_dictionary(data) or (_is_file(data) and dictionary.is_dictionary(data.data)):
+        elif dictionary.is_dictionary(data) or isinstance(data,dict) or (_is_file(data) and (dictionary.is_dictionary(data.data) or isinstance(data.data,dict))):
             output_format="dict"
         else:
             raise ValueError("can't determine output file format for data: {}".format(data))

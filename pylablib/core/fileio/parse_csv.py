@@ -2,7 +2,6 @@
 Utilities for parsing CSV files.
 """
 
-from builtins import range, zip
 from ..utils.py3 import textstring
 
 from ..utils import string, funcargparse

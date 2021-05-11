@@ -186,7 +186,7 @@ class IDictionaryEntry:
         Convert a dictionary branch to a specific :class:`IDictionaryEntry` object.
         
         Args:
-            dict_ptr (~core.utils.dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
+            dict_ptr (.dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
             loc: Location for the data to be loaded.
         """
         return cls(None) if cls.is_branch_valid(dict_ptr) else None
@@ -195,7 +195,7 @@ class IDictionaryEntry:
         Convert data to a dictionary branch on saving.
         
         Args:
-            dict_ptr (~core.utils.dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
+            dict_ptr (.dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
             loc: File location for the data to be saved.
         """
         return dictionary.Dictionary({"__data_type__":self._data_type})
@@ -301,7 +301,7 @@ class ITableDictionaryEntry(IDictionaryEntry):
         Convert a dictionary branch to a specific DictionaryEntry object.
         
         Args:
-            dict_ptr (~core.utils.dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
+            dict_ptr (.dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
             loc: Location for the data to be loaded.
             out_type (str): Output format of the data (``'array'`` for numpy arrays or ``'pandas'`` for pandas DataFrame objects),
                 used only if the dictionary doesn't provide the format.
@@ -345,7 +345,7 @@ class InlineTableDictionaryEntry(ITableDictionaryEntry):
         Build an :class:`InlineTableDictionaryEntry` object from the dictionary and read the inlined data.
         
         Args:
-            dict_ptr (~core.utils.dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
+            dict_ptr (.dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
             loc: Location for the data to be loaded.
             out_type (str): Output format of the data (``'array'`` for numpy arrays or ``'pandas'`` for pandas DataFrame objects).
         """
@@ -409,7 +409,7 @@ class ExternalTextTableDictionaryEntry(IExternalTableDictionaryEntry):
         Build an :class:`ExternalTextTableDictionaryEntry` object from the dictionary and load the external data.
         
         Args:
-            dict_ptr (~core.utils.dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
+            dict_ptr (.dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
             loc: Location for the data to be loaded.
             out_type (str): Output format of the data (``'array'`` for numpy arrays or ``'pandas'`` for pandas DataFrame objects).
         """
@@ -456,7 +456,7 @@ class ExternalBinTableDictionaryEntry(IExternalTableDictionaryEntry):
         Build an :class:`ExternalBinTableDictionaryEntry` object from the dictionary and load the external data.
         
         Args:
-            dict_ptr (~core.utils.dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
+            dict_ptr (.dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
             loc: Location for the data to be loaded.
             out_type (str): Output format of the data (``'array'`` for numpy arrays or  ``'pandas'`` for pandas DataFrame objects).
         """
@@ -548,7 +548,7 @@ class IExternalFileDictionaryEntry(IDictionaryEntry):
         Build an :class:`IExternalFileDictionaryEntry` object from the dictionary and load the external data.
         
         Args:
-            dict_ptr (~core.utils.dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
+            dict_ptr (.dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
             loc: Location for the data to be loaded.
         """
         file_path=dict_ptr["file_path"]

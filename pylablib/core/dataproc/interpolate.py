@@ -1,5 +1,3 @@
-from builtins import range
-
 import numpy as np
 import scipy.interpolate
 
@@ -125,7 +123,7 @@ def interpolate_trace(trace, step, rng=None, x_column=0, select_columns=None, ki
     """
     wtrace=wrap(trace)
     src_column=utils.get_x_column(trace,x_column=x_column)
-    select_columns=select_columns or range(wtrace.shape()[1])
+    select_columns=select_columns or list(range(wtrace.shape()[1]))
     rng_min,rng_max=rng or (None,None)
     rng_min=src_column.min() if (rng_min is None) else rng_min
     rng_max=src_column.max() if (rng_max is None) else rng_max

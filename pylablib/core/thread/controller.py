@@ -1,4 +1,3 @@
-from __future__ import print_function # Python 2 compatibility
 from ..utils import general, funcargparse, dictionary, functions as func_utils
 from . import multicast_pool as mpool, threadprop, synchronizing, callsync
 

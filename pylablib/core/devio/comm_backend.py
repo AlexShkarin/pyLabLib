@@ -3,7 +3,6 @@ Routines for defining a unified interface across multiple backends.
 """
 
 from ..utils import funcargparse, general, net, py3, module
-from builtins import range,zip
 from . import interface
 from . import backend_logger
 from .base import DeviceError

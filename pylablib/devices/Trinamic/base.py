@@ -2,7 +2,6 @@ from ...core.devio import comm_backend, interface, DeviceError, DeviceBackendErr
 
 from ..interface import stage
 
-from builtins import bytes
 import collections
 import time
 import struct
@@ -43,7 +42,7 @@ class TMCM1110(comm_backend.ICommBackendWrapper,stage.IStage):
     
     @staticmethod
     def _build_command(comm, comm_type, value, bank=0, addr=0):
-        data_str=bytes(struct.pack(">BBBBI",addr,comm,comm_type,bank,int(value)))
+        data_str=struct.pack(">BBBBI",addr,comm,comm_type,bank,int(value))
         chksum=sum([b for b in data_str])%0x100
         return data_str+struct.pack("<B",chksum)
     ReplyData=collections.namedtuple("ReplyData",["comm","status","value","addr","module"])

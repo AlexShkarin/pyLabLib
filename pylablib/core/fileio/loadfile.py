@@ -2,8 +2,6 @@
 Utilities for reading data files.
 """
 
-from builtins import range
-
 from . import datafile, location, dict_entry, parse_csv, loadfile_utils
 from ..utils import funcargparse
 from ..utils.library_parameters import library_parameters

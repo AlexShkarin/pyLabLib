@@ -2,8 +2,6 @@
 Miscellaneous utilities for reading data files.
 """
 
-from builtins import bytes
-
 from . import parse_csv
 from ..utils import dictionary, string
 

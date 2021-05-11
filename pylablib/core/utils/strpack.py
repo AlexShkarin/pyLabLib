@@ -3,8 +3,6 @@ Utilities for packing values into bitstrings.
 Small extension of the struct module.
 """
 
-from builtins import range, bytes
-
 import struct
 import numpy as np
 from . import funcargparse
@@ -59,7 +57,7 @@ def pack_uint(val, l, bo=">"):
     """
     Convert an unsigned integer into a bytestring of length `l`.
     
-    Return ``bytes`` object in Py3 and ``builtins.bytes`` object in Py2.
+    Return ``bytes`` object.
     `bo` determines byte order: ``'>'`` is big-endian (MSB first), ``'<'`` is little-endian (LSB first).
     """
     fmt="u",l
@@ -72,7 +70,7 @@ def pack_int(val, l, bo=">"):
     """
     Convert a signed integer into a bytestring of length `l`.
     
-    Return ``bytes`` object in Py3 and ``builtins.bytes`` object in Py2.
+    Return ``bytes`` object.
     `bo` determines byte order: ``'>'`` is big-endian (MSB first), ``'<'`` is little-endian (LSB first).
     """
     return pack_uint(val%(1<<l*8),l,bo)

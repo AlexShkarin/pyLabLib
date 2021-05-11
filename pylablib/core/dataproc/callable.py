@@ -1,5 +1,3 @@
-from builtins import zip
-
 from ..utils import functions as function_utils
 import numpy as np
 
@@ -232,7 +230,7 @@ class FunctionCallable(ICallable):
     
     Args:
         func: Function to be wrapped.
-        function_signature: A :class:`~.functions.FunctionSignature` object supplying information
+        function_signature: A :class:`.functions.FunctionSignature` object supplying information
             about function's argument names and default values, if they're different from what's extracted from its signature.
         defaults (dict): A dictionary ``{name: value}`` of additional default parameters values. Override the defaults from the signature.
             All default values must be pass-able to the function as a parameter
@@ -361,7 +359,7 @@ class MethodCallable(FunctionCallable):
     
     Args:
         method: Method to be wrapped.
-        function_signature: A :class:`~.FunctionSignature` object supplying information
+        function_signature: A :class:`.functions.FunctionSignature` object supplying information
             about function's argument names and default values, if they're different from what's extracted from its signature.
             If it's assumed that the first self argument is already excluded.
         defaults (dict): A dictionary ``{name: value}`` of additional default parameters values. Override the defaults from the signature.

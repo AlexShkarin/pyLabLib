@@ -2,8 +2,6 @@
 Collection of small utilities.
 """
 
-from builtins import input
-
 import time
 import threading
 import os, signal
@@ -92,7 +90,7 @@ def map_container(value, func):
     raises :exc:`ValueError` if it's something else.
     """
     if isinstance(value,tuple):
-        return tuple(func(v) for v in value)
+        return as_container(tuple(func(v) for v in value),type(value))
     if isinstance(value,list):
         return list(func(v) for v in value)
     if isinstance(value,dict):

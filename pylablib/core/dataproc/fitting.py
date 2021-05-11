@@ -2,7 +2,6 @@
 Universal function fitting interface.
 """
 
-from __future__ import division
 from ..utils.py3 import textstring
 
 from ..utils import general as general_utils

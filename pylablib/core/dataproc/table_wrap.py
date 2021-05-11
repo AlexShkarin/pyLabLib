@@ -600,7 +600,8 @@ class DataFrame2DWrapper(I2DWrapper):
             self._wrapper=wrapper
             self._storage=storage
         def __iter__(self):
-            return self._storage.c.__iter__()
+            for _,c in self._storage.iteritems():
+                yield c
         def __getitem__(self, idx):
             return self._storage.iloc[:,idx]
         def __setitem__(self, idx, val):

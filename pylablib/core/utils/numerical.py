@@ -1,9 +1,6 @@
 """
 Numerical functions that don't deal with sequences.
 """
-from __future__ import division
-from builtins import range
-
 import math
 
 
@@ -65,6 +62,7 @@ def limit_to_range(x, min_val=None, max_val=None, default=0):
     Confine `x` to the given limit.
     
     Default limit values are ``None``, which means no limit.
+    `default` specifies returned value if both `x`, `min_val` and `max_val` are ``None``.
     """
     if (min_val is None) and (max_val is None):
         return x if x is not None else default

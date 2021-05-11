@@ -2,7 +2,6 @@
 Processing and normalization of different indexing styles.
 """
 
-from builtins import range
 from ..utils.py3 import textstring
 
 import numpy as np

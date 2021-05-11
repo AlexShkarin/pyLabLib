@@ -11,13 +11,11 @@ class SocketError(socket.error):
     """
     Base socket error class.
     """
-    pass
         
 class SocketTimeout(SocketError):
     """
     Socket timeout error.
     """
-    pass
 
 
 def _wait_sock_func(func, timeout, wait_callback):
