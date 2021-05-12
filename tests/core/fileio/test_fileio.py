@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import os
 
-
+from ..cmp_utils import compare_tables, compare_dicts
 
 
 ##### Basic import tests #####
@@ -26,26 +26,6 @@ def test_imports():
 import pylablib as pll
 from pylablib.core.fileio import loadfile, savefile
 
-@pytest.fixture(params=["array","pandas"])
-def table_builder(request):
-    """Function which returns a table of a given kind (numpy array or pandas table) from data and column names"""
-    kind=request.param
-    def _builder(data, columns):
-        if kind=="array":
-            return np.array(data)
-        else:
-            return pd.DataFrame(data,columns=columns)
-    _builder.kind=kind
-    return _builder
-
-def compare_tables(t1, t2):
-    """Compare two tables (type, shape, content, etc.)"""
-    assert type(t1)==type(t2)
-    assert isinstance(t1,(np.ndarray,pd.DataFrame))
-    assert np.shape(t1)==np.shape(t2)
-    assert np.all(t1==t2)
-    if isinstance(t1,pd.DataFrame):
-        assert np.all(t1.columns==t2.columns)
 def test_tables_saving(table_builder, tmpdir):
     """Test saving/loading consistency"""
     save_path=os.path.join(tmpdir,"table.dat")
@@ -143,16 +123,6 @@ def test_dict():
     'a': 1,
     'b': 2,
     'some table': pt })
-
-def compare_dicts(d1, d2):
-    d1=pll.as_dict(d1,"flat").copy()
-    d2=pll.as_dict(d2,"flat").copy()
-    for k in list(d1):
-        if isinstance(d1[k],(pd.DataFrame,np.ndarray)):
-            compare_tables(d1[k],d2[k])
-            del d1[k]
-            del d2[k]
-    assert d1==d2
 
 def test_dictionary_loading(test_dict):
     """Test loading consistency"""

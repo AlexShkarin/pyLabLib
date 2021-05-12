@@ -23,6 +23,7 @@ def convolve1d(trace, kernel, mode="reflect", cval=0.):
     Convolves `trace` with the given `kernel` (1D array). `mode` and `cval` determine how the endpoints are handled.
     Simply a wrapper around the standard :func:`scipy.ndimage.convolve1d` that handles complex arguments.
     """
+    wrapped=wrap(trace)
     trace=np.asarray(trace)
     kernel=np.asarray(kernel)
     wf_complex=np.iscomplexobj(trace) or np.iscomplexobj(cval)
@@ -41,9 +42,9 @@ def convolve1d(trace, kernel, mode="reflect", cval=0.):
     else:
         trace=trace.astype(np.find_common_type([trace.dtype,kernel.dtype],[]))
         res=ndimage.convolve1d(trace,kernel,mode=mode,cval=cval)
-    return wrap(trace).array_replaced(res,wrapped=False)
+    return wrapped.array_replaced(res,preserve_index=True)
         
-def convolution_filter(a, width=1., kernel="gaussian", kernel_span="auto", mode="reflect", cval=0., kernel_height=None):
+def convolution_filter(a, width, kernel="gaussian", kernel_span="auto", mode="reflect", cval=0., kernel_height=None):
     """
     Convolution filter.
     
@@ -61,9 +62,10 @@ def convolution_filter(a, width=1., kernel="gaussian", kernel_span="auto", mode=
     wrapped=wrap(a)
     if wrapped.ndim()==2:
         return wrapped.columns_replaced([convolution_filter(wrapped.c[i],width=width,kernel=kernel,kernel_span=kernel_span,mode=mode,cval=cval,kernel_height=kernel_height)
-            for i in range(wrapped.shape()[1])],wrapped=False)
+            for i in range(wrapped.shape()[1])])
     elif wrapped.ndim()!=1:
         raise ValueError("this function accepts only 1D or 2D arrays")
+    a=np.asarray(a)
     if kernel=="rectangle":
         width=int(np.ceil(width))
         kernel_wf=np.ones(width)*(kernel_height or 1)
@@ -81,9 +83,9 @@ def convolution_filter(a, width=1., kernel="gaussian", kernel_span="auto", mode=
         kernel_wf=kernel(np.arange(-kernel_span,kernel_span+1.),width,kernel_height) # pylint: disable=invalid-unary-operand-type
     if kernel_height is None:
         kernel_wf=kernel_wf/kernel_wf.sum() #normalize kernel; non-normalized kernel might be useful e.g. for low-pass filtering when width is close len(a)
-    return wrap(a).from_array(convolve1d(a,kernel_wf,mode=mode,cval=cval),wrapped=False)
+    return wrapped.array_replaced(convolve1d(a,kernel_wf,mode=mode,cval=cval),preserve_index=True)
 
-def gaussian_filter(a, width=1., mode="reflect", cval=0.):
+def gaussian_filter(a, width, mode="reflect", cval=0.):
     """
     Simple gaussian filter. Can handle complex data.
     
@@ -91,21 +93,26 @@ def gaussian_filter(a, width=1., mode="reflect", cval=0.):
     """
     return convolution_filter(a,width,kernel="gaussian",mode=mode,cval=cval)
 
-def gaussian_filter_nd(a, width=1., mode="reflect", cval=0.):
+def gaussian_filter_nd(a, width, mode="reflect", cval=0.):
     """
     Simple gaussian filter. Can't handle complex data.
     
     Equivalent to a convolution with a gaussian. Wrapper around :func:`scipy.ndimage.gaussian_filter`. 
     """
-    res=ndimage.gaussian_filter(a*1., width, mode=mode, cval=cval)
-    return wrap(a).array_replaced(res,wrapped=False)
+    aa=np.asarray(a,dtype=float)
+    if aa.ndim==1:
+        res=ndimage.gaussian_filter(aa,width,mode=mode,cval=cval)
+        return wrap(a).array_replaced(res,preserve_index=True)
+    else:
+        res=[ndimage.gaussian_filter(aa[:,c],width,mode=mode,cval=cval) for c in range(aa.shape[1])]
+        return wrap(a).columns_replaced(res,preserve_index=True)
 
 
 
 
 ##### IIR filters #####
 
-def low_pass_filter(trace, t=1., mode="reflect", cval=0.):
+def low_pass_filter(trace, t, mode="reflect", cval=0.):
     """
     Simple single-pole low-pass filter.
     
@@ -114,13 +121,14 @@ def low_pass_filter(trace, t=1., mode="reflect", cval=0.):
     Works only for 1D arrays.
     """
     expand_size=min(int(np.ceil(t*20)),len(trace))
-    trace=utils.pad_trace(trace,pad=(expand_size,0),mode=mode,cval=cval)
+    wrapped=wrap(trace)
+    trace=utils.pad_trace(np.asarray(trace),pad=(expand_size,0),mode=mode,cval=cval)
     beta=np.exp(np.double(-1.)/np.double(t))
     alpha=np.double(1.)-beta
-    filtered_wf=iir_transform.iir_apply_complex(trace,np.array([alpha]),np.array([beta]))
-    return wrap(trace).array_replaced(filtered_wf).t[expand_size:]
+    trace=iir_transform.iir_apply_complex(trace,np.array([alpha]),np.array([beta]))
+    return wrapped.array_replaced(trace[expand_size:],preserve_index=True)
     
-def high_pass_filter(trace, t=1., mode="reflect", cval=0.):
+def high_pass_filter(trace, t, mode="reflect", cval=0.):
     """
     Simple single-pole high-pass filter (equivalent to subtracting a low-pass filter).
     
@@ -128,34 +136,31 @@ def high_pass_filter(trace, t=1., mode="reflect", cval=0.):
     Implemented as a recursive digital filter, so its performance doesn't depend strongly on `t`.
     Works only for 1D arrays.
     """
-    return trace-low_pass_filter(trace,t,mode,cval)
+    atrace=np.asarray(trace)
+    return wrap(trace).array_replaced(atrace-low_pass_filter(atrace,t,mode,cval),preserve_index=True)
 def integrate(trace):
     """
     Calculate the integral of the trace.
     
     Alias for :func:`numpy.cumsum`.
     """
-    return np.cumsum(trace)
+    return np.cumsum(trace,axis=0)
 def differentiate(trace):
     """
     Calculate the differential of the trace.
     
-    Works only for 1D arrays.
+    Note that since the data dimensions are changed (length is reduced by 1), the index is not preserved for pandas DataFrames.
     """
-    trace=trace.copy()
-    if len(trace)>=2:
-        trace[1:]=trace[1:]-trace[:-1]
-        trace[0]=trace[1]
-    elif len(trace)==1:
-        trace[0]=0
-    return trace
+    wrapped=wrap(trace)
+    trace=np.asarray(trace)
+    return wrapped.array_replaced(trace[1:]-trace[:-1])
 
 
 
 
 ##### Sliding filters #####
 
-def sliding_average(a, width=1., mode="reflect", cval=0.):
+def sliding_average(a, width, mode="reflect", cval=0.):
     """
     Simple sliding average filter
     
@@ -163,17 +168,19 @@ def sliding_average(a, width=1., mode="reflect", cval=0.):
     """
     return convolution_filter(a,width,kernel="rectangle",mode=mode,cval=cval)
 
-def median_filter(a, width=1, mode="reflect", cval=0.):
+def median_filter(a, width, mode="reflect", cval=0.):
     """
     Median filter.
     
     Wrapper around :func:`scipy.ndimage.median_filter`.
     """
+    if wrap(a).ndim()==2:
+        width=(width,1)
     res=ndimage.median_filter(a,width,mode=mode,cval=cval)
-    return wrap(a).array_replaced(res,wrapped=False)
+    return wrap(a).array_replaced(res,preserve_index=True)
 
 
-def _sliding_func(trace, filtering_function, width=1, mode="reflect", cval=0.):
+def _sliding_func(trace, filtering_function, width, mode="reflect", cval=0.):
     """
     Perform a sliding filtering of a 1D trace with the given `filtering_function`.
     
@@ -182,18 +189,18 @@ def _sliding_func(trace, filtering_function, width=1, mode="reflect", cval=0.):
     """
     wrapped=wrap(trace)
     if wrapped.ndim()==2:
-        return wrapped.columns_replaced([_sliding_func(wrapped.c[i],filtering_function=filtering_function,mode=mode,cval=cval)
-            for i in range(wrapped.shape()[1])],wrapped=False)
+        return wrapped.columns_replaced([_sliding_func(wrapped.c[i],filtering_function=filtering_function,width=width,mode=mode,cval=cval)
+            for i in range(wrapped.shape()[1])])
     elif wrapped.ndim()!=1:
         raise ValueError("this function accepts only 1D or 2D arrays")
     if width is None or width<=1:
         return trace
     l=len(trace)
     width=(int(width)//2)*2+1
-    trace=utils.pad_trace(trace,pad=width//2,mode=mode,cval=cval)
+    trace=utils.pad_trace(np.asarray(trace),pad=width//2,mode=mode,cval=cval)
     return np.array([filtering_function(trace[i-width//2:i+width//2+1]) for i in range(width//2,l+width//2)])
 
-def sliding_filter(trace, n=1, dec="bin", mode="reflect", cval=0.):
+def sliding_filter(trace, n, dec="bin", mode="reflect", cval=0.):
     """
     Perform sliding filtering on the data.
     
@@ -211,7 +218,7 @@ def sliding_filter(trace, n=1, dec="bin", mode="reflect", cval=0.):
             ``'reflect'`` (reflect trace with respect to its endpoint) or ``'wrap'`` (wrap the values from the other size).
         cval (float): If ``mode=='constant'``, determines the expanded values.
     """
-    wrapper=wrap(trace)
+    wrapped=wrap(trace)
     trace=np.asarray(trace)
     if dec=="bin" or dec=="mean":
         res=_sliding_func(trace,np.mean,n,mode=mode,cval=cval)
@@ -227,14 +234,14 @@ def sliding_filter(trace, n=1, dec="bin", mode="reflect", cval=0.):
         res=_sliding_func(trace,dec,n,mode=mode,cval=cval)
     else:
         raise ValueError("unrecognized decimation method: {0}".format(dec))
-    return wrapper.array_replaced(res,wrapped=False)
+    return wrapped.array_replaced(res,preserve_index=True)
 
 
 
 
 ##### Decimation filters #####
 
-def _decimation_filter(a, decimation_function, width=1, axis=0, mode="drop"):
+def _decimation_filter(a, decimation_function, width, axis=0, mode="drop"):
     """
     Perform a decimation filtering with the given `decimation_function`.
     
@@ -263,10 +270,12 @@ def _decimation_filter(a, decimation_function, width=1, axis=0, mode="drop"):
         return np.append(dec_wf,dec_rest,axis=axis)
         
 
-def decimate(a, n=1, dec="skip", axis=0, mode="drop"):
+def decimate(a, n, dec="skip", axis=0, mode="drop"):
     """
     Decimate the data.
     
+    Note that since the data dimensions are changed, the index is not preserved for pandas DataFrames.
+
     Args:
         a: data array.
         n (int): decimation factor.
@@ -287,7 +296,7 @@ def decimate(a, n=1, dec="skip", axis=0, mode="drop"):
             result=decimate(result,n=n,dec=dec,axis=ax,mode=mode)
         return result
     a,wf_orig=np.asarray(a),a
-    wrapper=wrap(wf_orig) if a.ndim<3 else None
+    wrapped=wrap(wf_orig) if a.ndim<3 else None
     if dec=="bin" or dec=="mean":
         res=_decimation_filter(a,np.mean,n,axis=axis,mode=mode)
     elif dec=="sum":
@@ -308,9 +317,9 @@ def decimate(a, n=1, dec="skip", axis=0, mode="drop"):
         res=_decimation_filter(a,dec,n,axis=axis,mode=mode)
     else:
         raise ValueError("unrecognized decimation function: {0}".format(dec))
-    return wrapper.array_replaced(res,wrapped=False) if res.ndim<3 else res
+    return wrapped.array_replaced(res) if res.ndim<3 else res
 
-def binning_average(a, width=1, axis=0, mode="drop"):
+def binning_average(a, width, axis=0, mode="drop"):
     """
     Binning average filter.
     
@@ -359,6 +368,8 @@ def decimate_datasets(arrs, dec="mean"):
     """
     Decimate datasets with the same shape element-wise (works only for 1D or 2D arrays).
     
+    Note that the index data is taken from the first array in the list.
+    
     `dec` has the same values and meaning as in :func:`decimate`.
     The format of the output (numpy or pandas, and the name of columns in pandas DataFrame) is determined by the first array in the list.
     """
@@ -375,8 +386,8 @@ def decimate_datasets(arrs, dec="mean"):
             if w.shape()!=shape:
                 raise ValueError("can't decimate arrays of different shape")
             dec_array.append(a)
-        decimated=decimate(np.column_stack(dec_array),n=len(arrs),dec=dec,axis=1)[:,0]
-        return wrapped.array_replaced(decimated,wrapped=False)
+        decimated=decimate_full(dec_array,dec=dec)
+        return wrapped.array_replaced(decimated,preserve_index=True)
     else:
         column_arrays=[[] for _ in range(shape[1])]
         for a in arrs:
@@ -387,9 +398,9 @@ def decimate_datasets(arrs, dec="mean"):
                 column_arrays[i].append(c)
         decimated=[]
         for c in column_arrays:
-            decimated_column=decimate(np.column_stack(c),n=len(arrs),dec=dec,axis=1)
-            decimated.append(decimated_column[:,0])
-        return wrapped.columns_replaced(decimated,wrapped=False)
+            decimated_column=decimate_full(c,dec=dec,axis=0)
+            decimated.append(decimated_column)
+        return wrapped.columns_replaced(decimated,preserve_index=True)
 
 
 
@@ -462,32 +473,36 @@ def split_into_bins(values, max_span, max_size=None):
 
 ##### Fourier filters #####
 
-def fourier_filter(trace, response, preserve_real=True):
+def fourier_filter(trace, response, dt=1, preserve_real=True):
     """
-    Apply filter to a trace in frequency domain.
+    Apply filter to a trace in the frequency domain.
     
     `response` is a (possibly) complex function with single 1D real numpy array as a frequency argument.
+    `dt` specifies time step between consecutive points.
+    Note that in case of a multi-column data the filter is applied column-wise;
+    this is in contrast with the Fourier transform methods, which would assume the first column to be times.
     
     If ``preserve_real==True``, then the `response` for negative frequencies is automatically taken to be
     complex conjugate of the `response` for positive frequencies (so that the real trace stays real).
     """
-    ft=fourier.fourier_transform(trace,truncate=False)
+    wrapped=wrap(trace)
+    if wrapped.ndim()==2:
+        return wrapped.columns_replaced([fourier_filter(wrapped.c[i],response=response,dt=dt,preserve_real=preserve_real)
+            for i in range(wrapped.shape()[1])])
+    trace=np.asarray(trace)
+    ft=fourier.fourier_transform(trace,dt=dt,truncate=False)
     if preserve_real:
-        freq=wrap(ft).c[0]
+        freq=ft[:,0]
         zero_idx=utils.find_closest_arg(freq,0,ordered=True)
         ft[zero_idx:,1]=ft[zero_idx:,1]*response(ft[zero_idx:,0])
         ft[:zero_idx,1]=ft[:zero_idx,1]*response(-ft[:zero_idx,0]).conjugate()
         ft[zero_idx,1]=ft[zero_idx,1]*np.real(response(ft[zero_idx,0]))
     else:
         ft[:,1]=ft[:,1]*response(ft[:,0])
-    trace_f=fourier.inverse_fourier_transform(ft,truncate=False)
-    if wrap(trace_f).get_type()=="2d.pandas":
-        trace_f.columns=trace.columns[:2]
-        if preserve_real:
-            trace_f.iloc[:,1]=np.real(trace_f.iloc[:,1])
-    elif preserve_real:
+    trace_f=fourier.inverse_fourier_transform(ft,truncate=False,raw=True)
+    if preserve_real:
         trace_f=trace_f.real
-    return trace_f
+    return wrapped.array_replaced(trace_f,preserve_index=True)
 def fourier_make_response_real(response):
     """
     Turn a frequency filter function into a real one (in the time domain).

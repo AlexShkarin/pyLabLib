@@ -21,7 +21,8 @@ def is_ascending(trace):
     """
     if len(trace)<2:
         return True
-    return (trace[1:]-trace[:-1]>=0).all()
+    wrapped=wrap(trace)
+    return np.all(wrapped[1:]-wrapped[:-1]>=0)
 def is_descending(trace):
     """
     Check if the trace is descending.
@@ -30,7 +31,8 @@ def is_descending(trace):
     """
     if len(trace)<2:
         return True
-    return (trace[1:]-trace[:-1]>0).all()
+    wrapped=wrap(trace)
+    return np.all(wrapped[1:]-wrapped[:-1]<=0)
 def is_ordered(trace):
     """
     Check if the trace is ordered (ascending or descending).
@@ -46,8 +48,9 @@ def is_linear(trace):
     """
     if len(trace)<2:
         return True
-    diff=trace[1:]-trace[:-1]
-    return (diff==diff[(0,)*np.ndim(diff)]).all()
+    wrapped=wrap(trace)
+    diff=wrapped[1:]-wrapped[:-1]
+    return np.all(diff==diff[(0,)*np.ndim(diff)])
 
 
 
@@ -66,7 +69,7 @@ def get_x_column(t, x_column=None, idx_default=False):
     if np.ndim(x_column)>0:
         return x_column
     if x_column=="#":
-        return t.index if isinstance(t,pd.DataFrame) or isinstance(t,pd.Series) else np.arange(len(t))
+        return np.asarray(t.index) if isinstance(t,pd.DataFrame) or isinstance(t,pd.Series) else np.arange(len(t))
     elif np.ndim(t)==1:
         if x_column is None and idx_default:
             return np.arange(len(t))
@@ -74,7 +77,10 @@ def get_x_column(t, x_column=None, idx_default=False):
     else:
         if x_column is None:
             x_column=0
-        return wrap(t)[:,x_column]
+        try:
+            return wrap(t)[:,x_column]
+        except ValueError:
+            return np.asarray(t[x_column])
     
 def get_y_column(t, y_column=None):
     """
@@ -95,7 +101,10 @@ def get_y_column(t, y_column=None):
     else:
         if y_column is None:
             y_column=1
-        return wrap(t)[:,y_column]
+        try:
+            return wrap(t)[:,y_column]
+        except ValueError:
+            return np.asarray(t[y_column])
     
 
 
@@ -139,7 +148,7 @@ def filter_by(t, columns=None, pred=None, exclude=False):
     else:
         if columns is None:
             columns=slice(None)
-        wrapped_subtable=wrapped.subtable((slice(None),columns))
+        wrapped_subtable=wrapped.subtable((slice(None),columns),wrapped=True)
         sat=np.array([pred(*r) for r in wrapped_subtable.r]).astype(bool)
     return wrapped.t[~sat if exclude else sat]
 
@@ -193,7 +202,7 @@ def merge(ts, idx=None, as_array=True):
         for c,w in zip(idx,wrapped):
             if w.ndim()==2:
                 t=sort_by(filter_by(w.cont,c,common_idx),c)
-                t=wrap(t).c.get_deleted(c,wrapped)
+                t=wrap(t).c.get_deleted(c,wrapped,wrapped=True)
                 cut.append(t)
         wrapped=cut
     if result_type=="array":
@@ -202,7 +211,7 @@ def merge(ts, idx=None, as_array=True):
     else:
         columns,names=zip(*[(n,v) for w in wrapped for n,v in zip(w.c.get_names(),w.c)])
         return pd.DataFrame(dict(zip(names,columns)),columns=names)
-            
+
 
 
 ##### Limits and ranges #####
@@ -317,7 +326,7 @@ def find_closest_arg(xs, x, approach="both", ordered=False):
     except AttributeError:
         pass
     if not ordered:
-        diff_array=xs-x
+        diff_array=np.asarray(xs)-x
         if approach=="top":
             threshold=diff_array>=0
             if threshold.any():
@@ -335,27 +344,28 @@ def find_closest_arg(xs, x, approach="both", ordered=False):
         else:
             return abs(diff_array).argmin()
     else:
-        if xs.ndim!=1:
+        wxs=wrap(xs)
+        if wxs.ndim()!=1:
             raise ValueError("ordered method is only applicable to 1D arrays")
         if len(xs)==0:
             return None
         lb,hb=0,len(xs)-1
-        if xs[0]>xs[-1]: # must be reverse ordered
+        if wxs[0]>wxs[-1]: # must be reverse ordered
             arg_rev=find_closest_arg(xs[::-1],x,approach=approach,ordered=True)
             return len(xs)-1-arg_rev if arg_rev is not None else arg_rev
-        if xs[lb]>x:
+        if wxs[lb]>x:
             if approach=="bottom":
                 return None
             else:
                 return lb
-        if xs[hb]<x:
+        if wxs[hb]<x:
             if approach=="top":
                 return None
             else:
                 return hb
         while hb-lb>1:
             i=(lb+hb)//2
-            el=xs[i]
+            el=wxs[i]
             if el<x:
                 lb=i
             elif el>x:
@@ -367,39 +377,49 @@ def find_closest_arg(xs, x, approach="both", ordered=False):
         elif approach=="bottom":
             return lb
         else:
-            if abs(xs[lb]-x)<abs(xs[hb]-x):
+            if abs(wxs[lb]-x)<abs(wxs[hb]-x):
                 return lb
             else:
                 return hb
 
 def find_closest_value(xs, x, approach="both", ordered=False):
-    return xs[find_closest_arg(xs,x,approach=approach,ordered=ordered)]
+    return wrap(xs)[find_closest_arg(xs,x,approach=approach,ordered=ordered)]
 
 def get_range_indices(xs, xs_range, ordered=False):
     """
     Find trace indices corresponding to the given range.
     
     The range is defined as ``xs_range[0]:xs_range[1]``, or infinite if ``xs_range=None`` (so the data is returned unchanged in that case).
-    If ``ordered_x==True``, then the function assumes that `xs` in ascending order.
+    If ``ordered==True``, then the function assumes that `xs` in ascending or descending order.
     """
-    # TODO: change ascending to arbitrary ordered
     if xs_range is not None:
         xs_range=Range(*xs_range)
-        if ordered:
-            if xs_range.start is None:
-                min_i=0
+        wrapped=wrap(xs)
+        if ordered and len(wrapped)>10:
+            if wrapped[1]>wrapped[0]:
+                if xs_range.start is None:
+                    min_i=0
+                else:
+                    min_i=find_closest_arg(xs,xs_range.start,approach="top",ordered=True)
+                if xs_range.stop is None:
+                    max_i=len(xs)
+                else:
+                    max_i=find_closest_arg(xs,xs_range.stop,approach="bottom",ordered=True)
             else:
-                min_i=find_closest_arg(xs,xs_range.start,approach="top",ordered=True)
-            if xs_range.stop is None:
-                max_i=len(xs)
-            else:
-                max_i=find_closest_arg(xs,xs_range.stop,approach="bottom",ordered=True)
+                if xs_range.start is None:
+                    max_i=len(xs)
+                else:
+                    max_i=find_closest_arg(xs,xs_range.start,approach="top",ordered=True)
+                if xs_range.stop is None:
+                    min_i=0
+                else:
+                    min_i=find_closest_arg(xs,xs_range.stop,approach="bottom",ordered=True)
             if min_i is None or max_i is None:
                 return slice(0)
             else:
                 return slice(min_i,max_i+1)
         else:
-            return xs_range.contains(xs[:])
+            return xs_range.contains(np.asarray(xs))
     else:
         return slice(0)
 
@@ -455,6 +475,7 @@ def find_discrete_step(trace, min_fraction=1E-8, tolerance=1E-5):
     `tolerance` is the tolerance of the division.
     Raise an :exc:`ArithmeticError` if no such value was found.
     """
+    trace=np.asarray(trace)
     if len(trace)<2:
         raise ValueError('trace length should be at least 2')
     diffs=trace[1:]-trace[:-1]
@@ -471,6 +492,7 @@ def unwrap_mod_data(trace, wrap_range):
     Assume that every jump greater than ``0.5*wrap_range`` is not real and is due to value being restricted.
     Can be used to, e.g., unwrap the phase data.
     """
+    trace=np.asarray(trace)
     if len(trace)<2:
         return trace
     res=trace.copy()
@@ -492,6 +514,7 @@ def pad_trace(trace, pad, mode="constant", cval=0.):
     Expand 1D trace or a multi-column table for different convolution techniques.
     
     Wrapper around :func:`numpy.pad`, but can handle pandas dataframes or multi-column arrays.
+    Note that the index data is not preserved.
 
     Args:
         trace: 1D array-like object.
@@ -504,14 +527,14 @@ def pad_trace(trace, pad, mode="constant", cval=0.):
     wrapped=wrap(trace)
     if wrapped.ndim()==2:
         return wrapped.columns_replaced([pad_trace(wrapped.c[i],pad=pad,mode=mode,cval=cval)
-            for i in range(wrapped.shape()[1])],wrapped=False)
+            for i in range(wrapped.shape()[1])])
     elif wrapped.ndim()!=1:
         raise ValueError("this function accepts only 1D or 2D arrays")
     if len(trace)==0 or pad==0:
         return trace
     kwargs={"constant_values":cval} if mode=="constant" else {}
     res=np.pad(trace,pad,mode=mode,**kwargs)
-    return wrapped.array_replaced(res,wrapped=False)
+    return wrapped.array_replaced(res)
 
 
 
@@ -530,10 +553,14 @@ def xy2c(t):
     if wrapped.shape()[1] not in [2,3]:
         raise ValueError("xy representation can only have 2 or 3 columns")
     if wrapped.shape()[1]==2:
-        return wrapped[:,0]+1j*wrapped[:,1]
+        if wrapped.get_type=="1d.array":
+            return wrapped[:,0]+1j*wrapped[:,1]
+        else:
+            return pd.DataFrame({"c":wrapped[:,0]+1j*wrapped[:,1]},index=wrapped.get_index())
+        return 
     else:
         c=wrapped[:,1]+1j*wrapped[:,2]
-        return wrapped.from_columns([t[:,0],c],column_names=[wrapped.c.get_names()[0],"c"],wrapped=False)
+        return wrapped.from_columns([t[:,0],c],column_names=[wrapped.c.get_names()[0],"c"],index=wrapped.get_index())
     
 def c2xy(t):
     """
@@ -543,10 +570,17 @@ def c2xy(t):
     Return 2D array with either 2 column (x and y) or 3 columns (index, x and y).
     """
     wrapped=wrap(t)
+    t=np.asarray(t)
     if wrapped.ndim()==1:
-        return np.column_stack((t.real,t.imag))
+        if wrapped.get_type=="1d.array":
+            return np.column_stack((t.real,t.imag))
+        else:
+            return pd.DataFrame({"x":t.real,"t":t.imag},index=wrapped.get_index())
+    if wrapped.shape()[1]==1:
+        columns=[t[:,0].real,t[:,0].imag]
+        return wrapped.from_columns(columns,column_names=["x","y"],index=wrapped.get_index())
     if wrapped.shape()[1]==2:
         columns=[t[:,0].real,t[:,1].real,t[:,1].imag]
-        return wrapped.from_columns(columns,column_names=[wrapped.c.get_names()[0],"x","y"],wrapped=False)
+        return wrapped.from_columns(columns,column_names=[wrapped.c.get_names()[0],"x","y"],index=wrapped.get_index())
     else:
         raise ValueError("2D c representation can only have 2 columns")

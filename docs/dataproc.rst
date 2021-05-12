@@ -94,7 +94,7 @@ There are several functions present for filtering the data to smooth it or reduc
         array([2, 3, 4, 5, 6, 7, 8, 9, 9, 9])
 
     - Next are convolution filters which operate by convolving the trace with a given kernel function. These involve :func:`.filters.gaussian_filter` (and :func:`.filters.gaussian_filter_nd`, which is simply a wrapper around :func:`scipy.ndimage.gaussian_filter`), and a more generic :func:`.filters.convolution_filter`. Related are infinite impulse response (IIR) filter :func:`.filters.low_pass_filter` and :func:`.filters.high_pass_filter`, which mimic standard single-pole low-pass and high-pass filters. In principle, they can be modelled as a convolution with an exponential decay, but the implementation using the recursive filters is more efficient for large widths.
-    - Finally, there are Fourier filters, which Fourier-transform the trace, scale the transform values, and transform it back to the real domain. These involve a generic :func:`.filters.fourier_filter`, as well as more specific :func:`.filters.fourier_filter_bandpass` and :func:`.filters.fourier_filter_bandstop` (both hard cutoff).
+    - Finally, there are Fourier filters, which Fourier-transform the trace, scale the transform values, and transform it back to the real domain. These involve the main function :func:`.filters.fourier_filter`, which takes a generic frequency response function, as well as two specific response function generators :func:`.filters.fourier_filter_bandpass` and :func:`.filters.fourier_filter_bandstop` (both hard cutoff).
 
 
 Fourier transform

@@ -130,11 +130,11 @@ def interpolate_trace(trace, step, rng=None, x_column=0, select_columns=None, ki
     start=(rng_min//step)*step
     stop=(rng_max//step)*step
     pts=np.arange(start,stop+step/2.,step)
-    xidx=wtrace.c.get_index(x_column)
-    columns=[ pts if wtrace.c.get_index(c)==xidx else
+    xidx=wtrace.c.get_column_index(x_column)
+    columns=[ pts if wtrace.c.get_column_index(c)==xidx else
             interpolate1D_func(src_column,wtrace[:,c],kind=kind,bounds_error=False,fill_values="bounds",assume_sorted=assume_sorted)(pts)
             for c in select_columns]
-    return wtrace.subtable((slice(None),select_columns)).columns_replaced(columns,wrapped=False)
+    return wtrace.subtable((slice(None),select_columns),wrapped=True).columns_replaced(columns)
 
 
 def average_interpolate_1D(data, step, rng=None, avg_kernel=1, min_weight=0, kind="linear"):

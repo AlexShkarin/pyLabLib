@@ -88,7 +88,7 @@ def normalize_fourier_transform(ft, normalization="none", df=None, copy=False):
     l=len(ft)
     ft=wrap(ft)
     if copy:
-        ft=ft.copy()
+        ft=ft.copy(wrapped=True)
     if df is None:
         df=ft[1,0]-ft[0,0] if ft.ndim()==2 else 1
     if normalization=="sum":
@@ -161,9 +161,9 @@ def fourier_transform(trace, dt=None, truncate=False, normalization="none", sing
     column_names=["frequency","ft_data"]
     trace_values=_get_trace_values(wrapped,index_column=dt is None)
     if len(trace_values)==0:
-        return np.array([]) if raw else wrapped.from_array(np.zeros((0,2)),column_names,wrapped=False)
+        return np.array([]) if raw else wrapped.from_array(np.zeros((0,2)),column_names)
     if len(trace_values)==1:
-        return np.array([]) if raw else wrapped.from_array(np.array([[0,trace_values[0]]]),column_names,wrapped=False)
+        return np.array([]) if raw else wrapped.from_array(np.array([[0,trace_values[0]]]),column_names)
     trace_values=truncate_trace(trace_values,maxprime=truncate)
     trace_values=apply_window(trace_values,window,window_power_compensate=window_power_compensate)
     ft=fft.fftshift(fft.fft(trace_values))
@@ -172,7 +172,7 @@ def fourier_transform(trace, dt=None, truncate=False, normalization="none", sing
     df=1./(abs(np.real(dt))*len(ft))
     if not raw:
         frequencies=(np.arange(len(ft))-len(ft)//2)*df
-        ft=wrapped.from_columns([frequencies,ft],column_names,wrapped=False) if wrapped.ndim()>1 else np.column_stack((frequencies,ft))
+        ft=wrapped.from_columns([frequencies,ft],column_names) if wrapped.ndim()>1 else np.column_stack((frequencies,ft))
     ft=normalize_fourier_transform(ft,normalization,df=df)
     if single_sided:
         if raw:
@@ -185,7 +185,7 @@ def flip_fourier_transform(ft):
     """
     Flip the fourier transform (analogous to making frequencies negative and flipping the order).
     """
-    ft=wrap(ft).copy()
+    ft=wrap(ft).copy(wrapped=True)
     if len(ft)%2==1:
         ft[:,1]=ft[::-1,1]
     else:
@@ -219,9 +219,9 @@ def inverse_fourier_transform(ft, df=None, truncate=False, zero_loc=None, symmet
     column_names=["time","data"]
     ft_values=_get_trace_values(wrapped,index_column=df is None)
     if len(ft)==0:
-        return np.array([]) if raw else wrapped.from_array(np.zeros((0,2)),column_names,wrapped=False)
+        return np.array([]) if raw else wrapped.from_array(np.zeros((0,2)),column_names)
     if len(ft)==1:
-        return np.array([ft_values[0]]) if raw else wrapped.from_array(np.array([[0,ft_values[0]]]),column_names,wrapped=False)
+        return np.array([ft_values[0]]) if raw else wrapped.from_array(np.array([[0,ft_values[0]]]),column_names)
     if zero_loc is None:
         if df is not None or wrapped.ndim()==1 or wrapped.shape()[1]==1:
             zero_freq_point=0
@@ -251,7 +251,7 @@ def inverse_fourier_transform(ft, df=None, truncate=False, zero_loc=None, symmet
     if wrapped.ndim()==1:
         return np.column_stack((times,trace))
     else:
-        return wrapped.from_columns([times,trace],column_names,wrapped=False)
+        return wrapped.from_columns([times,trace],column_names)
 
 def power_spectral_density(trace, dt=None, truncate=False, normalization="density", single_sided=False, window="rectangle", window_power_compensate=True, raw=False):
     """
@@ -294,7 +294,7 @@ def power_spectral_density(trace, dt=None, truncate=False, normalization="densit
     if wrapped.ndim()==1:
         return np.column_stack((frequencies,abs(ft)**2))
     else:
-        return wrapped.from_columns((frequencies,abs(ft)**2),column_names,wrapped=False)
+        return wrapped.from_columns((frequencies,abs(ft)**2),column_names)
 
 
 
@@ -302,7 +302,7 @@ def get_real_part_ft(ft):
     """
     Get the fourier transform of the real part only from the fourier transform of a complex variable.
     """
-    re_ft=wrap(ft).copy()
+    re_ft=wrap(ft).copy(wrapped=True)
     re_ft[1:,1]=(ft[1:,1]+ft[:0:-1,1].conjugate())*0.5
     re_ft[0,1]=np.real(ft[0,1])
     return re_ft.cont
@@ -311,7 +311,7 @@ def get_imag_part_ft(ft):
     """
     Get the fourier transform of the imaginary part only from the fourier transform of a complex variable.
     """
-    im_ft=wrap(ft).copy()
+    im_ft=wrap(ft).copy(wrapped=True)
     im_ft[1:,1]=(im_ft[1:,1]-im_ft[:0:-1,1].conjugate())/2.j
     im_ft[0,1]=im_ft[0,1].imag
     return im_ft.cont
