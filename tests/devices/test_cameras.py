@@ -75,7 +75,7 @@ class TestPhotonFocusIMAQ(ROICameraTester):
     def check_status_line(self, frames):
         slines=PhotonFocus.get_status_lines(np.asarray(frames))
         assert slines is not None
-        assert np.all(slines[1:,1]-slines[:-1,1]==1)
+        assert np.all(slines[1:,0]-slines[:-1,0]==1)
     
     @pytest.mark.devchange(5)
     def test_large_acq(self, device):

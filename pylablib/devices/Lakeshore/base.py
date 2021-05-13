@@ -92,7 +92,7 @@ class Lakeshore218(SCPI.SCPIDevice):
         """
         self.write("INCRV",[channel,index])
         self.wait_dev()
-        return self._wip.get_sensor_curve(channel)
+        return self._wip.get_sensor_curve_index(channel)
     
     _p_curve_format=interface.EnumParameterClass("curve_format",{"volt_k":2,"ohm_k":3,"logohm_k":4})
     _p_curve_coeff=interface.EnumParameterClass("curve_coeff",{"neg":1,"pos":2})

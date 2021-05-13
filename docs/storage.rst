@@ -1,7 +1,11 @@
+.. _storage:
+
 Data storage
 =========================
 
 Complex data storage in pylablib centers around 2 main components: the multi-level dictionary for representing hierarchical data within the code, and file IO to (among other things) load and store it in a human-readable format.
+
+.. _storage_dictionary:
 
 Multi-level dictionary
 -------------------------
@@ -58,6 +62,8 @@ A dictionary can be build from a Python ``dict``, which automatically normalizes
 
     Thus, it is generally recommended to only use strings or non-negative integers as keys, and apply the same restrictions to them as to the Python variable names (with the addition of names starting with a digit).
 
+
+.. _storage_fileio:
 
 File IO
 -------------------------
@@ -148,6 +154,8 @@ Note that currently it operates only with simple flat tables and does not suppor
     10   0  (0, 0)
     11   1  (1, 1)
     12   2  (4, 8)
+
+.. _storage_fileio_dict:
 
 Dictionary files
 ~~~~~~~~~~~~~~~~~~~~~~~~~

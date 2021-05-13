@@ -2,7 +2,6 @@ from .test_basic import DeviceTester
 
 import pytest
 import numpy as np
-import time
 
 
 @pytest.fixture
@@ -43,6 +42,33 @@ class CameraTester(DeviceTester):
         """Test snapping and grabbing functions"""
         for _ in range(stress_factor):
             device.grab(self.grab_size)
+    @pytest.mark.devchange(2)
+    def test_get_full_info_acq(self, device):
+        """Test info getting errors during acquisition"""
+        device.start_acquisition()
+        try:
+            info=device.get_full_info(self.include)
+            print(device,info)
+        finally:
+            device.stop_acquisition()
+    # @pytest.mark.devchange(3)
+    # def test_get_set_all_acq(self, device):
+    #     """Test getting and re-applying settings error during acquisition"""
+    #     stopped_settings=device.get_settings(self.include)
+    #     print(device,stopped_settings)
+    #     for k in self.get_set_all_exclude:
+    #         del stopped_settings[k]
+    #     device.start_acquisition()
+    #     try:
+    #         settings=device.get_settings(self.include)
+    #         device.apply_settings(stopped_settings)
+    #         new_settings=device.get_settings(self.include)
+    #         for k in self.get_set_all_exclude:
+    #             del settings[k]
+    #             del new_settings[k]
+    #         assert new_settings==settings
+    #     finally:
+    #         device.stop_acquisition()
 
     @pytest.mark.devchange(1)
     def test_frame_info(self, device):

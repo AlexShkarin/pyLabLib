@@ -140,6 +140,8 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
     _p_open_interface=interface.EnumParameterClass("open_interface",_cam_interface_names_inv)
     def open(self):
         """Open connection to the camera"""
+        if self.handle is not None:
+            return
         for t in range(2):
             if self.interface is None:
                 self.handle=lib.PCO_OpenCamera()
@@ -602,6 +604,7 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         roi=lib.PCO_GetROI(self.handle)
         bins=lib.PCO_GetBinning(self.handle)
         return ((roi[0]-1)*bins[0],roi[2]*bins[0],(roi[1]-1)*bins[1],roi[3]*bins[1],bins[0],bins[1])
+    @camera.acqcleared
     def set_roi(self, hstart=0, hend=None, vstart=0, vend=None, hbin=1, vbin=1, symmetric=False):
         """
         Setup camera ROI.

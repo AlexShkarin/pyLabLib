@@ -395,6 +395,7 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
         """
         Read multiple images specified by `rng` (by default, all un-read images).
 
+        If `rng` is specified, it is a tuple ``(first, last)`` with images range (first inclusive).
         If no new frames are available, return an empty list; if no acquisition is running, return ``None``.
         If ``peek==True``, return images but not mark them as read.
         `missing_frame` determines what to do with frames which are out of range (missing or lost):

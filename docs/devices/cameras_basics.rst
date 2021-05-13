@@ -11,10 +11,11 @@ Basic examples
 
 Basic camera usage is fairly straightforward::
 
+    from pylablib import Andor
     cam = Andor.AndorSDK2Camera()  # connect to the camera
     cam.set_exposure(10E-3)  # set 10ms exposure
     cam.set_roi(0,128,0,128)  # set 128x128px ROI in the upper right corner
-    image = cam.grab(10)  # grab 10 frames
+    images = cam.grab(10)  # grab 10 frames
     cam.close()
 
 In case you need to grab and process frames continuously, the example is a bit more complicated::
@@ -78,11 +79,24 @@ Application notes and examples
 
 Here we talk more practically about performing tasks common to most cameras.
 
+Simple acquisition
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Frame acquisition is, understandably, the most important part of the camera. Basic acquisition can be done without explicitly setting up the acquisition loop, simply by using :meth:`.ICamera.snap` and :meth:`.ICamera.grab` methods which, correspondingly, grab a single frame or a given number of frames::
+
+    from pylablib import Andor
+    cam = Andor.AndorSDK3Camera()  # connect to the camera
+    img = cam.snap()  # grab a single frame
+    images = cam.grab(10)  # grab 10 frames (return a list of frames)
+    cam.close()
+
+These allow for quick tests of whether the camera works properly, and for occasional frames acquisition. However, these methods have to start and stop acquisition every time they are called, which for some cameras can take about a second. Hence, if continuous acquisition and high frame rate are required, you would need to set up the acquisition loop.
+
 
 Acquisition loop
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Frame acquisition is, understandably, the most important part of the camera. A typical simple acquisition loop has already been shown above::
+A typical simple acquisition loop has already been shown above::
 
     cam.setup_acquisition(nframes=100)  # could be combined with start_acquisition, or kept separate
     cam.start_acquisition()

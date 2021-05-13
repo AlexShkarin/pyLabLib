@@ -804,6 +804,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
     ]
     _p_read_mode=interface.EnumParameterClass("read_mode",{n:v for (n,v,_) in _readmode_desc})
     _readmode_caps={v:c for (_,v,c) in _readmode_desc}
+    @camera.acqstopped
     @_camfunc(setpar="read_mode")
     @interface.use_parameters(mode="read_mode",_returns="read_mode")
     def set_read_mode(self, mode):
@@ -821,6 +822,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
     def get_read_mode(self):
         """Get the current read mode"""
 
+    @camera.acqstopped
     @_camfunc(setpar="read_params/single_track")
     def setup_single_track_mode(self, center=0, width=1):
         """
@@ -835,6 +837,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
     def get_single_track_mode_parameters(self):
         """Return singe-track read mode parameters ``(center, width)``"""
 
+    @camera.acqstopped
     @_camfunc
     def setup_multi_track_mode(self, number=1, height=1, offset=1):
         """
@@ -852,6 +855,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
     def get_multi_track_mode_parameters(self):
         """Return multi-track read mode parameters ``(number, height, offset)``"""
         
+    @camera.acqstopped
     @_camfunc(setpar="read_params/random_track")
     def setup_random_track_mode(self, tracks=None):
         """
@@ -868,6 +872,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
     def get_random_track_mode_parameters(self):
         """Return random-track read mode parameters, i.e., the list of track positions"""
 
+    @camera.acqstopped
     @_camfunc(setpar="read_params/image")
     def setup_image_mode(self, hstart=0, hend=None, vstart=0, vend=None, hbin=1, vbin=1):
         """

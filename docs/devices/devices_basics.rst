@@ -73,6 +73,7 @@ Multi-threading
 
 For simplicity of usage and construction, devices interfaces are designed to be synchronous and single-threaded. Asynchronous operation can be achieved by explicit usage of Python multi-threading. Furthermore, it is not recommended to use the same device simultaneously from two separate threads; however, non-simultaneous calling device methods from different threads (e.g., using locks) and simultaneous usage of several separate devices of the same class is supported.
 
+.. _devices_error_handling:
 
 Error handling
 --------------------------------------
@@ -137,6 +138,7 @@ Additionally, there is ``get_full_info`` method, which return as complete inform
     3
     >>> wheel.close()
 
+.. _devices_external_dependencies:
 
 Dependencies and external software
 --------------------------------------
@@ -168,29 +170,23 @@ Connecting to a Cryomagnetics LM500 level meter and reading out the level at the
     with Cryomagnetics.LM500("COM1") as lm:
         level = lm.get_level(1)  # read the level
 
-Stepping the M Squared laser wavelength and recording an image from the Andor IXON camera at each step::
+Stepping the M Squared laser wavelength and recording an image from the Andor iXon camera at each step::
 
-    from pylablib.aux_libs.devices import M2, Andor  # import the device libraries
-    with M2.M2ICE("192.168.0.1", 39933) as laser, Andor.AndorCamera() as cam:  # connect to the devices
+    with M2.Solstis("192.168.1.2", 34567) as laser, Andor.AndorSDK2Camera() as cam:  # connect to the devices
         # change some camera parameters
-        cam.set_shutter("open")
         cam.set_exposure(50E-3)
-        cam.set_amp_mode(preamp=2)
-        cam.set_EMCCD_gain(128)
-        cam.setup_image_mode(vbin=2, hbin=2)
-        # setup acquisition mode
-        cam.set_acquisition_mode("cont")
-        cam.setup_cont_mode()
+        cam.set_roi(0, 128, 0, 128, hbin=2, vbin=2)
+        cam.setup_shutter("open")
         # start camera acquisition
-        cam.start_acquisition()
-        wavelength = 740E-9  # initial wavelength (in meters)
+        wavelength = 770E-9  # initial wavelength (in meters)
         images = []
-        while wavelength < 770E-9:
-            laser.tune_wavelength_table(wavelength)  # tune the laser frequency (using coarse tuning)
+        cam.start_acquisition()
+        while wavelength < 780E-9:
+            laser.coarse_tune_wavelength(wavelength)  # tune the laser frequency (using coarse tuning)
             time.sleep(0.5)  # wait until the laser stabilizes
             cam.wait_for_frame()  # ensure that there's a frame in the camera queue
-            frame = cam.read_newest_image()
-            images.append(frame)
+            img = cam.read_newest_image()
+            images.append(img)
             wavelength += 0.5E-9
 
 

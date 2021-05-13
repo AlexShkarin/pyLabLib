@@ -38,11 +38,11 @@ class BasicKinesisDevice(comm_backend.ICommBackendWrapper):
     """
     Error=ThorlabsError
     def __init__(self, conn, timeout=3.):
-        conn=comm_backend.FT232DeviceBackend.combine_conn(conn,(None,115200))
-        self.conn=conn
-        instr=comm_backend.FT232DeviceBackend(conn,term_write=b"",term_read=b"",timeout=timeout,reraise_error=ThorlabsBackendError)
+        defaults={"serial":{"baudrate":115200}, "ft232":{"baudrate":115200}}
+        instr=comm_backend.new_backend(conn,backend=("auto","ft232"),term_write=b"",term_read=b"",timeout=timeout,
+            defaults=defaults,reraise_error=ThorlabsBackendError)
         instr.setup_cooldown(write=0.003)
-        comm_backend.ICommBackendWrapper.__init__(self,instr)
+        super().__init__(instr)
         self._add_info_variable("device_info",self.get_device_info)
         self._bg_msg_counters={}
 
@@ -138,7 +138,7 @@ class BasicKinesisDevice(comm_backend.ICommBackendWrapper):
                     80:"TST001", 81:"TPZ001", 82:"TNZ001", 83:"TDC001", 84:"TSG001", 85:"TSC001", 86:"TLS001", 87:"TTC001", 89:"TQD001", 
                     90:"SCC101", 91:"PCC101", 93:"DCC101", 94:"BCC101", 95:"PPC102", 96:"PCC102"}
     def _get_device_model(self):
-        addr=str(self.conn.get("port",""))
+        addr=str(self._connection_parameters.get("port",""))
         if len(addr)==8 and addr.isdigit():
             msn=int(addr[:2])
             return msn,self._device_SN.get(msn,None)

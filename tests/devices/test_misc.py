@@ -1,4 +1,4 @@
-from pylablib.devices import Thorlabs
+from pylablib.devices import Thorlabs, OZOptics
 
 from .test_basic import DeviceTester
 
@@ -17,3 +17,9 @@ class TestFW102(DeviceTester):
         assert device.get_position()==npos
         device.set_position(pos)
         assert device.get_position()==pos
+
+
+class TestOZOpticsEPC04(DeviceTester):
+    """Testing class for OZOptics EPC04 polarization controller interface"""
+    devname="ozoptics_epc04"
+    devcls=OZOptics.EPC04

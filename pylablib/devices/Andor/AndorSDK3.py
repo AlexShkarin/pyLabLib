@@ -405,7 +405,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
         def read(self, idx):
             """Return the oldest available acquired but not read buffer, and mark it as read"""
             buff_idx=idx%len(self.buffers)
-            return ctypes.string_at(self.buffers[buff_idx],self.size)
+            return np.ctypeslib.as_array(ctypes.cast(self.buffers[buff_idx],ctypes.POINTER(ctypes.c_ubyte)),shape=(self.size,))
         def start_loop(self):
             """Start buffer scheduling loop"""
             self.stop_loop()
@@ -549,7 +549,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
             chunks={}
             read_len=0
             while read_len<imlen:
-                cid,clen=struct.unpack("<II",img[imlen-read_len-8:imlen-read_len])
+                cid,clen=struct.unpack("<II",img[imlen-read_len-8:imlen-read_len].tobytes())
                 chunks[cid]=img[imlen-read_len-clen-4:imlen-read_len-8]
                 read_len+=clen+4
             if 0 not in chunks:
@@ -558,7 +558,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
             metadata=chunks
         else:
             metadata={}
-        metadata={cid:self._parse_metadata_section(cid,data) for (cid,data) in metadata.items()}
+        metadata={cid:self._parse_metadata_section(cid,data.tobytes()) for (cid,data) in metadata.items()}
         metadata=self._parse_metadata(metadata)
         bpp=self.get_value("BytesPerPixel")
         if bpp not in [1,1.5,2,4]:
@@ -570,24 +570,16 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
         if len(img)!=exp_len:
             if len(img)<exp_len or len(img)>=exp_len+8: # sometimes image size gets rounded to nearest 4/8 bytes
                 raise AndorError("unexpected image byte size: expected {}x{}={}, got {}".format(stride,height,int(stride*height),len(img)))
+        img=img[:exp_len]
         if bpp==1.5:
-            img=read_uint12(np.frombuffer(img,"u1",count=exp_len).reshape(-1,stride),width=width)
+            img=read_uint12(img.reshape(-1,stride),width=width)
         else:
-            dtype="<u{}".format(int(bpp))
-            if stride==bpp*width:
-                img=np.frombuffer(img,dtype=dtype,count=width*height).reshape(height,width)
-            elif stride%bpp==0:
-                img=np.frombuffer(img,dtype=dtype,count=(stride//bpp)*height).reshape(height,-1)[:,:width]
+            bpp=int(bpp)
+            dtype="<u{}".format(bpp)
+            if stride%bpp==0:
+                img=img.view(dtype).reshape(height,-1)[:,:width].copy()
             else: # only possible with bpp==2 or 4 and non-divisible stride
-                bpp=int(bpp)
-                byteimg=np.frombuffer(img,dtype="u1",count=exp_len).reshape(height,stride)
-                byteimg=byteimg[:,:width*bpp].astype(dtype)
-                if bpp==2:
-                    img=(byteimg[:,::2])+(byteimg[:,1::2]<<8)
-                else:
-                    img=byteimg[:,::bpp]
-                    for b in range(1,bpp):
-                        img+=byteimg[:,b::bpp]<<(b*8)
+                img=img.reshape(height,stride)[:,:width*bpp].copy().view(dtype)
         img=self._convert_indexing(img,"rct")
         return img,metadata
 
@@ -683,6 +675,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
         """
         Read multiple images specified by `rng` (by default, all un-read images).
 
+        If `rng` is specified, it is a tuple ``(first, last)`` with images range (first inclusive).
         If no new frames are available, return an empty list; if no acquisition is running, return ``None``.
         If ``peek==True``, return images but not mark them as read.
         `missing_frame` determines what to do with frames which are out of range (missing or lost):

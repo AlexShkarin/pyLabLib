@@ -34,7 +34,7 @@ Connection
 The laser is identified by its IP address (typically starting with ``192.168.1``, if it is on the local network) and the port::
 
     >> from pylablib.devices import M2
-    >> laser = M2.Solstis("192.168.1.2",34567)
+    >> laser = M2.Solstis("192.168.1.2", 34567)
     >> laser.close()
 
 The port is set up in the ``Remote interface`` row of the ``Network Settings`` menu of the laser web interface. There you also need to provide the correct IP address of the controlling PC and enable the remote interface; otherwise the connection will be rejected by the laser.

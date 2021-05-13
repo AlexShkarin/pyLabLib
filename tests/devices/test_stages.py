@@ -1,5 +1,6 @@
 from pylablib.devices import Attocube
 from pylablib.devices import Arcus
+from pylablib.devices import SmarAct
 from pylablib.devices import Trinamic
 from pylablib.devices import Thorlabs
 
@@ -31,6 +32,16 @@ class TestArcusPerformax(DeviceTester):
     @pytest.fixture(scope="class")
     def library_parameters(self):
         pylablib.par["devices/dlls/arcus_performax"]="../dlls"
+
+
+class TestSmarActSCUPerformax(DeviceTester):
+    """Testing class for SmarAct SCU stage interface"""
+    devname="smaract_scu3d"
+    devcls=SmarAct.SCU3D
+
+    @pytest.fixture(scope="class")
+    def library_parameters(self):
+        pylablib.par["devices/dlls/smaract_scu3d"]="../dlls"
 
 
 class TestTrinamicTMCM1110(DeviceTester):

@@ -1492,6 +1492,9 @@ def _is_serial_addr(addr):
 _network_re=re.compile(r"(\d+\.){3}\d+(:\d+)?",re.IGNORECASE)
 def _is_network_addr(addr):
     return isinstance(addr,py3.anystring) and bool(_network_re.match(addr))
+_visa_re=re.compile(r"\w+(::\w+)+",re.IGNORECASE)
+def _is_visa_addr(addr):
+    return isinstance(addr,py3.anystring) and bool(_visa_re.match(addr))
 def autodetect_backend(conn, default="visa"):
     """
     Try to determine the backend by the connection.
@@ -1514,10 +1517,14 @@ def autodetect_backend(conn, default="visa"):
         return "network"
     if _is_serial_addr(conn):
         return "serial"
+    if _is_visa_addr(conn):
+        return "visa"
     return default
 def _as_backend(backend, conn=None):
     if backend=="auto":
         backend=autodetect_backend(conn)
+    if isinstance(backend,tuple) and len(backend)==2 and backend[0]=="auto":
+        backend=autodetect_backend(conn,default=backend[1])
     if isinstance(backend,type) and issubclass(backend,IDeviceCommBackend):
         return backend
     if backend in _backends:
@@ -1533,7 +1540,9 @@ def new_backend(conn, backend="auto", defaults=None, **kwargs):
             (e.g., ``"192.168.0.1"`` or ``("COM1",19200)``), a tuple ``(backend, conn)`` which specifies both backend and connection
             (in which case it overrides the supplied backend), or an already opened backend (in which case it is returned as is)
         backend (str): Backend type. Available backends are ``'auto'`` (try to autodetect based on the connection),
-            ``'visa'``, ``'serial'``, ``'ft232'``, ``'network'``, and ``"pyusb"``. Can also be directly a backend class (more appropriate for custom backends)
+            ``'visa'``, ``'serial'``, ``'ft232'``, ``'network'``, and ``"pyusb"``. Can also be directly a backend class (more appropriate for custom backends),
+            or a tuple ``('auto', backend)``, which is analogous to ``'auto'``, but it returns the specified ``backend`` if the autodetection fails;
+            by default, the fallback backend is ``'visa'``, so ``'auto'`` is exactly the same as ``('auto', 'visa')``.
         defaults: if not ``None``, specifies a dictionary ``{backend: params}`` with default connection parameters (depending on the backend),
             which are added to the connection parameters
         **kwargs: parameters sent to the backend.

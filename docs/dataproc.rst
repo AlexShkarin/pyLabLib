@@ -4,6 +4,8 @@ Data processing
 =========================
 
 
+.. _dataproc_fitting:
+
 Fitting
 -------------------------
 
@@ -67,6 +69,8 @@ Fitting 2D Gaussian and getting the parameter estimation errors::
 The full module documentation is given at :mod:`pylablib.core.dataproc.fitting`.
 
 
+.. _dataproc_filtering:
+
 Filtering and decimation
 -------------------------
 
@@ -97,6 +101,8 @@ There are several functions present for filtering the data to smooth it or reduc
     - Finally, there are Fourier filters, which Fourier-transform the trace, scale the transform values, and transform it back to the real domain. These involve the main function :func:`.filters.fourier_filter`, which takes a generic frequency response function, as well as two specific response function generators :func:`.filters.fourier_filter_bandpass` and :func:`.filters.fourier_filter_bandstop` (both hard cutoff).
 
 
+.. _dataproc_fourier:
+
 Fourier transform
 -------------------------
 
@@ -113,6 +119,8 @@ The main methods are :func:`.fourier.fourier_transform` for the direct transform
     1.005262206692361
 
 
+.. _dataproc_feature:
+
 Feature detection
 -------------------------
 
@@ -122,6 +130,8 @@ There are several methods for simple feature detection:
   - Another way to find peaks is using :func:`.feature.find_local_extrema`, which finds local minima or maxima in a sliding window of a given width.
   - Switching between two states with a noisy trace can be detected using :func:`.feature.latching_trigger`. It implements a more robust approach to find when the trace is above/below threshold by considering two thresholds: a higher "on" thresholds and a lower "off" threshold. It makes the on/off state "latch" to its current value and is robust to small trace fluctuations around the threshold, which would lead to rapid on/off switches in a single-threshold scheme.
 
+
+.. _dataproc_misc:
 
 Miscellaneous utilities
 -------------------------

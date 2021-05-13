@@ -256,7 +256,7 @@ class EPC04(comm_backend.ICommBackendWrapper):
             self.set_frequency(ch,v)
         return self.get_frequencies()
 
-    _p_waveform=interface.EnumParameterClass("waveform",["sin","tri"])
+    _p_waveform=interface.EnumParameterClass("waveform",["sin","tri"],match_prefix=True)
     @interface.use_parameters(_returns="waveform")
     def get_waveform(self):
         """

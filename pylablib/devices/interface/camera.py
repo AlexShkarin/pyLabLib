@@ -259,7 +259,7 @@ class ICamera(interface.IDevice):
         """
         Get the range of the new images.
         
-        Return tuple ``(first, last)`` with images range (inclusive).
+        Return tuple ``(first, last)`` with images range (first inclusive).
         If no images are available, return ``None``.
         If some images were in the buffer were overwritten, exclude them from the range.
         """
@@ -301,6 +301,7 @@ class ICamera(interface.IDevice):
         """
         Read multiple images specified by `rng` (by default, all un-read images).
 
+        If `rng` is specified, it is a tuple ``(first, last)`` with images range (first inclusive).
         If no new frames are available, return an empty list; if no acquisition is running, return ``None``.
         If ``peek==True``, return images but not mark them as read.
         `missing_frame` determines what to do with frames which are out of range (missing or lost):
@@ -333,7 +334,24 @@ class ICamera(interface.IDevice):
         rng=self.get_new_images_range()
         if rng is None or rng[0]==rng[1]:
             return None
-        res=self.read_multiple_images(rng=rng,peek=peek,return_info=return_info)
+        res=self.read_multiple_images(rng=(rng[0],rng[0]+1),peek=peek,return_info=return_info)
+        frame,info=res if return_info else (res,[None])
+        if frame:
+            return (frame[0],info[0]) if return_info else frame[0]
+        else:
+            return None
+    def read_newest_image(self, peek=False, return_info=False):
+        """
+        Read the newest un-read image.
+
+        If no un-read frames are available, return ``None``.
+        If ``peek==True``, return the image but not mark it as read.
+        If ``return_info==True``, return tuple ``(frame, info)``, where ``info`` is an info tuples (camera-dependent, see :meth:`read_multiple_images`).
+        """
+        rng=self.get_new_images_range()
+        if rng is None or rng[0]==rng[1]:
+            return None
+        res=self.read_multiple_images(rng=(rng[1]-1,rng[1]),peek=peek,return_info=return_info)
         frame,info=res if return_info else (res,[None])
         if frame:
             return (frame[0],info[0]) if return_info else frame[0]

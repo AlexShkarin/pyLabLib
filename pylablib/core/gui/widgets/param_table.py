@@ -81,7 +81,7 @@ class ParamTable(QtWidgets.QWidget):
         self.cache_values=cache_values
         self.current_values=dictionary.Dictionary()
 
-    value_changed=Signal(object,object)
+    any_value_changed=Signal(object,object)
     @controller.exsafeSlot()
     def _update_cache_values(self, name=None, value=None):  # pylint: disable=unused-argument
         if self.cache_values:
@@ -176,7 +176,7 @@ class ParamTable(QtWidgets.QWidget):
         if params.indicator_handler:
             self.gui_values.add_indicator_handler(path,params.indicator_handler)
         if add_change_event:
-            params.value_handler.connect_value_changed_handler(lambda value: self.value_changed.emit(name,value),only_signal=True)
+            params.value_handler.connect_value_changed_handler(lambda value: self.any_value_changed.emit(name,value),only_signal=True)
         if self.cache_values:
             params.value_handler.connect_value_changed_handler(lambda value: self._update_cache_values(name,value),only_signal=False)
         self._update_cache_values()
@@ -196,7 +196,7 @@ class ParamTable(QtWidgets.QWidget):
                 can also be a string ``"skip"``, which means that the widget is added to some other location manually later
                 (this option only works if ``label=None``, and doesn't add any indicator)
             tooltip: widget tooltip (mouseover text)
-            add_change_event (bool): if ``True``, changing of the widget's value emits the table's ``value_changed`` event
+            add_change_event (bool): if ``True``, changing of the widget's value emits the table's ``any_value_changed`` event
         
         Return the widget's value handler
         """
@@ -254,7 +254,7 @@ class ParamTable(QtWidgets.QWidget):
             location (tuple): tuple ``(row, column, rowspan, colspan)`` specifying location of the widget;
                 by default, add to a new row in the end and into the first column, span one row and all table columns
                 can also be a string ``"skip"``, which means that the widget is added to some other location manually later
-            add_change_event (bool): if ``True``, changing of the widget's value emits the table's ``value_changed`` event
+            add_change_event (bool): if ``True``, changing of the widget's value emits the table's ``any_value_changed`` event
         
         Return the widget's value handler
         """
@@ -554,7 +554,7 @@ class ParamTable(QtWidgets.QWidget):
     def get_widget(self, name):
         """Get a widget with the given name"""
         return self.params[name].widget
-    def widget_value_changed(self, name):
+    def value_changed(self, name):
         """Get a value-changed signal for a widget with the given name"""
         return self.params[name].value_handler.value_changed()
 
@@ -580,12 +580,12 @@ class ParamTable(QtWidgets.QWidget):
         """
         Clear the table (remove all widgets)
         
-        If ``disconnect==True``, also disconnect all slots connected to the ``value_changed`` signal.
+        If ``disconnect==True``, also disconnect all slots connected to the ``any_value_changed`` signal.
         """
         if self.params:
             if disconnect:
                 try:
-                    self.value_changed.disconnect()
+                    self.any_value_changed.disconnect()
                 except TypeError: # no signals connected
                     pass
             for name in self.params:

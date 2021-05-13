@@ -1,5 +1,9 @@
+.. _misc_utils:
+
 Various utilities
 =========================
+
+.. _misc_utils_files:
 
 File system
 -------------------------
@@ -17,6 +21,8 @@ There is a number of methods which are minor expansions of the built-in file uti
     - Wrapping methods for working with zip folders: :func:`.utils.files.zip_folder`, :func:`.utils.files.zip_file`, :func:`.utils.files.zip_multiple_files`, :func:`.utils.files.unzip_folder`, :func:`.utils.files.unzip_file`.
 
 
+.. _misc_utils_net:
+
 Network
 -------------------------
 
@@ -24,6 +30,8 @@ There is a simple wrapper class :class:`.utils.net.ClientSocket`, which simplifi
 
 In addition, there are several methods for gaining local host information (:func:`.utils.net.get_local_addr`, :func:`.utils.net.get_all_local_addr`, :func:`.utils.net.get_local_hostname`), receiving JSON-formatted values (:func:`.utils.net.recv_JSON`), and listening on a given port (:func:`.utils.net.listen`).
 
+
+.. _misc_utils_string:
 
 Strings
 -------------------------
@@ -63,6 +71,8 @@ There are several string manipulation functions present:
     - Comparing and searching string: :func:`.utils.string.string_equal` (compare string using different rules such as case sensitivity), :func:`.utils.string.find_list_string`, :func:`.utils.string.find_dict_string` (find string in a list or a dictionary using different comparison rules).
     - Filtering strings: :func:`.utils.string.get_string_filter`, :func:`.utils.string.sfglob`, and :func:`.utils.string.sfregex`. Creates filter functions which may include or exclude certain string patterns (used in, e.g., :func:`.utils.files.list_dir`).
 
+
+.. _misc_utils_misc:
 
 Misc utilities
 -------------------------

@@ -92,7 +92,7 @@ class ImagePlotterCtl(QtWidgets.QWidget):
         self.settings_table.add_check_box("show_linecuts","Show line cuts",value=False).value_changed().connect(self._setup_gui_state)
         self.settings_table.add_num_edit("linecut_width",value=1,limiter=(1,None,"coerce","int"),formatter="int",label="Line cut width:")
         self.settings_table.add_button("center_lines","Center lines").value_changed().connect(plotter.center_lines)
-        self.settings_table.value_changed.connect(lambda n: self.plotter.update_image(update_controls=(n=="normalize"),do_redraw=True),QtCore.Qt.DirectConnection)
+        self.settings_table.any_value_changed.connect(lambda n: self.plotter.update_image(update_controls=(n=="normalize"),do_redraw=True),QtCore.Qt.DirectConnection)
         self.settings_table.add_spacer(10)
         self.settings_table.add_toggle_button("update_image","Updating").value_changed().connect(plotter._set_image_update)
         def arm_single():
