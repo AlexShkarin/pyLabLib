@@ -28,7 +28,7 @@ class GenericOscilloscopeTester(DeviceTester):
 
 
 
-class TestTektrnixTDS2000(GenericOscilloscopeTester):
+class TestTektronixTDS2000(GenericOscilloscopeTester):
     """Testing class for Tektronix TDS2000 series oscilloscope"""
     devname="tektronix_tds2000"
     devcls=Tektronix.TDS2000

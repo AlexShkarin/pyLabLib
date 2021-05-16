@@ -52,6 +52,7 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
         self.open()
         self.v=dictionary.ItemAccessor(self.get_value,self.set_value)
 
+        self._add_camera_parameters()
         self._add_info_variable("device_info",self.get_device_info)
         self._add_status_variable("properties",self.get_all_properties,priority=-5)
         self._add_settings_variable("trigger_mode",self.get_trigger_mode,self.set_trigger_mode)
@@ -92,6 +93,22 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
         """Check if the device is connected"""
         return self.handle is not None
 
+    def _add_camera_parameters(self):
+        rsprop=self.properties.get("READOUT SPEED",None)
+        rspar=interface.RangeParameterClass("readout_speed",1,None)
+        if rsprop is not None:
+            if rsprop.vmax==2:
+                rspar=interface.EnumParameterClass("readout_speed",{"slow":1,"fast":2})
+            elif rsprop.vmax==3:
+                rspar=interface.EnumParameterClass("readout_speed",{"slow":1,"normal":2,"fast":3})
+        self._add_parameter_class(rspar)
+        tsprop=self.properties.get("TRIGGER SOURCE",None)
+        tspar=interface.RangeParameterClass("trigger_mode",1,None)
+        if tsprop is not None and tsprop.vmax<=4:
+            tspar=interface.EnumParameterClass("trigger_mode",{"int":1,"ext":2,"software":3,"master_pulse":4})
+        self._add_parameter_class(tspar)
+                
+        
 
     def get_device_info(self):
         """
@@ -179,7 +196,6 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
                 return
         return self.properties[name].set_value(value)
 
-    _p_trigger_mode=interface.EnumParameterClass("trigger_mode",{"int":1,"ext":2,"software":3})
     @camera.acqstopped
     @interface.use_parameters(mode="trigger_mode")
     def set_trigger_mode(self, mode):
@@ -218,7 +234,6 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
     def get_exposure(self):
         """Set current exposure"""
         return self.get_value("EXPOSURE TIME")
-    _p_readout_speed=interface.EnumParameterClass("readout_speed",{"slow":1,"fast":2})
     @camera.acqcleared
     @interface.use_parameters(speed="readout_speed")
     def set_readout_speed(self, speed="fast"):

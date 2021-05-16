@@ -56,7 +56,7 @@ class RelayBoard(comm_backend.ICommBackendWrapper):
         self.instr.write(msg)
         replies=[self._parse_msg(self.instr.read(4))]
         if multi_result:
-            while replies[-1][0]!=comm:
+            while replies[-1].comm!=comm:
                 replies.append(self._parse_msg(self.instr.read(4)))
         return replies if multi_result else replies[0]
 
@@ -83,7 +83,7 @@ class RelayBoard(comm_backend.ICommBackendWrapper):
         """
         if not isinstance(values,dict):
             values={i+1:v for i,v in enumerate(values)}
-        mask=self.query(2,addr)
+        mask=self.query(2,addr).data
         for p,v in values.items():
             bm=1<<(p-1)
             if v:
