@@ -1,5 +1,6 @@
 from pylablib.devices import Andor
 from pylablib.devices import DCAM
+from pylablib.devices import IMAQdx
 from pylablib.devices import PhotonFocus
 from pylablib.devices import PCO
 from pylablib.devices import uc480
@@ -12,14 +13,17 @@ import numpy as np
 
 
 
-def gen_rois(sz, bins=((),)):
+def gen_rois(sz, bins=((),), max_factor=4):
     base_rois=[
         ((0,None,0,None),None),
-        ((0,sz*4,0,sz*2),"same"),
-        ((sz*2,sz*4,sz,sz*4),"same"),
+        ((0,sz,0,sz),("same" if max_factor>=1 else None)),
+        ((0,sz*4,0,sz*2),("same" if max_factor>=2 else None)),
+        ((sz*2,sz*4,sz,sz*4),("same" if max_factor>=4 else None)),
         ((sz*2,sz*2,sz*2,sz*2),None),
         ((0,0,sz,sz*4),None),
         ((0,sz*2,10000,10000),None),
+        ((1,19,15,64),None),
+        ((8,101,3,35),None),
         ((10000,10000,10000,10000),None),
         ((0,1,0,1),None),
         ]
@@ -93,8 +97,19 @@ class TestPhotonFocusIMAQ(ROICameraTester):
 
 
 
+class TestIMAQdx(ROICameraTester):
+    """Testing class for IMAQdx camera interface"""
+    devname="imaqdx"
+    devcls=IMAQdx.IMAQdxCamera
+    grab_size=100
+    rois=gen_rois(384,max_factor=0)
+
+
+
+
+
 class TestTLCam(ROICameraTester):
-    """Testing class for PCO SC2 camera interface"""
+    """Testing class for Thorlabs TLCam camera interface"""
     devname="thorlabs_tlcam"
     devcls=Thorlabs.ThorlabsTLCamera
     grab_size=100
@@ -108,7 +123,7 @@ class TestPCO(ROICameraTester):
     """Testing class for PCO SC2 camera interface"""
     devname="pco_sc2"
     devcls=PCO.PCOSC2Camera
-    rois=gen_rois(160,((1,1),(1,2),(2,2),((0,0),False),((3,3),False),((10,10),False),((100,100),False)))
+    rois=gen_rois(320,((1,1),(1,2),(2,2),((0,0),False),((3,3),False),((10,10),False),((100,100),False)))
 
 
 

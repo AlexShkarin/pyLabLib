@@ -149,7 +149,7 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
                 self.handle=lib.PCO_OpenCameraEx(self._p_open_interface(interface),self.idx)
             try:
                 self.update_full_data()
-                self.set_roi(*self.get_roi()) # ensure ROI (sometimes it)
+                self.set_roi(*self.get_roi()) # ensure ROI
                 return
             except PCOSC2Error:
                 if self.reboot_on_fail and t==0:
@@ -545,60 +545,25 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
     def get_detector_size(self):
         """Get camera detector size (in pixels) as a tuple ``(width, height)``"""
         return self.v["sensor/strDescription/wMaxHorzResStdDESC"],self.v["sensor/strDescription/wMaxVertResStdDESC"]
-    def _adj_roi_axis(self, start, end, minsize, detsize, step, symm):
-        end=min(end,detsize)
-        start=min(start,detsize)
-        start-=start%step
-        end-=end%step
-        if symm:
-            cdist=max(abs(start-detsize//2),abs(end-detsize//2))
-            start=min(start,detsize//2-cdist)
-            start-=start%step
-            end=detsize-start
-            if end-start<minsize:
-                add=(minsize-(end-start)-1)//2+1
-                start-=add
-                start-=start%step
-                start=max(start,0)
-                end=detsize-start
-        else:
-            if end-start<minsize:
-                end=start+minsize
-            if end>detsize:
-                end=detsize
-                start=detsize-minsize
-        return start,end
     def _adj_bin(self, binval, maxbin, binmode):
         binval=max(binval,1)
         binval=min(binval,maxbin)
         if binmode!=1:
             binval=int(2**np.floor(np.log2(binval)))
         return binval
-    def _trunc_roi(self, hstart=0, hend=None, vstart=0, vend=None, hbin=1, vbin=1, soft_roi=False):
-        xdet,ydet=self.get_detector_size()
-        if hend is None:
-            hend=xdet
-        if vend is None:
-            vend=ydet
-        hbinmax=self.v["sensor/strDescription/wMaxBinHorzDESC"]
+    def _truncate_roi(self, hstart=0, hend=None, vstart=0, vend=None, hbin=1, vbin=1, soft_roi=False):
+        hlim,vlim=self.get_roi_limits()
+        hstart,hend,_=self._truncate_roi_axis((hstart,hend,hbin),hlim)
+        vstart,vend,_=self._truncate_roi_axis((vstart,vend,vbin),vlim)
         hbinmode=self.v["sensor/strDescription/wBinHorzSteppingDESC"]
-        hbin=self._adj_bin(hbin,hbinmax,hbinmode)
-        vbinmax=self.v["sensor/strDescription/wMaxBinVertDESC"]
+        hbin=self._adj_bin(hbin,hlim.maxbin,hbinmode)
         vbinmode=self.v["sensor/strDescription/wBinVertSteppingDESC"]
-        vbin=self._adj_bin(vbin,vbinmax,vbinmode)
-        hstep=self.v["sensor/strDescription/wRoiHorStepsDESC"]
-        vstep=self.v["sensor/strDescription/wRoiVertStepsDESC"]
-        if hstep==0 or vstep==0: # no ROI
-            hstart,hend,vstart,vend=0,xdet,0,ydet
-        else:
-            if self.v["general/strCamType/wCamType"]==0x1340: # pco.edge CLHS
-                hstep=16 # seems to be the case (property says 4, but the documentation says 16)
-            hminsize=self.v["sensor/strDescription/wMinSizeHorzDESC"]*hbin
-            vsymm=self._has_option(CAPS1.GENERALCAPS1_ROI_VERT_SYMM_TO_HORZ_AXIS) or (self._is_pco_edge() and not soft_roi) # pco.edge must be symmetric, can with soft ROI activated it can be asymmetric for output
-            hsymm=self._has_option(CAPS1.GENERALCAPS1_ROI_HORZ_SYMM_TO_VERT_AXIS)
-            hstart,hend=self._adj_roi_axis(hstart,hend,hminsize,xdet,hstep*hbin,hsymm)
-            vminsize=self.v["sensor/strDescription/wMinSizeVertDESC"]*vbin
-            vstart,vend=self._adj_roi_axis(vstart,vend,vminsize,ydet,vstep*vbin,vsymm)
+        vbin=self._adj_bin(vbin,vlim.maxbin,vbinmode)
+        hlim,vlim=self.get_roi_limits(hbin=hbin,vbin=vbin)
+        vsymm=self._has_option(CAPS1.GENERALCAPS1_ROI_VERT_SYMM_TO_HORZ_AXIS) or (self._is_pco_edge() and not soft_roi) # pco.edge must be symmetric, can with soft ROI activated it can be asymmetric for output
+        hsymm=self._has_option(CAPS1.GENERALCAPS1_ROI_HORZ_SYMM_TO_VERT_AXIS)
+        hstart,hend,_=self._truncate_roi_axis((hstart,hend,hbin),hlim,symmetric=hsymm)
+        vstart,vend,_=self._truncate_roi_axis((vstart,vend,vbin),vlim,symmetric=vsymm)
         return hstart,hend,vstart,vend,hbin,vbin
     def get_roi(self):
         roi=lib.PCO_GetROI(self.handle)
@@ -617,7 +582,7 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         (note: while software ROI does affect the size of the read out frame, it does not change the readout time, which would be the same as with ``symmetric==True``).
         """
         roi=hstart,hend,vstart,vend,hbin,vbin
-        hstart,hend,vstart,vend,hbin,vbin=self._trunc_roi(*roi)
+        hstart,hend,vstart,vend,hbin,vbin=self._truncate_roi(*roi)
         lib.PCO_EnableSoftROI(self.handle,0)
         self._arm()
         lib.PCO_SetROI(self.handle,hstart//hbin+1,vstart//vbin+1,hend//hbin,vend//vbin)
@@ -627,7 +592,7 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
             try:
                 lib.PCO_EnableSoftROI(self.handle,1)
                 self._arm()
-                hstart,hend,vstart,vend,hbin,vbin=self._trunc_roi(*roi,soft_roi=True)
+                hstart,hend,vstart,vend,hbin,vbin=self._truncate_roi(*roi,soft_roi=True)
                 lib.PCO_SetROI(self.handle,hstart//hbin+1,vstart//vbin+1,hend//hbin,vend//vbin)
                 self._arm()
             except PCOSC2LibError:
@@ -647,13 +612,21 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         hsymm=self._has_option(CAPS1.GENERALCAPS1_ROI_HORZ_SYMM_TO_VERT_AXIS)
         vsymm=self._has_option(CAPS1.GENERALCAPS1_ROI_VERT_SYMM_TO_HORZ_AXIS) or self._is_pco_edge()
         return hsymm,vsymm
-    def get_roi_limits(self):
-        xdet,ydet=self.get_detector_size()
-        min_size=(self.v["sensor/strDescription/wMinSizeHorzDESC"],self.v["sensor/strDescription/wMinSizeVertDESC"])
+    def get_roi_limits(self, hbin=1, vbin=1):
+        wdet,hdet=self.get_detector_size()
+        minsize=(self.v["sensor/strDescription/wMinSizeHorzDESC"],self.v["sensor/strDescription/wMinSizeVertDESC"])
         maxbin=self.v["sensor/strDescription/wMaxBinHorzDESC"],self.v["sensor/strDescription/wMaxBinVertDESC"]
-        min_roi=(0,min_size[0],0,min_size[1],1,1)
-        max_roi=(xdet-min_size[0],xdet,ydet-min_size[1],ydet,maxbin[0],maxbin[1])
-        return (min_roi,max_roi)
+        hstep,vstep=self.v["sensor/strDescription/wRoiHorStepsDESC"],self.v["sensor/strDescription/wRoiVertStepsDESC"]
+        if self.v["general/strCamType/wCamType"]==0x1340: # pco.edge CLHS
+            hstep=16 # seems to be the case (property says 4, but the documentation says 16)
+        if hstep==0 or vstep==0:
+            hlim=camera.TAxisROILimit(wdet,wdet,wdet,wdet,maxbin[0])
+            vlim=camera.TAxisROILimit(hdet,hdet,hdet,hdet,maxbin[1])
+        else:
+            hlim=camera.TAxisROILimit(minsize[0]*hbin,wdet,hstep*hbin,hstep*hbin,maxbin[0])
+            vlim=camera.TAxisROILimit(minsize[1]*vbin,hdet,vstep*vbin,vstep*vbin,maxbin[1])
+        return hlim,vlim
+
     def enable_pixel_correction(self, enable=True):
         """Enable or disable hotpixel correction"""
         self._check_option(CAPS1.GENERALCAPS1_HOT_PIXEL_CORRECTION)

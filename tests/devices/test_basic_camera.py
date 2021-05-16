@@ -136,8 +136,9 @@ class ROICameraTester(CameraTester):
         assert rr[:4]==(0,ds[0],0,ds[1])
         # ROI limits
         rlim=device.get_roi_limits()
-        assert len(rlim)==2 and all([len(rl)==len(rr) for rl in rlim])
-        assert rlim[0][0]==0 and rlim[0][2]==0 and rlim[1][1]==ds[0] and rlim[1][3]==ds[1]
+        print(rlim)
+        assert len(rlim)==2 and all([len(rl)==5 for rl in rlim])
+        assert rlim[0].max==ds[0],rlim[1].max==ds[1]
         # Data dimensions
         device.set_image_indexing("rct")
         assert device.get_data_dimensions()==device.get_detector_size()[::-1]

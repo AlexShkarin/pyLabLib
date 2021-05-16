@@ -458,34 +458,11 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
     def _truncate_roi_binning(self, hbin, vbin):
         all_modes=self.get_supported_subsampling_modes() if self._roi_binning_mode=="subsample" else self.get_supported_binning_modes()
         return self._truncate_subsampling(hbin,vbin,all_modes)
-    def _get_roi_limits(self):
-        smin=lib.is_AOI(self.hcam,uc480_defs.IMAGE.IS_AOI_IMAGE_GET_SIZE_MIN,uc480_defs.CIS_SIZE_2D)
-        sstep=lib.is_AOI(self.hcam,uc480_defs.IMAGE.IS_AOI_IMAGE_GET_SIZE_INC,uc480_defs.CIS_SIZE_2D)
-        pstep=lib.is_AOI(self.hcam,uc480_defs.IMAGE.IS_AOI_IMAGE_GET_POS_INC,uc480_defs.CIS_POINT_2D)
-        return (smin[0],sstep[0],pstep[0]),(smin[1],sstep[1],pstep[1])
-    def _adj_roi_axis(self, start, end, minsize, detsize, wstep, pstep, binv):
-        if end is None:
-            end=detsize
-        start//=binv
-        end//=binv
-        detsize//=binv
-        end=min(end,detsize)
-        start=min(start,detsize)
-        start-=start%pstep
-        end-=end%pstep
-        end-=(end-start)%wstep
-        if end-start<minsize:
-            end=start+minsize
-        if end>detsize:
-            end=detsize
-            start=detsize-minsize
-        return start*binv,end*binv
     def _trunc_roi(self, hstart=0, hend=None, vstart=0, vend=None, hbin=1, vbin=1):
-        wdet,hdet=self.get_detector_size()
         hbin,vbin=self._truncate_roi_binning(hbin,vbin)
-        hlims,vlims=self._get_roi_limits()
-        hstart,hend=self._adj_roi_axis(hstart,hend,hlims[0],wdet,hlims[1],hlims[2],hbin)
-        vstart,vend=self._adj_roi_axis(vstart,vend,vlims[0],hdet,vlims[1],vlims[2],vbin)
+        hlim,vlim=self.get_roi_limits(hbin=hbin,vbin=vbin)
+        hstart,hend,_=self._truncate_roi_axis((hstart,hend,hbin),hlim)
+        vstart,vend,_=self._truncate_roi_axis((vstart,vend,vbin),vlim)
         return hstart,hend,vstart,vend,hbin,vbin
     def get_roi(self):
         """
@@ -514,13 +491,15 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         aoi=uc480_defs.IS_RECT(hstart//hbin,vstart//vbin,(hend-hstart)//hbin,(vend-vstart)//vbin)
         lib.is_AOI(self.hcam,uc480_defs.IMAGE.IS_AOI_IMAGE_SET_AOI,uc480_defs.CIS_RECT,aoi)
         return self.get_roi()
-    def get_roi_limits(self):
+    def get_roi_limits(self, hbin=1, vbin=1):
         wdet,hdet=self.get_detector_size()
-        hlims,vlims=self._get_roi_limits()
-        hbin,vbin=self._truncate_roi_binning(wdet,hdet)
-        min_roi=(0,hlims[0],0,vlims[0],1,1)
-        max_roi=(wdet-hlims[0],wdet,hdet-vlims[0],hdet,hbin,vbin)
-        return (min_roi,max_roi)
+        smin=lib.is_AOI(self.hcam,uc480_defs.IMAGE.IS_AOI_IMAGE_GET_SIZE_MIN,uc480_defs.CIS_SIZE_2D)
+        pstep=lib.is_AOI(self.hcam,uc480_defs.IMAGE.IS_AOI_IMAGE_GET_POS_INC,uc480_defs.CIS_POINT_2D)
+        sstep=lib.is_AOI(self.hcam,uc480_defs.IMAGE.IS_AOI_IMAGE_GET_SIZE_INC,uc480_defs.CIS_SIZE_2D)
+        mhbin,mvbin=self._truncate_roi_binning(wdet,hdet)
+        hlim=camera.TAxisROILimit(smin[0]*hbin,wdet,pstep[0]*hbin,sstep[0]*hbin,mhbin)
+        vlim=camera.TAxisROILimit(smin[1]*vbin,hdet,pstep[1]*vbin,sstep[1]*vbin,mvbin)
+        return hlim,vlim
 
     def _get_data_dimensions_rc(self):
         roi=self.get_roi()

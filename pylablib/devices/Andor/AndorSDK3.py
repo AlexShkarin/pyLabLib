@@ -608,45 +608,42 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
 
         By default, all non-supplied parameters take extreme values. Binning is the same for both axes.
         """
-        det_size=self.get_detector_size()
-        hend=min(hend or det_size[0],det_size[0])
-        vend=min(vend or det_size[1],det_size[1])
-        hbin=max(hbin,1)
-        vbin=max(vbin,1)
+        hlim,vlim=self.get_roi_limits()
+        hbin=min(max(hbin,1),hlim.maxbin)
+        vbin=min(max(vbin,1),vlim.maxbin)
         self.set_value("AOILeft",1)
         self.set_value("AOITop",1)
-        self.set_value("AOIHBin",1)
-        self.set_value("AOIVBin",1)
-        minw=self.get_value_range("AOIWidth")[0]
-        minh=self.get_value_range("AOIHeight")[0]
-        self.set_value("AOIWidth",minw)
-        self.set_value("AOIHeight",minh)
+        self.set_value("AOIWidth",hlim.min)
+        self.set_value("AOIHeight",vlim.min)
         self.set_value("AOIHBin",hbin)
         self.set_value("AOIVBin",vbin)
         hbin=self.get_value("AOIHBin")
         vbin=self.get_value("AOIVBin")
-        minw=self.get_value_range("AOIWidth")[0]
-        minh=self.get_value_range("AOIHeight")[0]
-        hstart=min(hstart,det_size[0]-minw*hbin)
-        vstart=min(vstart,det_size[1]-minh*vbin)
+        hlim,vlim=self.get_roi_limits(hbin=hbin,vbin=vbin)
+        hstart,hend,_=self._truncate_roi_axis((hstart,hend,hbin),hlim)
+        vstart,vend,_=self._truncate_roi_axis((vstart,vend,vbin),vlim)
+        self.set_value("AOIWidth",(hend-hstart)//hbin)
+        self.set_value("AOIHeight",(vend-vstart)//vbin)
         self.set_value("AOILeft",hstart+1)
         self.set_value("AOITop",vstart+1)
-        self.set_value("AOIWidth",max((hend-hstart)//hbin,minw))
-        self.set_value("AOIHeight",max((vend-vstart)//vbin,minh))
         return self.get_roi()
-    def get_roi_limits(self):
-        params=["AOILeft","AOITop","AOIWidth","AOIHeight","AOIHBin","AOIVBin"]
+    def get_roi_limits(self, hbin=1, vbin=1):
+        """
+        Get the minimal and maximal ROI parameters.
+
+        Return tuple ``(hlim, vlim)``, where each element is in turn a limit 5-tuple
+        ``(min, max, pstep, sstep, maxbin)`` with, correspondingly, minimal and maximal size,
+        position and size step, and the maximal binning.
+
+        Note that the minimal ROI size depends on the current (not just suppled) binning settings.
+        For more accurate results, is it only after setting up the binning.
+        """
+        hdet,wdet=self.get_detector_size()
+        params=["AOIWidth","AOIHeight","AOIHBin","AOIVBin"]
         minp,maxp=[list(p) for p in zip(*[self.get_value_range(p) for p in params])]
-        bins=[self.get_value(p) for p in params[-2:]]
-        for i in range(2):
-            minp[i]-=1
-            maxp[i]-=1
-        for i in range(4):
-            minp[i]*=bins[i%2]
-            maxp[i]*=bins[i%2]
-        min_roi=(0,minp[2],0,minp[3])+tuple(minp[4:])
-        max_roi=(maxp[2]-minp[2],maxp[2],maxp[3]-minp[3],maxp[3],maxp[4],maxp[5])
-        return (min_roi,max_roi)
+        hlim=camera.TAxisROILimit(minp[0]*hbin,hdet,1,hbin,maxp[2])
+        vlim=camera.TAxisROILimit(minp[1]*vbin,wdet,1,vbin,maxp[3])
+        return hlim,vlim
     
     def _check_buffer_overflow(self):
         if self._buffer_mgr.new_overflow():

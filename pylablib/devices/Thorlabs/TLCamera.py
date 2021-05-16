@@ -310,39 +310,31 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
         return (roi[0],roi[2]+1,roi[1],roi[3]+1,hbin,vbin)
     @camera.acqcleared
     def set_roi(self, hstart=0, hend=None, vstart=0, vend=None, hbin=1, vbin=1):
-        minroi,maxroi=self.get_roi_limits()
-        hbin=min(max(hbin,1),maxroi[4])
-        vbin=min(max(vbin,1),maxroi[5])
-        lib.tl_camera_set_binx(self.handle,hbin)
-        lib.tl_camera_set_biny(self.handle,vbin)
+        mhbin=lib.tl_camera_get_binx_range(self.handle)[1]
+        mvbin=lib.tl_camera_get_biny_range(self.handle)[1]
+        lib.tl_camera_set_binx(self.handle,min(max(hbin,1),mhbin))
+        lib.tl_camera_set_biny(self.handle,min(max(vbin,1),mvbin))
         hbin=lib.tl_camera_get_binx(self.handle)
         vbin=lib.tl_camera_get_biny(self.handle)
-        if hend is None:
-            hend=lib.tl_camera_get_image_width_range(self.handle)[1]
-        if vend is None:
-            vend=lib.tl_camera_get_image_height_range(self.handle)[1]
-        hend=min(hend,maxroi[1])
-        hstart=max(min(hstart,hend-minroi[1]*hbin),0)
-        hend=max(hend,hstart+minroi[1]*hbin)
-        vend=min(vend,maxroi[3])
-        vstart=max(min(vstart,vend-minroi[3]*hbin),0)
-        vend=max(vend,vstart+minroi[3]*hbin)
-        if hend-hstart==minroi[1] and vend-vstart==minroi[3]: # seems to not work for the absolute minimal roi
-            if vend<maxroi[3]:
+        hlim,vlim=self.get_roi_limits(hbin=hbin,vbin=vbin)
+        hstart,hend,hbin=self._truncate_roi_axis((hstart,hend,hbin),hlim)
+        vstart,vend,vbin=self._truncate_roi_axis((vstart,vend,hbin),vlim)
+        if hend-hstart==hlim.min and vend-vstart==vlim.min: # seems to not work for the absolute minimal roi
+            if vend<vlim.max:
                 vend+=1
             else:
                 vstart-=1
         lib.tl_camera_set_roi(self.handle,hstart,vstart,hend-1,vend-1)
         return self.get_roi()
-    def get_roi_limits(self):
+    def get_roi_limits(self, hbin=1, vbin=1):
         wdet,hdet=self.get_detector_size()
         hmin=lib.tl_camera_get_image_width_range(self.handle)[0]
         vmin=lib.tl_camera_get_image_height_range(self.handle)[0]
-        hbin=lib.tl_camera_get_binx_range(self.handle)[1]
-        vbin=lib.tl_camera_get_biny_range(self.handle)[1]
-        min_roi=(0,hmin,0,vmin,1,1)
-        max_roi=(wdet-hmin,wdet,hdet-vmin,hdet,hbin,vbin)
-        return (min_roi,max_roi)
+        mhbin=lib.tl_camera_get_binx_range(self.handle)[1]
+        mvbin=lib.tl_camera_get_biny_range(self.handle)[1]
+        hlim=camera.TAxisROILimit(hmin*hbin,wdet,1,hbin,mhbin)
+        vlim=camera.TAxisROILimit(vmin*(1 if vbin==2 else vbin),hdet,1,vbin,mvbin)
+        return hlim,vlim
 
     def _get_data_dimensions_rc(self):
         width=lib.tl_camera_get_image_width(self.handle)

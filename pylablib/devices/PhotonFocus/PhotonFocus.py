@@ -222,6 +222,8 @@ class PhotonFocusIMAQCamera(IMAQCamera):
             self.setup_max_baudrate()
             self.properties=dictionary.Dictionary(dict([ (p.name.replace(".","/"),p) for p in self.list_properties() ]))
             self._update_imaq()
+            self._hstep=self._get_roi_step("h")
+            self._vstep=self._get_roi_step("v")
     def close(self):
         """Close connection to the camera"""
         IMAQCamera.close(self)
@@ -348,6 +350,26 @@ class PhotonFocusIMAQCamera(IMAQCamera):
         """
         self.v["Window/X"]=hstart
         self.v["Window/Y"]=vstart
+    def _get_roi_step(self, kind="h"):
+        sprop=self.properties["Window"]["W" if kind=="h" else "H"]
+        sprop.update_minmax()
+        pname="Window/"+("X" if kind=="h" else "Y")
+        if pname not in self.properties:
+            return sprop.max
+        pprop=self.properties[pname]
+        sprev=sprop.get_value()
+        pprev=pprop.get_value()
+        sprop.set_value(0)
+        step=None
+        v=1
+        while v<=sprop.min and v+sprop.min<sprop.max:
+            if pprop.set_value(v)==v:
+                step=v
+                break
+            v*=2
+        pprop.set_value(pprev)
+        sprop.set_value(sprev)
+        return sprop.max if step is None else step
     def set_roi(self, hstart=0, hend=None, vstart=0, vend=None):
         """
         Setup camera ROI.
@@ -371,15 +393,15 @@ class PhotonFocusIMAQCamera(IMAQCamera):
         self.uv["Window/H"]=min(vend-vstart,imaq_detector_size[1])
         self._update_imaq()
         return self.get_roi()
-    def get_roi_limits(self):
-        params=["Window/X","Window/Y","Window/W","Window/H"]
+    def get_roi_limits(self, hbin=1, vbin=1):
+        params=["Window/W","Window/H"]
         for p in params:
             self.properties[p].update_minmax()
-        minp=tuple([(self.properties[p].min if p in self.properties else 0) for p in params])
-        maxp=tuple([(self.properties[p].max if p in self.properties else 0) for p in params])
-        min_roi=(0,minp[2],0,minp[3])
-        max_roi=(maxp[0],maxp[2],maxp[1],maxp[3])
-        return (min_roi,max_roi)
+        minp=tuple([self.properties[p].min for p in params])
+        maxp=tuple([self.properties[p].max for p in params])
+        hlim=camera.TAxisROILimit(minp[0],maxp[0],self._hstep,minp[0],1)
+        vlim=camera.TAxisROILimit(minp[1],maxp[1],self._vstep,minp[1],1)
+        return hlim,vlim
 
     def _get_buffer_bpp(self):
         bpp=IMAQCamera._get_buffer_bpp(self)

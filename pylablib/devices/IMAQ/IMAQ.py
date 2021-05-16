@@ -207,12 +207,12 @@ class IMAQCamera(camera.IROICamera):
         if lib.imgSessionGetROI(self.sid)!=fit_roi:
             lib.imgSessionConfigureROI(self.sid,*fit_roi)
         return self.get_roi()
-    def get_roi_limits(self):
+    def get_roi_limits(self, hbin=1, vbin=1):
         minp=lib.imgSessionFitROI(self.sid,0,0,0,1,1)
         detsize=self.get_detector_size()
-        min_roi=(0,minp[2],0,minp[3])
-        max_roi=(detsize[0]-minp[1],detsize[0],detsize[1]-minp[3],detsize[1])
-        return (min_roi,max_roi)
+        hlim=camera.TAxisROILimit(minp[2],detsize[0],1,1,1)
+        vlim=camera.TAxisROILimit(minp[3],detsize[1],1,1,1)
+        return hlim,vlim
 
     _trig_pol={ "high":niimaq_lib.IMG_TRIG_POL.IMG_TRIG_POLAR_ACTIVEH,
                 "low":niimaq_lib.IMG_TRIG_POL.IMG_TRIG_POLAR_ACTIVEL}

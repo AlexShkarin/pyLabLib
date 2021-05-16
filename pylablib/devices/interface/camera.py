@@ -624,7 +624,61 @@ class IExposureCamera(ICamera):
 
 
 
-
+TAxisROILimit=collections.namedtuple("TAxisROILimit",["min","max","pstep","sstep","maxbin"])
+def _validate_roi_limit(lim, symmetric=False):
+    smin,smax,sstep,pstep,_=lim
+    if smin%pstep:
+        raise ValueError("minimal size {} should be divisible by pstep {}".format(smin,pstep))
+    if smin%sstep:
+        raise ValueError("minimal size {} should be divisible by sstep {}".format(smin,sstep))
+    if (pstep%sstep) and (sstep%pstep):
+        raise ValueError("pstep {} should be divisible by sstep {} or vice versa".format(pstep,sstep))
+    if symmetric and smax%2:
+        raise ValueError("maximal size {} should be even for symmetric ROI".format(smax))
+    if symmetric and smax%pstep:
+        raise ValueError("maximal size {} should be divisible by pstep {} in symmetric mode".format(smax,pstep))
+    if symmetric and smax%sstep:
+        raise ValueError("maximal size {} should be divisible by sstep {} in symmetric mode".format(smax,sstep))
+def truncate_roi_axis(roi, lim, symmetric=False):
+    """
+    Truncate ROI to conform to the given ROI limits.
+    
+    `roi` is a tuple ``(start, stop, bin)``,
+    and `lim` is a tuple ``(min, max, pstep, sstep, maxbin)``.
+    Assume that ``pstep`` and ``sstep`` divide ``min`` and ``max``,
+    and that either ``pstep`` divides ``sstep`` or the other way around.
+    If ``symmetric==True``, then ``max`` should be even.
+    """
+    smin,smax,pstep,sstep,maxbin=lim
+    _validate_roi_limit(lim,symmetric=symmetric)
+    start,end,cbin=roi
+    cbin=max(1,min(cbin,maxbin))
+    if end is None:
+        end=smax
+    end=min(end,smax)
+    start=max(0,start)
+    start-=start%pstep
+    end-=end%pstep
+    end-=(end-start)%sstep
+    if end-start<smin:
+        end=start+smin
+    if end>smax:
+        start=smax-smin
+        start-=start%pstep
+        end=start+smin
+    if symmetric:
+        smin=smin*2 if smin%2 else smin
+        sstep=sstep*2 if sstep%2 else sstep
+        ds,de=start,smax-end
+        if ds!=de:
+            d=min(ds,de)
+            start=d
+            start-=start%pstep
+            mid=smax//2
+            if (mid-start)%(sstep//2):
+                start+=(mid-start)%(sstep//2)-(sstep//2)
+            end=smax-start
+    return (start,end,cbin)
 class IROICamera(ICamera):
     def __init__(self):
         super().__init__()
@@ -649,14 +703,20 @@ class IROICamera(ICamera):
         By default, all non-supplied parameters take extreme values (0 for start, maximal for end).
         """
         raise NotImplementedError("ICamera.set_roi")
-    def get_roi_limits(self):
+    def _truncate_roi_axis(self, roi, lim, symmetric=False):
+        """Truncate ROI ``(start, end)`` to conform to `lim`"""
+        return truncate_roi_axis(roi,lim+(1,),symmetric=symmetric)[:2]
+    def get_roi_limits(self, hbin=1, vbin=1):
         """
         Get the minimal and maximal ROI parameters.
 
-        Return tuple ``(min_roi, max_roi)``, where each element is in turn a 4-tuple describing the ROI (as described in :meth:`get_roi`).
+        Return tuple ``(hlim, vlim)``, where each element is in turn a limit 5-tuple
+        ``(min, max, pstep, sstep, maxbin)`` with, correspondingly, minimal and maximal size,
+        position and size step, and the maximal binning (fixed to 1 if not binning is allowed).
+        In some cameras, the step and the minimal size depend on the binning, which can be supplied.
         """
         w,h=self.get_detector_size()
-        return (0,w,0,h),(0,w,0,h)
+        return TAxisROILimit(w,w,w,w,1),TAxisROILimit(h,h,h,h,1)
 
 
 class IBinROICamera(ICamera):
@@ -683,11 +743,17 @@ class IBinROICamera(ICamera):
         By default, all non-supplied parameters take extreme values (0 for start, maximal for end, 1 for binning).
         """
         raise NotImplementedError("ICamera.set_roi")
-    def get_roi_limits(self):
+    def _truncate_roi_axis(self, roi, lim, symmetric=False):
+        """Truncate ROI ``(start, end, bin)`` to conform to `lim`"""
+        return truncate_roi_axis(roi,lim,symmetric=symmetric)
+    def get_roi_limits(self, hbin=1, vbin=1):
         """
         Get the minimal and maximal ROI parameters.
 
-        Return tuple ``(min_roi, max_roi)``, where each element is in turn a 6-tuple describing the ROI (as described in :meth:`get_roi`).
+        Return tuple ``(hlim, vlim)``, where each element is in turn a limit 5-tuple
+        ``(min, max, pstep, sstep, maxbin)`` with, correspondingly, minimal and maximal size,
+        position and size step, and the maximal binning.
+        In some cameras, the step and the minimal size depend on the binning, which can be supplied.
         """
         w,h=self.get_detector_size()
-        return (0,w,0,h,1,1),(0,w,0,h,1,1)
+        return TAxisROILimit(w,w,w,w,1),TAxisROILimit(h,h,h,h,1)

@@ -186,13 +186,13 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
             self.setup_single_track_mode()
             self.setup_multi_track_mode()
             self.setup_random_track_mode()
+            self._minh=self._find_min_roi_end("h")
+            self._minv=self._find_min_roi_end("v")
             self.setup_image_mode()
             self.setup_acquisition("single") # flush the buffers
             self.setup_acquisition("cont")
             self.clear_acquisition()
             self._buffer_size=0
-            self._minh=self._find_min_roi_end("h")
-            self._minv=self._find_min_roi_end("v")
         finally:
             self._strict_option_check=True
 
@@ -883,26 +883,11 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         By default, all non-supplied parameters take extreme values.
         """
         if self.set_read_mode("image") is None: return
-        hdet,vdet=self.get_detector_size()
-        hend=hdet if hend is None else hend
-        vend=vdet if vend is None else vend
-        hend=min(hdet,hend) # truncate the image size
-        vend=min(vdet,vend)
-        if (hstart,hend,vstart,vend)!=(0,hdet,0,vdet):
-            if not self._check_option("read",AC_READMODE.AC_READMODE_SUBIMAGE): return
-        _,maxroi=self.get_roi_limits()
-        hbin=min(max(hbin,1),maxroi[4])
-        vbin=min(max(vbin,1),maxroi[5])
-        hend-=(hend-hstart)%hbin # make size divisible by bin
-        hend=max(hend,hstart+hbin*self._minh)
-        if hend>hdet:
-            hend=hdet
-            hstart=hdet-hbin*self._minh
-        vend-=(vend-vstart)%vbin
-        vend=max(vend,vstart+vbin*self._minv)
-        if vend>vdet:
-            vend=vdet
-            vstart=vdet-vbin*self._minv
+        hbin=self._truncate_roi_binning(hbin)
+        vbin=self._truncate_roi_binning(vbin)
+        hlim,vlim=self.get_roi_limits(hbin=hbin,vbin=vbin)
+        hstart,hend,hbin=self._truncate_roi_axis((hstart,hend,hbin),hlim)
+        vstart,vend,vbin=self._truncate_roi_axis((vstart,vend,vbin),vlim)
         try:
             lib.SetImage(hbin,vbin,hstart+1,hend,vstart+1,vend)
         except AndorSDK2LibError:
@@ -922,26 +907,34 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         return self.setup_image_mode(hstart,hend,vstart,vend,hbin,vbin)
         
     def _find_min_roi_end(self, kind="h"):
-        roi=self.get_roi()
-        smin,smax=1,self.get_detector_size()[0 if kind=="h" else 1]
+        wdet,hdet=self.get_detector_size()
+        if self.set_read_mode("image") is None:
+            return
+        smin,smax=1,(wdet if kind=="h" else hdet)
+        if not self._check_option("read",AC_READMODE.AC_READMODE_SUBIMAGE):
+            return smax
         while smin<smax-1:
             smid=(smin+smax)//2
             try:
                 if kind=="h":
-                    self.set_roi(hend=smid)
+                    lib.SetImage(1,1,1,smid,1,hdet)
                 else:
-                    self.set_roi(vend=smid)
+                    lib.SetImage(1,1,1,wdet,1,smid)
                 smax=smid
             except AndorSDK2LibError:
                 smin=smid
-        self.set_roi(*roi)
+        lib.SetImage(1,1,1,wdet,1,hdet)
         return smax
-    def get_roi_limits(self):
-        xdet,ydet=self.get_detector_size()
-        min_roi=(0,self._minh,0,self._minv,1,1)
-        maxbin=int(min(xdet//self._minh,ydet//self._minv,32)) if (self._minh and self._minv) else 32
-        max_roi=(xdet-min_roi[1],xdet,ydet-min_roi[3],ydet,maxbin,maxbin)
-        return (min_roi,max_roi)
+    def _truncate_roi_binning(self, binv):
+        wdet,hdet=self.get_detector_size()
+        maxbin=int(min(wdet//self._minh,hdet//self._minv,32)) if (self._minh and self._minv) else 32
+        return max(1,min(binv,maxbin))
+    def get_roi_limits(self, hbin=1, vbin=1):
+        wdet,hdet=self.get_detector_size()
+        maxbin=int(min(wdet//self._minh,hdet//self._minv,32)) if (self._minh and self._minv) else 32
+        hlim=camera.TAxisROILimit(self._minh*hbin,wdet,1,hbin,maxbin)
+        vlim=camera.TAxisROILimit(self._minv*vbin,hdet,1,vbin,maxbin)
+        return hlim,vlim
 
     def _get_data_dimensions_rc(self):
         mode=self.get_read_mode()

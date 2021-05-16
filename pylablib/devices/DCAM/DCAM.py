@@ -75,6 +75,7 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
             self._opid=libctl.open().opid
             self.dcamwait=lib.dcamwait_open(self.handle)
             self._update_properties_list()
+            self._valid_binnings=self._get_valid_binnings()
         except DCAMError:
             self.close()
             raise
@@ -289,6 +290,20 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
         vend=vstart+int(self.get_value("SUBARRAY VSIZE"))
         hvbin=int(self.get_value("BINNING"))
         return (hstart,hend,vstart,vend,hvbin,hvbin)
+    def _get_valid_binnings(self):
+        bmax=int(min(self.properties["SUBARRAY HSIZE"].vmax,self.properties["SUBARRAY VSIZE"].vmax))
+        valid_bins=[]
+        p=self.properties["BINNING"]
+        for b in range(1,bmax+1):
+            try:
+                p.as_text(b)
+                valid_bins.append(b)
+            except DCAMLibError:
+                if b>4 and b>valid_bins[-1]*4:
+                    break
+        return valid_bins
+    def _truncate_roi_binning(self, binv):
+        return max([b for b in self._valid_binnings if b<=binv]) if binv>=1 else 1
     @camera.acqcleared
     def set_roi(self, hstart=0, hend=None, vstart=0, vend=None, hbin=1, vbin=1):
         """
@@ -298,38 +313,33 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
         Binning is the same for both axes, so value of `vbin` is ignored (it is left for compatibility).
         """
         self.set_value("SUBARRAY MODE",2)
-        hmax=self.properties["SUBARRAY HSIZE"].vmax
-        hend=max(0,min(hend,hmax)) if hend else hmax
-        vmax=self.properties["SUBARRAY VSIZE"].vmax
-        vend=max(0,min(vend,vmax)) if vend else vmax
-        min_roi,max_roi=self.get_roi_limits()
-        if hbin<=1:  # TODO: other bin values?
-            hbin=1
-        elif hbin in {2,3}:
-            hbin=2
+        hlim,vlim=self.get_roi_limits()
+        hbin=self._truncate_roi_binning(hbin)
+        hstart,hend,hbin=self._truncate_roi_axis((hstart,hend,hbin),hlim)
+        vstart,vend,vbin=self._truncate_roi_axis((vstart,vend,hbin),vlim)
+        chstart,_,cvstart,_=self.get_roi()[:4]
+        if hstart<=chstart:
+            self.set_value("SUBARRAY HPOS",hstart)
+            self.set_value("SUBARRAY HSIZE",hend-hstart)
         else:
-            hbin=4
-        hstart=max(0,min(hstart,hend-min_roi[1]))
-        hstart=(hstart//min_roi[1])*min_roi[1]
-        hend=(hend//min_roi[1])*min_roi[1]
-        self.set_value("SUBARRAY HSIZE",min_roi[1])
-        self.set_value("SUBARRAY HPOS",hstart)
-        self.set_value("SUBARRAY HSIZE",max(hend-hstart,min_roi[1]))
-        vstart=max(0,min(vstart,vend-min_roi[3]))
-        vstart=(vstart//min_roi[3])*min_roi[3]
-        vend=(vend//min_roi[3])*min_roi[3]
-        self.set_value("SUBARRAY VSIZE",min_roi[3])
-        self.set_value("SUBARRAY VPOS",(vstart//min_roi[3])*min_roi[3])
-        self.set_value("SUBARRAY VSIZE",max(vend-vstart,min_roi[3]))
-        self.set_value("BINNING",min(hbin,max_roi[4]))
+            self.set_value("SUBARRAY HSIZE",hend-hstart)
+            self.set_value("SUBARRAY HPOS",hstart)
+        if vstart<=cvstart:
+            self.set_value("SUBARRAY VPOS",vstart)
+            self.set_value("SUBARRAY VSIZE",vend-vstart)
+        else:
+            self.set_value("SUBARRAY VSIZE",vend-vstart)
+            self.set_value("SUBARRAY VPOS",vstart)
+        self.set_value("BINNING",hbin)
         return self.get_roi()
-    def get_roi_limits(self):
-        params=["SUBARRAY HPOS","SUBARRAY VPOS","SUBARRAY HSIZE","SUBARRAY VSIZE","BINNING"]
-        minp=tuple([self.properties[p].vmin for p in params])
-        maxp=tuple([self.properties[p].vmax for p in params])
-        min_roi=(0,minp[2],0,minp[3],minp[4],minp[4])
-        max_roi=(maxp[0],maxp[2],maxp[1],maxp[3],maxp[4],maxp[4])
-        return (min_roi,max_roi)
+    def get_roi_limits(self, hbin=1, vbin=1):
+        params=["SUBARRAY HPOS","SUBARRAY VPOS","SUBARRAY HSIZE","SUBARRAY VSIZE"]
+        minp=tuple([int(self.properties[p].vmin) for p in params])
+        maxp=tuple([int(self.properties[p].vmax) for p in params])
+        stepp=tuple([int(self.properties[p].step) for p in params])
+        hlim=camera.TAxisROILimit(minp[2],maxp[2],stepp[0],stepp[2],self._valid_binnings[-1])
+        vlim=camera.TAxisROILimit(minp[3],maxp[3],stepp[1],stepp[3],self._valid_binnings[-1])
+        return hlim,vlim
 
     @interface.use_parameters(mode="acq_mode")
     def setup_acquisition(self, mode="sequence", nframes=100):
