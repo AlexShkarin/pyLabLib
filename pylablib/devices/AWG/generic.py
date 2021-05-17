@@ -24,7 +24,7 @@ class GenericAWG(SCPI.SCPIDevice):
     _channels_number=1
     _default_load=50
     _inf_load=1E6
-    _range_mode="high_low"  # range setting mode; can be "high_low" or "amp_off"
+    _range_mode="high_low"  # range setting mode; can be "high_low", "amp_off", or "both" (set both, return "amp_off")
     _function_aliases={"sine":"SIN","square":"SQU","ramp":"RAMP","pulse":"PULS","noise":"NOIS","prbs":"PRBS","dc":"DC","user":"USER","arb":"ARB"}
     _supported_functions=list(_function_aliases)
     Error=GenericAWGError
@@ -66,6 +66,9 @@ class GenericAWG(SCPI.SCPIDevice):
         self._add_scpi_parameter("voltage_unit","VOLTAGE:UNIT",kind="string")
         self._add_scpi_parameter("phase_unit","UNIT:ANGLE",kind="string")
         self._current_channel=1
+        if self._range_mode=="both":  # synchronize amp/off and high/low settings
+            for ch in range(1,self._channels_number+1):
+                self.set_output_range(self.get_output_range(channel=ch),channel=ch)
     _all_parameters={   "output_on","output_polarity","output_sync","output_load",
                         "amplitude","offset","frequency","phase","voltage_unit","phase_unit",
                         "function","duty_cycle","ramp_symmetry","pulse_width",
@@ -289,7 +292,7 @@ class GenericAWG(SCPI.SCPIDevice):
             self.set_amplitude(10E-3,channel=channel)
             self.set_offset((high+low)/2.,channel=channel)
         else:
-            if self._range_mode=="high_low":
+            if self._range_mode in {"high_low","both"}:
                 curr_rng=self.get_output_range(channel=channel)
                 if low<curr_rng[1]:
                     self._write_channel("VOLTAGE:LOW",low,"float",name="voltage",channel=channel)
@@ -297,7 +300,7 @@ class GenericAWG(SCPI.SCPIDevice):
                 else:
                     self._write_channel("VOLTAGE:HIGH",high,"float",name="voltage",channel=channel)
                     self._write_channel("VOLTAGE:LOW",low,"float",name="voltage",channel=channel)
-            else:
+            if self._range_mode in {"amp_off","both"}:
                 amp,off=(rng[1]-rng[0])/2,(rng[1]+rng[0])/2
                 curr_amp=self.get_amplitude(channel=channel)
                 if curr_amp>=amp:

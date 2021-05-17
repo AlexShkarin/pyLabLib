@@ -143,6 +143,7 @@ class RigolDG1000(GenericAWG):
     _single_channel_commands={  "output_sync",
                                 "burst_enabled","burst_mode","burst_ncycles","gate_polarity",
                                 "trigger_source","trigger_slope","trigger_output","output_trigger_slope"}
+    _range_mode="both"
     _set_angle_unit=False
     def __init__(self, addr):
         GenericAWG.__init__(self,addr)
