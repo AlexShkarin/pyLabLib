@@ -5,7 +5,7 @@ https://packaging.python.org/guides/distributing-packages-using-setuptools/
 https://github.com/pypa/sampleproject
 """
 
-from setuptools import setup
+from setuptools import setup, find_packages
 from codecs import open
 from os import path
 
@@ -48,7 +48,7 @@ setup(
     'Source': 'https://github.com/AlexShkarin/pyLabLib/',
     'Tracker': 'https://github.com/AlexShkarin/pyLabLib/issues'
     },
-    packages=['pylablib'],
+    packages=find_packages(include=['pylablib.*']),
     install_requires=dep_base+dep_extra+dep_devio+dep_devio_extra+dep_pyqt5,
     extras_require={
         'devio-full':['nidaqmx','websocket-client'],

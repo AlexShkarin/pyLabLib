@@ -65,42 +65,55 @@ More advanced features (e.g., :ref:`device communication <devices_basics>`) shou
 Dependencies and requirements
 ------------------------------
 
-The basic package dependencies are `NumPy <http://docs.scipy.org/doc/numpy/>`_ for basic computations and overall array interface, `SciPy <http://docs.scipy.org/doc/scipy/reference/>`_ for advanced computations (interpolation, optimization, special functions), and `pandas <https://pandas.pydata.org/>`_ for heterogeneous tables (``DataFrame``). In addition, it is recommended to have `Numba <http://numba.pydata.org/>`_ package to speed up some computations. Note that when installed directly from pip, ``numpy`` comes with the OpenBLAS version of the linear algebra library; if other version (e.g., Intel MKL) is preferred, it is a good idea to have ``numpy`` already installed before installing pylablib. Finally, if you use options for remote computing and communication between different PCs, you need to install `RPyC <https://rpyc.readthedocs.io/en/latest/>`_.
+The basic package dependencies are `NumPy <http://docs.scipy.org/doc/numpy/>`_ for basic computations and overall array interface, `SciPy <http://docs.scipy.org/doc/scipy/reference/>`_ for advanced computations (interpolation, optimization, special functions), and `pandas <https://pandas.pydata.org/>`_ for heterogeneous tables (``DataFrame``). In addition, it is recommended to have `Numba <http://numba.pydata.org/>`_ package to speed up some computations. Finally, if you use options for remote computing and communication between different PCs, you need to install `RPyC <https://rpyc.readthedocs.io/en/latest/>`_. Note that when installed directly from pip, ``numpy`` comes with the OpenBLAS version of the linear algebra library; if other version (e.g., Intel MKL) is preferred, it is a good idea to have ``numpy`` already installed before installing pylablib.
 
 The main device communication packages are `PyVISA <https://pyvisa.readthedocs.io/en/master/>`_ and `pySerial <https://pythonhosted.org/pyserial/>`_, which cover the majority of devices. Several devices (e.g., :ref:`Thorlabs Kinesis <stages_thorlabs_kinesis>` and :ref:`Attocube ANC 350 <stages_attocube_anc350>`) require additional communication packages: `pyft232 <https://github.com/lsgunth/pyft232>`_ and `PyUSB <https://pyusb.github.io/pyusb/>`_. Finally, some particular devices completely or partially rely on specific packages: `NI-DAQmx <https://nidaqmx-python.readthedocs.io/en/latest/>`_ for :ref:`NIDAQ <daqs_nidaq>` and `websocket-client <https://websocket-client.readthedocs.io/en/latest/>`_ for additional :ref:`M2 Solstis <lasers_m2>` functionality.
 
-Finally, GUI and advanced multi-threading relies on Qt5, which has two possible options. The first (default) option is `PyQt5 <https://www.riverbankcomputing.com/software/pyqt/>`_ with `sip <https://www.riverbankcomputing.com/software/sip/>`_ for some memory management functionality. The second possible option is `PySide2 <https://www.pyside.org/>`_ with `shiboken <https://wiki.qt.io/Qt_for_Python/Shiboken>`_. Both options should work equally well, and the choice mostly depends on what other packages are used (since having both PyQt5 and PySide2 installed might lead to conflicts). Finally, plotting relies on `pyqtgraph <http://www.pyqtgraph.org/>`_, which (starting with 0.11) is compatible with both PySide2 and PyQt5.
+Finally, GUI and advanced multi-threading relies on Qt5, which has two possible options. The first (default) option is `PyQt5 <https://www.riverbankcomputing.com/software/pyqt/>`_ with `sip <https://www.riverbankcomputing.com/software/sip/>`_ for some memory management functionality. The second possible option is `PySide2 <https://www.pyside.org/>`_ with `shiboken <https://wiki.qt.io/Qt_for_Python/Shiboken>`_. Both options should work equally well, and the choice mostly depends on what is already installed (since having both PyQt5 and PySide2 installed might lead to conflicts). Finally, plotting relies on `pyqtgraph <http://www.pyqtgraph.org/>`_, which (starting with 0.11) is compatible with both PySide2 and PyQt5.
 
-The package has been tested with Python 3.6 through 3.9, and is incompatible with Python 2. The last version officially supporting Python 2.7 is 0.4.0. Furthermore, testing has been mostly performed on 64-bit Python. This is the recommended option, as 32-bit version limitations (most notably, limited amount of accessible RAM) mean that it should only be used when absolutely necessary, e.g., when some required packages or dlls are only available in 32-bit version.
+The package has been tested with Python 3.6 through 3.9, and is incompatible with Python 2. The last version officially supporting Python 2.7 is 0.4.0. Furthermore, testing has been mostly performed on 64-bit Python. This is the recommended option, as 32-bit version limitations (most notably, limited amount of accessible RAM) mean that it should only be used when absolutely necessary, e.g., when some required packages or libraries are only available in 32-bit version.
 
 .. _install-github:
 
 Installing from  GitHub
 -------------------------
 
-The most recent and extensive, but less tested and documented, version of this library is available on GitHub at https://github.com/AlexShkarin/pyLabLib/. To simply get the most recent version, you can download it as a zip-file and unpack it into any appropriate place (can be folder of the project you're working on, Python site-packages folder, or any folder added to ``PATH`` or ``PYTHONPATH`` variable).
+The most recent and extensive, but less tested and documented, version of this library is available on GitHub at https://github.com/AlexShkarin/pyLabLib/. There are several versions of installing it:
 
-To download the code of a specific version, you can choose it in the dropdown `Branch` menu under `Tags` tab. This is the same code as available on PyPi.
-
-Keep in mind that required packages will not be automatically installed, so this has to be done manually:
-
-.. code-block:: none
-
-    pip install numpy scipy pandas numba rpyc
-    pip install pyft232 pyvisa pyserial pyusb nidaqmx websocket-client
-    pip install pyqt5 sip pyqtgraph
-
-In order to easily get updates, you can clone the repository to your computer. For that, you need to install Git (https://git-scm.com/), and use the following commands in the command line (in the folder where you want to store the library):
-
-.. code-block:: none
-
-    git clone https://github.com/AlexShkarin/pyLabLib
-    cd ./pyLabLib
-
-Whenever you want to update to the most recent version, simply type
+    - Install using pip using GitHub as a library source:
     
-.. code-block:: none
+      .. code-block:: none
 
-    git pull
+        pip install -U git+https://github.com/AlexShkarin/pyLabLib.git
 
-in the library folder. Keep in mind that any changes that you make to the library code might conflict with the new version that you pull from GitHub, so you should not modify anything in this folder if possible.
+    - Download it as a zip-file and unpack it into any appropriate place (can be folder of the project you're working on, Python ``site-packages`` folder, or any folder added to ``PATH`` or ``PYTHONPATH`` variable).
+
+      To download the code of a specific version, you can choose it in the dropdown `Branch` menu under `Tags` tab. This is the same code as available on PyPi.
+
+      Keep in mind that, unlike the first method, the required packages will not be automatically installed, so this has to be done manually:
+
+      .. code-block:: none
+
+        pip install numpy scipy pandas numba rpyc
+        pip install pyft232 pyvisa pyserial pyusb nidaqmx websocket-client
+        pip install pyqt5 sip pyqtgraph
+    
+    - Clone the repository to your computer In order to easily get updates in order to easily get updates. For that, you need to install Git (https://git-scm.com/), and use the following commands in the command line (in the folder where you want to store the library):
+
+      .. code-block:: none
+
+        git clone https://github.com/AlexShkarin/pyLabLib
+        cd ./pyLabLib
+
+      Whenever you want to update to the most recent version, simply type
+    
+      .. code-block:: none
+
+        git pull
+
+      in the library folder. Keep in mind that any changes that you make to the library code might conflict with the new version that you pull from GitHub, so you should not modify anything in this folder if possible.
+
+Support and feedback
+-------------------------
+
+If you have any issues, suggestions, or feedback, you can either raise an issue on GitHub at https://github.com/AlexShkarin/pyLabLib/issues, or send an e-mail to pylablib@gmail.com.
