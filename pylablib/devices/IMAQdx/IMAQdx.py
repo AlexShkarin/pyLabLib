@@ -1,3 +1,5 @@
+from numba.numpy_support import farray
+from pylablib.core.utils import funcargparse
 from . import NIIMAQdx_lib
 from .NIIMAQdx_lib import IMAQdxAttributeType, IMAQdxAttributeVisibility, IMAQdxCameraControlMode, IMAQdxBufferNumberMode
 from .NIIMAQdx_lib import lib, IMAQdxError, IMAQdxLibError
@@ -151,6 +153,9 @@ def get_cameras_number():
 
 
 
+
+
+
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["vendor","model","serial_number","bus_type"])
 class IMAQdxCamera(camera.IROICamera):
     """
@@ -167,30 +172,17 @@ class IMAQdxCamera(camera.IROICamera):
     def __init__(self, name="cam0", mode="controller", default_visibility="advanced"):
         super().__init__()
         lib.initlib()
-        self.init_done=False
         self.name=name
         self.mode=mode
         self.default_visibility=default_visibility
         self.sid=None
         self.open()
-        self.image_indexing="rct"
-        try:
-            attrs=self.list_attributes()
-            self.attributes=dictionary.Dictionary(dict([ (a.name.replace("::","/"),a) for a in attrs ]))
-        except Exception:
-            self.close()
-            raise
-        self.init_done=True
-        self.acq_params=None
-        self.frame_counter=0
-        self.last_wait_frame=-1
-        self.buffers_num=0
+        self._raw_readout_format=False
         self.v=dictionary.ItemAccessor(self.get_value,self.set_value)
 
         self._add_info_variable("device_info",self.get_device_info)
         self._add_status_variable("values",self.get_all_values,priority=-5)
-        self._add_status_variable("buffer_size",lambda: self.buffers_num)
-        self._add_status_variable("read_frames",lambda: self.frame_counter)
+
 
     _p_connection_mode=interface.EnumParameterClass("connection_mode",{
         "controller":IMAQdxCameraControlMode.IMAQdxCameraControlModeController,
@@ -203,8 +195,17 @@ class IMAQdxCamera(camera.IROICamera):
         return self.name
     def open(self):
         """Open connection to the camera"""
+        if self.sid is not None:
+            return
         mode=self._p_connection_mode(self.mode)
         self.sid=lib.IMAQdxOpenCamera(self.name,mode)
+        try:
+            attrs=self.list_attributes()
+            self.attributes=dictionary.Dictionary(dict([ (a.name.replace("::","/"),a) for a in attrs ]))
+        except self.Error:
+            self.close()
+            raise
+        self.post_open()
     def close(self):
         """Close connection to the camera"""
         if self.sid is not None:
@@ -220,6 +221,11 @@ class IMAQdxCamera(camera.IROICamera):
         """Check if the device is connected"""
         return self.sid is not None
 
+    def post_open(self):
+        """Additional setup after camera opening"""
+        att=self.attributes.get("PixelFormat")
+        if att and att.writable:
+            att.set_value(att.get_value())  # there seems to be occasional desynchronization between the read and the actual value
     _builtin_attrs=["OffsetX","OffsetY","Width","Height","PixelFormat","PayloadSize","StatusInformation::LastBufferNumber","AcquisitionAttributes::BitsPerPixel"]
     def list_attributes(self, root="", visibility=None, add_builtin=True):
         """
@@ -305,10 +311,11 @@ class IMAQdxCamera(camera.IROICamera):
         w=self.v["Width"]
         h=self.v["Height"]
         return ox,ox+w,oy,oy+h
+    @camera.acqcleared
     def set_roi(self, hstart=0, hend=None, vstart=0, vend=None):
         for a in ["Width","Height","OffsetX","OffsetY"]:
             if a not in self.attributes or not self.attributes[a].writable:
-                return
+                return self.get_roi()
         det_size=self.get_detector_size()
         if hend is None:
             hend=det_size[0]
@@ -322,13 +329,14 @@ class IMAQdxCamera(camera.IROICamera):
             self.v["Width"]=max(self.v["Width"],hend-hstart)
             self.v["Height"]=max(self.v["Height"],vend-vstart)
         return self.get_roi()
-    def get_roi_limits(self):
-        params=["OffsetX","OffsetY","Width","Height"]
+    def get_roi_limits(self, hbin=1, vbin=1):
+        params=["Width","Height","OffsetX","OffsetY"]
         minp=tuple([(self.attributes[p].min if p in self.attributes else 0) for p in params])
         maxp=tuple([(self.attributes[p].max if p in self.attributes else 0) for p in params])
-        min_roi=(0,minp[2],0,minp[3])
-        max_roi=(maxp[0],maxp[2],maxp[1],maxp[3])
-        return (min_roi,max_roi)
+        incp=tuple([(self.attributes[p].inc if p in self.attributes else 0) for p in params])
+        hlim=camera.TAxisROILimit(minp[0] or maxp[0],maxp[0],incp[2] or maxp[0],incp[0] or maxp[0],1)
+        vlim=camera.TAxisROILimit(minp[1] or maxp[1],maxp[1],incp[3] or maxp[1],incp[1] or maxp[1],1)
+        return hlim,vlim
     
 
     @interface.use_parameters(mode="acq_mode")
@@ -381,16 +389,81 @@ class IMAQdxCamera(camera.IROICamera):
         #         raise
         return last_buffer+1
 
-    def _read_data_raw(self, size_bytes, dtype="<u1", mode=IMAQdxBufferNumberMode.IMAQdxBufferNumberModeBufferNumber, buffer_num=0):
+    def _read_data_raw(self, buffer_num, size_bytes, dtype="<u1", mode=IMAQdxBufferNumberMode.IMAQdxBufferNumberModeBufferNumber):
         """Return raw bytes string from the given buffer number"""
         dtype=np.dtype(dtype)
         if size_bytes%dtype.itemsize:
             raise IMAQdxError("specified buffer size {} is not divisible by the element size {}".format(size_bytes,dtype.itemsize))
         arr=np.empty(size_bytes//dtype.itemsize,dtype)
         lib.IMAQdxGetImageData(self.sid,arr.ctypes.get_data(),size_bytes,mode,buffer_num)
-        return self._convert_indexing(arr,"rct")
+        return arr
+    def _parse_data(self, data, shape, pixel_format):
+        if self._raw_readout_format=="frame":
+            return data
+        if self._raw_readout_format=="rows":
+            return data.reshape((shape[0],-1))
+        supported_formats=["Mono8","Mono10","Mono12","Mono16","Mono32"]
+        if pixel_format not in supported_formats:
+            sf_string=", ".join(supported_formats)
+            raise IMAQdxError("pixel format {} is not supported, only [{}] are supported; raw data readout can be enabled via enable_raw_readout method".format(pixel_format,sf_string))
+        if pixel_format=="Mono8":
+            return data.reshape(shape)
+        elif pixel_format in ["Mono10","Mono12","Mono16"]:
+            return data.view("<u2").reshape(shape)
+        else:
+            return data.view("<u4").reshape(shape)
+    def enable_raw_readout(self, enable="rows"):
+        """
+        Enable raw frame transfer.
 
-    def _read_frames(self, rng, return_info=False):
+        Should be used if the camera uses unsupported pixel format.
+        Can be ``"frame"`` (return the whole frame as a 1D ``"u1"`` numpy array),
+        ``"rows"`` (return a 2D array, where each row corresponds to a single image row),
+        or ``False`` (convert to image data, or raise an error if the format is not supported; default)
+        """
+        funcargparse.check_parameter_range(enable,"enable",{False,"rows","frame"})
+        self._raw_readout_format=enable
+
+    def _read_frames(self, rng, return_info=False):  # TODO: add parsing and pixel format
         indices=range(*rng)
-        frames=[self._read_data_raw(b) for b in indices]
+        size_bytes=self.get_value("PayloadSize")
+        shape=self.get_value("Height"),self.get_value("Width")
+        pixel_format=self.get_value("PixelFormat")
+        frames=[self._read_data_raw(b,size_bytes) for b in indices]
+        frames=[self._parse_data(f,shape,pixel_format) for f in frames]
+        if not self._raw_readout_format:
+            frames=[self._convert_indexing(farray,"rct") for f in frames]
         return frames,[self._TFrameInfo(n) for n in range(*rng)]
+
+
+
+
+
+
+
+
+
+
+
+
+class EthernetIMAQdxCamera(IMAQdxCamera):
+    """
+    LAN-controlled IMAQdx camera.
+
+    Compared to the standard camera, has an option of automatically switching to a smaller TCP/IP packet size
+    (can be useful if the PC network adapter can't handle jumbo packets).
+
+    Args:
+        name: interface name (can be learned by :func:`list_cameras`; usually, but not always, starts with ``"cam"``)
+        mode: connection mode; can be ``"controller"`` (full control) or ``"listener"`` (only reading)
+        default_visibility: default attribute visibility when listing attributes;
+            can be ``"simple"``, ``"intermediate"`` or ``"advanced"`` (higher mode exposes more attributes).
+        small_packet: if ``True``, automatically set small packet size (1500 bytes).
+    """
+    def __init__(self, name="cam0", mode="controller", default_visibility="advanced", small_packet=False):
+        super().__init__(name=name,mode=mode,default_visibility=default_visibility)
+        self.small_packet=small_packet
+    def post_open(self):
+        super().post_open()
+        if self.small_packet:
+            self.set_value("AcquisitionAttributes/PacketSize",1500,ignore_missing=True)
