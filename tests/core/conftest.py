@@ -40,11 +40,10 @@ def table_builder(request):
 from pylablib.core.fileio import loadfile
 
 @pytest.fixture
-def table_loader(table_builder):
+def table_loader(table_builder, root_path):
     """Function which loads a table of a given kind (numpy array or pandas table) from the text file given the column names"""
-    tfolder=os.path.split(os.path.abspath(__file__))[0]
     def _loader(path, columns, index=None):
-        data=loadfile.load_csv(os.path.join(tfolder,path),out_type="array")
+        data=loadfile.load_csv(os.path.join(root_path,path),out_type="array")
         return table_builder(data,columns,index=index)
     _loader.kind=table_builder.kind
     _loader.builder=table_builder

@@ -68,14 +68,14 @@ def test_tables_saving(table_builder, tmpdir):
 
 ##### Table loading tests #####
 
-def test_tables_loading(table_builder):
+def test_tables_loading(table_builder, root_path):
     """Test loading consistency"""
     kind=table_builder.kind
 
     data=np.column_stack((np.arange(10),np.zeros(10)))
     columns=["X","Y"]
     table=table_builder(data,columns)
-    load_path="core/fileio/table_simple.csv"
+    load_path=os.path.join(root_path,"core","fileio","table_simple.csv")
     new_table=loadfile.load_csv(load_path,out_type=kind)
     compare_tables(table,new_table)
     if kind==pll.par["fileio/loadfile/csv/out_type"]:
@@ -86,7 +86,7 @@ def test_tables_loading(table_builder):
     data=np.column_stack((np.arange(10),np.zeros(10),np.arange(10)**2+1j))
     columns=["X","Y","Z"]
     table=table_builder(data,columns)
-    load_path="core/fileio/table_complex.csv"
+    load_path=os.path.join(root_path,"core","fileio","table_complex.csv")
     new_table=loadfile.load_csv(load_path,out_type=kind)
     compare_tables(table,new_table)
     if kind==pll.par["fileio/loadfile/csv/out_type"]:
@@ -124,9 +124,10 @@ def test_dict():
     'b': 2,
     'some table': pt })
 
-def test_dictionary_loading(test_dict):
+def test_dictionary_loading(test_dict, root_path):
     """Test loading consistency"""
-    load_dict=loadfile.load_dict("core/fileio/dict_simple.dat")
+    load_path=os.path.join(root_path,"core","fileio","dict_simple.dat")
+    load_dict=loadfile.load_dict(load_path)
     compare_dicts(test_dict,load_dict)
 
 def test_dictionary_saving(test_dict, tmpdir):

@@ -52,7 +52,7 @@ To access to the most common features simply import the library::
     import pylablib as pll
     # Create a parameter dictionary (e.g., for some processing script)
     parameters = pll.Dictionary({"par/x":1, "par/y":2, "par/z":[3,4,5], "out":"result"})
-    pll.save_dict(d, "parameters.dat")  # save parameters to 
+    pll.save_dict(parameters, "parameters.dat")  # save parameters to a text file
 
 More advanced features (e.g., :ref:`device communication <devices_basics>`) should be imported directly::
 
@@ -65,7 +65,7 @@ More advanced features (e.g., :ref:`device communication <devices_basics>`) shou
 Dependencies and requirements
 ------------------------------
 
-The basic package dependencies are `NumPy <http://docs.scipy.org/doc/numpy/>`_ for basic computations and overall array interface, `SciPy <http://docs.scipy.org/doc/scipy/reference/>`_ for advanced computations (interpolation, optimization, special functions), and `pandas <https://pandas.pydata.org/>`_ for heterogeneous tables (``DataFrame``). In addition, it is recommended to have `Numba <http://numba.pydata.org/>`_ package to speed up some computations. Finally, if you use options for remote computing and communication between different PCs, you need to install `RPyC <https://rpyc.readthedocs.io/en/latest/>`_. Note that when installed directly from pip, ``numpy`` comes with the OpenBLAS version of the linear algebra library; if other version (e.g., Intel MKL) is preferred, it is a good idea to have ``numpy`` already installed before installing pylablib.
+The basic package dependencies are `NumPy <https://docs.scipy.org/doc/numpy/>`_ for basic computations and overall array interface, `SciPy <https://docs.scipy.org/doc/scipy/reference/>`_ for advanced computations (interpolation, optimization, special functions), and `pandas <https://pandas.pydata.org/>`_ for heterogeneous tables (``DataFrame``). In addition, it is recommended to have `Numba <https://numba.pydata.org/>`_ package to speed up some computations. Finally, if you use options for remote computing and communication between different PCs, you need to install `RPyC <https://rpyc.readthedocs.io/en/latest/>`_. Note that when installed directly from pip, ``numpy`` comes with the OpenBLAS version of the linear algebra library; if other version (e.g., Intel MKL) is preferred, it is a good idea to have ``numpy`` already installed before installing pylablib.
 
 The main device communication packages are `PyVISA <https://pyvisa.readthedocs.io/en/master/>`_ and `pySerial <https://pythonhosted.org/pyserial/>`_, which cover the majority of devices. Several devices (e.g., :ref:`Thorlabs Kinesis <stages_thorlabs_kinesis>` and :ref:`Attocube ANC 350 <stages_attocube_anc350>`) require additional communication packages: `pyft232 <https://github.com/lsgunth/pyft232>`_ and `PyUSB <https://pyusb.github.io/pyusb/>`_. Finally, some particular devices completely or partially rely on specific packages: `NI-DAQmx <https://nidaqmx-python.readthedocs.io/en/latest/>`_ for :ref:`NIDAQ <daqs_nidaq>` and `websocket-client <https://websocket-client.readthedocs.io/en/latest/>`_ for additional :ref:`M2 Solstis <lasers_m2>` functionality.
 

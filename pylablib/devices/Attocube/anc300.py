@@ -48,6 +48,8 @@ class ANC300(comm_backend.ICommBackendWrapper,stage.IMultiaxisStage):
         if self.instr._backend=="network" and self.pwd is not None:
             self.instr.write(self.pwd)
         self.instr.write("echo off")
+        self.instr.read_multichar_term(["ERROR","OK"],remove_term=False)
+        time.sleep(0.05)
         self.instr.flush_read()
         self.update_available_axes()
         return res

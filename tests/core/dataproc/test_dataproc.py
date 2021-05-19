@@ -26,7 +26,7 @@ from pylablib.core.dataproc import filters, fourier, utils
 def test_utils(table_loader):
     builder=table_loader.builder
     cols=["col1","col2"]
-    data=table_loader("dataproc/data_raw.csv",columns=cols)
+    data=table_loader("core/dataproc/data_raw.csv",columns=cols)
     if builder.kind=="pandas":
         index=data.index=data.index**2
     else:
@@ -82,7 +82,7 @@ def test_utils(table_loader):
 def test_filters(table_loader):
     builder=table_loader.builder
     cols=["col1","col2"]
-    data=table_loader("dataproc/data_raw.csv",columns=cols)
+    data=table_loader("core/dataproc/data_raw.csv",columns=cols)
     if builder.kind=="pandas":
         index=data.index=data.index**2
     else:
@@ -93,7 +93,7 @@ def test_filters(table_loader):
         builder.check(data,cols,index=index if check_index else None,l=l or l0)
         return np.array(data)
     # Gaussian filter
-    gfldata=table_loader("dataproc/data_gaussian_filter.csv",columns=cols,index=index)
+    gfldata=table_loader("core/dataproc/data_gaussian_filter.csv",columns=cols,index=index)
     compare_tables(filters.gaussian_filter(data,5),gfldata,decimal=4)
     compare_tables(filters.gaussian_filter_nd(data,5),gfldata,decimal=6)
     # IIR/int/diff
@@ -135,7 +135,7 @@ def test_filters(table_loader):
             assert np.all(filters.decimate_full(data,dec=n)==f(adata,axis=0))
     compare_tables(filters.binning_average(data,5),filters.decimate(data,5,"bin"))
     # Fourier
-    ffldata=table_loader("dataproc/data_fourier_filter.csv",columns=cols,index=index)
+    ffldata=table_loader("core/dataproc/data_fourier_filter.csv",columns=cols,index=index)
     resp=filters.fourier_filter_bandpass(0.1-1E-5,0.2-1E-5)
     compare_tables(filters.fourier_filter(data,resp),ffldata,decimal=6)
     resp=filters.fourier_filter_bandstop(0.1-1E-5,0.2-1E-5)
@@ -144,7 +144,7 @@ def test_filters(table_loader):
 def test_fourier(table_loader):
     builder=table_loader.builder
     cols=["col1","col2"]
-    data=table_loader("dataproc/data_raw.csv",columns=cols)
+    data=table_loader("core/dataproc/data_raw.csv",columns=cols)
     data=data[data.columns[:1]] if builder.kind=="pandas" else data[:,:1]
     adata=np.array(data)[:,0]
     def asarr(data, columns=None):

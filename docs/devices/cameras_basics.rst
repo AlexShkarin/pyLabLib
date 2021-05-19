@@ -120,7 +120,7 @@ Frame indexing
 
 Different areas and libraries adopt different indexing convention for 2D arrays. The two most common ones are coordinate-like ``xy`` (the first index is the ``x`` coordinate, the second is ``y`` coordinate, and the origin is in the lower left corner) and matrix-like ``ij`` (the first index is row, the second index is column, the origin is int the upper right corner). Almost all cameras adopt the ``ij`` convention. The only exception is Andor SDK2, which uses similar row-column indexing, but counting from the bottom.
 
-By default, the frames returned by the camera are indexed in the preferred convention, to reduce the overhead on re-indexing the frames. It is possible to check and change it using ``get_image_indexing`` and ``set_image_indexing`` methods::
+By default, the frames returned by the camera are indexed in the preferred convention, to reduce the overhead on re-indexing the frames. It is possible to check and change it using :meth:`.ICamera.get_image_indexing` and :meth:`.ICamera.set_image_indexing` methods::
 
     >> cam.set_roi(0,256,0,128)  # 256px horizontally, 128 vertically
     >> cam.snap().shape  # 128 rows, 256 columns
@@ -199,7 +199,9 @@ The trigger is usually set up using ``set_trigger_mode`` method, although it mig
 Frame metainfo
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Many cameras supply additional information together with the frames. Most frequently it includes the internal framestamp and timestamp (which are useful for tracking missing frames), but sometimes it also includes additional information such as frame size or location, status, or auxiliary input bits. To get this information, you can supply the argument ``return_info=True`` to the ``read_multiple_images`` method. In this case, instead of a single list of frames, it will return a tuple of two lists, where the second list contains this metainfo. Each frame's metainfo is represented by a named tuple, whose structure differs for different cameras.
+Many cameras supply additional information together with the frames. Most frequently it includes the internal framestamp and timestamp (which are useful for tracking missing frames), but sometimes it also includes additional information such as frame size or location, status, or auxiliary input bits. To get this information, you can supply the argument ``return_info=True`` to the ``read_multiple_images`` method. In this case, instead of a single list of frames, it will return a tuple of two lists, where the second list contains this metainfo.
+
+There are several slightly different metainfo formats, which can be set using :meth:`.ICamera.set_frame_info_format` method. The default representation is a (possibly nested) named tuple, but it is also possible to represent it as a flat list, or a flat dictionary. The exact structure and values depend on the camera.
 
 
 Currently supported cameras

@@ -6,7 +6,8 @@ PyLabLib aims to provide support for device control and experiment automation. I
    from pylablib.devices import Thorlabs, Andor  # import the device libraries
    import numpy as np  # import numpy for saving
 
-   with Thorlabs.KinesisMotor("27000000") as stage, Andor.AndorSDK2Camera() as cam:  # connect to the devices
+   # connect to the devices
+   with Thorlabs.KinesisMotor("27000000") as stage, Andor.AndorSDK2Camera() as cam:
       # change some camera parameters
       cam.set_exposure(50E-3)
       cam.set_roi(0, 128, 0, 128, hbin=2, vbin=2)

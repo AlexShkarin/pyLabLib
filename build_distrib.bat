@@ -1,6 +1,7 @@
 pip install -U wheel twine
 del /Q build
 del /Q dist
+del /Q pylablib.egg-info
 python setup.py sdist bdist_wheel
 REM twine upload dist/*
 twine upload --repository testpypi dist/*

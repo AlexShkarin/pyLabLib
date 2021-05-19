@@ -9,7 +9,8 @@ def parse_dev(dev):
     m=re.match(r"(\w+)(\(.*\))?$",dev)
     return m[1].strip(),string.from_string(m[2]) if m[2] else None
 def read_devlist(name):
-    with open(os.path.join("devices","devlists",name+".cfg"),"r") as f:
+    devpath=os.path.split(os.path.abspath(__file__))[0]
+    with open(os.path.join(devpath,"devlists",name+".cfg"),"r") as f:
         lns=[ln.strip() for ln in f.readlines() if ln.strip()]
         return [ln for ln in lns if ln[0] not in "#;"]
 def get_device_list(config):
