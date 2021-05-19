@@ -1028,7 +1028,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         get_method=lib.GetImages16 if dt.itemsize<=2 else lib.GetImages
         data,_,_=get_method(rng[0]+1,rng[1],dim[0]*dim[1]*(rng[1]-rng[0]))
         data=self._convert_indexing(data.reshape((-1,dim[0],dim[1])),"rcb",axes=(1,2))
-        return list(data),[self._TFrameInfo(n) for n in range(*rng)]
+        return list(data),[self._convert_frame_info(self._TFrameInfo(n)) for n in range(*rng)]
 
     def _get_grab_acquisition_parameters(self, nframes, buff_size):
         return {"mode":"cont"}

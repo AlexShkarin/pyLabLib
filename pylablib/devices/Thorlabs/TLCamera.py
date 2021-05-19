@@ -46,8 +46,7 @@ def get_cameras_number():
 
 
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["model","name","serial_number","firmware_version"])
-TMetaData=collections.namedtuple("TMetaData",["framestamp","pixelclock","pixeltype","offset"])
-TFrameInfo=collections.namedtuple("TFrameInfo",["frame_index","metadata"])
+TFrameInfo=collections.namedtuple("TFrameInfo",["frame_index","framestamp","pixelclock","pixeltype","offset"])
 class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
     """
     Thorlabs TSI camera.
@@ -58,6 +57,8 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
     """
     Error=ThorlabsTLCameraError
     TimeoutError=ThorlabsTLCameraTimeoutError
+    _TFrameInfo=TFrameInfo
+    _frameinfo_fields=TFrameInfo._fields
     def __init__(self, serial=None):
         super().__init__()
         self.serial=serial
@@ -366,7 +367,7 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
             metadata["ifmt"]=tagvals["IFMT"]
         if "IOFF" in tagvals:
             metadata["ioff"]=tagvals["IOFF"]
-        return TMetaData(*[metadata.get(k) for k in ["fcnt","pck","ifmt","ioff"]])
+        return [metadata.get(k) for k in ["fcnt","pck","ifmt","ioff"]]
     
     def _zero_frame(self, n):
         return np.zeros((n,)+self._buffer.frame_dim,dtype=self._default_image_dtype)
@@ -375,7 +376,7 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
     def _read_frames(self, rng, return_info=False):
         data=[self._buffer.get_frame(n) for n in range(*rng)]
         frames=[self._convert_indexing(d[0],"rct") for d in data]
-        infos=[TFrameInfo(n,self._parse_metadata(d[1])) for n,d in zip(range(*rng),data)]
+        infos=[self._convert_frame_info(TFrameInfo(n,*self._parse_metadata(d[1]))) for n,d in zip(range(*rng),data)]
         return frames,infos
 
     def _get_grab_acquisition_parameters(self, nframes, buff_size):

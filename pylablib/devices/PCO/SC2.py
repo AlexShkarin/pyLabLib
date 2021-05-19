@@ -99,6 +99,8 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
     """
     Error=PCOSC2Error
     TimeoutError=PCOSC2TimeoutError
+    _TFrameInfo=TFrameInfo
+    _frameinfo_fields=TFrameInfo._fields
     def __init__(self, idx=0, cam_interface=None, reboot_on_fail=True):
         super().__init__()
         lib.initlib()
@@ -725,7 +727,7 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         frame=np.frombuffer(buff.buff,dtype="<u2",count=npx).copy().reshape(dim)
         frame=self._convert_indexing(frame,"rct")
         raw_metadata=buff.buff[-buff.metadata_size:] if buff.metadata_size>0 else None  # TODO: parse metadata
-        return frame,TFrameInfo(idx,raw_metadata)
+        return frame,self._convert_frame_info(TFrameInfo(idx,raw_metadata))
     def _read_frames(self, rng, return_info=False):
         dim=self._get_data_dimensions_rc()
         data=[self._read_buffer(n,dim) for n in range(rng[0],rng[1])]

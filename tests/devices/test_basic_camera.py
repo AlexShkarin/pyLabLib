@@ -29,8 +29,8 @@ class CameraTester(DeviceTester):
         assert img.ndim==2
         assert img.shape==device.get_data_dimensions()
         img*=2
-        imgs=device.grab(self.grab_size)
-        assert isinstance(imgs,list)
+        imgs,infos=device.grab(self.grab_size,return_info=True)
+        assert isinstance(imgs,list) and isinstance(infos,list) and len(imgs)==self.grab_size and len(infos)==self.grab_size
         assert isinstance(imgs[0],np.ndarray)
         assert imgs[0].ndim==2
         assert imgs[0].shape==device.get_data_dimensions()

@@ -1,4 +1,3 @@
-from numba.numpy_support import farray
 from pylablib.core.utils import funcargparse
 from . import NIIMAQdx_lib
 from .NIIMAQdx_lib import IMAQdxAttributeType, IMAQdxAttributeVisibility, IMAQdxCameraControlMode, IMAQdxBufferNumberMode
@@ -432,8 +431,8 @@ class IMAQdxCamera(camera.IROICamera):
         frames=[self._read_data_raw(b,size_bytes) for b in indices]
         frames=[self._parse_data(f,shape,pixel_format) for f in frames]
         if not self._raw_readout_format:
-            frames=[self._convert_indexing(farray,"rct") for f in frames]
-        return frames,[self._TFrameInfo(n) for n in range(*rng)]
+            frames=[self._convert_indexing(f,"rct") for f in frames]
+        return frames,[self._convert_frame_info(self._TFrameInfo(n)) for n in range(*rng)]
 
 
 

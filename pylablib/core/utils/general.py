@@ -6,6 +6,7 @@ import time
 import threading
 import os, signal
 import functools
+import collections
 from . import functions
 
 
@@ -119,6 +120,38 @@ def recursive_map(value, func):
     if isinstance(value,dict):
         return dict([(k,recursive_map(v,func)) for k,v in value.items()])
     return func(value)
+def make_flat_namedtuple(nt, fields=None, name=None, subfield_fmt="{field:}_{subfield:}"):
+    """
+    Turn a nested structure of named tuples into a single flat nameduple.
+
+    Args:
+        nt: toplevel namedtuple class to be flattened
+        fields: a dictionary ``{name: desc}`` of the fields, where ``name`` is the named tuple name,
+            and ``desc`` is either a nested nameduple class, or a list of arguments which are passed to the
+            recursive call to this function (e.g., ``[TTuple, {"field": TNestedTuple}]``).
+            Any tuple field which is present in this dictionary gets recursively flattened,
+            and the field names of the corresponding returned tuple are added to the full list of fields
+        name: name of the resulting tuple
+        subfield_fmt: format string, which describes how the combined field name is built
+            out of the original field name and the subtuple field name;
+            by default, connect with ``"_"``, i.e., ``t.field.subfiled`` turns into ``t.field_subfield``.
+    
+    Return:
+        a new namedtuple class, which describes the flattened structure
+    """
+    if name is None:
+        name=nt.__name__
+    field_names=[]
+    for f in nt._fields:
+        if fields and f in fields:
+            sf=fields[f]
+            sargs=sf if isinstance(sf,list) else [sf]
+            subnames=make_flat_namedtuple(*sargs)._fields
+            subnames=[subfield_fmt.format(field=f,subfield=sf) for sf in subnames]
+            field_names+=subnames
+        else:
+            field_names.append(f)
+    return collections.namedtuple(name,field_names)
 
 
 

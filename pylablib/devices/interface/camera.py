@@ -11,6 +11,8 @@ import threading
 
 
 TFramesStatus=collections.namedtuple("TFramesStatus",["acquired","unread","skipped","buffer_size"])
+TFrameSize=collections.namedtuple("TFrameSize",["width","height"])
+TFramePosition=collections.namedtuple("TFramePosition",["left","top"])
 TFrameInfo=collections.namedtuple("TFrameInfo",["frame_index"])
 class ICamera(interface.IDevice):
     """
@@ -19,6 +21,7 @@ class ICamera(interface.IDevice):
     Provides a consistent common interface for the most frequently encountered camera functions.
     """
     _default_image_indexing="rct"
+    _default_frameinfo_format="namedtuple"
     _default_image_dtype="<u2"
     _clear_pausing_acquisition=False
     Error=DeviceError
@@ -29,12 +32,15 @@ class ICamera(interface.IDevice):
         self._default_acq_params=function_utils.funcsig(self.setup_acquisition).defaults
         self._frame_counter=FrameCounter()
         self._image_indexing=self._default_image_indexing
+        self._frameinfo_format=self._default_frameinfo_format
         self._add_status_variable("buffer_size",lambda: self.get_frames_status().buffer_size)
         self._add_status_variable("acquired_frames",lambda: self.get_frames_status().acquired)
         self._add_status_variable("acquisition_in_progress",self.acquisition_in_progress)
         self._add_status_variable("frames_status",self.get_frames_status)
         self._add_status_variable("data_dimensions",self.get_data_dimensions)
         self._add_info_variable("detector_size",self.get_detector_size)
+        self._add_settings_variable("image_indexing",self.get_image_indexing,self.set_image_indexing)
+        self._add_settings_variable("frame_info_format",self.get_frame_info_format,self.set_frame_info_format)
 
 
     ### Acquisition control ###
@@ -254,6 +260,42 @@ class ICamera(interface.IDevice):
         """Get readout data dimensions (in pixels) as a tuple ``(width, height)``; take indexing mode into account"""
         return image_utils.convert_shape_indexing(self._get_data_dimensions_rc(),"rc",self._image_indexing)
     
+    def get_frame_info_format(self):
+        """
+        Get format of the frame info.
+
+        Can be ``"namedtuple"`` (potentially nested named tuples; convenient to get particular values),
+        ``"list"`` (flat list of values, with field names are given by :meth:`get_frame_info_field`; convenient for building a table),
+        or ``"dict"`` (flat dictionary made out of the list and info fields; convenient for )
+        """
+        return self._frameinfo_format
+    _p_frameinfo_format=interface.EnumParameterClass("frame_info_format",["namedtuple","list","dict"])
+    @interface.use_parameters(fmt="frame_info_format")
+    def set_frame_info_format(self, fmt):
+        """
+        Set format of the frame info.
+
+        Can be ``"namedtuple"`` (potentially nested named tuples; convenient to get particular values),
+        ``"list"`` (flat list of values, with field names are given by :meth:`get_frame_info_fields`; convenient for building a table),
+        or ``"dict"`` (flat dictionary made out of the list and info fields; convenient for )
+        """
+        self._frameinfo_format=fmt
+        return self._frameinfo_format
+    def get_frame_info_fields(self):
+        """
+        Get the names of frame info fields.
+
+        Applicable when frame info format (set by :meth:`set_frame_info_format`) is ``"list"``.
+        """
+        return list(self._frameinfo_fields)
+    def _convert_frame_info(self, info, fmt=None):
+        if fmt is None:
+            fmt=self._frameinfo_format
+        if fmt=="namedtuple":
+            return info
+        if fmt=="list":
+            return list(general_utils.flatten_list(info))
+        return dict(zip(self._frameinfo_fields,general_utils.flatten_list(info)))
 
     def get_new_images_range(self):
         """
@@ -295,6 +337,7 @@ class ICamera(interface.IDevice):
         """Return `n` zero frames (as a list or 3D numpy array) for padding the :meth:`read_multiple_images` output when ``missing_frame=="zero"``"""
         return np.zeros((n,)+self.get_data_dimensions(),dtype=self._default_image_dtype)
     _TFrameInfo=TFrameInfo
+    _frameinfo_fields=TFrameInfo._fields
     _p_missing_frame=interface.EnumParameterClass("missing_frame",["none","zero","skip"])
     @interface.use_parameters
     def read_multiple_images(self, rng=None, peek=False, missing_frame="skip", return_info=False):

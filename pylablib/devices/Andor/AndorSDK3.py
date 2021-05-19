@@ -2,7 +2,7 @@ from .base import AndorError, AndorTimeoutError, AndorNotSupportedError
 from . import atcore_lib
 from .atcore_lib import lib, AndorSDK3LibError, feature_types, read_uint12
 
-from ...core.utils import py3, dictionary
+from ...core.utils import py3, dictionary, general
 from ...core.devio import interface
 from ..interface import camera
 from ..utils import load_lib
@@ -33,8 +33,7 @@ def get_cameras_number():
 
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["camera_model","serial_number","firmware_version","software_version"])
 TMissedFramesStatus=collections.namedtuple("TMissedFramesStatus",["skipped","overflows"])
-TMetaData=collections.namedtuple("TMetaData",["timestamp_dev","size","pixeltype","stride"])
-TFrameInfo=collections.namedtuple("TFrameInfo",["frame_index","metadata"])
+TFrameInfo=collections.namedtuple("TFrameInfo",["frame_index","timestamp_dev","size","pixeltype","stride"])
 class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
     """
     Andor SDK3 camera.
@@ -44,6 +43,8 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
     """
     Error=AndorError
     TimeoutError=AndorTimeoutError
+    _TFrameInfo=TFrameInfo
+    _frameinfo_fields=general.make_flat_namedtuple(TFrameInfo,fields={"size":camera.TFrameSize})._fields
     def __init__(self, idx=0):
         super().__init__()
         lib.initlib()
@@ -538,7 +539,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
     def _parse_metadata(self, metadata):
         c1=metadata.get(1,None)
         c7=metadata.get(7,(None,)*4)
-        return TMetaData(c1,(c7[2],c7[3]),c7[1],c7[0])
+        return (c1,camera.TFrameSize(c7[2],c7[3]),c7[1],c7[0])
     def _parse_image(self, img):
         if img is None:
             return None
@@ -662,7 +663,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera):
         self._buffer_mgr.wait_for_frame(idx=idx,timeout=timeout)
     def _read_frames(self, rng, return_info=False):
         data=[self._parse_image(self._buffer_mgr.read(i)) for i in range(*rng)]
-        return [d[0] for d in data],[TFrameInfo(n,d[1]) for (n,d) in zip(range(*rng),data)]
+        return [d[0] for d in data],[self._convert_frame_info(TFrameInfo(n,*d[1])) for (n,d) in zip(range(*rng),data)]
     def _zero_frame(self, n):
         dim=self.get_data_dimensions()
         bpp=self.get_value("BytesPerPixel")

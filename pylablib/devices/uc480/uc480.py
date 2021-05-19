@@ -1,7 +1,8 @@
+from inspect import FrameInfo
 from . import uc480_defs
 from .uc480_lib import lib, uc480Error, uc480LibError
 
-from ...core.utils import py3
+from ...core.utils import py3, general
 from ...core.devio import interface
 from ..interface import camera
 
@@ -36,6 +37,7 @@ def find_by_serial(serial_number):
 
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["cam_id","model","manufacturer","serial_number","usb_version","date","dll_version","camera_type"])
 TAcquiredFramesStatus=collections.namedtuple("TAcquiredFramesStatus",["acquired","transfer_missed"])
+TTimestamp=collections.namedtuple("TTimestamp",["year","month","day","hour","minute","second","millisecond"])
 TFrameInfo=collections.namedtuple("TFrameInfo",["frame_index","framestamp","timestamp","timestamp_dev","size","io_status","flags"])
 class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
     """
@@ -53,6 +55,8 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
     """
     Error=uc480Error
     TimeoutError=uc480TimeoutError
+    _TFrameInfo=TFrameInfo
+    _frameinfo_fields=general.make_flat_namedtuple(TFrameInfo,fields={"timestamp":TTimestamp,"size":camera.TFrameSize})._fields
     def __init__(self, cam_id=0, roi_binning_mode="auto", dev_id=None):
         super().__init__()
         lib.initlib()
@@ -516,10 +520,10 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         lib.is_CopyImageMem(self.hcam,buff[0],buff[1],frame.ctypes.data)
         frame=self._convert_indexing(frame,"rct")
         ts=frame_info.TimestampSystem
-        ts=(ts.wYear,ts.wMonth,ts.wDay,ts.wHour,ts.wMinute,ts.wSecond,ts.wMilliseconds)
-        size=(frame_info.dwImageWidth,frame_info.dwImageHeight)
+        ts=TTimestamp(ts.wYear,ts.wMonth,ts.wDay,ts.wHour,ts.wMinute,ts.wSecond,ts.wMilliseconds)
+        size=camera.TFrameSize(frame_info.dwImageWidth,frame_info.dwImageHeight)
         frame_info=TFrameInfo(n,frame_info.u64FrameNumber,ts,frame_info.u64TimestampDevice,size,frame_info.dwIoStatus,frame_info.dwFlags)
-        return frame,frame_info
+        return frame,self._convert_frame_info(frame_info)
     def _read_frames(self, rng, return_info=False):
         data=[self._read_buffer(n) for n in range(rng[0],rng[1])]
         return [d[0] for d in data],[d[1] for d in data]
@@ -543,7 +547,8 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         `missing_frame` determines what to do with frames which are out of range (missing or lost):
         can be ``"none"`` (replacing them with ``None``), ``"zero"`` (replacing them with zero-filled frame), or ``"skip"`` (skipping them).
         If ``return_info==True``, return tuple ``(frames, infos)``, where ``infos`` is a list of :class:`TFrameInfo` instances
-        describing frame index, framestamp and timestamp (global and device), frame size, digital input state, and additional flags;
+        describing frame index, framestamp, global timestamp (real time),
+        device timestamp (time from camera restart, in 0.1us steps), frame size, digital input state, and additional flags;
         if some frames are missing and ``missing_frame!="skip"``, the corresponding frame info is ``None``.
         """
         return super().read_multiple_images(rng=rng,peek=peek,missing_frame=missing_frame,return_info=return_info)

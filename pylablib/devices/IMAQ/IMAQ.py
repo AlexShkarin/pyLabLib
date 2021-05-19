@@ -567,7 +567,7 @@ class IMAQCamera(camera.IROICamera):
                 frame_info=[]
                 idx=first_frame
                 for d in parsed_data:
-                    frame_info.append(self._TFrameInfo(idx))
+                    frame_info.append(self._convert_frame_info(self._TFrameInfo(idx)))
                     idx+=len(d)
             else:
                 frame_info=[self._TFrameInfo(first_frame+n) for n in range(len(parsed_data))]

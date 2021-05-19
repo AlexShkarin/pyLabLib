@@ -2,7 +2,7 @@ from . import dcamapi4_lib
 from .dcamapi4_lib import lib, DCAMError, DCAMLibError
 
 from ...core.devio import interface
-from ...core.utils import py3, dictionary
+from ...core.utils import py3, dictionary, general
 from ..interface import camera
 from ..utils import load_lib
 
@@ -41,6 +41,8 @@ TFrameInfo=collections.namedtuple("TFrameInfo",["frame_index","framestamp","time
 class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
     Error=DCAMError
     TimeoutError=DCAMTimeoutError
+    _TFrameInfo=TFrameInfo
+    _frameinfo_fields=general.make_flat_namedtuple(TFrameInfo,fields={"position":camera.TFramePosition})._fields
     def __init__(self, idx=0):
         super().__init__()
         self.idx=idx
@@ -431,9 +433,10 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
         Does not advance the read frames counter.
         """
         sframe=self._read_buffer(buffer%self._alloc_nframes)
-        info=TFrameInfo(buffer,sframe.framestamp,sframe.timestamp[0]*10**6+sframe.timestamp[1],sframe.camerastamp,(sframe.left,sframe.top),sframe.type)
+        position=camera.TFramePosition(sframe.left,sframe.top)
+        info=TFrameInfo(buffer,sframe.framestamp,sframe.timestamp[0]*10**6+sframe.timestamp[1],sframe.camerastamp,position,sframe.type)
         data=self._buffer_to_array(sframe)
-        return data,info
+        return data,self._convert_frame_info(info)
     def _read_frames(self, rng, return_info=False):
         data=[self._get_single_frame(n) for n in range(rng[0],rng[1])]
         return [d[0] for d in data],[d[1] for d in data]
