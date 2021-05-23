@@ -1,6 +1,6 @@
 from ...core.devio import interface, DeviceError
 from ...core.dataproc import image_utils
-from ...core.utils import functions as function_utils, general as general_utils
+from ...core.utils import functions as function_utils, general as general_utils, dictionary
 
 import numpy as np
 import collections
@@ -265,7 +265,7 @@ class ICamera(interface.IDevice):
         Get format of the frame info.
 
         Can be ``"namedtuple"`` (potentially nested named tuples; convenient to get particular values),
-        ``"list"`` (flat list of values, with field names are given by :meth:`get_frame_info_field`; convenient for building a table),
+        ``"list"`` (flat list of values, with field names are given by :meth:`get_frame_info_fields`; convenient for building a table),
         or ``"dict"`` (flat dictionary made out of the list and info fields; convenient for )
         """
         return self._frameinfo_format
@@ -634,6 +634,105 @@ class FrameNotifier:
                 return
 
 
+
+
+
+
+class IAttributeCamera(ICamera):
+    """
+    Camera class which supports camera attributes.
+
+    The method :meth:`_list_attributes` must be defined in a subclass;
+    it should produce a list of camera attributes, which have ``name`` attribute for placing them into a dictionary.
+    Attributes can also have ``readable`` and ``writable`` attributes, which are used in
+    :meth:`get_all_attribute_values` and :meth:`set_all_attribute_values` to determine if the attribute values should be collected or set.
+    The method :meth:`_update_attributes` should be called on opening to populate the dictionary of available attributes.
+
+    One can also define :meth:`_normalize_attribute_name`, which normalizes the attribute name into a dictionary name
+    (e.g., replaces separators, removes spaces, or normalizes case).
+    """
+    def __init__(self):
+        super().__init__()
+        self.attributes=dictionary.Dictionary()
+        self._add_status_variable("camera_attributes",self.get_all_attribute_values,priority=-5)
+        self.ca=dictionary.ItemAccessor(self.get_attribute,missing_error=self.Error)
+        self.cav=dictionary.ItemAccessor(self.get_attribute_value,self.set_attribute_value,missing_error=self.Error)
+    
+    def _normalize_attribute_name(self, name):
+        return name
+    def _list_attributes(self):
+        raise NotImplementedError("IAttributeCamera._list_attributes")
+    def _update_attributes(self, replace=False):
+        """Update ``attributes`` dictionary; if ``replace==True``, replace it entirely, otherwise, simply update it"""
+        attrs=self._list_attributes()
+        attrs_dict=dictionary.Dictionary({self._normalize_attribute_name(p.name):p for p in attrs})
+        if replace:
+            self.attributes=attrs_dict
+        else:
+            self.attributes.update(attrs_dict)
+    def get_attribute(self, name, error_on_missing=True):
+        """Get the camera attribute with the given name"""
+        name=self._normalize_attribute_name(name)
+        if name in self.attributes:
+            return self.attributes[name]
+        if error_on_missing:
+            raise self.Error("attribute {} is missing".format(name))
+    def get_all_attributes(self, copy=False):
+        """
+        Return a dictionary of all available attributes.
+        
+        If ``copy==True``, copy the dictionary; otherwise, return the internal dictionary structure (should not be modified).
+        """
+        return self.attributes.copy() if copy else self.attributes
+
+    def get_attribute_value(self, name, error_on_missing=True, default=None, **kwargs):
+        """
+        Get value of an attribute with the given name.
+        
+        If the value doesn't exist and ``error_on_missing==True``, raise error; otherwise, return `default`.
+        If `default` is not ``None``, automatically assume that ``error_on_missing==False``.
+        If `name` points at a dictionary branch, return a dictionary with all values in this branch.
+        Additional arguments are passed to ``get_value`` methods of the individual attribute.
+        """
+        error_on_missing=error_on_missing and (default is None)
+        attr=self.get_attribute(name,error_on_missing=error_on_missing)
+        if dictionary.is_dictionary(attr):
+            return self.get_all_attribute_values(root=name,**kwargs)
+        return default if attr is None else attr.get_value(**kwargs)
+    def set_attribute_value(self, name, value, error_on_missing=True, **kwargs):
+        """
+        Set value of an attribute with the given name.
+        
+        If the value doesn't exist and ``error_on_missing==True``, raise error; otherwise, do nothing.
+        If `name` points at a dictionary branch, set all values in this branch (in this case `value` must be a dictionary).
+        Additional arguments are passed to ``set_value`` methods of the individual attribute.
+        """
+        attr=self.get_attribute(name,error_on_missing=error_on_missing)
+        if dictionary.is_dictionary(attr):
+            return self.set_all_attribute_values(value,root=name,**kwargs)
+        if attr is not None:
+            attr.set_value(value,**kwargs)
+    
+    def get_all_attribute_values(self, root="", **kwargs):
+        """
+        Get values of all attributes with the given `root`.
+
+        Additional arguments are passed to ``get_value`` methods of individual attributes.
+        """
+        attributes=self.get_attribute(root)
+        return attributes.copy().filter_self(lambda a: getattr(a,"readable",True)).map_self(lambda a: a.get_value(**kwargs))
+    def set_all_attribute_values(self, settings, root="", **kwargs):
+        """
+        Set values of all attributes with the given `root`.
+
+        Additional arguments are passed to ``set_value`` methods of individual attributes.
+        """
+        attributes=self.get_attribute(root)
+        settings=dictionary.as_dict(settings,style="flat",copy=False)
+        for k,v in settings.items():
+            k=self._normalize_attribute_name(k)
+            if k in attributes and getattr(attributes[k],"writable",True):
+                attributes[k].set_value(v,**kwargs)
 
 
 

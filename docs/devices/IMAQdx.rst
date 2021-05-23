@@ -38,16 +38,25 @@ The cameras are identified by their name, which usually looks like ``"cam0"``. T
 Operation
 ------------------------
 
-The operation of these cameras is relatively standard. They support all the standard methods for dealing with ROI, starting and stopping acquisition, and operating the frame reading loop. The SDK also provides a universal interface for getting and setting various camera properties using their name. You can use :meth:`.IMAQdxCamera.get_value` and :meth:`.IMAQdxCamera.set_value` for that, as well as ``.v`` attribute which gives a dictionary-like access::
+The operation of these cameras is relatively standard. They support all the standard methods for dealing with ROI, starting and stopping acquisition, and operating the frame reading loop. The SDK also provides a universal interface for getting and setting various :ref:`camera attributes <cameras_basics_attributes>` using their name. You can use :meth:`.IMAQdxCamera.get_attribute_value` and :meth:`.IMAQdxCamera.set_attribute_value` for that, as well as ``.cav`` attribute which gives a dictionary-like access::
 
     >> cam = IMAQdx.IMAQdxCamera()
-    >> cam.get_value("StatusInformation/AcqInProgress")  # check if the camera is acquiring
+    >> cam.get_attribute_value("StatusInformation/AcqInProgress")  # check if the camera is acquiring
     0
-    >> cam.set_value("Width", 512)  # set the ROI width to 512px
-    >> cam.v["Width"]  # get the exposure; could also use cam.get_value("Width")
+    >> cam.set_attribute_value("Width", 512)  # set the ROI width to 512px
+    >> cam.cav["Width"]  # get the exposure; could also use cam.get_attribute_value("Width")
     512
 
-To get a dictionary of all available property values, you can call :meth:`.IMAQdxCamera.get_all_values`. In addition, you can use :meth:`.IMAQdxCamera.list_attributes` and ``attributes`` object attribute to get a list with all attribute objects. In addition to getting and setting values (same as :meth:`.IMAQdxCamera.get_value` and :meth:`.IMAQdxCamera.set_value`) they provide additional information: attribute kind (integer, enum, string, etc.), range (either numerical range, or selection for values for enum attributes), description string, etc.
+To see all available attributes, you can call :meth:`.IMAQdxCamera.get_all_attributes` to get a dictionary with attribute objects, and :meth:`.IMAQdxCamera.get_all_attribute_values` to get the dictionary of attribute values. The attribute objects provide additional information: attribute kind (integer, enum, string, etc.), range (either numerical range, or selection of values for enum attributes), description string, etc.::
+
+    >> cam = IMAQdx.IMAQdxCamera()
+    >> attr = cam.get_attribute("Width")
+    >> attr.description
+    'Width of the Image provided by the device (in pixels).'
+    >> attr.writable
+    True
+    >> (attr.min, attr.max)
+    (448, 1312)
 
 Since these properties vary a lot between different cameras, it is challenging to write a universal class covering a large range of cameras. Hence, currently the universal class only has the basic camera parameter control such as ROI (without binning) and acquisition status. For many specific cameras you might need to explore the attributes tree (either using the Python class and, e.g., a console, or via NI MAX) and operate them directly in your code.
 
@@ -62,7 +71,7 @@ Known issues
     >> cam = IMAQdx.IMAQdxCamera()
     >> cam.get_detector_size()  # 1280px x 1024px frame
     (1280, 1024)
-    >> cam.set_value("PixelFormat", "BGRA 8 Packed")  # unsupported format
+    >> cam.set_attribute_value("PixelFormat", "BGRA 8 Packed")  # unsupported format
     >> cam.snap().shape
     ...
     IMAQdxError: pixel format BGRA 8 Packed is not supported

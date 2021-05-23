@@ -3,7 +3,7 @@ from . import NIIMAQdx_lib
 from .NIIMAQdx_lib import IMAQdxAttributeType, IMAQdxAttributeVisibility, IMAQdxCameraControlMode, IMAQdxBufferNumberMode
 from .NIIMAQdx_lib import lib, IMAQdxError, IMAQdxLibError
 
-from ...core.utils import dictionary, py3
+from ...core.utils import py3
 from ...core.devio import interface
 from ..interface import camera
 
@@ -16,103 +16,6 @@ class IMAQdxTimeoutError(IMAQdxError):
     "IMAQdx frame timeout error"
 
 
-
-class IMAQdxAttribute:
-    """
-    Object representing an IMAQdx camera parameter.
-
-    Allows to query and set values and get additional information.
-    Usually created automatically by an :class:`IMAQdxCamera` instance, but could be created manually.
-
-    Attributes:
-        name: attribute name
-        display_name: attribute display name (short description name)
-        tooltip: longer attribute description
-        description: full attribute description (usually, same as `tooltip`)
-        units: attribute units (if applicable)
-        readable (bool): whether attribute is readable
-        writable (bool): whether attribute is writable
-        min (float or int): minimal attribute value (if applicable)
-        max (float or int): maximal attribute value (if applicable)
-        inc (float or int): minimal attribute increment value (if applicable)
-        values: list of possible attribute values (if applicable)
-    """
-    _attr_types={   IMAQdxAttributeType.IMAQdxAttributeTypeU32:"u32",
-                    IMAQdxAttributeType.IMAQdxAttributeTypeI64:"i64",
-                    IMAQdxAttributeType.IMAQdxAttributeTypeF64:"f64",
-                    IMAQdxAttributeType.IMAQdxAttributeTypeString:"str",
-                    IMAQdxAttributeType.IMAQdxAttributeTypeEnum:"enum",
-                    IMAQdxAttributeType.IMAQdxAttributeTypeBool:"bool",
-                    IMAQdxAttributeType.IMAQdxAttributeTypeCommand:"command",
-                    IMAQdxAttributeType.IMAQdxAttributeTypeBlob:"blob"}
-    def __init__(self, sid, name):
-        self.sid=sid
-        self.name=py3.as_str(name)
-        self.display_name=py3.as_str(lib.IMAQdxGetAttributeDisplayName(sid,name))
-        self.tooltip=py3.as_str(lib.IMAQdxGetAttributeTooltip(sid,name))
-        self.description=py3.as_str(lib.IMAQdxGetAttributeDescription(sid,name))
-        self.units=py3.as_str(lib.IMAQdxGetAttributeUnits(sid,name))
-        self.readable=lib.IMAQdxIsAttributeReadable(sid,name)
-        self.writable=lib.IMAQdxIsAttributeWritable(sid,name)
-        self._attr_type_n=lib.IMAQdxGetAttributeType(sid,name)
-        self.type=self._attr_types[self._attr_type_n]
-        if self._attr_type_n in lib.numeric_attr_types:
-            self.min=lib.IMAQdxGetAttributeMinimum(sid,name,self._attr_type_n)
-            self.max=lib.IMAQdxGetAttributeMaximum(sid,name,self._attr_type_n)
-            self.inc=lib.IMAQdxGetAttributeIncrement(sid,name,self._attr_type_n)
-        else:
-            self.min=self.max=self.inc=None
-        if self._attr_type_n==IMAQdxAttributeType.IMAQdxAttributeTypeEnum:
-            self.values=lib.IMAQdxEnumerateAttributeValues(sid,name)
-        else:
-            self.values=None
-    
-    def update_minmax(self):
-        """Update minimal and maximal attribute limits"""
-        if self._attr_type_n in lib.numeric_attr_types:
-            self.min=lib.IMAQdxGetAttributeMinimum(self.sid,self.name,self._attr_type_n)
-            self.max=lib.IMAQdxGetAttributeMaximum(self.sid,self.name,self._attr_type_n)
-            self.inc=lib.IMAQdxGetAttributeIncrement(self.sid,self.name,self._attr_type_n)
-    def truncate_value(self, value):
-        """Truncate value to lie within attribute limits"""
-        self.update_minmax()
-        if self._attr_type_n in lib.numeric_attr_types:
-            if value<self.min:
-                value=self.min
-            elif value>self.max:
-                value=self.max
-            else:
-                inc=self.inc
-                if inc>0:
-                    value=((value-self.min)//inc)*inc+self.min
-        return value
-
-    def get_value(self, enum_as_str=True):
-        """
-        Get attribute value.
-        
-        If ``enum_as_str==True``, return enum-style values as strings; otherwise, return corresponding integer values.
-        """
-        if not self.readable:
-            raise IMAQdxError("Attribute {} is not readable".format(self.name))
-        val=lib.IMAQdxGetAttribute(self.sid,self.name,self._attr_type_n)
-        if self._attr_type_n==IMAQdxAttributeType.IMAQdxAttributeTypeEnum and enum_as_str:
-            val=val.Name
-        return val
-    def set_value(self, value, truncate=True):
-        """
-        Get attribute value.
-        
-        If ``truncate==True``, automatically truncate value to lie within allowed range.
-        """
-        if not self.writable:
-            raise IMAQdxError("Attribute {} is not writable".format(self.name))
-        if truncate:
-            value=self.truncate_value(value)
-        return lib.IMAQdxSetAttribute(self.sid,self.name,value,None)
-
-    def __repr__(self):
-        return "{}({})".format(self.__class__.__name__,self.name)
 
 
 
@@ -152,35 +55,138 @@ def get_cameras_number():
 
 
 
+class IMAQdxAttribute:
+    """
+    Object representing an IMAQdx camera parameter.
+
+    Allows to query and set values and get additional information.
+    Usually created automatically by an :class:`IMAQdxCamera` instance, but could be created manually.
+
+    Args:
+        sid: camera session ID
+        name: attribute text name
+
+    Attributes:
+        name: attribute name
+        display_name: attribute display name (short description name)
+        tooltip: longer attribute description
+        description: full attribute description (usually, same as `tooltip`)
+        units: attribute units (if applicable)
+        readable (bool): whether attribute is readable
+        writable (bool): whether attribute is writable
+        min (float or int): minimal attribute value (if applicable)
+        max (float or int): maximal attribute value (if applicable)
+        inc (float or int): minimal attribute increment value (if applicable)
+        values: list of possible attribute values (if applicable)
+    """
+    _attr_types={   IMAQdxAttributeType.IMAQdxAttributeTypeU32:"u32",
+                    IMAQdxAttributeType.IMAQdxAttributeTypeI64:"i64",
+                    IMAQdxAttributeType.IMAQdxAttributeTypeF64:"f64",
+                    IMAQdxAttributeType.IMAQdxAttributeTypeString:"str",
+                    IMAQdxAttributeType.IMAQdxAttributeTypeEnum:"enum",
+                    IMAQdxAttributeType.IMAQdxAttributeTypeBool:"bool",
+                    IMAQdxAttributeType.IMAQdxAttributeTypeCommand:"command",
+                    IMAQdxAttributeType.IMAQdxAttributeTypeBlob:"blob"}
+    def __init__(self, sid, name):
+        self.sid=sid
+        self.name=py3.as_str(name)
+        self.display_name=py3.as_str(lib.IMAQdxGetAttributeDisplayName(sid,name))
+        self.tooltip=py3.as_str(lib.IMAQdxGetAttributeTooltip(sid,name))
+        self.description=py3.as_str(lib.IMAQdxGetAttributeDescription(sid,name))
+        self.units=py3.as_str(lib.IMAQdxGetAttributeUnits(sid,name))
+        self.readable=lib.IMAQdxIsAttributeReadable(sid,name)
+        self.writable=lib.IMAQdxIsAttributeWritable(sid,name)
+        self._attr_type_n=lib.IMAQdxGetAttributeType(sid,name)
+        self.kind=self._attr_types[self._attr_type_n]
+        self.min=None
+        self.max=None
+        self.inc=None
+        self.values=None
+        if self._attr_type_n in lib.numeric_attr_types:
+            self.min=lib.IMAQdxGetAttributeMinimum(sid,name,self._attr_type_n)
+            self.max=lib.IMAQdxGetAttributeMaximum(sid,name,self._attr_type_n)
+            self.inc=lib.IMAQdxGetAttributeIncrement(sid,name,self._attr_type_n)
+        else:
+            self.min=self.max=self.inc=None
+        if self._attr_type_n==IMAQdxAttributeType.IMAQdxAttributeTypeEnum:
+            self.values=lib.IMAQdxEnumerateAttributeValues(sid,name)
+        else:
+            self.values=None
+    
+    def update_limits(self):
+        """Update minimal and maximal attribute limits and return tuple ``(min, max, inc)``"""
+        if self._attr_type_n in lib.numeric_attr_types:
+            self.min=lib.IMAQdxGetAttributeMinimum(self.sid,self.name,self._attr_type_n)
+            self.max=lib.IMAQdxGetAttributeMaximum(self.sid,self.name,self._attr_type_n)
+            self.inc=lib.IMAQdxGetAttributeIncrement(self.sid,self.name,self._attr_type_n)
+            return (self.min,self.max,self.inc)
+    def truncate_value(self, value):
+        """Truncate value to lie within attribute limits"""
+        self.update_limits()
+        if self._attr_type_n in lib.numeric_attr_types:
+            if value<self.min:
+                value=self.min
+            elif value>self.max:
+                value=self.max
+            else:
+                inc=self.inc
+                if inc>0:
+                    value=((value-self.min)//inc)*inc+self.min
+        return value
+
+    def get_value(self, enum_as_str=True):
+        """
+        Get attribute value.
+        
+        If ``enum_as_str==True``, return enum-style values as strings; otherwise, return corresponding integer values.
+        """
+        if not self.readable:
+            raise IMAQdxError("Attribute {} is not readable".format(self.name))
+        val=lib.IMAQdxGetAttribute(self.sid,self.name,self._attr_type_n)
+        if self._attr_type_n==IMAQdxAttributeType.IMAQdxAttributeTypeEnum and enum_as_str:
+            val=val.Name
+        return val
+    def set_value(self, value, truncate=True):
+        """
+        Get attribute value.
+        
+        If ``truncate==True``, automatically truncate value to lie within allowed range.
+        """
+        if not self.writable:
+            raise IMAQdxError("Attribute {} is not writable".format(self.name))
+        if truncate:
+            value=self.truncate_value(value)
+        return lib.IMAQdxSetAttribute(self.sid,self.name,value,None)
+
+    def __repr__(self):
+        return "{}(name='{}', kind='{}')".format(self.__class__.__name__,self.name,self.kind)
+
 
 
 
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["vendor","model","serial_number","bus_type"])
-class IMAQdxCamera(camera.IROICamera):
+class IMAQdxCamera(camera.IROICamera, camera.IAttributeCamera):
     """
     Generic IMAQdx camera interface.
 
     Args:
         name: interface name (can be learned by :func:`list_cameras`; usually, but not always, starts with ``"cam"``)
         mode: connection mode; can be ``"controller"`` (full control) or ``"listener"`` (only reading)
-        default_visibility: default attribute visibility when listing attributes;
+        visibility: attribute visibility when listing attributes;
             can be ``"simple"``, ``"intermediate"`` or ``"advanced"`` (higher mode exposes more attributes).
     """
     Error=IMAQdxError
     TimeoutError=IMAQdxTimeoutError
-    def __init__(self, name="cam0", mode="controller", default_visibility="advanced"):
+    def __init__(self, name="cam0", mode="controller", visibility="advanced"):
         super().__init__()
         lib.initlib()
         self.name=name
         self.mode=mode
-        self.default_visibility=default_visibility
+        self.visibility=visibility
         self.sid=None
         self.open()
         self._raw_readout_format=False
-        self.v=dictionary.ItemAccessor(self.get_value,self.set_value)
-
         self._add_info_variable("device_info",self.get_device_info)
-        self._add_status_variable("values",self.get_all_values,priority=-5)
 
 
     _p_connection_mode=interface.EnumParameterClass("connection_mode",{
@@ -199,8 +205,7 @@ class IMAQdxCamera(camera.IROICamera):
         mode=self._p_connection_mode(self.mode)
         self.sid=lib.IMAQdxOpenCamera(self.name,mode)
         try:
-            attrs=self.list_attributes()
-            self.attributes=dictionary.Dictionary(dict([ (a.name.replace("::","/"),a) for a in attrs ]))
+            self._update_attributes()
         except self.Error:
             self.close()
             raise
@@ -222,72 +227,54 @@ class IMAQdxCamera(camera.IROICamera):
 
     def post_open(self):
         """Additional setup after camera opening"""
-        att=self.attributes.get("PixelFormat")
+        att=self.get_attribute("PixelFormat",error_on_missing=False)
         if att and att.writable:
-            att.set_value(att.get_value())  # there seems to be occasional desynchronization between the read and the actual value
-    _builtin_attrs=["OffsetX","OffsetY","Width","Height","PixelFormat","PayloadSize","StatusInformation::LastBufferNumber","AcquisitionAttributes::BitsPerPixel"]
-    def list_attributes(self, root="", visibility=None, add_builtin=True):
-        """
-        List all attributes at a given root.
+            att.set_value(att.get_value())  # there seems to be occasional de-synchronization between the read and the actual value
 
-        Return list of :class:`IMAQdxAttribute` objects, which allow querying and settings values
-        and getting additional information (description, limits, increment).
-        """
-        visibility=self._p_visibility(visibility or self.default_visibility)
-        root=root.replace("/","::")
-        attrs=lib.IMAQdxEnumerateAttributes2(self.sid,root,visibility)
+    _builtin_attrs=["OffsetX","OffsetY","Width","Height","PixelFormat","PayloadSize","StatusInformation::LastBufferNumber","AcquisitionAttributes::BitsPerPixel"]
+    def _normalize_attribute_name(self, name):
+        return name.replace("::","/")
+    def _list_attributes(self):
+        visibility=self._p_visibility(self.visibility)
+        attrs=lib.IMAQdxEnumerateAttributes2(self.sid,"",visibility)
         attr_names=[a.Name for a in attrs]
-        if add_builtin:
-            builtin_attrs=[]
-            for a in self._builtin_attrs:
-                if a not in attr_names:
-                    try:
-                        lib.IMAQdxGetAttributeDisplayName(self.sid,a)
-                        builtin_attrs.append(a)
-                    except IMAQdxError:
-                        pass
-            attr_names+=builtin_attrs
+        for a in self._builtin_attrs:
+            if a not in attr_names:
+                try:
+                    lib.IMAQdxGetAttributeDisplayName(self.sid,a)
+                    attr_names.append(a)
+                except IMAQdxError:
+                    pass
         return [IMAQdxAttribute(self.sid,a) for a in attr_names]
 
-    def get_value(self, name, default=None):
-        """Get value of the attribute with a given name"""
-        name=name.replace("::","/")
-        if (default is not None) and (name not in self.attributes):
-            return default
-        if self.attributes.is_dictionary(self.attributes[name]):
-            return self.get_all_values(root=name)
-        return self.attributes[name].get_value()
-    def set_value(self, name, value, ignore_missing=False, truncate=True):
+    def get_attribute_value(self, name, error_on_missing=True, default=None):
         """
-        Set value of the attribute with a given name.
+        Get value of an attribute with the given name.
         
+        If the value doesn't exist or can not be read and ``error_on_missing==True``, raise error; otherwise, return `default`.
+        If `default` is not ``None``, assume that ``error_on_missing==False``.
+        If `name` points at a dictionary branch, return a dictionary with all values in this branch.
+        """
+        return super().get_attribute_value(name,error_on_missing=error_on_missing,default=default)
+    def set_attribute_value(self, name, value, truncate=True, error_on_missing=True):
+        """
+        Set value of an attribute with the given name.
+        
+        If the value doesn't exist or can not be written and ``error_on_missing==True``, raise error; otherwise, do nothing.
+        If `name` points at a dictionary branch, set all values in this branch (in this case `value` must be a dictionary).
         If ``truncate==True``, truncate value to lie within attribute range.
         """
-        name=name.replace("::","/")
-        if (name in self.attributes) or (not ignore_missing):
-            if self.attributes.is_dictionary(self.attributes[name]):
-                self.set_all_values(value,root=name)
-            else:
-                self.attributes[name].set_value(value,truncate=truncate)
-
-    def get_all_values(self, root="", as_dict=False):
-        """
-        Get values of all attributes with the given `root`.
-
-        If ``as_dict==True``, return ``dict`` object; otherwise, return :class:`.Dictionary` object.
-        """
-        settings=self.attributes[root].copy().filter_self(lambda a: a.readable).map_self(lambda a: a.get_value())
-        return settings.as_dict(style="flat") if as_dict else settings
-    def set_all_values(self, settings, root="", truncate=True):
+        return super().set_attribute_value(name,value,truncate=truncate,error_on_missing=error_on_missing)
+    def get_all_attribute_values(self, root=""):
+        """Get values of all attributes with the given `root`"""
+        return super().get_all_attribute_values(root=root)
+    def set_all_attribute_values(self, settings, root="", truncate=True):
         """
         Set values of all attributes with the given `root`.
         
         If ``truncate==True``, truncate value to lie within attribute range.
         """
-        settings=dictionary.as_dict(settings,style="flat",copy=False)
-        for k in settings:
-            if k in self.attributes[root] and self.attributes[root,k].writable: # pylint: disable=no-member
-                self.attributes[root,k].set_value(settings[k],truncate=truncate) # pylint: disable=no-member
+        return super().set_all_attribute_values(settings,root=root,truncate=truncate)
 
     def get_device_info(self):
         """
@@ -295,25 +282,25 @@ class IMAQdxCamera(camera.IROICamera):
 
         Return tuple ``(vendor, model, serial_number, bus_type)``.
         """
-        cam_info=self.v["CameraInformation"]
+        cam_info=self.cav["CameraInformation"]
         serial="{:016X}".format((cam_info["SerialNumberHigh"]<<32)+cam_info["SerialNumberLow"])
         return TDeviceInfo(cam_info["VendorName"],cam_info["ModelName"],serial,cam_info["BusType"])
 
     def _get_data_dimensions_rc(self):
-        return self.v["Height"],self.v["Width"]
+        return self.cav["Height"],self.cav["Width"]
     def get_detector_size(self):
         """Get camera detector size (in pixels) as a tuple ``(width, height)``"""
-        return self.attributes["Width"].max,self.attributes["Height"].max # pylint: disable=no-member
+        return self.ca["Width"].max,self.ca["Height"].max
     def get_roi(self):
-        ox=self.v.get("OffsetX",0)
-        oy=self.v.get("OffsetY",0)
-        w=self.v["Width"]
-        h=self.v["Height"]
+        ox=self.get_attribute_value("OffsetX",default=0)
+        oy=self.get_attribute_value("OffsetY",default=0)
+        w=self.cav["Width"]
+        h=self.cav["Height"]
         return ox,ox+w,oy,oy+h
     @camera.acqcleared
     def set_roi(self, hstart=0, hend=None, vstart=0, vend=None):
         for a in ["Width","Height","OffsetX","OffsetY"]:
-            if a not in self.attributes or not self.attributes[a].writable:
+            if a not in self.ca or not self.ca[a].writable:
                 return self.get_roi()
         det_size=self.get_detector_size()
         if hend is None:
@@ -321,18 +308,18 @@ class IMAQdxCamera(camera.IROICamera):
         if vend is None:
             vend=det_size[1]
         with self.pausing_acquisition():
-            self.v["Width"]=self.attributes["Width"].min # pylint: disable=no-member
-            self.v["Height"]=self.attributes["Height"].min # pylint: disable=no-member
-            self.v["OffsetX"]=hstart
-            self.v["OffsetY"]=vstart
-            self.v["Width"]=max(self.v["Width"],hend-hstart)
-            self.v["Height"]=max(self.v["Height"],vend-vstart)
+            self.cav["Width"]=self.ca["Width"].min
+            self.cav["Height"]=self.ca["Height"].min
+            self.cav["OffsetX"]=hstart
+            self.cav["OffsetY"]=vstart
+            self.cav["Width"]=max(self.cav["Width"],hend-hstart)
+            self.cav["Height"]=max(self.cav["Height"],vend-vstart)
         return self.get_roi()
     def get_roi_limits(self, hbin=1, vbin=1):
         params=["Width","Height","OffsetX","OffsetY"]
-        minp=tuple([(self.attributes[p].min if p in self.attributes else 0) for p in params])
-        maxp=tuple([(self.attributes[p].max if p in self.attributes else 0) for p in params])
-        incp=tuple([(self.attributes[p].inc if p in self.attributes else 0) for p in params])
+        minp=tuple([(self.ca[p].min if p in self.ca else 0) for p in params])
+        maxp=tuple([(self.ca[p].max if p in self.ca else 0) for p in params])
+        incp=tuple([(self.ca[p].inc if p in self.ca else 0) for p in params])
         hlim=camera.TAxisROILimit(minp[0] or maxp[0],maxp[0],incp[2] or maxp[0],incp[0] or maxp[0],1)
         vlim=camera.TAxisROILimit(minp[1] or maxp[1],maxp[1],incp[3] or maxp[1],incp[1] or maxp[1],1)
         return hlim,vlim
@@ -366,7 +353,7 @@ class IMAQdxCamera(camera.IROICamera):
         super().stop_acquisition()
     def acquisition_in_progress(self):
         """Check if acquisition is in progress"""
-        return self.v["StatusInformation/AcqInProgress"]
+        return self.cav["StatusInformation/AcqInProgress"]
     def refresh_acquisition(self, delay=0.005):
         """Stop and restart the acquisition, waiting `delay` seconds in between"""
         self.stop_acquisition()
@@ -377,7 +364,7 @@ class IMAQdxCamera(camera.IROICamera):
         self.stop_acquisition()
         self.clear_acquisition()
     def _get_acquired_frames(self):
-        last_buffer=self.v["StatusInformation/LastBufferNumber"]
+        last_buffer=self.cav["StatusInformation/LastBufferNumber"]
         if last_buffer>=2**31:
             last_buffer=-1
         # newest_buffer=-1
@@ -425,9 +412,9 @@ class IMAQdxCamera(camera.IROICamera):
 
     def _read_frames(self, rng, return_info=False):  # TODO: add parsing and pixel format
         indices=range(*rng)
-        size_bytes=self.get_value("PayloadSize")
-        shape=self.get_value("Height"),self.get_value("Width")
-        pixel_format=self.get_value("PixelFormat")
+        size_bytes=self.cav["PayloadSize"]
+        shape=self.cav["Height"],self.cav["Width"]
+        pixel_format=self.cav["PixelFormat"]
         frames=[self._read_data_raw(b,size_bytes) for b in indices]
         frames=[self._parse_data(f,shape,pixel_format) for f in frames]
         if not self._raw_readout_format:
@@ -455,14 +442,14 @@ class EthernetIMAQdxCamera(IMAQdxCamera):
     Args:
         name: interface name (can be learned by :func:`list_cameras`; usually, but not always, starts with ``"cam"``)
         mode: connection mode; can be ``"controller"`` (full control) or ``"listener"`` (only reading)
-        default_visibility: default attribute visibility when listing attributes;
+        visibility: default attribute visibility when listing attributes;
             can be ``"simple"``, ``"intermediate"`` or ``"advanced"`` (higher mode exposes more attributes).
         small_packet: if ``True``, automatically set small packet size (1500 bytes).
     """
-    def __init__(self, name="cam0", mode="controller", default_visibility="advanced", small_packet=False):
-        super().__init__(name=name,mode=mode,default_visibility=default_visibility)
+    def __init__(self, name="cam0", mode="controller", visibility="advanced", small_packet=False):
+        super().__init__(name=name,mode=mode,visibility=visibility)
         self.small_packet=small_packet
     def post_open(self):
         super().post_open()
         if self.small_packet:
-            self.set_value("AcquisitionAttributes/PacketSize",1500,ignore_missing=True)
+            self.set_attribute_value("AcquisitionAttributes/PacketSize",1500,error_on_missing=False)

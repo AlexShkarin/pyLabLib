@@ -1401,14 +1401,17 @@ class ItemAccessor:
             (``None`` means none is supplied, so checking containment raises an error; ``"auto"`` means that getter raising :exc:`KeyError` is used for checking)
         normalize_names: if ``True``, normalize a supplied path using the standard :class:`Dictionary` rules and join it into a single string using the supplied separator
         path_separator: path separator used for splitting and joining the supplied paths
+        missing_error: if not ``None``, specifies the error raised on the missing value;
+            used in :meth:`__contains__`, :meth:`get` and :meth:`setdefault` to determine if the value is missing
     """
-    def __init__(self, getter=None, setter=None, deleter=None, contains_checker="auto", normalize_names=True, path_separator="/"):
+    def __init__(self, getter=None, setter=None, deleter=None, contains_checker="auto", normalize_names=True, path_separator="/", missing_error=None):
         self.getter=getter
         self.setter=setter
         self.deleter=deleter
         self.contains_checker=contains_checker
         self.normalize_names=normalize_names
         self.path_separator=path_separator
+        self.missing_error=missing_error or KeyError
     def _norm_name(self, name):
         if self.normalize_names:
             return "/".join(normalize_path(name,sep=self.path_separator))
@@ -1434,7 +1437,7 @@ class ItemAccessor:
             try:
                 self.getter(name)
                 return True
-            except KeyError:
+            except self.missing_error:
                 return False
         elif self.contains_checker is not None:
             return self.contains_checker(name)
@@ -1442,11 +1445,11 @@ class ItemAccessor:
     def get(self, name, default=None):
         try:
             return self[name]
-        except KeyError:
+        except self.missing_error:
             return default
     def setdefault(self, name, default=None):
         try:
             return self[name]
-        except KeyError:
+        except self.missing_error:
             self[name]=default
             return self[name]

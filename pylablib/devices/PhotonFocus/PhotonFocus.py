@@ -1,3 +1,4 @@
+from os import error
 from . import pfcam_lib
 from .pfcam_lib import lib, PFCamError, PFCamLibError
 
@@ -10,112 +11,6 @@ from ..utils import load_lib
 import numpy as np
 import collections
 import re
-
-
-class PFCamProperty:
-    """
-    PFCam camera property.
-
-    Allows to query and set values and get additional information.
-    Usually created automatically by a PhotonFocus camera instance, but could also be created manually.
-
-    Attributes:
-        name: attribute name
-        readable (bool): whether property is readable
-        writable (bool): whether property is writable
-        is_command (bool): whether property is a command
-        min (float or int): minimal property value (if applicable)
-        max (float or int): maximal property value (if applicable)
-        values: list of possible property values (if applicable)
-    """
-    def __init__(self, port, name):
-        self.port=port
-        self.name=py3.as_str(name)
-        self._token=lib.pfProperty_ParseName(port,self.name)
-        if self._token==pfcam_lib.PfInvalidToken:
-            raise PFCamError("property {} doesn't exist".format(name))
-        self._type=lib.get_ptype_name(port,lib.pfProperty_GetType(port,self._token))
-        if self._type not in pfcam_lib.ValuePropertyTypes|{"PF_COMMAND"}:
-            raise PFCamError("property type {} not supported".format(self._type))
-        self._flags=lib.pfProperty_GetFlags(port,self._token)
-        if self._flags&0x02:
-            raise PFCamError("property {} is private".format(self.name))
-        self.is_command=self._type=="PF_COMMAND"
-        self.readable=not (self._flags&0x20 or self.is_command)
-        self.writable=not (self._flags&0x10 or self.is_command)
-        if self._type in {"PF_INT","PF_UINT","PF_FLOAT"}:
-            self.min=lib.get_property_by_name(port,self.name+".Min")
-            self.max=lib.get_property_by_name(port,self.name+".Max")
-        else:
-            self.min=self.max=None
-        if self._type=="PF_MODE":
-            self._values_dict={}
-            self._values_dict_inv={}
-            nodes=lib.collect_properties(port,self._token,backbone=False)
-            for tok,val in nodes:
-                val=py3.as_str(val)
-                if lib.pfProperty_GetType(port,tok)==2: # integer token, means one of possible values
-                    ival=lib.pfDevice_GetProperty(port,tok)
-                    self._values_dict[val]=ival
-                    self._values_dict_inv[ival]=val
-            self.values=list(self._values_dict)
-        else:
-            self._values_dict=self._values_dict_inv={}
-            self.values=None
-    
-    def update_minmax(self):
-        """Update minimal and maximal property limits"""
-        if self._type in {"PF_INT","PF_UINT","PF_FLOAT"}:
-            self.min=lib.get_property_by_name(self.port,self.name+".Min")
-            self.max=lib.get_property_by_name(self.port,self.name+".Max")
-    def truncate_value(self, value):
-        """Truncate value to lie within property limits"""
-        self.update_minmax()
-        if self.min is not None and value<self.min:
-            value=self.min
-        if self.max is not None and value>self.max:
-            value=self.max
-        return value
-
-    def get_value(self, enum_as_str=True):
-        """
-        Get property value.
-        
-        If ``enum_as_str==True``, return enum-style values as strings; otherwise, return corresponding integer values.
-        """
-        if not self.readable:
-            raise PFCamError("property {} is not readable".format(self.name))
-        val=lib.pfDevice_GetProperty(self.port,self._token)
-        if self._type=="PF_MODE" and enum_as_str:
-            val=self._values_dict_inv[val]
-        return val
-    def set_value(self, value, truncate=True):
-        """
-        Get property value.
-        
-        If ``truncate==True``, automatically truncate value to lie within allowed range.
-        """
-        if not self.writable:
-            raise PFCamError("property {} is not writable".format(self.name))
-        if truncate:
-            value=self.truncate_value(value)
-        if isinstance(value,py3.anystring) and self._type=="PF_MODE":
-            value=self._values_dict[value]
-        for t in range(2):
-            try:
-                lib.pfDevice_SetProperty(self.port,self._token,value)
-            except PFCamLibError as err:
-                if not (truncate and t==0 and err.code==-994): # parameter out of range (some version of pfcam library raise an error once if value is too close to the allowed edge)
-                    raise
-        return self.get_value()
-    def call_command(self, arg=0):
-        """If property is a command, call it with a given argument; otherwise, raise an error"""
-        if not self.is_command:
-            raise PFCamError("{} is not a PF_COMMAND property".format(self.name))
-        lib.pfDevice_SetProperty(self.port,self._token,arg)
-
-    def __repr__(self):
-        return "{}({})".format(self.__class__.__name__,self.name)
 
 
 
@@ -169,10 +64,124 @@ def get_cameras_number(only_supported=True):
 
 
 
+class PFCamAttribute:
+    """
+    PFCam camera attribute.
+
+    Allows to query and set values and get additional information.
+    Usually created automatically by a PhotonFocus camera instance, but could also be created manually.
+
+    Args:
+        sid: camera session ID
+        name: attribute text name
+
+    Attributes:
+        name: attribute name
+        readable (bool): whether attribute is readable
+        writable (bool): whether attribute is writable
+        is_command (bool): whether attribute is a command
+        min (float or int): minimal attribute value (if applicable)
+        max (float or int): maximal attribute value (if applicable)
+        values: list of possible attribute values (if applicable)
+    """
+    def __init__(self, port, name):
+        self.port=port
+        self.name=py3.as_str(name)
+        self._token=lib.pfProperty_ParseName(port,self.name)
+        if self._token==pfcam_lib.PfInvalidToken:
+            raise PFCamError("attribute {} doesn't exist".format(name))
+        self._type=lib.get_ptype_name(port,lib.pfProperty_GetType(port,self._token))
+        if self._type not in pfcam_lib.ValuePropertyTypes|{"PF_COMMAND"}:
+            raise PFCamError("attribute type {} not supported".format(self._type))
+        self._flags=lib.pfProperty_GetFlags(port,self._token)
+        if self._flags&0x02:
+            raise PFCamError("attribute {} is private".format(self.name))
+        self.is_command=self._type=="PF_COMMAND"
+        self.readable=not (self._flags&0x20 or self.is_command)
+        self.writable=not (self._flags&0x10 or self.is_command)
+        if self._type in {"PF_INT","PF_UINT","PF_FLOAT"}:
+            self.min=lib.get_property_by_name(port,self.name+".Min")
+            self.max=lib.get_property_by_name(port,self.name+".Max")
+        else:
+            self.min=self.max=None
+        if self._type=="PF_MODE":
+            self._values_dict={}
+            self._values_dict_inv={}
+            nodes=lib.collect_properties(port,self._token,backbone=False)
+            for tok,val in nodes:
+                val=py3.as_str(val)
+                if lib.pfProperty_GetType(port,tok)==2: # integer token, means one of possible values
+                    ival=lib.pfDevice_GetProperty(port,tok)
+                    self._values_dict[val]=ival
+                    self._values_dict_inv[ival]=val
+            self.values=list(self._values_dict)
+        else:
+            self._values_dict=self._values_dict_inv={}
+            self.values=None
+    
+    def update_limits(self):
+        """Update minimal and maximal attribute limits and return tuple ``(min, max)``"""
+        if self._type in {"PF_INT","PF_UINT","PF_FLOAT"}:
+            self.min=lib.get_property_by_name(self.port,self.name+".Min")
+            self.max=lib.get_property_by_name(self.port,self.name+".Max")
+            return (self.min,self.max)
+    def truncate_value(self, value):
+        """Truncate value to lie within attribute limits"""
+        self.update_limits()
+        if self.min is not None and value<self.min:
+            value=self.min
+        if self.max is not None and value>self.max:
+            value=self.max
+        return value
+
+    def get_value(self, enum_as_str=True):
+        """
+        Get attribute value.
+        
+        If ``enum_as_str==True``, return enum-style values as strings; otherwise, return corresponding integer values.
+        """
+        if not self.readable:
+            raise PFCamError("attribute {} is not readable".format(self.name))
+        val=lib.pfDevice_GetProperty(self.port,self._token)
+        if self._type=="PF_MODE" and enum_as_str:
+            val=self._values_dict_inv[val]
+        return val
+    def set_value(self, value, truncate=True):
+        """
+        Get attribute value.
+        
+        If ``truncate==True``, automatically truncate value to lie within allowed range.
+        """
+        if not self.writable:
+            raise PFCamError("attribute {} is not writable".format(self.name))
+        if truncate:
+            value=self.truncate_value(value)
+        if isinstance(value,py3.anystring) and self._type=="PF_MODE":
+            value=self._values_dict[value]
+        for t in range(2):
+            try:
+                lib.pfDevice_SetProperty(self.port,self._token,value)
+            except PFCamLibError as err:
+                if not (truncate and t==0 and err.code==-994): # parameter out of range (some version of pfcam library raise an error once if value is too close to the allowed edge)
+                    raise
+        return self.get_value()
+    def call_command(self, arg=0):
+        """If attribute is a command, call it with a given argument; otherwise, raise an error"""
+        if not self.is_command:
+            raise PFCamError("{} is not of PF_COMMAND type".format(self.name))
+        lib.pfDevice_SetProperty(self.port,self._token,arg)
+
+    def __repr__(self):
+        return "{}({})".format(self.__class__.__name__,self.name)
+
+
+
+
+
 
 
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["model","serial_number","grabber_info"])
-class PhotonFocusIMAQCamera(IMAQCamera):
+class PhotonFocusIMAQCamera(IMAQCamera, camera.IAttributeCamera):
     """
     IMAQ+PFCam interface to a PhotonFocus camera.
 
@@ -184,16 +193,14 @@ class PhotonFocusIMAQCamera(IMAQCamera):
     def __init__(self, imaq_name="img0", pfcam_port=0):
         self.pfcam_port=pfcam_port
         self.pfcam_opened=False
-        self.v=dictionary.ItemAccessor(self.get_value,self.set_value)
-        self.uv=dictionary.ItemAccessor(self.get_value,self.update_value)
+        self.ucav=dictionary.ItemAccessor(self.get_attribute_value,self.update_attribute_value)
         try:
-            IMAQCamera.__init__(self,imaq_name)
+            super().__init__(imaq_name)
         except IMAQError:
             self.close()
             raise
 
         self._add_info_variable("pfcam_port",lambda: self.pfcam_port)
-        self._add_status_variable("properties",self.get_all_properties)
         self._add_settings_variable("trigger_interleave",self.get_trigger_interleave,self.set_trigger_interleave)
         self._add_settings_variable("cfr",self.is_CFR_enabled,self.enable_CFR)
         self._add_settings_variable("status_line",self.is_status_line_enabled,self.enable_status_line)
@@ -220,7 +227,7 @@ class PhotonFocusIMAQCamera(IMAQCamera):
             lib.pfDeviceOpen(self.pfcam_port)
             self.pfcam_opened=True
             self.setup_max_baudrate()
-            self.properties=dictionary.Dictionary(dict([ (p.name.replace(".","/"),p) for p in self.list_properties() ]))
+            self._update_attributes()
             self._update_imaq()
             self._hstep=self._get_roi_step("h")
             self._vstep=self._get_roi_step("v")
@@ -231,85 +238,65 @@ class PhotonFocusIMAQCamera(IMAQCamera):
             lib.pfDeviceClose(self.pfcam_port)
             self.pfcam_opened=False
 
-    def list_properties(self, root=""):
-        """
-        List all properties at a given root.
-
-        Return list of :class:`PFCamProperty` objects, which allow querying and settings values
-        and getting additional information (limits, values).
-        """
-        root=root.replace("/",".")
-        pfx=root
-        if root=="":
-            root=lib.pfDevice_GetRoot(self.pfcam_port)
-        else:
-            root=lib.pfProperty_ParseName(self.pfcam_port,root)
-        props=lib.collect_properties(self.pfcam_port,root,pfx=pfx,include_types=pfcam_lib.ValuePropertyTypes|{"PF_COMMAND"})
+    def _normalize_attribute_name(self, name):
+        return name.replace(".","/")
+    def _list_attributes(self):
+        root=lib.pfDevice_GetRoot(self.pfcam_port)
+        props=lib.collect_properties(self.pfcam_port,root,include_types=pfcam_lib.ValuePropertyTypes|{"PF_COMMAND"})
         pfprops=[]
         for (_,name) in props:
             try:
-                pfprops.append(PFCamProperty(self.pfcam_port,name))
+                pfprops.append(PFCamAttribute(self.pfcam_port,name))
             except PFCamError:
                 pass
         return pfprops
 
-    def get_value(self, name, default=None):
-        """Get value of the property with a given name"""
-        name=name.replace(".","/")
-        if (default is not None) and (name not in self.properties):
-            return default
-        if self.properties.is_dictionary(self.properties[name]):
-            return self.get_all_properties(root=name)
-        v=self.properties[name].get_value()
-        return v
-    def _get_value_direct(self, name):
-        return lib.get_property_by_name(self.pfcam_port,name)
-    def set_value(self, name, value, ignore_missing=False, truncate=True):
+    def get_attribute_value(self, name, error_on_missing=True, default=None):
         """
-        Set value of the property with a given name.
+        Get value of an attribute with the given name.
         
-        If ``ignore_missing==True`` and the value is missing, do nothing; otherwise, raise an error.
-        If ``truncate==True``, truncate value to lie within property range.
+        If the value doesn't exist or can not be read and ``error_on_missing==True``, raise error; otherwise, return `default`.
+        If `default` is not ``None``, assume that ``error_on_missing==False``.
+        If `name` points at a dictionary branch, return a dictionary with all values in this branch.
         """
-        name=name.replace(".","/")
-        if (name in self.properties) or (not ignore_missing):
-            if self.properties.is_dictionary(self.properties[name]):
-                self.set_all_properties(value,root=name)
-            else:
-                self.properties[name].set_value(value,truncate=truncate)
-    def update_value(self, name, value, ignore_missing=False, truncate=True):
+        return super().get_attribute_value(name,error_on_missing=error_on_missing,default=default)
+    def set_attribute_value(self, name, value, truncate=True, error_on_missing=True):
         """
-        Set value of the property with a given name, but only if it's different from the current value.
+        Set value of an attribute with the given name.
         
-        Can take less time on some version of PFRemote (where single property setting is about 50ms).
-        Arguments are the same as :meth:`set_value`.
+        If the value doesn't exist or can not be written and ``error_on_missing==True``, raise error; otherwise, do nothing.
+        If `name` points at a dictionary branch, set all values in this branch (in this case `value` must be a dictionary).
+        If ``truncate==True``, truncate value to lie within attribute range.
         """
-        if self.get_value(name)!=value:
-            self.set_value(name,value,ignore_missing=ignore_missing,truncate=truncate)
-    def call_command(self, name, arg=0, ignore_missing=False):
-        """If property is a command, call it with a given argument; otherwise, raise an error"""
-        name=name.replace(".","/")
-        if (name in self.properties) or (not ignore_missing):
-            self.properties[name].call_command(arg=arg)
-
-    def get_all_properties(self, root="", as_dict=False):
+        return super().set_attribute_value(name,value,truncate=truncate,error_on_missing=error_on_missing)
+    def get_all_attribute_values(self, root=""):
+        """Get values of all attributes with the given `root`"""
+        return super().get_all_attribute_values(root=root)
+    def set_all_attribute_values(self, settings, root="", truncate=True):
         """
-        Get values of all properties with the given `root`.
-
-        If ``as_dict==True``, return ``dict`` object; otherwise, return :class:`.Dictionary` object.
-        """
-        settings=self.properties[root].copy().filter_self(lambda a: a.readable).map_self(lambda a: a.get_value())
-        return settings.as_dict(style="flat") if as_dict else settings
-    def set_all_properties(self, settings, root="", truncate=True):
-        """
-        Set values of all properties with the given `root`.
+        Set values of all attributes with the given `root`.
         
         If ``truncate==True``, truncate value to lie within attribute range.
         """
-        settings=dictionary.as_dict(settings,style="flat",copy=False)
-        for k in settings:
-            if k in self.properties[root] and self.properties[root,k].writable: # pylint: disable=no-member
-                self.properties[root,k].set_value(settings[k],truncate=truncate) # pylint: disable=no-member
+        return super().set_all_attribute_values(settings,root=root,truncate=truncate)
+    def update_attribute_value(self, name, value, error_on_missing=True, truncate=True):
+        """
+        Set value of the attribute with a given name, but only if it's different from the current value.
+        
+        Can take less time on some version of PFRemote (where single attribute setting is about 50ms).
+        Arguments are the same as :meth:`set_attribute_value`.
+        """
+        if self.get_attribute_value(name)!=value:
+            self.set_attribute_value(name,value,error_on_missing=error_on_missing,truncate=truncate)
+    def call_command(self, name, arg=0, error_on_missing=True):
+        """
+        Execute the given command with the given argument.
+        
+        If the command doesn't exist and ``error_on_missing==True``, raise error; otherwise, do nothing.
+        """
+        attr=self.get_attribute(name,error_on_missing=error_on_missing)
+        if attr:
+            attr.call_command(arg=arg)
 
 
     def get_device_info(self):
@@ -319,15 +306,16 @@ class PhotonFocusIMAQCamera(IMAQCamera):
         Return tuple ``(model, serial_number, grabber_info)``.
         """
         model=py3.as_str(lib.pfProperty_GetName(self.pfcam_port,lib.pfDevice_GetRoot(self.pfcam_port)))
-        serial_number=self.get_value("Header.Serial",0)
+        serial_number=self.get_attribute_value("Header/Serial",default=0)
         grabber_info=tuple(super().get_device_info())
         return TDeviceInfo(model,serial_number,grabber_info)
 
 
     def get_detector_size(self):
-        return self.properties["Window/W"].max,self.properties["Window/H"].max # pylint: disable=no-member
+        """Get camera detector size (in pixels) as a tuple ``(width, height)``"""
+        return self.ca["Window/W"].max,self.ca["Window/H"].max # pylint: disable=no-member
     def _get_pf_data_dimensions_rc(self):
-        return self.v["Window/H"],self.v["Window/W"]
+        return self.cav["Window/H"],self.cav["Window/W"]
     def _update_imaq(self):
         r,c=self._get_pf_data_dimensions_rc()
         IMAQCamera.set_roi(self,0,c,0,r)
@@ -337,10 +325,10 @@ class PhotonFocusIMAQCamera(IMAQCamera):
 
         Return tuple ``(hstart, hend, vstart, vend)``.
         """
-        ox=self.v.get("Window/X",0)
-        oy=self.v.get("Window/Y",0)
-        w=self.v["Window/W"]
-        h=self.v["Window/H"]
+        ox=self.get_attribute_value("Window/X",default=0)
+        oy=self.get_attribute_value("Window/Y",default=0)
+        w=self.cav["Window/W"]
+        h=self.cav["Window/H"]
         return ox,ox+w,oy,oy+h
     def fast_shift_roi(self, hstart=0, vstart=0):
         """
@@ -348,15 +336,16 @@ class PhotonFocusIMAQCamera(IMAQCamera):
 
         Note that if the ROI is invalid, it won't be truncated (as is the standard behavior of :meth:`set_roi`), which might lead to errors later.
         """
-        self.v["Window/X"]=hstart
-        self.v["Window/Y"]=vstart
+        self.cav["Window/X"]=hstart
+        self.cav["Window/Y"]=vstart
     def _get_roi_step(self, kind="h"):
-        sprop=self.properties["Window"]["W" if kind=="h" else "H"]
-        sprop.update_minmax()
+        sname="Window/"+("W" if kind=="h" else "H")
+        sprop=self.ca[sname]
+        sprop.update_limits()
         pname="Window/"+("X" if kind=="h" else "Y")
-        if pname not in self.properties:
+        pprop=self.get_attribute(pname,error_on_missing=False)
+        if pprop is None:
             return sprop.max
-        pprop=self.properties[pname]
         sprev=sprop.get_value()
         pprev=pprop.get_value()
         sprop.set_value(0)
@@ -377,7 +366,8 @@ class PhotonFocusIMAQCamera(IMAQCamera):
         By default, all non-supplied parameters take extreme values.
         """
         for a in ["Window/X","Window/Y","Window/W","Window/H"]:
-            if a not in self.properties or not self.properties[a].writable:
+            attr=self.get_attribute(a,error_on_missing=False)
+            if attr is None or not attr.writable:
                 return
         det_size=self.get_detector_size()
         imaq_detector_size=IMAQCamera.get_detector_size(self)
@@ -385,28 +375,26 @@ class PhotonFocusIMAQCamera(IMAQCamera):
             hend=det_size[0]
         if vend is None:
             vend=det_size[1]
-        self.uv["Window/W"]=min(hend-hstart,imaq_detector_size[0])
-        self.uv["Window/H"]=min(vend-vstart,imaq_detector_size[1])
-        self.uv["Window/X"]=hstart
-        self.uv["Window/Y"]=vstart
-        self.uv["Window/W"]=min(hend-hstart,imaq_detector_size[0]) # in case the previous assignment truncated
-        self.uv["Window/H"]=min(vend-vstart,imaq_detector_size[1])
+        self.ucav["Window/W"]=min(hend-hstart,imaq_detector_size[0])
+        self.ucav["Window/H"]=min(vend-vstart,imaq_detector_size[1])
+        self.ucav["Window/X"]=hstart
+        self.ucav["Window/Y"]=vstart
+        self.ucav["Window/W"]=min(hend-hstart,imaq_detector_size[0]) # in case the previous assignment truncated
+        self.ucav["Window/H"]=min(vend-vstart,imaq_detector_size[1])
         self._update_imaq()
         return self.get_roi()
     def get_roi_limits(self, hbin=1, vbin=1):
-        params=["Window/W","Window/H"]
-        for p in params:
-            self.properties[p].update_minmax()
-        minp=tuple([self.properties[p].min for p in params])
-        maxp=tuple([self.properties[p].max for p in params])
+        params=[self.ca[p] for p in ["Window/W","Window/H"]]
+        minp,maxp=[list(p) for p in zip(*[p.update_limits() for p in params])]
         hlim=camera.TAxisROILimit(minp[0],maxp[0],self._hstep,minp[0],1)
         vlim=camera.TAxisROILimit(minp[1],maxp[1],self._vstep,minp[1],1)
         return hlim,vlim
 
     def _get_buffer_bpp(self):
         bpp=IMAQCamera._get_buffer_bpp(self)
-        if "DataResolution" in self.properties:
-            res=self.v["DataResolution"]
+        attr=self.get_attribute("DataResolution",error_on_missing=False)
+        if attr:
+            res=attr.get_value()
             m=re.match(r"Res(\d+)Bit",res)
             if m:
                 bpp=(int(m.group(1))-1)//8+1
@@ -418,22 +406,22 @@ class PhotonFocusIMAQCamera(IMAQCamera):
 
     def get_exposure(self):
         """Get current exposure"""
-        return self.v["ExposureTime"]*1E-3
+        return self.cav["ExposureTime"]*1E-3
     def set_exposure(self, exposure):
         """Set current exposure"""
-        self.v["ExposureTime"]=exposure*1E3
+        self.cav["ExposureTime"]=exposure*1E3
         return self.get_exposure()
 
     def get_frame_period(self):
         """Get frame period (time between two consecutive frames in the internal trigger mode)"""
-        if "FrameTime" in self.properties:
-            return self.v["FrameTime"]*1E-3
+        attr=self.get_attribute("FrameTime",error_on_missing=False)
+        if attr:
+            return attr.get_value()*1E-3
         else:
-            return 1./float(self.v["FrameRate"])
+            return 1./float(self.cav["FrameRate"])
     def set_frame_period(self, frame_period):
         """Set frame period (time between two consecutive frames in the internal trigger mode)"""
-        if "FrameTime" in self.properties:
-            self.v["FrameTime"]=frame_period*1E3
+        self.set_attribute_value("FrameTime",frame_period*1E3,error_on_missing=False)
         return self.get_frame_period()
     _TAcqTimings=camera.TAcqTimings
     def get_frame_timings(self):
@@ -446,42 +434,42 @@ class PhotonFocusIMAQCamera(IMAQCamera):
 
     def is_CFR_enabled(self):
         """Check if the constant frame rate mode is enabled"""
-        return self.get_value("Trigger/CFR",False)
+        return self.get_attribute_value("Trigger/CFR",default=False)
     def enable_CFR(self, enabled=True):
         """Enable constant frame rate mode"""
-        self.set_value("Trigger/CFR",enabled,ignore_missing=True)
+        self.set_attribute_value("Trigger/CFR",enabled,error_on_missing=False)
         return self.is_CFR_enabled()
 
     def get_trigger_interleave(self):
         """Check if the trigger interleave is on"""
-        return self.get_value("Trigger/Interleave",False)
+        return self.get_attribute_value("Trigger/Interleave",default=False)
     def set_trigger_interleave(self, enabled):
         """Set the trigger interleave option on or off"""
         if self.get_trigger_interleave()!=enabled:
             if self.is_CFR_enabled():
                 ft=self.get_frame_period()
                 self.enable_CFR(False)
-                self.set_value("Trigger/Interleave",enabled,ignore_missing=True)
+                self.set_attribute_value("Trigger/Interleave",enabled,error_on_missing=False)
                 self.enable_CFR(True)
                 self.set_frame_period(ft)
             else:
-                self.set_value("Trigger/Interleave",enabled,ignore_missing=True)
+                self.set_attribute_value("Trigger/Interleave",enabled,error_on_missing=False)
         return self.get_trigger_interleave()
 
     def is_status_line_enabled(self):
         """Check if the status line is on"""
-        return self.get_value("EnStatusLine",False)
+        return self.get_attribute_value("EnStatusLine",default=False)
     def enable_status_line(self, enabled=True):
         """Enable or disable status line"""
-        self.set_value("EnStatusLine",enabled,ignore_missing=True)
+        self.set_attribute_value("EnStatusLine",enabled,error_on_missing=False)
         return self.is_status_line_enabled()
 
     def get_black_level_offset(self):
         """Get the black level offset"""
-        return self.get_value("Voltages/BlackLevelOffset",0)
+        return self.get_attribute_value("Voltages/BlackLevelOffset",default=0)
     def set_black_level_offset(self, offset):
         """Set the black level offset"""
-        self.set_value("Voltages/BlackLevelOffset",offset,ignore_missing=True)
+        self.set_attribute_value("Voltages/BlackLevelOffset",offset,error_on_missing=False)
         return self.get_black_level_offset()
 
 

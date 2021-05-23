@@ -40,16 +40,23 @@ Operation
 
 The operation of these cameras is relatively standard. They support all the standard methods for dealing with ROI and exposure, starting and stopping acquisition, and operating the frame reading loop. However, there's a couple of differences from the standard libraries worth highlighting:
 
-    - The SDK also provides a universal interface for getting and setting various camera properties using their name. You can use :meth:`.PhotonFocusIMAQCamera.get_value` and :meth:`.PhotonFocusIMAQCamera.set_value` for that, as well as ``.v`` attribute which gives a dictionary-like access::
+    - The SDK also provides a universal interface for getting and setting various :ref:`camera attributes <cameras_basics_attributes>` (called "properties" in the documentation) using their name. You can use :meth:`.PhotonFocusIMAQCamera.get_attribute_value` and :meth:`.PhotonFocusIMAQCamera.set_attribute_value` for that, as well as ``.cav`` attribute which gives a dictionary-like access::
 
         >> cam = PhotonFocus.PhotonFocusIMAQCamera()
-        >> cam.get_value("Window/W")  # get the ROI width
+        >> cam.get_attribute_value("Window/W")  # get the ROI width
         256
-        >> cam.set_value("ExposureTime", 0.1)  # set the exposure to 100ms
-        >> cam.v["ExposureTime"]  # get the exposure; could also use cam.get_value("ExposureTime")
+        >> cam.set_attribute_value("ExposureTime", 0.1)  # set the exposure to 100ms
+        >> cam.cav["ExposureTime"]  # get the exposure; could also use cam.get_attribute_value("ExposureTime")
         0.1
 
-      Some values (e.g., ``Window.Max`` or ``Reset``) serve as commands; these can be invoked using :meth:`.PhotonFocusIMAQCamera.call_command` method. To get values of all available properties, you can call :meth:`.PhotonFocusIMAQCamera.get_all_properties`. In addition, `PhotonFocusIMAQCamera.properties` is a dictionary of all camera properties presented as objects of class :class:`.PhotonFocus.PFCamProperty`. In addition to getting and setting property values, it also allows to query its type, range, and possible values (for enum properties).
+      Some values (e.g., ``Window.Max`` or ``Reset``) serve as commands; these can be invoked using :meth:`.PhotonFocusIMAQCamera.call_command` method. To see all available attributes, you can call :meth:`.DCAMCamera.get_all_attributes` to get a dictionary with attribute objects, and :meth:`.DCAMCamera.get_all_attribute_values` to get the dictionary of attribute values. The attribute objects provide additional information: attribute range, step, and units::
+
+        >> cam = PhotonFocus.PhotonFocusIMAQCamera()
+        >> attr = cam.get_attribute("Window/W")
+        >> attr.writable
+        True
+        >> (attr.min, attr.max)
+        (16, 1024)
 
     - Being a subclass of :class:`.IMAQ.IMAQCamera` class, it supports all of its features, such as trigger control and fast buffer acquisition. Some methods have been modified to make them more convenient: e.g., :meth:`.PhotonFocusIMAQCamera.set_roi` method sets the camera ROI and automatically adjusts the frame grabber ROI to match.
     - The camera supports a status line, which replaces the bottom one or two rows of the frame with the encoded frame-related data such as frame number and timestamp. You can use :func:`.PhotonFocus.get_status_lines` function to identify and extract the data in the status lines from the supplied frames. In addition, you can use :func:`.PhotonFocus.remove_status_line` to remove the status lines in several possible ways: zeroing out, masking with the previous frame, cutting off entirely, etc.

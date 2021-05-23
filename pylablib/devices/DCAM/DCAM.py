@@ -2,7 +2,7 @@ from . import dcamapi4_lib
 from .dcamapi4_lib import lib, DCAMError, DCAMLibError
 
 from ...core.devio import interface
-from ...core.utils import py3, dictionary, general
+from ...core.utils import py3, general
 from ..interface import camera
 from ..utils import load_lib
 
@@ -36,9 +36,70 @@ def get_cameras_number():
 
 
 
+class DCAMAttribute:
+    """
+    DCAM camera attribute.
+
+    Allows to query and set values and get additional information.
+    Usually created automatically by a DCAM camera instance, but could also be created manually.
+
+    Args:
+        handle: DCAM camera handle
+        pid: attribute id
+
+    Attributes:
+        name: attribute name
+        min (float): minimal attribute value (if applicable)
+        max (float): maximal attribute value (if applicable)
+        step (float): attribute value step (if applicable)
+        unit (int): attribute units (index value)
+    """
+    def __init__(self, handle, pid):
+        self.handle=handle
+        self.pid=pid
+        self.name=py3.as_str(lib.dcamprop_getname(self.handle,pid))
+        props=lib.dcamprop_getattr(self.handle,pid)
+        self.min=props.valuemin
+        self.max=props.valuemax
+        self.step=props.valuestep
+        self.default=props.valuedefault
+        self.unit=props.iUnit
+    def as_text(self, value=None):
+        """Get the given attribute value as text (by default, current value)"""
+        if value is None:
+            return self.get_value(enum_str=True)
+        return py3.as_str(lib.dcamprop_getvaluetext(self.handle,self.pid,value))
+    def update_limits(self):
+        """Update minimal and maximal attribute limits and return tuple ``(min, max)``"""
+        props=lib.dcamprop_getattr(self.handle,self.pid)
+        self.min=props.valuemin
+        self.max=props.valuemax
+        return (self.min,self.max)
+    def get_value(self, enum_str=False):
+        """
+        Get current attribute value.
+        
+        If ``enum_str==True``, try to represent enums as their string values;
+        otherwise, return their integer values (only integers can be used for setting).
+        """
+        value=lib.dcamprop_getvalue(self.handle,self.pid)
+        if enum_str:
+            try:
+                return self.as_text(value)
+            except DCAMLibError:
+                pass
+        return value
+    def set_value(self, value):
+        """Set attribute value"""
+        return lib.dcamprop_setgetvalue(self.handle,self.pid,value)
+    def __repr__(self):
+        return "{}(name='{}', id={}, min={}, max={}, unit={})".format(self.__class__.__name__,self.name,self.pid,self.min,self.max,self.unit)
+
+
+
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["vendor","model","serial_number","camera_version"])
 TFrameInfo=collections.namedtuple("TFrameInfo",["frame_index","framestamp","timestamp_us","camerastamp","position","pixeltype"])
-class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
+class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttributeCamera):
     Error=DCAMError
     TimeoutError=DCAMTimeoutError
     _TFrameInfo=TFrameInfo
@@ -49,14 +110,11 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
         self.handle=None
         self._opid=None
         self.dcamwait=None
-        self.properties={}
         self._alloc_nframes=0
         self.open()
-        self.v=dictionary.ItemAccessor(self.get_value,self.set_value)
 
         self._add_camera_parameters()
         self._add_info_variable("device_info",self.get_device_info)
-        self._add_status_variable("properties",self.get_all_properties,priority=-5)
         self._add_settings_variable("trigger_mode",self.get_trigger_mode,self.set_trigger_mode)
         self._add_settings_variable("ext_trigger",self.get_ext_trigger_parameters,self.setup_ext_trigger)
         self._add_settings_variable("readout_speed",self.get_readout_speed,self.set_readout_speed)
@@ -77,7 +135,7 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
             self.handle=lib.dcamdev_open(self.idx)
             self._opid=libctl.open().opid
             self.dcamwait=lib.dcamwait_open(self.handle)
-            self._update_properties_list()
+            self._update_attributes()
             self._valid_binnings=self._get_valid_binnings()
         except DCAMError:
             self.close()
@@ -96,17 +154,19 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
         return self.handle is not None
 
     def _add_camera_parameters(self):
-        rsprop=self.properties.get("READOUT SPEED",None)
+        rsprop=self.get_attribute("READOUT SPEED",error_on_missing=False)
         rspar=interface.RangeParameterClass("readout_speed",1,None)
         if rsprop is not None:
-            if rsprop.vmax==2:
+            if rsprop.max==1:
+                rspar=interface.EnumParameterClass("readout_speed",{"fast":1})
+            if rsprop.max==2:
                 rspar=interface.EnumParameterClass("readout_speed",{"slow":1,"fast":2})
-            elif rsprop.vmax==3:
+            elif rsprop.max==3:
                 rspar=interface.EnumParameterClass("readout_speed",{"slow":1,"normal":2,"fast":3})
         self._add_parameter_class(rspar)
-        tsprop=self.properties.get("TRIGGER SOURCE",None)
+        tsprop=self.get_attribute("TRIGGER SOURCE",error_on_missing=False)
         tspar=interface.RangeParameterClass("trigger_mode",1,None)
-        if tsprop is not None and tsprop.vmax<=4:
+        if tsprop is not None and tsprop.max<=4:
             tspar=interface.EnumParameterClass("trigger_mode",{"int":1,"ext":2,"software":3,"master_pulse":4})
         self._add_parameter_class(tspar)
                 
@@ -124,79 +184,39 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
         camera_version=py3.as_str(lib.dcamdev_getstring(self.handle,dcamapi4_lib.DCAM_IDSTR.DCAM_IDSTR_CAMERAVERSION))
         return TDeviceInfo(vendor,model,serial_number,camera_version)
 
-
-    class Property:
-        """Camera property handler"""
-        def __init__(self, cam_handle, name, pid, vmin, vmax, step, default, unit):
-            self.cam_handle=cam_handle
-            self.name=name
-            self.pid=pid
-            self.vmin=vmin
-            self.vmax=vmax
-            self.step=step
-            self.default=default
-            self.unit=unit
-        def as_text(self, value=None):
-            """Get property value as text (by default, current value)"""
-            if value is None:
-                value=self.get_value()
-            return lib.dcamprop_getvaluetext(self.cam_handle,self.pid,value)
-        def get_value(self):
-            """Get current property value"""
-            return lib.dcamprop_getvalue(self.cam_handle,self.pid)
-        def set_value(self, value):
-            """Set property value"""
-            return lib.dcamprop_setgetvalue(self.cam_handle,self.pid,value)
-        def __repr__(self):
-            return "{}(name='{}', id={}, min={}, max={}, unit={})".format(self.__class__.__name__,self.name,self.pid,self.vmin,self.vmax,self.unit)
-
-    def list_properties(self):
-        """Return list of all available properties"""
+    def _list_attributes(self):
         ids=lib.dcamprop_getallids(self.handle,0)
-        names=[lib.dcamprop_getname(self.handle,i) for i in ids]
-        props=[lib.dcamprop_getattr(self.handle,i) for i in ids]
-        props=[self.Property(self.handle,name,idx,p.valuemin,p.valuemax,p.valuestep,p.valuedefault,p.iUnit) for (idx,name,p) in zip(ids,names,props)]
-        return props
-    def get_all_properties(self):
-        props=self.list_properties()
-        result={}
-        for prop in props:    
-            name=py3.as_str(prop.name).lower().replace(" ","_")
-            result[name]={}
-            result[name]["value"]=prop.get_value()
-            try:
-                result[name]["text_value"]=prop.as_text()
-            except DCAMError:
-                pass
-        return result
-    def _update_properties_list(self):
-        props=self.list_properties()
-        for p in props:
-            self.properties[py3.as_str(p.name)]=p
-    def get_value(self, name, error_on_missing=True, default=None):
+        return [DCAMAttribute(self.handle,pid) for pid in ids]
+    def _normalize_attribute_name(self, name):
+        return name.lower().replace(" ","_")
+    def get_attribute_value(self, name, enum_str=False, error_on_missing=True, default=None):
         """
-        Get value of a property with the given name.
+        Get value of an attribute with the given name.
         
-        If the value doesn't exist and ``error_on_missing==True``, raise :exc:`DCAMError`; otherwise, return `default`.
+        If the value doesn't exist or can not be read and ``error_on_missing==True``, raise error; otherwise, return `default`.
+        If `default` is not ``None``, assume that ``error_on_missing==False``.
+        If ``enum_str==True``, try to represent enums as their string values;
+        otherwise, return their integer values (only integers can be used for setting).
         """
-        if name not in self.properties:
-            if error_on_missing:
-                raise DCAMError("can't find property {}".format(name))
-            else:
-                return default
-        return self.properties[name].get_value()
-    def set_value(self, name, value, error_on_missing=True):
+        return super().get_attribute_value(name,enum_str=enum_str,error_on_missing=error_on_missing,default=default)
+    def set_attribute_value(self, name, value, error_on_missing=True):
         """
-        Set value of a property with the given name.
+        Set value of an attribute with the given name.
         
-        If the value doesn't exist and ``error_on_missing==True``, raise :exc:`DCAMError`; otherwise, do nothing.
+        If the value doesn't exist or can not be written and ``error_on_missing==True``, raise error; otherwise, do nothing.
         """
-        if name not in self.properties:
-            if error_on_missing:
-                raise DCAMError("can't find property {}".format(name))
-            else:
-                return
-        return self.properties[name].set_value(value)
+        return super().set_attribute_value(name,value,error_on_missing=error_on_missing)
+    def get_all_attribute_values(self, enum_str=False):
+        """
+        Get values of all attributes.
+
+        If ``enum_str==True``, try to represent enums as their string values;
+        otherwise, return their integer values (only integers can be used for setting).
+        """
+        return super().get_all_attribute_values(enum_str=enum_str)
+    def set_all_attribute_values(self, settings):
+        """Set values of all attribute in the given dictionary"""
+        return super().set_all_attribute_values(settings)
 
     @camera.acqstopped
     @interface.use_parameters(mode="trigger_mode")
@@ -206,7 +226,7 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
 
         Can be ``"int"`` (internal), ``"ext"`` (external), or ``"software"`` (software trigger).
         """
-        self.set_value("TRIGGER SOURCE",mode)
+        self.cav["TRIGGER SOURCE"]=mode
         return self.get_trigger_mode()
     @interface.use_parameters(_returns="trigger_mode")
     def get_trigger_mode(self):
@@ -215,40 +235,40 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
 
         Can be ``"int"`` (internal), ``"ext"`` (external), or ``"software"`` (software trigger).
         """
-        return int(self.get_value("TRIGGER SOURCE"))
+        return int(self.cav["TRIGGER SOURCE"])
     def setup_ext_trigger(self, invert=False, delay=0.):
         """Setup external trigger (inversion and delay)"""
-        self.set_value("TRIGGER POLARITY",2 if invert else 1)
-        self.set_value("TRIGGER DELAY",delay,error_on_missing=False)
+        self.cav["TRIGGER POLARITY"]=2 if invert else 1
+        self.set_attribute_value("TRIGGER DELAY",delay,error_on_missing=False)
         return self.get_ext_trigger_parameters()
     def get_ext_trigger_parameters(self):
         """Return external trigger parameters (inversion and delay)"""
-        invert=self.get_value("TRIGGER POLARITY")==2
-        delay=self.get_value("TRIGGER DELAY",error_on_missing=False)
+        invert=self.cav["TRIGGER POLARITY"]==2
+        delay=self.get_attribute_value("TRIGGER DELAY",default=0)
         return invert,delay
     def send_software_trigger(self):
         """Send software trigger signal"""
         lib.dcamcap_firetrigger(self.handle)
     def set_exposure(self, exposure):
         """Set camera exposure"""
-        self.set_value("EXPOSURE TIME",exposure)
+        self.cav["EXPOSURE TIME"]=exposure
         return self.get_exposure()
     def get_exposure(self):
         """Set current exposure"""
-        return self.get_value("EXPOSURE TIME")
+        return self.cav["EXPOSURE TIME"]
     @camera.acqcleared
     @interface.use_parameters(speed="readout_speed")
     def set_readout_speed(self, speed="fast"):
         """Set readout speed (can be ``"fast"`` or ``"slow"``)"""
-        self.set_value("READOUT SPEED",speed,error_on_missing=False)
+        self.set_attribute_value("READOUT SPEED",speed,error_on_missing=False)
         return self.get_readout_speed()
     @interface.use_parameters(_returns="readout_speed")
     def get_readout_speed(self):
         """Set current readout speed"""
-        return self.get_value("READOUT SPEED",default=2,error_on_missing=False)
+        return self.get_attribute_value("READOUT SPEED",default=1)
     def get_frame_readout_time(self):
         """Set current frame readout time"""
-        return self.get_value("TIMING READOUT TIME")
+        return self.cav["TIMING READOUT TIME"]
     def get_frame_timings(self):
         """
         Get acquisition timing.
@@ -259,11 +279,11 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
         return self._TAcqTimings(exposure,max(exposure,self.get_frame_readout_time()))
     def get_defect_correct_mode(self):
         """Check if the defect pixel correction mode is on"""
-        return self.get_value("DEFECT CORRECT MODE",error_on_missing=False,default=1)==2
+        return self.get_attribute_value("DEFECT CORRECT MODE",default=1)==2
     @camera.acqstopped
     def set_defect_correct_mode(self, enabled=True):
         """Enable or disable the defect pixel correction mode"""
-        self.set_value("DEFECT CORRECT MODE",2 if enabled else 1,error_on_missing=False)
+        self.set_attribute_value("DEFECT CORRECT MODE",2 if enabled else 1,error_on_missing=False)
         return self.get_defect_correct_mode()
 
     def _allocate_buffer(self, nframes):
@@ -291,26 +311,26 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
         return self._convert_indexing(img,"rct")
 
     def _get_data_dimensions_rc(self):
-        return int(self.get_value("IMAGE HEIGHT")),int(self.get_value("IMAGE WIDTH"))
+        return int(self.cav["IMAGE HEIGHT"]),int(self.cav["IMAGE WIDTH"])
     def get_detector_size(self):
         """Get camera detector size (in pixels) as a tuple ``(width, height)``"""
-        return (int(self.properties["SUBARRAY HSIZE"].vmax),int(self.properties["SUBARRAY VSIZE"].vmax))
+        return (int(self.get_attribute("SUBARRAY HSIZE").max),int(self.get_attribute("SUBARRAY VSIZE").max))
     def get_roi(self):
         """
         Get current ROI.
 
         Return tuple ``(hstart, hend, vstart, vend, hbin, vbin)``.
         """
-        hstart=int(self.get_value("SUBARRAY HPOS"))
-        hend=hstart+int(self.get_value("SUBARRAY HSIZE"))
-        vstart=int(self.get_value("SUBARRAY VPOS"))
-        vend=vstart+int(self.get_value("SUBARRAY VSIZE"))
-        hvbin=int(self.get_value("BINNING"))
+        hstart=int(self.cav["SUBARRAY HPOS"])
+        hend=hstart+int(self.cav["SUBARRAY HSIZE"])
+        vstart=int(self.cav["SUBARRAY VPOS"])
+        vend=vstart+int(self.cav["SUBARRAY VSIZE"])
+        hvbin=int(self.cav["BINNING"])
         return (hstart,hend,vstart,vend,hvbin,hvbin)
     def _get_valid_binnings(self):
-        bmax=int(min(self.properties["SUBARRAY HSIZE"].vmax,self.properties["SUBARRAY VSIZE"].vmax))
+        bmax=min(self.get_detector_size())
         valid_bins=[]
-        p=self.properties["BINNING"]
+        p=self.get_attribute("BINNING")
         for b in range(1,bmax+1):
             try:
                 p.as_text(b)
@@ -329,31 +349,31 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
         By default, all non-supplied parameters take extreme values.
         Binning is the same for both axes, so value of `vbin` is ignored (it is left for compatibility).
         """
-        self.set_value("SUBARRAY MODE",2)
+        self.cav["SUBARRAY MODE"]=2
         hlim,vlim=self.get_roi_limits()
         hbin=self._truncate_roi_binning(hbin)
         hstart,hend,hbin=self._truncate_roi_axis((hstart,hend,hbin),hlim)
         vstart,vend,vbin=self._truncate_roi_axis((vstart,vend,hbin),vlim)
         chstart,_,cvstart,_=self.get_roi()[:4]
         if hstart<=chstart:
-            self.set_value("SUBARRAY HPOS",hstart)
-            self.set_value("SUBARRAY HSIZE",hend-hstart)
+            self.cav["SUBARRAY HPOS"]=hstart
+            self.cav["SUBARRAY HSIZE"]=hend-hstart
         else:
-            self.set_value("SUBARRAY HSIZE",hend-hstart)
-            self.set_value("SUBARRAY HPOS",hstart)
+            self.cav["SUBARRAY HSIZE"]=hend-hstart
+            self.cav["SUBARRAY HPOS"]=hstart
         if vstart<=cvstart:
-            self.set_value("SUBARRAY VPOS",vstart)
-            self.set_value("SUBARRAY VSIZE",vend-vstart)
+            self.cav["SUBARRAY VPOS"]=vstart
+            self.cav["SUBARRAY VSIZE"]=vend-vstart
         else:
-            self.set_value("SUBARRAY VSIZE",vend-vstart)
-            self.set_value("SUBARRAY VPOS",vstart)
-        self.set_value("BINNING",hbin)
+            self.cav["SUBARRAY VSIZE"]=vend-vstart
+            self.cav["SUBARRAY VPOS"]=vstart
+        self.cav["BINNING"]=hbin
         return self.get_roi()
     def get_roi_limits(self, hbin=1, vbin=1):
-        params=["SUBARRAY HPOS","SUBARRAY VPOS","SUBARRAY HSIZE","SUBARRAY VSIZE"]
-        minp=tuple([int(self.properties[p].vmin) for p in params])
-        maxp=tuple([int(self.properties[p].vmax) for p in params])
-        stepp=tuple([int(self.properties[p].step) for p in params])
+        params=[self.ca[p] for p in ["SUBARRAY HPOS","SUBARRAY VPOS","SUBARRAY HSIZE","SUBARRAY VSIZE"]]
+        minp=tuple([int(p.min) for p in params])
+        maxp=tuple([int(p.max) for p in params])
+        stepp=tuple([int(p.step) for p in params])
         hlim=camera.TAxisROILimit(minp[2],maxp[2],stepp[0],stepp[2],self._valid_binnings[-1])
         vlim=camera.TAxisROILimit(minp[3],maxp[3],stepp[1],stepp[3],self._valid_binnings[-1])
         return hlim,vlim
@@ -442,7 +462,7 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera):
         return [d[0] for d in data],[d[1] for d in data]
     def _zero_frame(self, n):
         dim=self.get_data_dimensions()
-        bpp=int(self.get_value("BIT PER CHANNEL",8))
+        bpp=int(self.get_attribute_value("BIT PER CHANNEL",default=8))
         dt="<u{}".format((bpp-1)//8+1)
         return np.zeros((n,)+dim,dtype=dt)
     def read_multiple_images(self, rng=None, peek=False, missing_frame="skip", return_info=False):

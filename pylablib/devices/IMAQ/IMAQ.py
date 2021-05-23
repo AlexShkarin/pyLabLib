@@ -64,7 +64,7 @@ class IMAQCamera(camera.IROICamera):
         self.open()
 
         self._add_info_variable("device_info",self.get_device_info)
-        self._add_info_variable("attributes",self.get_all_attributes,priority=-5)
+        self._add_info_variable("grabber_attributes",self.get_all_grabber_attribute_values,priority=-5)
         self._add_settings_variable("triggers_in_cfg",self._get_triggers_in_cfg,self._set_triggers_in_cfg)
         self._add_settings_variable("triggers_out_cfg",self._get_triggers_out_cfg,self._set_triggers_out_cfg)
 
@@ -76,7 +76,7 @@ class IMAQCamera(camera.IROICamera):
         if self.sid is None:
             self.ifid=lib.imgInterfaceOpen(self.name)
             self.sid=lib.imgSessionOpen(self.ifid)
-            self._check_attributes()
+            self._check_grabber_attributes()
     def close(self):
         """Close connection to the camera"""
         if self.sid is not None:
@@ -96,8 +96,8 @@ class IMAQCamera(camera.IROICamera):
         """Check if the device is connected"""
         return self.sid is not None
 
-    def _check_attributes(self):
-        timeout=self.get_attribute_value("FRAMEWAIT_MSEC",1000)
+    def _check_grabber_attributes(self):
+        timeout=self.get_grabber_attribute_value("FRAMEWAIT_MSEC",1000)
         if timeout<500:
             msg=(   "frame timeout is set too low ({} ms), which may results in problems on acquisition restart; "
                     "recommend setting it to at least 500 ms in NI-MAX (Acquisition Attributes -> Timeout)".format(timeout))
@@ -120,7 +120,7 @@ class IMAQCamera(camera.IROICamera):
         return "uint32"
     _p_attr_kind=interface.EnumParameterClass("attr_kind",["uint32","uint64","double","auto"])
     @interface.use_parameters(kind="attr_kind")
-    def get_attribute_value(self, attr, default=None, kind="auto"):
+    def get_grabber_attribute_value(self, attr, default=None, kind="auto"):
         """
         Get value of an attribute with a given name or index.
         
@@ -143,7 +143,7 @@ class IMAQCamera(camera.IROICamera):
                 raise
             return default
     @interface.use_parameters(kind="attr_kind")
-    def set_attribute_value(self, attr, value, kind="int32"):
+    def set_grabber_attribute_value(self, attr, value, kind="int32"):
         """
         Set value of an attribute with a given name or index.
         
@@ -162,7 +162,7 @@ class IMAQCamera(camera.IROICamera):
         elif kind=="double":
             lib.imgSetAttribute2_double(self.sid,attr,value)
             return lib.imgGetAttribute_double(self.sid,attr)
-    def get_all_attributes(self):
+    def get_all_grabber_attribute_values(self):
         """
         Get a dictionary of all readable attributes.
 
@@ -173,7 +173,7 @@ class IMAQCamera(camera.IROICamera):
             if self._get_attr_kind(v) is None:
                 continue
             try:
-                values[k]=self.get_attribute_value(v)
+                values[k]=self.get_grabber_attribute_value(v)
             except IMAQError:
                 pass
         return values
@@ -184,12 +184,12 @@ class IMAQCamera(camera.IROICamera):
 
         Return tuple ``(serial, interface)`` with the board serial number and an the interface type (e.g., ``"1430"`` for NI PCIe-1430)
         """
-        serial_number=self.get_attribute_value("GETSERIAL")
-        interface_type=self.get_attribute_value("INTERFACE_TYPE")
+        serial_number=self.get_grabber_attribute_value("GETSERIAL")
+        interface_type=self.get_grabber_attribute_value("INTERFACE_TYPE")
         return TDeviceInfo("{:08X}".format(serial_number),"{:04x}".format(interface_type))
 
     def _get_data_dimensions_rc(self):
-        return self.get_attribute_value("ROI_HEIGHT"),self.get_attribute_value("ROI_WIDTH")
+        return self.get_grabber_attribute_value("ROI_HEIGHT"),self.get_grabber_attribute_value("ROI_WIDTH")
     def get_detector_size(self):
         _,_,mw,mh=lib.imgSessionFitROI(self.sid,0,0,0,2**31-1,2**31-1)
         return mw,mh
@@ -270,7 +270,7 @@ class IMAQCamera(camera.IROICamera):
             self.configure_trigger_in(tt,tl,tp,act,to,reset_acquisition=False)
     def send_software_trigger(self):
         """Send software trigger signal"""
-        self.set_attribute_value("SEND_SOFTWARE_TRIGGER",1)
+        self.set_grabber_attribute_value("SEND_SOFTWARE_TRIGGER",1)
     @interface.use_parameters
     def configure_trigger_out(self, trig_type, trig_line=0, trig_pol="high", trig_drive="disable"):
         """
@@ -395,7 +395,7 @@ class IMAQCamera(camera.IROICamera):
     def _get_acquired_frames(self):
         if self._start_acq_count is None:
             return 0
-        return max(self.get_attribute_value("FRAME_COUNT",0)-self._start_acq_count,-1)
+        return max(self.get_grabber_attribute_value("FRAME_COUNT",0)-self._start_acq_count,-1)
     def _find_max_nbuff(self):
         frame_size=self._get_buffer_size()
         buff=ctypes.create_string_buffer(frame_size)
@@ -469,7 +469,7 @@ class IMAQCamera(camera.IROICamera):
     def start_acquisition(self, *args, **kwargs):
         self.stop_acquisition()
         super().start_acquisition(*args,**kwargs)
-        self._start_acq_count=self.get_attribute_value("FRAME_COUNT",0)
+        self._start_acq_count=self.get_grabber_attribute_value("FRAME_COUNT",0)
         self._frame_counter.reset(self._buffer_mgr.nframes)
         lib.imgSessionStartAcquisition(self.sid)
     def stop_acquisition(self):
@@ -498,7 +498,7 @@ class IMAQCamera(camera.IROICamera):
 
     
     def _get_buffer_bpp(self):
-        return self.get_attribute_value("BYTESPERPIXEL",1)
+        return self.get_grabber_attribute_value("BYTESPERPIXEL",1)
     def _get_buffer_dtype(self):
         return "<u{}".format(self._get_buffer_bpp())
     def _get_buffer_size(self):

@@ -43,13 +43,13 @@ Unlike most cameras, the frame grabber interface only deals with the frame trans
     - External trigger controls frame *transfer*, not frame *acquisition*, which is defined by the camera. By default, when the internal frame grabber trigger is used, the frame grabber transfer rate is synchronized to the camera, so every frame gets transferred. However, if the external transfer trigger is used and it is out of sync with the camera, it can result in duplicate or missing frames.
     - ROI is defined within the transferred image, whose size itself is determined by the camera ROI. Hence, e.g., if the camera chip is 1024x1024px and its roi is 512x512, then the frame grabber ROI can go only up to 512x512. Any attempts to set it higher result in the frozen acquisition, as the frame grabber expects a larger frame than it receives, and waits forever to get the rest.
 
-The SDK also provides a universal interface for getting and setting various camera attributes using their name. You can use :meth:`.IMAQCamera.get_attribute_value` and :meth:`.IMAQCamera.set_attribute_value` for that::
+The SDK also provides a universal interface for getting and setting various camera attributes using their name. You can use :meth:`.IMAQCamera.get_grabber_attribute_value` and :meth:`.IMAQCamera.set_grabber_attribute_value` for that::
 
     >> cam = IMAQ.IMAQCamera()
-    >> cam.get_value("FRAMEWAIT_MSEC")  # frame read request timeout
+    >> cam.get_grabber_attribute_value("FRAMEWAIT_MSEC")  # frame read request timeout
     1000
 
-To get a all available attributes as a dictionary, you can call :meth:`.IMAQCamera.get_all_attributes`. Their meaning, as well as descriptions of trigger modes and other settings, is explained in the manual supplied with the `Vision Acquisition Software <https://www.ni.com/en-us/support/downloads/drivers/download.vision-acquisition-software.html>`__.
+To get a all available attributes as a dictionary, you can call :meth:`.IMAQCamera.get_all_grabber_attribute_values`. Their meaning, as well as descriptions of trigger modes and other settings, is explained in the manual supplied with the `Vision Acquisition Software <https://www.ni.com/en-us/support/downloads/drivers/download.vision-acquisition-software.html>`__.
 
 Fast buffer readout mode
 ~~~~~~~~~~~~~~~~~~~~~~~~

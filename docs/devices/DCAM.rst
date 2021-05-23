@@ -38,16 +38,21 @@ The cameras are identified by their index, starting from zero. To get the total 
 Operation
 ------------------------
 
-The operation of these cameras is relatively standard. They support all the standard methods for dealing with ROI and exposure, starting and stopping acquisition, and operating the frame reading loop. The SDK also provides a universal interface for getting and setting various camera properties using their name. You can use :meth:`.DCAMCamera.get_value` and :meth:`.DCAMCamera.set_value` for that, as well as ``.v`` attribute which gives a dictionary-like access::
+The operation of these cameras is relatively standard. They support all the standard methods for dealing with ROI and exposure, starting and stopping acquisition, and operating the frame reading loop. The SDK also provides a universal interface for getting and setting various :ref:`camera attributes <cameras_basics_attributes>` (called "properties" in the documentation) using their name. You can use :meth:`.DCAMCamera.get_attribute_value` and :meth:`.DCAMCamera.set_attribute_value` for that, as well as ``.cav`` attribute which gives a dictionary-like access::
 
     >> cam = DCAM.DCAMCamera()
-    >> cam.get_value("BINNING")  # get the camera binning (no binning, by default)
+    >> cam.get_attribute_value("BINNING")  # get the camera binning (no binning, by default)
     1
-    >> cam.set_value("EXPOSURE TIME", 0.1)  # set the exposure to 100ms
-    >> cam.v["EXPOSURE TIME"]  # get the exposure; could also use cam.get_value("EXPOSURE TIME")
+    >> cam.set_attribute_value("EXPOSURE TIME", 0.1)  # set the exposure to 100ms
+    >> cam.cav["EXPOSURE TIME"]  # get the exposure; could also use cam.get_attribute_value("EXPOSURE TIME")
     0.1
 
-To get a all available properties, you can call :meth:`.DCAMCamera.list_properties` to get a list with all property names and :meth:`.DCAMCamera.get_all_properties` to get the dictionary of all properties, both as text and as integer values.
+To see all available attributes, you can call :meth:`.DCAMCamera.get_all_attributes` to get a dictionary with attribute objects, and :meth:`.DCAMCamera.get_all_attribute_values` to get the dictionary of attribute values, with an option of representing enum attributes either as text or as integer values. The attribute objects provide additional information: attribute range, step, and units::
+
+    >> cam = DCAM.DCAMCamera()
+    >> attr = cam.get_attribute("EXPOSURE TIME")
+    >> (attr.min, attr.max)
+    (0.001, 10.0)
 
 Additionally, there's a couple of differences from the standard libraries worth highlighting:
     - The library supports only symmetric binning, i.e., the binning factor is the same in both directions. For compatibility :meth:`.DCAMCamera.get_roi` and :meth:`.DCAMCamera.set_roi` still return and accept both binnings independently, but they are always the same when returned, and ``vbin`` is ignored when set.

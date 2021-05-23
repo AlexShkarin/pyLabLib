@@ -184,6 +184,51 @@ In pylablib these parameters are controlled by ``get_exposure``/``set_exposure``
 There are exceptions for some camera types, which are discussed separately
 
 
+.. _cameras_basics_attributes:
+
+Camera attributes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Some camera interfaces, e.g., :ref:`Thorlabs Scientific Cameras <cameras_thorlabs_tlcamera>`, :ref:`PCO SC2 <cameras_pco_sc2>`, or :ref:`NI IMAQ <cameras_imaq>` are fairly specific, and only apply to a handful of devices with very similar capabilities. In this case, pylablib usually attempts to implement as much of the functionality as possible given the available hardware, and to present it via camera object methods.
+
+In other cases, e.g., :ref:`NI IMAQdx <cameras_imaqdx>`, :ref:`Andor SDK3 <cameras_andor_sdk3>`, or :ref:`DCAM <cameras_dcam>`, the same interface deals with many fairly different cameras. This is especially true for IMAQdx, which covers hundreds of cameras from dozens of manufacturers, all with very different capabilities and purpose. Since managing such cameras can not usually be conformed to a small set of functions, it is implemented through attributes mechanism. That is, for each camera the interface defines a set of attributes (sometimes also called properties or features), which can be queried or set by their names, and whose exact meaning and possible values depend on the specific camera.
+
+Typically, cameras dealing with attributes will implement :meth:`.IAttributeCamera.get_attribute_value` and :meth:`.IAttributeCamera.set_attribute_value` for querying and setting the attributes, as well as dictionary-like ``.cav`` (stands for "camera attribute value") interface to do the same thing::
+
+    >> cam = Andor.AndorSDK3Camera()
+    >> cam.get_attribute_value("CameraAcquiring")  # check if the camera is acquiring
+    0
+    >> cam.set_attribute_value("ExposureTime", 0.1)  # set the exposure to 100ms
+    >> cam.cav["ExposureTime"]  # get the exposure; could also use cam.get_attribute_value("ExposureTime")
+    0.1
+
+Additionally, there are :meth:`.IAttributeCamera.get_all_attribute_values` and :meth:`.IAttributeCamera.set_all_attribute_values` which get and set all camera attributes (possibly only within the given branch, if camera attributes form a hierarchy). Finally, methods :meth:`.IAttributeCamera.get_attribute` and :meth:`.IAttributeCamera.get_all_attributes`, together with the corresponding ``.ca`` interface, allow to query specific attribute objects, which provide additional information about the attributes: whether they are writable or readable, their range, description, possible values, types, etc.::
+
+    >> cam = DCAM.DCAMCamera()
+    >> attr=cam.ca["EXPOSURE TIME"]  # get the exposure attribute
+    DCAMAttribute(name='EXPOSURE TIME', id=2031888, min=0.001, max=10.0, unit=1)
+    >> attr.max
+    10.0
+    >> attr.set_value(0.1)  # same as cam.set_attribute_value("EXPOSURE TIME", 0.1)
+
+Note that, depending on the camera, the attribute properties (especially minimal and maximal value) can depend on the other camera attributes. For example, minimal exposure can depend on the frame size::
+
+    >> cam = DCAM.DCAMCamera()
+    >> attr=cam.ca["EXPOSURE TIME"]  # get the exposure attribute
+    DCAMAttribute(name='EXPOSURE TIME', id=2031888, min=0.001, max=10.0, unit=1)
+    >> attr.min
+    0.001
+    >> cam.set_roi(0, 0, 0, 0)  # set the minimal possible ROI
+    (0, 4, 0, 4, 1, 1)
+    >> attr.min  # minimal value hasn't been updated yet
+    0.001
+    >> attr.update_limits()  # update the property limits
+    >> attr.min  # now the minimal possible exposure is smaller
+    7.795e-05
+
+If the documentation is not available (as is the case for, e.g., some IMAQdx cameras), the best way to learn about the attributes is to using the native software (whenever available) to modify camera settings and then checking how the attributes change. Besides that, it is always useful to check attribute description (available for IMAQdx parameter), their range, and the available values for enum attributes.
+
+
 Trigger setup
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
