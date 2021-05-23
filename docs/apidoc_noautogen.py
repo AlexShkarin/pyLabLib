@@ -9,7 +9,8 @@ import subprocess
 
 src=r"..\pylablib"
 
-exclude_folders=["gui","thread","misc"]
+exclude_folders=["gui","thread","misc","legacy"]
+exclude_files=["aux_libs.py"]
 
 def is_autogen(path):
     name=os.path.split(path)[1]
@@ -17,7 +18,7 @@ def is_autogen(path):
 dev_files=glob.glob(os.path.join(src,"devices","**/*.py"))
 autogen_files=[f for f in dev_files if is_autogen(f)]
 
-skip_files=[f+"/**" for f in exclude_folders]+autogen_files
+skip_files=[f+"/**" for f in exclude_folders]+exclude_files+autogen_files
 print("\n".join(["Skipping {}".format(f) for f in autogen_files]))
 skip_files=[os.path.join(src,f) for f in skip_files]
 

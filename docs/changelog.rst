@@ -9,7 +9,7 @@ This is a list of changes between each version.
 Version 1.x
 ----------------------------
 
-Transitioning from version 0.x to version 1.x saw lots of interface changes which break backward compatibility. The previous version of the library can be either obtained on PyPi using ``pip install "pylablib<1"``, or by using ``legacy`` module. For that, simply replace ``pylablib`` by ``pylablib.legacy`` everywhere. In addition, ``aux_libs`` module is now deprecated, so it automatically refer to the legacy version. Hence, instead of
+Transitioning from version 0.x to version 1.x saw lots of interface changes which break backward compatibility. The previous version of the library can be either obtained on PyPi using ``pip install "pylablib<1"``, or by using ``legacy`` module. Hence, instead of
 
 .. code-block:: python
 
@@ -21,7 +21,7 @@ you can write
 .. code-block:: python
 
     import pylablib.legacy as pll
-    from pylablib.aux_libs.devices import Lakeshore
+    from pylablib.legacy.aux_libs.devices import Lakeshore
 
 
 
@@ -89,16 +89,16 @@ Version 0.x
 
 - Devices
 
-    * Added Thorlabs K10CR1 rotational stage (:class:`.legacy.aux_libs.devices.Thorlabs.K10CR1`)
-    * Added Andor Shamrock spectrographs (:mod:`.legacy.aux_libs.devices.AndorShamrock`)
+    * Added Thorlabs K10CR1 rotational stage (``legacy.aux_libs.devices.Thorlabs.K10CR1``)
+    * Added Andor Shamrock spectrographs (``legacy.aux_libs.devices.AndorShamrock``)
     * Expanded Agilent AWG class
     * Added more 32bit dlls
-    * Added ``list_resources`` method to every backend class, which lists available connections for this backend (not available for every backend; so far only works in :class:`.legacy.core.devio.backed.VisaDeviceBackend`, :class:`.legacy.core.devio.backed.SerialDeviceBackend`, and :class:`.legacy.core.devio.backed.FT232BackendOpenError`.
+    * Added ``list_resources`` method to every backend class, which lists available connections for this backend (not available for every backend; so far only works in ``legacy.core.devio.backed.VisaDeviceBackend``, ``legacy.core.devio.backed.SerialDeviceBackend``, and ``legacy.core.devio.backed.FT232BackendOpenError``.
 
 - GUI and threading
 
-    * Added :meth:`.legacy.aux_libs.gui.helpers.TableAccumulatorThread.preprocess_data` method to pre-process incoming data before adding it to the table
-    * Added ``update_only_on_visible`` argument to :meth:`.legacy.aux_libs.gui.widgets.trace_plotter.TracePlotter.setupUi` method, and :meth:`.legacy.aux_libs.gui.widgets.trace_plotter.TracePlotter.get_required_channels` method.
+    * Added ``legacy.aux_libs.gui.helpers.TableAccumulatorThread.preprocess_data`` method to pre-process incoming data before adding it to the table
+    * Added ``update_only_on_visible`` argument to ``legacy.aux_libs.gui.widgets.trace_plotter.TracePlotter.setupUi`` method, and ``legacy.aux_libs.gui.widgets.trace_plotter.TracePlotter.get_required_channels`` method.
 
 
 
@@ -107,32 +107,32 @@ Version 0.x
 
 **Interface changes**
 
-- Dictionary entries (:mod:`.legacy.core.fileio.dict_entry`) system has been slightly redesigned: building entries from stored objects has been moved from :meth:`.legacy.core.fileio.dict_entry.IDictionaryEntry.build_entry` class method to a dedicated function :func:`.legacy.core.fileio.dict_entry.build_entry`, and entry classes have been added.
-- :class:`.legacy.aux_libs.gui.helpers.StreamFormerThread` architecture changes, so that it can accumulates several rows before adding them into the storage; this lead to replacement of :meth:`.legacy.aux_libs.gui.helpers.StreamFormerThread.prepare_new_row` method by :meth:`.legacy.aux_libs.gui.helpers.StreamFormerThread.prepare_new_data`.
+- Dictionary entries (``legacy.core.fileio.dict_entry``) system has been slightly redesigned: building entries from stored objects has been moved from ``legacy.core.fileio.dict_entry.IDictionaryEntry.build_entry`` class method to a dedicated function ``legacy.core.fileio.dict_entry.build_entry``, and entry classes have been added.
+- ``legacy.aux_libs.gui.helpers.StreamFormerThread`` architecture changes, so that it can accumulates several rows before adding them into the storage; this lead to replacement of ``legacy.aux_libs.gui.helpers.StreamFormerThread.prepare_new_row`` method by ``legacy.aux_libs.gui.helpers.StreamFormerThread.prepare_new_data``.
 
 **Additions**
 
 - General
 
-    * Added pandas support in a bunch of places: loading/saving tables and dictionaries; data processing routines in :mod:`.legacy.core.dataproc`; conversion of :class:`.legacy.core.dataproc.datatable.DataTable` and :class:`.legacy.core.utils.dictionary.Dictionary` object to/from pandas dataframes.
-    * Expanded string conversion to support more explicit variable classes. For example, a numpy array ``np.array([1,2,3])`` can be converted into a string ``'array([1, 2, 3])'`` instead of a more ambiguous string ``'[1, 2, 3]'`` (which can also be a list). This behavior is controlled by a new argument ``use_classes`` in string conversion functions (such as :func:`.legacy.core.utils.string.to_string` and :func:`.legacy.core.utils.string.from_string`) and an argument ``use_rep_classes`` in file saving (:func:`.legacy.core.fileio.savefile.save`)
-    * Added general library parameters, which can be accessed via ``pylablib.par`` (works as a dictionary object). So far there's only one supported parameter: the default return type of the CSV file reading (can be ``"pandas"`` for pandas dataframe, ``"table"`` for :class:`.legacy.core.dataproc.datatable.DataTable` object, or ``"array"`` for raw numpy array).
+    * Added pandas support in a bunch of places: loading/saving tables and dictionaries; data processing routines in ``legacy.core.dataproc``; conversion of ``legacy.core.dataproc.datatable.DataTable`` and ``legacy.core.utils.dictionary.Dictionary`` object to/from pandas dataframes.
+    * Expanded string conversion to support more explicit variable classes. For example, a numpy array ``np.array([1,2,3])`` can be converted into a string ``'array([1, 2, 3])'`` instead of a more ambiguous string ``'[1, 2, 3]'`` (which can also be a list). This behavior is controlled by a new argument ``use_classes`` in string conversion functions (such as ``legacy.core.utils.string.to_string`` and ``legacy.core.utils.string.from_string``) and an argument ``use_rep_classes`` in file saving (``legacy.core.fileio.savefile.save``)
+    * Added general library parameters, which can be accessed via ``pylablib.par`` (works as a dictionary object). So far there's only one supported parameter: the default return type of the CSV file reading (can be ``"pandas"`` for pandas dataframe, ``"table"`` for ``legacy.core.dataproc.datatable.DataTable`` object, or ``"array"`` for raw numpy array).
 
 - Devices
 
-    * Added LaserQuantum Finesse device class (:mod:`.legacy.aux_libs.devices.devices.LaserQuantum`)
+    * Added LaserQuantum Finesse device class (``legacy.aux_libs.devices.devices.LaserQuantum``)
     * NI DAQ now supports output of waveforms
-    * Added :func:`.legacy.aux_libs.devices.PCO_SC2.reset_api` and :meth:`.legacy.aux_libs.devices.PCO_SC2.PCOSC2Camera.reboot` methods for resetting API and cameras
-    * Added :func:`.legacy.aux_libs.devices.Thorlabs.list_kinesis_devices` function to list connected Kinesis devices
-    * Added serial communication methods for IMAQ cameras (:class:`.legacy.aux_libs.devices.IMAQ.IMAQCamera`)
+    * Added ``legacy.aux_libs.devices.PCO_SC2.reset_api`` and ``legacy.aux_libs.devices.PCO_SC2.PCOSC2Camera.reboot`` methods for resetting API and cameras
+    * Added ``legacy.aux_libs.devices.Thorlabs.list_kinesis_devices`` function to list connected Kinesis devices
+    * Added serial communication methods for IMAQ cameras (``legacy.aux_libs.devices.IMAQ.IMAQCamera``)
 
 - GUI and threading
 
-    * Added line plotter (:mod:`.legacy.aux_libs.gui.widgets.line_plotter`) and trace plotter (:mod:`.legacy.aux_libs.gui.widgets.trace_plotter`) widgets
+    * Added line plotter (``legacy.aux_libs.gui.widgets.line_plotter``) and trace plotter (``legacy.aux_libs.gui.widgets.trace_plotter``) widgets
     * Added virtual elements to value tables and parameter tables
     * Added ``gui_thread_safe`` parameter to value tables and parameter tables. Enabling it make most common methods thread-safe (i.e., transparently called from the GUI thread)
-    * Added a corresponding :func:`.legacy.core.gui.qt.thread.controller.gui_thread_method` wrapper to implement the change above
-    * Added functional thread variables (:meth:`.legacy.core.gui.qt.thread.controller.QThreadController.set_func_variable`)
+    * Added a corresponding ``legacy.core.gui.qt.thread.controller.gui_thread_method`` wrapper to implement the change above
+    * Added functional thread variables (``legacy.core.gui.qt.thread.controller.QThreadController.set_func_variable``)
 
 - File saving / loading
 
@@ -156,12 +156,12 @@ Version 0.x
 
 - Data processing
 
-    * :class:`.legacy.core.dataproc.fitting.Fitter` now takes default scale and limit as constructor arguments.
-    * :func:`.legacy.core.dataproc.feature.multi_scale_peakdet` has new ``norm_ratio`` argument.
-    * :func:`.legacy.core.dataproc.image.get_region` and :func:`.legacy.core.dataproc.image.get_region_sum` take ``axis`` argument.
+    * ``legacy.core.dataproc.fitting.Fitter`` now takes default scale and limit as constructor arguments.
+    * ``legacy.core.dataproc.feature.multi_scale_peakdet`` has new ``norm_ratio`` argument.
+    * ``legacy.core.dataproc.image.get_region`` and ``legacy.core.dataproc.image.get_region_sum`` take ``axis`` argument.
 
 - Miscellaneous
 
-    * Functions introspection module now supports Python 3 - style functions, and added a new function :func:`.legacy.core.utils.functions.funcsig`
-    * :class:`.legacy.core.utils.general.StreamFileLogger` supports multiple destination paths
-    * New network function :func:`.legacy.core.utils.net.get_all_local_addr` (return list of all local addresses on all interfaces) and :func:`.legacy.core.utils.net.get_local_hostname`
+    * Functions introspection module now supports Python 3 - style functions, and added a new function ``legacy.core.utils.functions.funcsig``
+    * ``legacy.core.utils.general.StreamFileLogger`` supports multiple destination paths
+    * New network function ``legacy.core.utils.net.get_all_local_addr`` (return list of all local addresses on all interfaces) and ``legacy.core.utils.net.get_local_hostname``
