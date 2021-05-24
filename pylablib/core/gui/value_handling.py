@@ -94,10 +94,8 @@ class IValueHandler:
         If ``name`` is not ``None``, it specifies the name of the value parameter inside the widget (for complex widgets).
         """
         return str(value)
-    def value_changed(self):
-        """
-        Get the Qt signal emitted when the value is changed.
-        """
+    def get_value_changed_signal(self):
+        """Get the Qt signal emitted when the value is changed"""
         if hasattr(self.widget,"value_changed"):
             return self.widget.value_changed
         return None
@@ -112,7 +110,7 @@ class IValueHandler:
         Note that the connection is always direct (i.e., it doesn't deal with message queues and different threads, but rather directly calls the handler function).
         If you need to connect a handler to a signal using some other connection method, you can use :meth:`value_changed` directly.
         """
-        signal=self.value_changed()
+        signal=self.get_value_changed_signal()
         if signal is not None:
             signal.connect(handler,QtCore.Qt.DirectConnection)
         elif not only_signal:
@@ -292,7 +290,7 @@ class LineEditValueHandler(ISingleValueHandler):
         return str(self.widget.text())
     def set_single_value(self, value):
         return self.widget.setText(str(value))
-    def value_changed(self):
+    def get_value_changed_signal(self):
         return self.widget.textChanged
 class LabelValueHandler(ISingleValueHandler):
     """Value handler for ``QLabel`` widget"""
@@ -317,7 +315,7 @@ class CheckboxValueHandler(IBoolValueHandler):
         return self.widget.isChecked()
     def set_single_value(self, value):
         return self.widget.setChecked(value)
-    def value_changed(self):
+    def get_value_changed_signal(self):
         return self.widget.stateChanged
 class PushButtonValueHandler(IBoolValueHandler):
     """Value handler for ``QPushButton`` widget"""
@@ -329,7 +327,7 @@ class PushButtonValueHandler(IBoolValueHandler):
             return self.widget.setChecked(value)
         elif value:
             return self.widget.click()
-    def value_changed(self):
+    def get_value_changed_signal(self):
         if self.widget.isCheckable():
             return self.widget.toggled
         else:
@@ -345,7 +343,7 @@ class ToolButtonValueHandler(IBoolValueHandler):
         return self.widget.isChecked()
     def set_single_value(self, value):
         return self.widget.setChecked(value)
-    def value_changed(self):
+    def get_value_changed_signal(self):
         return self.widget.triggered
     def repr_single_value(self, value):
         if not self.widget.isCheckable():
@@ -358,7 +356,7 @@ class ComboBoxValueHandler(ISingleValueHandler):
         return self.widget.currentIndex()
     def set_single_value(self, value):
         return self.widget.setCurrentIndex(value)
-    def value_changed(self):
+    def get_value_changed_signal(self):
         return self.widget.currentIndexChanged
     def repr_single_value(self, value):
         if isinstance(value,py3.anystring):
@@ -566,6 +564,8 @@ class GUIValues:
     (i.e., ``self.get_value(name)`` is equivalent to ``self.v[name]``, and ``self.set_value(name, value)`` is equivalent to ``self.v[name]=value``),
     ``.i`` for settings/getting indicator values
     (i.e., ``self.get_indicator(name)`` is equivalent to ``self.i[name]``, and ``self.set_indicator(name, value)`` is equivalent to ``self.i[name]=value``)
+    ``.vs`` for getting the value changed Qt signal
+    (i.e., ``self.get_value_changed_signal(name)`` is equivalent to ``self.s[name]``),
 
     Args:
         gui_thread_safe (bool): if ``True``, all value-access and indicator-access calls
@@ -580,6 +580,7 @@ class GUIValues:
         self.w=dictionary.ItemAccessor(self.get_widget,contains_checker=self.__contains__)
         self.v=dictionary.ItemAccessor(self.get_value,self.set_value,contains_checker=self.__contains__)
         self.i=dictionary.ItemAccessor(self.get_indicator,self.set_indicator)
+        self.vs=dictionary.ItemAccessor(self.get_value_changed_signal,contains_checker=self.__contains__)
 
     def add_handler(self, name, handler):
         """Add a value handler under a given name"""
@@ -856,9 +857,9 @@ class GUIValues:
         if path is None:
             raise KeyError("missing handler {}".format(name))
         return self.handlers[path].repr_value(value,subpath)
-    def value_changed(self, name):
+    def get_value_changed_signal(self, name):
         """Get changed events for a value under a given name"""
-        return self.handlers[name].value_changed()
+        return self.handlers[name].get_value_changed_signal()
 
 
 

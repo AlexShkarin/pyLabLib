@@ -27,6 +27,8 @@ class ParamTable(QtWidgets.QWidget):
     (i.e., ``self.get_value(name)`` is equivalent to ``self.v[name]``, and ``self.set_value(name, value)`` is equivalent to ``self.v[name]=value``),
     ``.i`` for settings/getting indicator values
     (i.e., ``self.get_indicator(name)`` is equivalent to ``self.i[name]``, and ``self.set_indicator(name, value)`` is equivalent to ``self.i[name]=value``)
+    ``.vs`` for getting the value changed Qt signal
+    (i.e., ``self.get_value_changed_signal(name)`` is equivalent to ``self.s[name]``),
 
     Like most widgets, requires calling :meth:`setupUi` to set up before usage.
 
@@ -40,6 +42,7 @@ class ParamTable(QtWidgets.QWidget):
         self.w=dictionary.ItemAccessor(self.get_widget)
         self.v=dictionary.ItemAccessor(self.get_value,self.set_value)
         self.i=dictionary.ItemAccessor(self.get_indicator,self.set_indicator)
+        self.vs=dictionary.ItemAccessor(self.get_value_changed_signal)
     def setupUi(self, name, add_indicator=True, gui_values=None, gui_values_root=None, gui_thread_safe=False, cache_values=False, change_focused_control=False):
         """
         Setup the table.
@@ -81,7 +84,7 @@ class ParamTable(QtWidgets.QWidget):
         self.cache_values=cache_values
         self.current_values=dictionary.Dictionary()
 
-    any_value_changed=Signal(object,object)
+    value_changed=Signal(object,object)
     @controller.exsafeSlot()
     def _update_cache_values(self, name=None, value=None):  # pylint: disable=unused-argument
         if self.cache_values:
@@ -176,7 +179,7 @@ class ParamTable(QtWidgets.QWidget):
         if params.indicator_handler:
             self.gui_values.add_indicator_handler(path,params.indicator_handler)
         if add_change_event:
-            params.value_handler.connect_value_changed_handler(lambda value: self.any_value_changed.emit(name,value),only_signal=True)
+            params.value_handler.connect_value_changed_handler(lambda value: self.value_changed.emit(name,value),only_signal=True)
         if self.cache_values:
             params.value_handler.connect_value_changed_handler(lambda value: self._update_cache_values(name,value),only_signal=False)
         self._update_cache_values()
@@ -196,7 +199,7 @@ class ParamTable(QtWidgets.QWidget):
                 can also be a string ``"skip"``, which means that the widget is added to some other location manually later
                 (this option only works if ``label=None``, and doesn't add any indicator)
             tooltip: widget tooltip (mouseover text)
-            add_change_event (bool): if ``True``, changing of the widget's value emits the table's ``any_value_changed`` event
+            add_change_event (bool): if ``True``, changing of the widget's value emits the table's ``value_changed`` event
         
         Return the widget's value handler
         """
@@ -254,7 +257,7 @@ class ParamTable(QtWidgets.QWidget):
             location (tuple): tuple ``(row, column, rowspan, colspan)`` specifying location of the widget;
                 by default, add to a new row in the end and into the first column, span one row and all table columns
                 can also be a string ``"skip"``, which means that the widget is added to some other location manually later
-            add_change_event (bool): if ``True``, changing of the widget's value emits the table's ``any_value_changed`` event
+            add_change_event (bool): if ``True``, changing of the widget's value emits the table's ``value_changed`` event
         
         Return the widget's value handler
         """
@@ -554,9 +557,9 @@ class ParamTable(QtWidgets.QWidget):
     def get_widget(self, name):
         """Get a widget with the given name"""
         return self.params[name].widget
-    def value_changed(self, name):
+    def get_value_changed_signal(self, name):
         """Get a value-changed signal for a widget with the given name"""
-        return self.params[name].value_handler.value_changed()
+        return self.params[name].value_handler.get_value_changed_signal()
 
     @controller.gui_thread_method
     def get_indicator(self, name=None):
@@ -580,12 +583,12 @@ class ParamTable(QtWidgets.QWidget):
         """
         Clear the table (remove all widgets)
         
-        If ``disconnect==True``, also disconnect all slots connected to the ``any_value_changed`` signal.
+        If ``disconnect==True``, also disconnect all slots connected to the ``value_changed`` signal.
         """
         if self.params:
             if disconnect:
                 try:
-                    self.any_value_changed.disconnect()
+                    self.value_changed.disconnect()
                 except TypeError: # no signals connected
                     pass
             for name in self.params:

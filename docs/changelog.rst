@@ -68,8 +68,8 @@ There have been too many alterations to list here comprehensively. Below is the 
       + GUI value storage ``ValuesTable``/``IndicatorValuesTable`` are now combined and named as ``GUIValues``
       + ``ParamTable`` and ``GUIValues`` uses ``.h`` shortcut to access value handlers, i.e., instead of ``table[name]`` it is now ``table.h[name]``
       + ``ParamTable``, ``ImagePlotterCtl``, ``TracePlotterCtl`` constructor arguments: ``display_table`` -> ``gui_values``, ``display_table_root`` -> ``gui_values_root``
-      + value-changed signal names in ``ParamTable`` and ``GUIValues``: ``changed_event`` -> ``value_changed`` (method), ``value_changed`` -> ``any_value_changed`` (signal)
-      + value-changed signal names in value handlers: ``value_changed_signal`` -> ``value_changed``
+      + value-changed signal names in ``ParamTable`` and ``GUIValues``: ``changed_event`` -> ``get_value_changed_signal``
+      + value-changed signal names in value handlers: ``value_changed_signal`` -> ``get_value_changed_signal``
       + ``ParamTable`` methods: ``lock`` -> ``set_enabled``, ``add_button(checkable=True)`` -> ``add_toggle_button``
       + ``NumEdit`` and ``NumLabel`` methods: ``set_number_format`` -> ``set_formatter``, ``set_number_limit`` -> ``set_limiter`` (the call signature also changed)
       + renamed signals to multicasts to avoid confusion with built-in Qt signals. Leads to ``ThreadController.send_signal`` -> ``send_multicast``, ``ThreadController.process_signal`` -> ``process_multicast``, ``ThreadController`` constructor argument ``signal_pool`` -> ``multicast_pool``, class ``SignalPool`` -> ``MulticastPool``, ``QSignalThreadCallScheduler`` -> QMulticastThreadCallScheduler.

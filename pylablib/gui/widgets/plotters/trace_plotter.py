@@ -83,7 +83,7 @@ class TracePlotterCtl(QtWidgets.QWidget):
         self.plot_params_table.setupUi("plotting_params",add_indicator=False,gui_values=self.gui_values,gui_values_root=self.gui_values_root+"/plotting")
         self.plot_params_table.add_toggle_button("update_plot","Updating")
         self.plot_params_table.add_num_edit("disp_last",1,limiter=(1,None,"coerce","int"),formatter=("int"),label="Display last: ")
-        self.plot_params_table.add_button("reset_history","Reset").value_changed().connect(self.plotter.reset_history)
+        self.plot_params_table.add_button("reset_history","Reset").get_value_changed_signal().connect(self.plotter.reset_history)
 
     def get_all_values(self):
         """Get all control values"""
