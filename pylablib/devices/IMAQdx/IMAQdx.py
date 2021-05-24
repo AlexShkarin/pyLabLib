@@ -447,8 +447,8 @@ class EthernetIMAQdxCamera(IMAQdxCamera):
         small_packet: if ``True``, automatically set small packet size (1500 bytes).
     """
     def __init__(self, name="cam0", mode="controller", visibility="advanced", small_packet=False):
-        super().__init__(name=name,mode=mode,visibility=visibility)
         self.small_packet=small_packet
+        super().__init__(name=name,mode=mode,visibility=visibility)
     def post_open(self):
         super().post_open()
         if self.small_packet:

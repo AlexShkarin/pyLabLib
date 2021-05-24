@@ -87,6 +87,15 @@ class AndorSDK3Attribute:
     def __repr__(self):
         return "{}(name='{}', kind='{}')".format(self.__class__.__name__,self.name,self.kind)
 
+    def update_properties(self):
+        """Update all attribute properties: implemented, readable, writable, limits"""
+        self.implemented=bool(lib.AT_IsImplemented(self.handle,self.name))
+        self.readable=self.implemented and not self.is_command and bool(lib.AT_IsReadable(self.handle,self.name))
+        self.writable=self.implemented and not self.is_command and bool(lib.AT_IsWritable(self.handle,self.name))
+        try:
+            self.update_limits()
+        except AndorError:
+            pass
     def get_value(self, enum_str=True, not_implemented_error=True, default=None):
         """
         Get current value.
@@ -257,38 +266,65 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         `kind` can be ``"float"``, ``"int"``, ``"str"``, ``"bool"``, ``"enum"``, or ``"comm"`` (command).
         """
         self.attributes[name]=AndorSDK3Attribute(self.handle,name,kind=kind)
-    def get_attribute_value(self, name, error_on_missing=True, default=None):
+    def get_attribute(self, name, update_properties=False, error_on_missing=True):
+        """
+        Get the camera attribute with the given name.
+        
+        If ``update_properties==True``, automatically update all attribute properties.
+        """
+        att=super().get_attribute(name,error_on_missing=error_on_missing)
+        if att is not None and update_properties:
+            att.update_properties()
+        return att
+    def get_attribute_value(self, name, update_properties=False, error_on_missing=True, default=None):
         """
         Get value of an attribute with the given name.
         
+        If ``update_properties==True``, automatically update all attribute properties before settings.
         If the value doesn't exist or can not be read and ``error_on_missing==True``, raise error; otherwise, return `default`.
         If `default` is not ``None``, assume that ``error_on_missing==False``.
         """
         error_on_missing=error_on_missing and (default is None)
-        attr=self.get_attribute(name,error_on_missing=error_on_missing)
+        attr=self.get_attribute(name,update_properties=update_properties,error_on_missing=error_on_missing)
         return default if attr is None else attr.get_value(not_implemented_error=error_on_missing,default=default)
-    def set_attribute_value(self, name, value, error_on_missing=True):
+    def set_attribute_value(self, name, value, update_properties=True, error_on_missing=True):
         """
         Set value of an attribute with the given name.
         
         If the value doesn't exist or can not be written and ``error_on_missing==True``, raise error; otherwise, do nothing.
+        If ``update_properties==True``, automatically update all attribute properties before settings.
         """
-        attr=self.get_attribute(name,error_on_missing=error_on_missing)
+        attr=self.get_attribute(name,update_properties=update_properties,error_on_missing=error_on_missing)
         if attr is not None:
             attr.set_value(value,not_implemented_error=error_on_missing)
-    def get_all_attribute_values(self):
-        """Get values of all attributes"""
+    def get_all_attribute_values(self, update_properties=False):
+        """
+        Get values of all attributes.
+        
+        If ``update_properties==True``, automatically update all attribute properties before settings.
+        """
         values=dictionary.Dictionary()
         for n,att in self.attributes.as_dict("flat").items():
+            if update_properties:
+                att.update_properties()
             if att.readable:
                 try:
                     values[n]=att.get_value()
                 except AndorSDK3LibError:  # sometimes nominally implemented features still raise errors
                     pass
         return values
-    def set_all_attribute_values(self, settings):
-        """Set values of all attribute in the given dictionary"""
-        return super().set_all_attribute_values(settings)
+    def set_all_attribute_values(self, settings, update_properties=True):
+        """
+        Set values of all attribute in the given dictionary.
+        
+        If ``update_properties==True``, automatically update all attribute properties before settings.
+        """
+        settings=dictionary.as_dict(settings,style="flat",copy=False)
+        for k,v in settings.items():
+            k=self._normalize_attribute_name(k)
+            attr=self.get_attribute(k,update_properties=update_properties,error_on_missing=False)
+            if attr is not None and attr.writable:
+                attr.set_value(v)
 
     def _get_feature(self, name, writable=False):
         """
@@ -298,6 +334,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         """
         if name in self.attributes:
             attr=self.attributes[name]
+            attr.update_properties()
             if attr.implemented and (attr.writable or not writable):
                 return attr
         raise AndorNotSupportedError("feature {} is not supported by camera {}".format(name,self.get_device_info().camera_model))
@@ -401,11 +438,10 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
     def get_frame_period(self):
         return 1./self.cav["FrameRate"]
     def set_frame_period(self, frame_period):
-        p_frame_rate=self.get_attribute("FrameRate",error_on_missing=False)
+        p_frame_rate=self.get_attribute("FrameRate",update_properties=True,error_on_missing=False)
         if p_frame_rate is None or not p_frame_rate.writable:
             return
-        fr_rng=p_frame_rate.update_limits()
-        ro_rng=1./fr_rng[1],1./fr_rng[0]
+        ro_rng=1./p_frame_rate.max,1./p_frame_rate.min
         frame_period=max(min(frame_period,ro_rng[1]),ro_rng[0])
         self.cav["FrameRate"]=1./frame_period
         return self.get_frame_period()
@@ -556,8 +592,8 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         else:
             # self.cav["CycleMode"]="Continuous" # Zyla bug doesn't allow continuous mode with >1000 FPS
             self.cav["CycleMode"]="Fixed"
-            p_frame_count=self.ca["FrameCount"]
-            p_frame_count.set_value(p_frame_count.update_limits()[1])
+            p_frame_count=self.get_attribute("FrameCount",update_properties=True)
+            p_frame_count.set_value(p_frame_count.max)
         self._allocate_buffers(nframes)
         self._frame_counter.reset(nframes)
         self._buffer_mgr.reset()
@@ -609,11 +645,10 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         c1=metadata.get(1,None)
         c7=metadata.get(7,(None,)*4)
         return (c1,camera.TFrameSize(c7[2],c7[3]),c7[1],c7[0])
-    def _parse_image(self, img):
+    def _parse_image(self, img, bpp=None, stride=None, metadata_enabled=False):
         if img is None:
             return None
         height,width=self._get_data_dimensions_rc()
-        metadata_enabled=self.is_metadata_enabled()
         imlen=len(img)
         if metadata_enabled:
             chunks={}
@@ -630,10 +665,10 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
             metadata={}
         metadata={cid:self._parse_metadata_section(cid,data.tobytes()) for (cid,data) in metadata.items()}
         metadata=self._parse_metadata(metadata)
-        bpp=self.cav["BytesPerPixel"]
+        bpp=bpp or self.cav["BytesPerPixel"]
         if bpp not in [1,1.5,2,4]:
             raise ValueError("unexpected pixel byte size: {}".format(bpp))
-        stride=self.cav["AOIStride"]
+        stride=stride or self.cav["AOIStride"]
         if stride<int(np.ceil(bpp*width)):
             raise AndorError("unexpected stride: expected at least {}x{}={}, got {}".format(width,bpp,int(np.ceil(width*bpp)),stride))
         exp_len=int(stride*height)
@@ -671,7 +706,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         vstart=int(self.cav["AOITop"])-1
         vend=vstart+int(self.cav["AOIHeight"])*vbin
         return (hstart,hend,vstart,vend,hbin,vbin)
-    @camera.acqstopped
+    @camera.acqcleared
     def set_roi(self, hstart=0, hend=None, vstart=0, vend=None, hbin=1, vbin=1):
         """
         Set current ROI.
@@ -710,7 +745,8 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         """
         hdet,wdet=self.get_detector_size()
         params=[self._get_feature(p) for p in ["AOIWidth","AOIHeight","AOIHBin","AOIVBin"]]
-        minp,maxp=[list(p) for p in zip(*[p.update_limits() for p in params])]
+        minp=[p.min for p in params]
+        maxp=[p.max for p in params]
         hlim=camera.TAxisROILimit(minp[0]*hbin,hdet,1,hbin,maxp[2])
         vlim=camera.TAxisROILimit(minp[1]*vbin,wdet,1,vbin,maxp[3])
         return hlim,vlim
@@ -731,7 +767,10 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
             raise AndorTimeoutError("buffer overflow while waiting for a new frame")
         self._buffer_mgr.wait_for_frame(idx=idx,timeout=timeout)
     def _read_frames(self, rng, return_info=False):
-        data=[self._parse_image(self._buffer_mgr.read(i)) for i in range(*rng)]
+        metadata_enabled=self.is_metadata_enabled()
+        bpp=self.cav["BytesPerPixel"]
+        stride=self.cav["AOIStride"]
+        data=[self._parse_image(self._buffer_mgr.read(i),bpp=bpp,stride=stride,metadata_enabled=metadata_enabled) for i in range(*rng)]
         return [d[0] for d in data],[self._convert_frame_info(TFrameInfo(n,*d[1])) for (n,d) in zip(range(*rng),data)]
     def _zero_frame(self, n):
         dim=self.get_data_dimensions()

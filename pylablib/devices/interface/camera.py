@@ -135,10 +135,11 @@ class ICamera(interface.IDevice):
         try:
             yield acq_in_progress, acq_params
         finally:
-            if clear and acq_params and not self.get_acquisition_parameters():
-                self.setup_acquisition()
+            if clear and acq_params is not None and self.get_acquisition_parameters() is None:
+                self.setup_acquisition(**acq_params)
             if acq_in_progress and not self.acquisition_in_progress():
-                self.start_acquisition()
+                start_params=acq_params if self.get_acquisition_parameters() is None else {}
+                self.start_acquisition(**start_params)
 
     ### Camera info ###
     def get_detector_size(self):
@@ -848,7 +849,7 @@ class IROICamera(ICamera):
     def _truncate_roi_axis(self, roi, lim, symmetric=False):
         """Truncate ROI ``(start, end)`` to conform to `lim`"""
         return truncate_roi_axis(roi,lim+(1,),symmetric=symmetric)[:2]
-    def get_roi_limits(self, hbin=1, vbin=1):
+    def get_roi_limits(self, hbin=1, vbin=1):  # pylint: disable=unused-argument
         """
         Get the minimal and maximal ROI parameters.
 
@@ -888,7 +889,7 @@ class IBinROICamera(ICamera):
     def _truncate_roi_axis(self, roi, lim, symmetric=False):
         """Truncate ROI ``(start, end, bin)`` to conform to `lim`"""
         return truncate_roi_axis(roi,lim,symmetric=symmetric)
-    def get_roi_limits(self, hbin=1, vbin=1):
+    def get_roi_limits(self, hbin=1, vbin=1):  # pylint: disable=unused-argument
         """
         Get the minimal and maximal ROI parameters.
 

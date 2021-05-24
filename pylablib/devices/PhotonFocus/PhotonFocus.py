@@ -1,4 +1,3 @@
-from os import error
 from . import pfcam_lib
 from .pfcam_lib import lib, PFCamError, PFCamLibError
 
