@@ -103,12 +103,12 @@ class IValueHandler:
         """
         Connect value changed signal.
 
-        If ``only_signal==True``, equivalent to connecting a handler function to :meth:`value_changed` signal;
+        If ``only_signal==True``, equivalent to connecting a handler function to :meth:`get_value_changed_signal` signal;
         however, if ``only_signal==False``, it also works for some objects (e.g., ``QLabel``) don't have built-in on-changed signals
         by calling the handler explicitly every time the value is changed.
 
         Note that the connection is always direct (i.e., it doesn't deal with message queues and different threads, but rather directly calls the handler function).
-        If you need to connect a handler to a signal using some other connection method, you can use :meth:`value_changed` directly.
+        If you need to connect a handler to a signal using some other connection method, you can use :meth:`get_value_changed_signal` directly.
         """
         signal=self.get_value_changed_signal()
         if signal is not None:

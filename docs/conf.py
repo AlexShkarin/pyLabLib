@@ -15,6 +15,7 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
+import re
 
 from unittest import mock
 
@@ -56,6 +57,14 @@ autodoc_mock_imports = ['nidaqmx', 'pyvisa', 'serial', 'ft232', 'PyQt5', 'pywinu
 sys.modules['pyvisa']=mock.Mock(VisaIOError=object, __version__='1.9.0')
 sys.modules['serial']=mock.Mock(SerialException=object)
 sys.modules['ft232']=mock.Mock(Ft232Exception=object)
+if os.path.exists(".skipped_apidoc"):
+    with open(".skipped_apidoc","r") as f:
+        for ln in f.readlines():
+            m=re.match(r".*pylablib\\devices\\(.*_(?:lib|def))\.py$",ln.strip().replace("/","\\"))
+            if m:
+                module="pylablib.devices."+m[1].replace("\\",".")
+                sys.modules[module]=mock.Mock()
+                print("Mocking {}".format(module))
 autodoc_member_order='bysource'
 
 nitpicky=True

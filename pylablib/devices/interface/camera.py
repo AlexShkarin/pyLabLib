@@ -643,13 +643,13 @@ class IAttributeCamera(ICamera):
     """
     Camera class which supports camera attributes.
 
-    The method :meth:`_list_attributes` must be defined in a subclass;
+    The method ``_list_attributes`` must be defined in a subclass;
     it should produce a list of camera attributes, which have ``name`` attribute for placing them into a dictionary.
     Attributes can also have ``readable`` and ``writable`` attributes, which are used in
     :meth:`get_all_attribute_values` and :meth:`set_all_attribute_values` to determine if the attribute values should be collected or set.
-    The method :meth:`_update_attributes` should be called on opening to populate the dictionary of available attributes.
+    Method ``_update_attributes`` should be called on opening to populate the dictionary of available attributes.
 
-    One can also define :meth:`_normalize_attribute_name`, which normalizes the attribute name into a dictionary name
+    One can also define ``_normalize_attribute_name``, which normalizes the attribute name into a dictionary name
     (e.g., replaces separators, removes spaces, or normalizes case).
     """
     def __init__(self):

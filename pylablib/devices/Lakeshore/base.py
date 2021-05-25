@@ -9,9 +9,9 @@ class LakeshoreError(DeviceError):
 class LakeshoreBackendError(LakeshoreError,DeviceBackendError):
     """Generic Lakeshore backend communication error"""
 
-TLakeshore218AnalogSettings=collections.namedtuple("TAnalogSettings",["bipolar","mode","channel","source","high_value","low_value","man_value"])
-TLakeshore218FilterSettings=collections.namedtuple("TFilterSettings",["enabled","points","window"])
-TLakeshore218CurveHeader=collections.namedtuple("TCurveHeader",["name","serial","fmt","limit","coeff"])
+TLakeshore218AnalogSettings=collections.namedtuple("TLakeshore218AnalogSettings",["bipolar","mode","channel","source","high_value","low_value","man_value"])
+TLakeshore218FilterSettings=collections.namedtuple("TLakeshore218FilterSettings",["enabled","points","window"])
+TLakeshore218CurveHeader=collections.namedtuple("TLakeshore218CurveHeader",["name","serial","fmt","limit","coeff"])
 class Lakeshore218(SCPI.SCPIDevice):
     """
     Lakeshore 218 temperature controller.
@@ -232,9 +232,9 @@ class Lakeshore218(SCPI.SCPIDevice):
 
 
 
-TLakeshore370RangeSettings=collections.namedtuple("TRangeSettings",["exc_mode","exc_range","res_range","autorange","enable"])
-TLakeshore370AnalogSettings=TLakeshore218AnalogSettings
-TLakeshore370FilterSettings=collections.namedtuple("TFilterSettings",["enabled","settle_time","window"])
+TLakeshore370RangeSettings=collections.namedtuple("TLakeshore370RangeSettings",["exc_mode","exc_range","res_range","autorange","enable"])
+TLakeshore370AnalogSettings=collections.namedtuple("TLakeshore370AnalogSettings",["bipolar","mode","channel","source","high_value","low_value","man_value"])
+TLakeshore370FilterSettings=collections.namedtuple("TLakeshore370FilterSettings",["enabled","settle_time","window"])
 class Lakeshore370(SCPI.SCPIDevice):  # TODO: finish / check
     """
     Lakeshore 370 resistance bridge / temperature controller.

@@ -1402,7 +1402,7 @@ class ItemAccessor:
         normalize_names: if ``True``, normalize a supplied path using the standard :class:`Dictionary` rules and join it into a single string using the supplied separator
         path_separator: path separator used for splitting and joining the supplied paths
         missing_error: if not ``None``, specifies the error raised on the missing value;
-            used in :meth:`__contains__`, :meth:`get` and :meth:`setdefault` to determine if the value is missing
+            used in ``__contains__``, :meth:`get` and :meth:`setdefault` to determine if the value is missing
     """
     def __init__(self, getter=None, setter=None, deleter=None, contains_checker="auto", normalize_names=True, path_separator="/", missing_error=None):
         self.getter=getter

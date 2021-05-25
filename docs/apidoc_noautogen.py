@@ -15,13 +15,18 @@ exclude_files=["aux_libs.py"]
 def is_autogen(path):
     name=os.path.split(path)[1]
     return name.endswith("_defs.py") or (name.endswith("_lib.py") and name!="load_lib.py")
-dev_files=glob.glob(os.path.join(src,"devices","**/*.py"))
-autogen_files=[f for f in dev_files if is_autogen(f)]
+def get_autogen_files():
+    dev_files=glob.glob(os.path.join(src,"devices","**\\*.py"))
+    return [f for f in dev_files if is_autogen(f)]
 
-skip_files=[f+"/**" for f in exclude_folders]+exclude_files+autogen_files
-print("\n".join(["Skipping {}".format(f) for f in autogen_files]))
-skip_files=[os.path.join(src,f) for f in skip_files]
+if __name__=="__main__":
+    autogen_files=get_autogen_files()
+    print("\n".join(["Skipping {}".format(f) for f in autogen_files]))
+    skip_files=[f+"/**" for f in exclude_folders]+exclude_files
+    skip_files=[os.path.join(src,f) for f in skip_files]+autogen_files
+    with open(".skipped_apidoc","w") as f:
+        for ln in skip_files:
+            f.write(ln+"\n")
 
-os.environ["SPHINX_APIDOC_OPTIONS"]="members,inherited-members,undoc-members,show-inheritance"  # include inherited members into the docstring
-
-subprocess.call(["sphinx-apidoc","-o",".apidoc",src]+skip_files)
+    os.environ["SPHINX_APIDOC_OPTIONS"]="members,inherited-members,undoc-members,show-inheritance"  # include inherited members into the docstring
+    subprocess.call(["sphinx-apidoc","-o",".apidoc",src]+skip_files)

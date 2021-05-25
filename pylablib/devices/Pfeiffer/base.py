@@ -12,8 +12,8 @@ class PfeifferBackendError(PfeifferError,DeviceBackendError):
 
 
 
-TTPG260SwitchSettings=collections.namedtuple("TSwitchSettings",["channel","low_thresh","high_thresh"])
-TTPG260GaugeControlSettings=collections.namedtuple("TGaugeControlSettings",["activation_control","deactivation_control","on_thresh","off_thresh"])
+TTPG260SwitchSettings=collections.namedtuple("TTPG260SwitchSettings",["channel","low_thresh","high_thresh"])
+TTPG260GaugeControlSettings=collections.namedtuple("TTPG260GaugeControlSettings",["activation_control","deactivation_control","on_thresh","off_thresh"])
 class TPG260(comm_backend.ICommBackendWrapper):
     """
     TPG260 series (TPG261/262) pressure gauge.
