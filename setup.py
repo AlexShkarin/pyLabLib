@@ -22,7 +22,7 @@ dep_pyqt5=['pyqt5','sip','pyqtgraph']
 dep_pyside2=['pyside2','shiboken2','pyqtgraph']
 setup(
     name='pylablib',
-    # name='pylablib-lw',
+    # name='pylablib-lightweight',
     version='1.0.0a',
     description='Collection of Python code for using in lab environment: experiment automation, data acquisition, device communication',
     long_description=long_description,
@@ -48,7 +48,7 @@ setup(
     'Source': 'https://github.com/AlexShkarin/pyLabLib/',
     'Tracker': 'https://github.com/AlexShkarin/pyLabLib/issues'
     },
-    packages=find_packages(include=['pylablib.*']),
+    packages=find_packages(include=['pylablib*'],exclude=['pylablib.thread*']),
     install_requires=dep_base+dep_extra+dep_devio+dep_devio_extra+dep_pyqt5,
     extras_require={
         'devio-full':['nidaqmx','websocket-client'],

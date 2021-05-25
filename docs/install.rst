@@ -22,11 +22,11 @@ This will install the full set of dependencies: basic dependencies and computing
 Minimal install
 -------------------------
 
-In case you do not want some of these packages installed, or they are unavailable on your platform, you can install a lightweight version of pylablib called ``pylablib-lw``, which contains the same code, but has only the most basic dependencies (``numpy``, ``scipy``, and ``pandas``):
+In case you do not want some of these packages installed, or they are unavailable on your platform, you can install a lightweight version of pylablib called ``pylablib-lightweight``, which contains the same code, but has only the most basic dependencies (``numpy``, ``scipy``, and ``pandas``):
 
 .. code-block:: none
 
-    pip install pylablib-lw
+    pip install pylablib-lightweight
 
 With this, the basic functionality (such as data processing or file IO) will work, but more advanced features such as device communication and GUI, will require additional packages. These packages can be either installed manually (in most cases, the raised errors will notify which packages are missing), or using the extra requirements features:
 
@@ -40,7 +40,7 @@ The options can be combined. For example,
 
 .. code-block:: none
 
-    pip install pylablib-lw[extra,devio,gui-pyside2]
+    pip install pylablib-lightweight[extra,devio,gui-pyside2]
 
 installs the dependencies as the usual pylablib distribution, but with PySide2 Qt5 backend instead of PyQt5.
 
