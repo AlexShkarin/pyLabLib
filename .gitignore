@@ -8,7 +8,7 @@ local_python_interp_cmd.bat
 
 docs/_build
 docs/_static
-docs/.apidoc
+# docs/.apidoc
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
