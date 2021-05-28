@@ -1,4 +1,3 @@
-from inspect import FrameInfo
 from . import uc480_defs
 from .uc480_lib import lib, uc480Error, uc480LibError
 

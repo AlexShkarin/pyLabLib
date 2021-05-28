@@ -25,7 +25,7 @@ you can write
 
 
 
-1.0.0a
+1.0.0
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 There have been too many alterations to list here comprehensively. Below is the list of the largest changes.

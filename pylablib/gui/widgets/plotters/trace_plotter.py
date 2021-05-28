@@ -10,7 +10,6 @@ When both are used, :class:`TracePlotter` is created and set up first, and then 
 from ....core.gui.widgets.param_table import ParamTable
 from ....core.thread import controller
 from ....core.gui import value_handling
-from ....core.utils import funcargparse, dictionary
 from ....core.dataproc import utils as trace_utils
 from ....thread.stream.table_accum import TableAccumulator, TableAccumulatorThread
 

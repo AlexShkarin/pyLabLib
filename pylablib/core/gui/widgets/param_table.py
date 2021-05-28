@@ -457,7 +457,9 @@ class ParamTable(QtWidgets.QWidget):
             if index_values is not None:
                 widget.set_index_values(index_values)
             if value is not None:
-                widget.setCurrentIndex(value)
+                widget.set_value(value)
+            else:
+                widget.set_value(index_values[0] if index_values else 0)
         return self.add_simple_widget(name,widget,label=label,add_indicator=add_indicator,location=location,tooltip=tooltip,add_change_event=add_change_event)
 
     def add_spacer(self, height=0, width=0, stretch_height=False, stretch_width=False, location="next"):

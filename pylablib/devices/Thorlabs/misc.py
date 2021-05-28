@@ -1,7 +1,7 @@
-from ...core.devio import SCPI, interface
-from .base import ThorlabsError, ThorlabsBackendError
+# from ...core.devio import SCPI, interface
+# from .base import ThorlabsError, ThorlabsBackendError
 
-import collections
+# import collections
 
 # TPM100DeviceInfo=collections.namedtuple("TDeviceInfo",["name","serial","firmware"])
 # TPM100SensorInfo=collections.namedtuple("TSensorInfo",["name","serial","calibration","type","subtype","flags"])

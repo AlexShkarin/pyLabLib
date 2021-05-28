@@ -7,6 +7,8 @@ from .core import *
 
 _load_path=os.path.abspath(os.curdir)
 
+__version__=module_utils.get_package_version("pylablib") or module_utils.get_package_version("pylablib-lightweight")
+
 def reload_all(from_load_path=True, keep_parameters=True):
     """
     Reload all loaded modules.
