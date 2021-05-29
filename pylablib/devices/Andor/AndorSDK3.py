@@ -328,7 +328,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
 
     def _get_feature(self, name, writable=False):
         """
-        Check if the feature is available and return the corrensponding attribute.
+        Check if the feature is available and return the corresponding attribute.
 
         If ``writable==True``, also check if it's writable.
         """
@@ -740,7 +740,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         ``(min, max, pstep, sstep, maxbin)`` with, correspondingly, minimal and maximal size,
         position and size step, and the maximal binning.
 
-        Note that the minimal ROI size depends on the current (not just suppled) binning settings.
+        Note that the minimal ROI size depends on the current (not just supplied) binning settings.
         For more accurate results, is it only after setting up the binning.
         """
         hdet,wdet=self.get_detector_size()

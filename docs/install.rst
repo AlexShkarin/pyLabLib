@@ -13,11 +13,17 @@ You can install the library from PyPi:
 
     pip install pylablib
 
+If you already, have it install, you need to upgrade it:
+
+.. code-block:: none
+
+    pip install -U pylablib
+
 This will install the full set of dependencies: basic dependencies and computing packages (``numpy``, ``scipy``, ``pandas``, ``numba``, ``rpyc``), basic device communication packages (``pyft232``, ``pyvisa``, ``pyserial``, ``pyusb``), and PyQt5-based GUI (``pyqt5``, ``sip`` and ``pyqtgraph``). You can also install additional device library dependencies (``nidaqmx`` and ``websocket-client``) using the extra requirements feature of pip:
 
 .. code-block:: none
 
-    pip install pylablib[devio-full]
+    pip install -U pylablib[devio-full]
 
 Minimal install
 -------------------------

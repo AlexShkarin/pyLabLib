@@ -122,12 +122,12 @@ def recursive_map(value, func):
     return func(value)
 def make_flat_namedtuple(nt, fields=None, name=None, subfield_fmt="{field:}_{subfield:}"):
     """
-    Turn a nested structure of named tuples into a single flat nameduple.
+    Turn a nested structure of named tuples into a single flat namedtuple.
 
     Args:
         nt: toplevel namedtuple class to be flattened
         fields: a dictionary ``{name: desc}`` of the fields, where ``name`` is the named tuple name,
-            and ``desc`` is either a nested nameduple class, or a list of arguments which are passed to the
+            and ``desc`` is either a nested namedtuple class, or a list of arguments which are passed to the
             recursive call to this function (e.g., ``[TTuple, {"field": TNestedTuple}]``).
             Any tuple field which is present in this dictionary gets recursively flattened,
             and the field names of the corresponding returned tuple are added to the full list of fields

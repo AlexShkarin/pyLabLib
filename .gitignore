@@ -4,6 +4,7 @@ examples/
 dlls/
 tests/devices/devlists
 
+local_python_cmd.bat
 local_python_interp_cmd.bat
 
 docs/_build

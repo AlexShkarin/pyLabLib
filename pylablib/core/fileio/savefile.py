@@ -435,7 +435,7 @@ def save_generic(data, path="", output_format=None, loc="file", **kwargs):
     The default format names are:
     
         - ``'csv'``: CSV file, corresponds to :class:`CSVTableOutputFileFormat` and :func:`save_csv`;
-        - ``'csv'``: CSV filewith an additional dictionary containing format description, corresponds to :class:`DictionaryOutputFileFormat` and :func:`save_csv_desc`;
+        - ``'csv'``: CSV file with an additional dictionary containing format description, corresponds to :class:`DictionaryOutputFileFormat` and :func:`save_csv_desc`;
         - ``'bin'``: Binary file, corresponds to :class:`TableBinaryOutputFileFormat` and :func:`save_bin`;
         - ``'bin_desc'``: Binary file with an additional dictionary containing format description, corresponds to :class:`DictionaryOutputFileFormat` and :func:`save_bin_desc`;
         - ``'dict'``: Dictionary file, corresponds to :class:`DictionaryOutputFileFormat` and :func:`save_dict`

@@ -267,7 +267,7 @@ class ICamera(interface.IDevice):
 
         Can be ``"namedtuple"`` (potentially nested named tuples; convenient to get particular values),
         ``"list"`` (flat list of values, with field names are given by :meth:`get_frame_info_fields`; convenient for building a table),
-        or ``"dict"`` (flat dictionary made out of the list and info fields; convenient for )
+        or ``"dict"`` (flat dictionary with the same fields as the ``"list"`` format; more resilient to future format changes)
         """
         return self._frameinfo_format
     _p_frameinfo_format=interface.EnumParameterClass("frame_info_format",["namedtuple","list","dict"])
@@ -278,7 +278,7 @@ class ICamera(interface.IDevice):
 
         Can be ``"namedtuple"`` (potentially nested named tuples; convenient to get particular values),
         ``"list"`` (flat list of values, with field names are given by :meth:`get_frame_info_fields`; convenient for building a table),
-        or ``"dict"`` (flat dictionary made out of the list and info fields; convenient for )
+        or ``"dict"`` (flat dictionary with the same fields as the ``"list"`` format; more resilient to future format changes)
         """
         self._frameinfo_format=fmt
         return self._frameinfo_format
