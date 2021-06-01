@@ -89,7 +89,7 @@ There are several functions present for filtering the data to smooth it or reduc
         >> pll.decimate_datasets([trace, trace2], "sum")  # same as np.sum([trace, trace2],axis=0)
         array([ 0,  2,  6, 12, 20, 30, 42, 56, 72, 90])
 
-    - Sliding decimation methods :func:`.filters.sliding_average`, :func:`.filters.median_filter` and :func:`.filters.sliding_filter` are related, but use a sliding window of `n` points instead of complete decimation of `n` points together. It only works for 1D traces or 2D multi-column datasets. Note that :func:`.filters.sliding_filter` is implemented through a simple Python loop, so it is not very efficient.
+    - Sliding decimation methods :func:`.filters.sliding_average`, :func:`.filters.median_filter` and :func:`.filters.sliding_filter` are related, but use a sliding window of `n` points instead of complete decimation of `n` points together. It only works for 1D traces or 2D multi-column datasets. Note that :func:`.filters.sliding_filter` is implemented through a simple Python loop, so it is not very efficient::
 
         >> trace = np.arange(10)
         >> pll.sliding_average(trace, 4)  # average points in 4-point window (by default use "reflect" boundary conditions)
