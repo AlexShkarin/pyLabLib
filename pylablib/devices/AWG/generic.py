@@ -1,11 +1,11 @@
-from ...core.devio import SCPI, interface, DeviceError, DeviceBackendError
+from ...core.devio import SCPI, interface, comm_backend
 from ...core.utils import units
 
 import numpy as np
 
-class GenericAWGError(DeviceError):
+class GenericAWGError(comm_backend.DeviceError):
     """Generic AWG error"""
-class GenericAWGBackendError(GenericAWGError,DeviceBackendError):
+class GenericAWGBackendError(GenericAWGError,comm_backend.DeviceBackendError):
     """AWG backend communication error"""
 
 class GenericAWG(SCPI.SCPIDevice):

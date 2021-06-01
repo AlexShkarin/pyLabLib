@@ -1,12 +1,12 @@
-from ...core.devio import SCPI, interface, DeviceError, DeviceBackendError
+from ...core.devio import SCPI, interface, comm_backend
 
 import numpy as np
 import collections
 
 
-class LakeshoreError(DeviceError):
+class LakeshoreError(comm_backend.DeviceError):
     """Generic Lakeshore devices error"""
-class LakeshoreBackendError(LakeshoreError,DeviceBackendError):
+class LakeshoreBackendError(LakeshoreError,comm_backend.DeviceBackendError):
     """Generic Lakeshore backend communication error"""
 
 TLakeshore218AnalogSettings=collections.namedtuple("TLakeshore218AnalogSettings",["bipolar","mode","channel","source","high_value","low_value","man_value"])

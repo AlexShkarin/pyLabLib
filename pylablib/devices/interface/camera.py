@@ -1,5 +1,5 @@
-from ...core.devio import interface, DeviceError
-from ...core.dataproc import image_utils
+from ...core.devio import interface, comm_backend
+from ...core.dataproc import image as image_utils
 from ...core.utils import functions as function_utils, general as general_utils, dictionary
 
 import numpy as np
@@ -24,8 +24,8 @@ class ICamera(interface.IDevice):
     _default_frameinfo_format="namedtuple"
     _default_image_dtype="<u2"
     _clear_pausing_acquisition=False
-    Error=DeviceError
-    TimeoutError=DeviceError
+    Error=comm_backend.DeviceError
+    TimeoutError=comm_backend.DeviceError
     def __init__(self):
         super().__init__()
         self._acq_params=None

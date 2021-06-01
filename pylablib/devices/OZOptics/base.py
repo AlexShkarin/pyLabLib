@@ -1,11 +1,11 @@
 from ...core.utils import numerical
-from ...core.devio import interface, comm_backend, DeviceError, DeviceBackendError
+from ...core.devio import interface, comm_backend
 
 import re
 
-class OZOpticsError(DeviceError):
+class OZOpticsError(comm_backend.DeviceError):
     """Generic OZOptics devices error"""
-class OZOpticsBackendError(OZOpticsError,DeviceBackendError):
+class OZOpticsBackendError(OZOpticsError,comm_backend.DeviceBackendError):
     """Generic OZOptics backend communication error"""
 
 

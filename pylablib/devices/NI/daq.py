@@ -1,4 +1,4 @@
-from ...core.devio import interface, DeviceError, DeviceBackendError
+from ...core.devio import interface, comm_backend
 from ...core.devio.comm_backend import reraise
 from ...core.utils import general, funcargparse
 
@@ -6,9 +6,9 @@ import time
 import numpy as np
 import collections
 
-class NIError(DeviceError):
+class NIError(comm_backend.DeviceError):
     """Generic NI error"""
-class NIDAQmxError(NIError,DeviceBackendError):
+class NIDAQmxError(NIError,comm_backend.DeviceBackendError):
     """NI DAQmx backend operation error"""
 
 try:

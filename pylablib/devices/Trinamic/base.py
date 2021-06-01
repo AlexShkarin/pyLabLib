@@ -1,4 +1,4 @@
-from ...core.devio import comm_backend, interface, DeviceError, DeviceBackendError
+from ...core.devio import comm_backend, interface, comm_backend
 
 from ..interface import stage
 
@@ -7,9 +7,9 @@ import time
 import struct
 import math
 
-class TrinamicError(DeviceError):
+class TrinamicError(comm_backend.DeviceError):
     """Generic Trinamic error"""
-class TrinamicBackendError(TrinamicError,DeviceBackendError):
+class TrinamicBackendError(TrinamicError,comm_backend.DeviceBackendError):
     """Generic Trinamic backend communication error"""
 
 class TMCM1110(comm_backend.ICommBackendWrapper,stage.IStage):

@@ -1,4 +1,4 @@
-from ...core.devio import DeviceError, DeviceBackendError
+from ...core.devio.comm_backend import DeviceError, DeviceBackendError
 
 class AttocubeError(DeviceError):
     """Generic Attocube error"""

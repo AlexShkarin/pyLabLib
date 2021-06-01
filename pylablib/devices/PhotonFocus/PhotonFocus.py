@@ -3,7 +3,7 @@ from .pfcam_lib import lib, PFCamError, PFCamLibError
 
 from ..IMAQ.IMAQ import IMAQCamera, IMAQError
 from ...core.utils import py3, dictionary
-from ...core.devio import DeviceError
+from ...core.devio.comm_backend import DeviceError
 from ..interface import camera
 from ..utils import load_lib
 

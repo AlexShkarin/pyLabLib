@@ -1,4 +1,4 @@
-from ...core.devio import DeviceError
+from ...core.devio.comm_backend import DeviceError
 
 class AndorError(DeviceError):
     """Generic Andor error"""

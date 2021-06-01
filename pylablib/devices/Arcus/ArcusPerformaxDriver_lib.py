@@ -1,7 +1,7 @@
 # pylint: disable=wrong-spelling-in-comment
 
 from ...core.utils import ctypes_wrap
-from ...core.devio import DeviceError
+from ...core.devio.comm_backend import DeviceError
 from .ArcusPerformaxDriver_defs import define_functions
 from ..utils import load_lib
 

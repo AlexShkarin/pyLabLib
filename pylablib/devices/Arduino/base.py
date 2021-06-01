@@ -1,11 +1,11 @@
-from ...core.devio import comm_backend, DeviceError, DeviceBackendError
+from ...core.devio import comm_backend
 
 import time
 
 
-class ArduinoError(DeviceError):
+class ArduinoError(comm_backend.DeviceError):
     """Generic Arduino devices error"""
-class ArduinoBackendError(ArduinoError,DeviceBackendError):
+class ArduinoBackendError(ArduinoError,comm_backend.DeviceBackendError):
     """Generic Arduino backend communication error"""
 
 

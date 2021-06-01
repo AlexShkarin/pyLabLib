@@ -1,5 +1,5 @@
 from ...core.utils import net, general
-from ...core.devio import interface, DeviceError, DeviceBackendError
+from ...core.devio import interface, comm_backend
 from ...core.devio.comm_backend import reraise
 
 try:
@@ -20,9 +20,9 @@ def _check_websocket():
 
 c=299792458.
 
-class M2Error(DeviceError):
+class M2Error(comm_backend.DeviceError):
     """Generic M2 error"""
-class M2CommunicationError(M2Error,DeviceBackendError):
+class M2CommunicationError(M2Error,comm_backend.DeviceBackendError):
     """M2 network communication error"""
 
 class Solstis(interface.IDevice):
