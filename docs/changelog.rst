@@ -23,6 +23,7 @@ you can write
     import pylablib.legacy as pll
     from pylablib.legacy.aux_libs.devices import Lakeshore
 
+.. + renamed ``setupUi`` -> ``setup`` for all widgets
 
 
 1.0.0

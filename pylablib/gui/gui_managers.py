@@ -46,7 +46,7 @@ class ParamTableBox(IBox):
     Args:
         box: box widget
         name: box name
-        kwargs: arguments passed to ``setupUI`` method of the parameters table
+        kwargs: arguments passed to ``setup`` method of the parameters table
     """
     def __init__(self, box, name, **kwargs):
         IBox.__init__(self,box,name)
@@ -55,7 +55,7 @@ class ParamTableBox(IBox):
         self.table=param_table.ParamTable(box)
         kwargs.setdefault("gui_thread_safe",True)
         self.cache_values=kwargs.setdefault("cache_values",True)
-        self.table.setupUi(name=name+"_table",**kwargs)
+        self.table.setup(name=name+"_table",**kwargs)
         self.layout.addWidget(self.table)
         self.v=self.table.v
         self.i=self.table.i
@@ -274,10 +274,10 @@ class ImageTab(IAutoupdateTab):
         self.layout=QtWidgets.QHBoxLayout(frame)
         self.layout.setContentsMargins(0,0,0,0)
         self.imview=image_plotter.ImagePlotter(frame)
-        self.imview.setupUi(name=name+"_image_view",img_size=(1,1))
+        self.imview.setup(name=name+"_image_view",img_size=(1,1))
         self.layout.addWidget(self.imview)
         self.imctl=image_plotter.ImagePlotterCtl(frame)
-        self.imctl.setupUi(name=name+"_image_view_ctl",plotter=self.imview)
+        self.imctl.setup(name=name+"_image_view_ctl",plotter=self.imview)
         self.imctl.setMinimumSize(200,0)
         self.imctl.setMaximumSize(200,2**16)
         self.side_layout=QtWidgets.QVBoxLayout()
