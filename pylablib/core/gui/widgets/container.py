@@ -310,7 +310,7 @@ class QWidgetContainer(QLayoutManagedWidget, QContainer):
         if it is ``True``, add it under the same root (``path==""``) if it's a container, and under `name` if it's not;
         otherwise, ``gui_values_path`` specifies the path under which the widget values are stored.
         """
-        if name==False:
+        if name!=False:
             QContainer.add_widget(self,name=name,widget=widget,gui_values_path=gui_values_path)
         if isinstance(widget,QtWidgets.QWidget):
             QLayoutManagedWidget.add_to_layout(self,widget,location=location)
