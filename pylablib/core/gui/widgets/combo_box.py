@@ -51,7 +51,9 @@ class ComboBox(QtWidgets.QComboBox):
         
         If ``notify_value_change==True``, emit the `value_changed` signal; otherwise, change value silently.
         """
-        index=self.value_to_index(value)
+        if not self.count():
+            return
+        index=max(0,min(self.value_to_index(value),self.count()-1))
         if self._index!=index:
             self._index=index
             self.setCurrentIndex(self._index)

@@ -24,7 +24,8 @@ class QContainer(QtCore.QObject):
     TimerUIDGenerator=general.NamedUIDGenerator(thread_safe=True)
     def __init__(self, *args, name=None, **kwargs):
         super().__init__(*args,**kwargs)
-        self.name=name
+        self.name=None
+        self.setup_name(name)
         self._timers={}
         self._timer_events={}
         self._running=False
@@ -51,17 +52,20 @@ class QContainer(QtCore.QObject):
             self.gui_values,self.gui_values_path=value_handling.get_gui_values(gui_values,gui_values_path)
     def setup_name(self, name):
         """Set the object's name"""
-        self.name=name
-        self.setObjectName(name)
-    def setup(self, gui_values=None, gui_values_path=""):
+        if name is not None:
+            self.name=name
+            self.setObjectName(name)
+    def setup(self, name=None, gui_values=None, gui_values_path=""):
         """
-        Setup the container by intializing its GUI values and setting the ``ctl`` attribute.
+        Setup the container by initializing its GUI values and setting the ``ctl`` attribute.
 
         `gui_values` is a :class:`.GUIValues`` object, an object which has ``gui_values`` attribute,
         or ``"new"`` (make a new storage; in this case `gui_values_path` is ignored), and
         `gui_values_path` is the container's path within this storage.
         If ``gui_values`` is ``None``, skip the setup (assume that it's already done).
         """
+        if self.name is None:
+            self.setup_name(name)
         self.setup_gui_values(gui_values=gui_values,gui_values_path=gui_values_path)
         self.ctl=controller.get_gui_controller()
 
@@ -152,6 +156,14 @@ class QContainer(QtCore.QObject):
                 raise ValueError("can not store a non-container widget under an empty path")
         else:
             self.gui_values.add_widget(path,widget)
+    def _setup_widget_name(self, widget, name):
+        if name is None:
+            name=getattr(widget,"name",None)
+            if name is None:
+                raise ValueError("widget name must be provided")
+        elif hasattr(widget,"setup_name"):
+            widget.setup_name(name)
+        return name
     def add_widget(self, name, widget, gui_values_path=True):
         """
         Add a contained widget.
@@ -160,6 +172,7 @@ class QContainer(QtCore.QObject):
         if it is ``True``, add it under the same root (``path==""``) if it's a container, and under `name` if it's not;
         otherwise, ``gui_values_path`` specifies the path under which the widget values are stored.
         """
+        name=self._setup_widget_name(widget,name)
         if name in self._widgets:
             raise ValueError("widget {} is already present")
         if gui_values_path!=False and gui_values_path is not None:
@@ -167,6 +180,7 @@ class QContainer(QtCore.QObject):
                 gui_values_path="" if hasattr(widget,"setup_gui_values") else name
             self.add_widget_values(gui_values_path,widget)
         self._widgets[name]=TWidget(name,widget,gui_values_path)
+        return widget
     def get_widget(self, name):
         """Get the widget with the given name"""
         path,subpath=self._widgets.get_max_prefix(name,kind="leaf")
@@ -177,7 +191,7 @@ class QContainer(QtCore.QObject):
         if hasattr(widget.widget,"clear"):
             widget.widget.clear()
         if widget.gui_values_path is not None:
-            self.gui_values.remove_handler((self.gui_values_path,widget.gui_values_path),remove_indicator=True)
+            self.gui_values.remove_handler((self.gui_values_path,widget.gui_values_path),remove_indicator=True,disconnect=True)
     def remove_widget(self, name):
         """Remove widget from the container and clear it"""
         path,subpath=self._widgets.get_max_prefix(name,kind="leaf")
@@ -233,6 +247,10 @@ class QContainer(QtCore.QObject):
             self._clear_widget(w)
         self._widgets=dictionary.Dictionary()
 
+    def get_handler(self, name):
+        """Get value handler of a widget with the given name"""
+        return self.gui_values.get_handler((self.gui_values_path,name or ""))
+
     def get_value(self, name=None):
         """Get value of a widget with the given name (``None`` means all values)"""
         return self.gui_values.get_value((self.gui_values_path,name or ""))
@@ -272,16 +290,17 @@ class QWidgetContainer(QLayoutManagedWidget, QContainer):
     with :class:`.QLayoutManagedWidget` management of the contained widget's layout.
 
     Typically, adding widget adds them both to the container values and to the layout;
-    however, this can be skipped by either using :meth:`.QLayoutManagedWidget.add_layout_element`
+    however, this can be skipped by either using :meth:`.QLayoutManagedWidget.add_to_layout`
     (only add to the layout), or specifying ``location="skip"`` in :meth:`add_widget` (only add to the container).
     """
-    def setup(self, layout_kind="vbox", no_margins=False, gui_values=None, gui_values_path=""):
-        QContainer.setup(self,gui_values=gui_values,gui_values_path=gui_values_path)
-        QLayoutManagedWidget.setup(self,layout_kind=layout_kind,no_margins=no_margins)
+    def setup(self, layout="vbox", no_margins=False, name=None, gui_values=None, gui_values_path=""):
+        QContainer.setup(self,name=name,gui_values=gui_values,gui_values_path=gui_values_path)
+        QLayoutManagedWidget.setup(self,layout=layout,no_margins=no_margins)
     def add_widget(self, name, widget, location=None, gui_values_path=True):
         """
         Add a contained widget.
 
+        If ``name==False``, only add the widget to they layout, but not to the container.
         `location` specifies the layout location to which the widget is added;
         if it is ``"skip"``, skip adding it to the layout (can be manually added later).
         Note that if the widget is added to the layout, it will be completely deleted when :meth:`clear` method is called;
@@ -291,9 +310,11 @@ class QWidgetContainer(QLayoutManagedWidget, QContainer):
         if it is ``True``, add it under the same root (``path==""``) if it's a container, and under `name` if it's not;
         otherwise, ``gui_values_path`` specifies the path under which the widget values are stored.
         """
-        QContainer.add_widget(self,name=name,widget=widget,gui_values_path=gui_values_path)
+        if name==False:
+            QContainer.add_widget(self,name=name,widget=widget,gui_values_path=gui_values_path)
         if isinstance(widget,QtWidgets.QWidget):
-            QLayoutManagedWidget.add_layout_element(self,widget,location=location)
+            QLayoutManagedWidget.add_to_layout(self,widget,location=location)
+        return widget
     def remove_widget(self, name):
         """Remove widget from the container and the layout, clear it, and remove it"""
         if name in self._widgets:
@@ -302,31 +323,31 @@ class QWidgetContainer(QLayoutManagedWidget, QContainer):
             QLayoutManagedWidget.remove_layout_element(self,widget)
         else:
             QContainer.remove_widget(self,name)
-    def add_frame(self, name, layout_kind="vbox", location=None, gui_values_path=True, no_margins=True):
+    def add_frame(self, name, layout="vbox", location=None, gui_values_path=True, no_margins=True):
         """
         Add a new frame container to the layout.
 
-        `layout_kind` specifies the layout (``"vbox"``, ``"hbox"``, or ``"grid"``) of the new frame,
+        `layout` specifies the layout (``"vbox"``, ``"hbox"``, or ``"grid"``) of the new frame,
         and `location` specifies its location within the container layout.
         If ``no_margins==True``, the frame will have no inner layout margins.
         The other parameters are the same as in :meth:`add_widget` method.
         """
         frame=QFrameContainer(self)
-        frame.setup(layout_kind=layout_kind,no_margins=no_margins)
         self.add_widget(name,frame,location=location,gui_values_path=gui_values_path)
+        frame.setup(layout=layout,no_margins=no_margins)
         return frame
-    def add_group_box(self, name, caption, layout_kind="vbox", location=None, gui_values_path=True, no_margins=True):
+    def add_group_box(self, name, caption, layout="vbox", location=None, gui_values_path=True, no_margins=True):
         """
         Add a new group box container with the given `caption` to the layout.
 
-        `layout_kind` specifies the layout (``"vbox"``, ``"hbox"``, or ``"grid"``) of the new frame,
+        `layout` specifies the layout (``"vbox"``, ``"hbox"``, or ``"grid"``) of the new frame,
         and `location` specifies its location within the container layout.
         If ``no_margins==True``, the frame will have no inner layout margins.
         The other parameters are the same as in :meth:`add_widget` method.
         """
         group_box=QGroupBoxContainer(self)
-        group_box.setup(caption=caption,layout_kind=layout_kind, no_margins=no_margins)
         self.add_widget(name,group_box,location=location,gui_values_path=gui_values_path)
+        group_box.setup(caption=caption,layout=layout,no_margins=no_margins)
         return group_box
     def clear(self):
         """
@@ -341,12 +362,12 @@ class QWidgetContainer(QLayoutManagedWidget, QContainer):
 
 
 class QFrameContainer(QtWidgets.QFrame, QWidgetContainer):
-    """An extention of :class:`QWidgetContainer` for a ``QFrame`` Qt base class"""
+    """An extension of :class:`QWidgetContainer` for a ``QFrame`` Qt base class"""
 
 class QGroupBoxContainer(QtWidgets.QGroupBox, QWidgetContainer):
-    """An extention of :class:`QWidgetContainer` for a ``QGroupBox`` Qt base class"""
-    def setup(self, caption=None, layout_kind="vbox", no_margins=False, gui_values=None, gui_values_path=""):
-        QWidgetContainer.setup(self,layout_kind=layout_kind,no_margins=no_margins,gui_values=gui_values,gui_values_path=gui_values_path)
+    """An extension of :class:`QWidgetContainer` for a ``QGroupBox`` Qt base class"""
+    def setup(self, caption=None, layout="vbox", no_margins=False, name=None, gui_values=None, gui_values_path=""):
+        QWidgetContainer.setup(self,layout=layout,no_margins=no_margins,name=name,gui_values=gui_values,gui_values_path=gui_values_path)
         if caption is not None:
             self.setTitle(caption)
 
@@ -362,12 +383,12 @@ class QTabContainer(QtWidgets.QTabWidget, QContainer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args,**kwargs)
         self._tabs={}
-    def add_tab(self, name, caption, index=None, layout_kind="vbox", gui_values_path=True, no_margins=True):
+    def add_tab(self, name, caption, index=None, layout="vbox", gui_values_path=True, no_margins=True):
         """
         Add a new tab container with the given `caption` to the widget.
 
         `index` specifies the new tab's index (``None`` means adding to the end, negative values count from the end).
-        `layout_kind` specifies the layout (``"vbox"``, ``"hbox"``, or ``"grid"``) of the new frame,
+        `layout` specifies the layout (``"vbox"``, ``"hbox"``, or ``"grid"``) of the new frame,
         and `location` specifies its location within the container layout.
         If ``no_margins==True``, the frame will have no inner layout margins.
         The other parameters are the same as in :meth:`add_widget` method.
@@ -375,8 +396,8 @@ class QTabContainer(QtWidgets.QTabWidget, QContainer):
         if name in self._tabs:
             raise ValueError("tab {} already exists".format(name))
         frame=QFrameContainer(self)
-        frame.setup(layout_kind=layout_kind,no_margins=no_margins)
         self.add_widget(name=name,widget=frame,gui_values_path=gui_values_path)
+        frame.setup(layout=layout,no_margins=no_margins)
         if index is None:
             index=self.count()
         elif index<0:

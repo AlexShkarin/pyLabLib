@@ -41,10 +41,7 @@ class ImagePlotterCtl(QWidgetContainer):
     Args:
         parent: parent widget
     """
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-    def setup(self, name, plotter, gui_values=None, gui_values_path=None, save_values=("colormap","img_lim_preset")):
+    def setup(self, plotter, name=None, gui_values=None, gui_values_path=None, save_values=("colormap","img_lim_preset")):
         """
         Setup the image plotter controller.
 
@@ -56,15 +53,14 @@ class ImagePlotterCtl(QWidgetContainer):
             save_values (tuple): optional parameters to include on :meth:`get_all_values`;
                 can include ``"colormap"`` (colormap defined in the widget), and ``"img_lim_preset"`` (saved image limit preset)
         """
-        self.name=name
-        super().setup(gui_values=gui_values,gui_values_path=gui_values_path,no_margins=True)
+        super().setup(name=name,gui_values=gui_values,gui_values_path=gui_values_path,no_margins=True)
         self.save_values=save_values
         self.setMaximumWidth(200)
         self.plotter=plotter
         self.plotter._attach_controller(self)
         self.params=ParamTable(self)
-        self.add_widget("img_settings",self.params)
-        self.params.setup("img_settings",add_indicator=False)
+        self.add_widget("params",self.params)
+        self.params.setup(add_indicator=False)
         self.img_lim=(0,65536)
         self.params.add_text_label("size",label="Image size:")
         self.params.add_check_box("flip_x","Flip X",value=False)
@@ -196,6 +192,7 @@ class ImagePlotter(QLayoutManagedWidget):
     """
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.name=None
         self.ctl=None
         self._virtual_values=self._make_virtual_values()
 
@@ -209,7 +206,7 @@ class ImagePlotter(QLayoutManagedWidget):
                 self.center=center
             if size:
                 self.size=size
-    def setup(self, name, img_size=(1024,1024), min_size=None):
+    def setup(self, name=None, img_size=(1024,1024), min_size=None):
         """
         Setup the image plotter.
 
@@ -218,8 +215,8 @@ class ImagePlotter(QLayoutManagedWidget):
             img_size (tuple): default image size (used only until actual image is supplied)
             min_size (tuple): minimal widget size (``None`` mean no minimal size)
         """
+        super().setup(layout="vbox",no_margins=True)
         self.name=name
-        super().setup("vbox",no_margins=True)
         self.single_armed=False
         self.single_acquired=False
         self.img=np.zeros(img_size)
@@ -234,7 +231,7 @@ class ImagePlotter(QLayoutManagedWidget):
         if min_size:
             self.setMinimumSize(QtCore.QSize(*min_size))
         self.image_window=pyqtgraph.ImageView(self,imageItem=ImageItem())
-        self.add_layout_element(self.image_window)
+        self.add_to_layout(self.image_window)
         self.main_layout.setStretch(0,4)
         self.set_colormap("hot_sat")
         self.image_window.ui.roiBtn.hide()
@@ -260,7 +257,7 @@ class ImagePlotter(QLayoutManagedWidget):
         self.cut_lines=[PlotCurveItem(pen="#B0B000",name="Horizontal"), PlotCurveItem(pen="#B000B0",name="Vertical")]
         for c in self.cut_lines:
             self.cut_plot_window.addItem(c)
-        self.add_layout_element(self.cut_plot_window)
+        self.add_to_layout(self.cut_plot_window)
         self.main_layout.setStretch(1,1)
         self.cut_plot_window.setVisible(False)
         self.vline.sigPositionChanged.connect(self.update_image_controls,QtCore.Qt.DirectConnection)
@@ -584,18 +581,18 @@ class ImagePlotterCombined(QWidgetContainer):
     The plotter can be accessed as ``.plt`` attribute, and the controller as ``.ctl`` attribute.
     The ``"sidebar"`` sublayout can be used to add additional elements if necessary.
     """
-    def setup(self, name, img_size=(1024,1024), min_size=None, ctl_caption=None, gui_values=None, gui_values_path=None, save_values=("colormap","img_lim_preset")):
-        self.name=name
-        super().setup("hbox",no_margins=True,gui_values=gui_values,gui_values_path=gui_values_path)
+    def setup(self, img_size=(1024,1024), min_size=None, ctl_caption=None, name=None, gui_values=None, gui_values_path=None, save_values=("colormap","img_lim_preset")):
+        super().setup(layout="hbox",name=name,gui_values=gui_values,gui_values_path=gui_values_path)
         self.plt=ImagePlotter(self)
-        self.add_layout_element(self.plt)
-        self.plt.setup("{}_plotter".format(name),img_size=img_size,min_size=min_size)
+        self.add_to_layout(self.plt)
+        self.plt.setup(name="plt",img_size=img_size,min_size=min_size)
         with self.using_new_sublayout("sidebar","vbox"):
             self.ctl=ImagePlotterCtl(self)
             if ctl_caption is None:
-                self.add_widget("{}_control".format(name),self.ctl)
+                self.add_widget("ctl",self.ctl)
             else:
-                self.add_group_box("{}_control_box".format(name),caption=ctl_caption).add_widget("{}_control".format(name),self.ctl)
-            self.ctl.setup("{}_control".format(name),self.plt,save_values=save_values)
+                self.add_group_box("ctl_box",caption=ctl_caption).add_widget("ctl",self.ctl)
+                self.w["ctl_box"].setMaximumWidth(200)
+            self.ctl.setup(self.plt,save_values=save_values)
             self.add_padding()
         self.get_sublayout().setStretch(0,1)

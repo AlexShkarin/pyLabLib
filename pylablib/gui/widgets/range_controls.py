@@ -27,12 +27,11 @@ class RangeCtl(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-    def setup(self, name, lim=(None,None), order=True, formatter=".1f", labels=("Min","Max","Center","Span","Step"), elements=("minmax","cspan","step")):
+    def setup(self, lim=(None,None), order=True, formatter=".1f", labels=("Min","Max","Center","Span","Step"), elements=("minmax","cspan","step")):
         """
         Setup the range control.
 
         Args:
-            name (str): widget name
             lim (tuple): limit containing min and max values
             order (bool): if ``True``, first value is always smaller than the second one (values are swapped otherwise)
             formatter (str): formatter for all edit boxes; see :func:`.format.as_formatter` for details
@@ -40,16 +39,14 @@ class RangeCtl(QtWidgets.QWidget):
             elements (tuple): tuple specifying elements which are displayed for the control;
                 can contain ``"minmax"`` (min-max row), ``"cspan"`` (center-span row), and ``"step"`` (step row)
         """
-        self.name=name
         self.order=order
         self.rng=(0,0,0) if "step" in elements else (0,0)
-        self.setObjectName(self.name)
         self.main_layout=QtWidgets.QGridLayout(self)
         self.main_layout.setObjectName("main_layout")
         self.main_layout.setContentsMargins(0,0,0,0)
         self.params=ParamTable(self)
         self.main_layout.addWidget(self.params)
-        self.params.setup("params",add_indicator=False,change_focused_control=True)
+        self.params.setup(name="params",add_indicator=False,change_focused_control=True)
         self.params.main_layout.setContentsMargins(2,2,2,2)
         self.params.main_layout.setSpacing(4)
         if "minmax" in elements:
@@ -176,12 +173,11 @@ class ROICtl(QtWidgets.QWidget):
             xparams=TAxisParams(*xparams)
             yparams=TAxisParams(*yparams)
         return xparams,yparams
-    def setup(self, name, xlim=(0,None), ylim=None, minsize=0, maxsize=None, labels=("X","Y"), kind="minmax", validate=None):
+    def setup(self, xlim=(0,None), ylim=None, minsize=0, maxsize=None, labels=("X","Y"), kind="minmax", validate=None):
         """
         Setup the ROI control.
 
         Args:
-            name (str): widget name
             xlim (tuple): limit for x-axis min and max values
             ylim (tuple): limit for y-axis min and max values
             sizelim (int or tuple): minimal allowed size (int implies same for both axes)
@@ -190,18 +186,15 @@ class ROICtl(QtWidgets.QWidget):
             validate: if not ``None``, a function which takes tuple ``(xparams, yparams)`` of two axes parameters (each is a 3-tuple ``(min, max, bin)``)
                 and return their constrained versions.
         """
-        self.name=name
         self.kind=kind
-        self.setObjectName(self.name)
         self.setMinimumSize(QtCore.QSize(100,60))
         self.setMaximumSize(QtCore.QSize(2**16,60))
         self.main_layout=QtWidgets.QVBoxLayout(self)
         self.main_layout.setObjectName("main_layout")
         self.main_layout.setContentsMargins(0,0,0,0)
-        self.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum,QtWidgets.QSizePolicy.Preferred))
         self.params=ParamTable(self)
         self.main_layout.addWidget(self.params)
-        self.params.setup("params",add_indicator=False)
+        self.params.setup(name="params",add_indicator=False)
         self.params.main_layout.setContentsMargins(0,0,0,0)
         self.params.main_layout.setSpacing(4)
         self.params.add_decoration_label("ROI",(0,0))
@@ -218,7 +211,7 @@ class ROICtl(QtWidgets.QWidget):
         self.params.main_layout.setColumnStretch(2,1)
         self.validate=validate
         for n in ["x_min","x_max","y_min","y_max"]:
-            self.params.w[n].setMinimumWidth(40)
+            self.params.w[n].setMinimumWidth(30)
             self.params.vs[n].connect(self._on_edit)
         self.set_limits(xlim,ylim,minsize=minsize,maxsize=maxsize)
 
@@ -338,12 +331,11 @@ class BinROICtl(QtWidgets.QWidget):
             xparams=TBinAxisParams(*xparams)
             yparams=TBinAxisParams(*yparams)
         return xparams,yparams
-    def setup(self, name, xlim=(0,None), ylim=None, maxbin=None, minsize=0, maxsize=None, labels=("X","Y"), kind="minmax", validate=None):
+    def setup(self, xlim=(0,None), ylim=None, maxbin=None, minsize=0, maxsize=None, labels=("X","Y"), kind="minmax", validate=None):
         """
         Setup the ROI control.
 
         Args:
-            name (str): widget name
             xlim (tuple): limit for x-axis min and max values
             ylim (tuple): limit for y-axis min and max values
             maxbin (int or tuple): maximal allowed binning (int implies same for both axes)
@@ -353,17 +345,15 @@ class BinROICtl(QtWidgets.QWidget):
             validate: if not ``None``, a function which takes tuple ``(xparams, yparams)`` of two axes parameters (each is a 3-tuple ``(min, max, bin)``)
                 and return their constrained versions.
         """
-        self.name=name
         self.kind=kind
-        self.setObjectName(self.name)
         self.setMinimumSize(QtCore.QSize(100,60))
         self.setMaximumSize(QtCore.QSize(2**16,60))
-        self.main_layout=QtWidgets.QGridLayout(self)
-        self.main_layout.setObjectName(self.name+"_main_layout")
+        self.main_layout=QtWidgets.QVBoxLayout(self)
+        self.main_layout.setObjectName("main_layout")
         self.main_layout.setContentsMargins(0,0,0,0)
         self.params=ParamTable(self)
         self.main_layout.addWidget(self.params)
-        self.params.setup("params",add_indicator=False)
+        self.params.setup(name="params",add_indicator=False)
         self.params.main_layout.setContentsMargins(0,0,0,0)
         self.params.main_layout.setSpacing(4)
         self.params.add_decoration_label("ROI",(0,0))
@@ -378,10 +368,10 @@ class BinROICtl(QtWidgets.QWidget):
         self.params.add_num_edit("y_min",value=0,formatter="int",limiter=(None,None,"coerce","int"),location=(2,1,1,1))
         self.params.add_num_edit("y_max",value=1,formatter="int",limiter=(None,None,"coerce","int"),location=(2,2,1,1))
         self.params.add_num_edit("y_bin",value=1,formatter="int",limiter=(None,None,"coerce","int"),location=(2,3,1,1))
+        self.params.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum,QtWidgets.QSizePolicy.Preferred))
         self.params.main_layout.setColumnStretch(1,2)
         self.params.main_layout.setColumnStretch(2,2)
         self.params.main_layout.setColumnStretch(3,1)
-        self.params.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum,QtWidgets.QSizePolicy.Preferred))
         self.validate=validate
         for n in ["x_min","x_max","x_bin","y_min","y_max","y_bin"]:
             self.params.w[n].setMinimumWidth(30)

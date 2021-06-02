@@ -25,7 +25,12 @@ class ParamTable(layout_manager.QLayoutManagedWidget):
     (i.e., ``self.get_handler(name)`` is equivalent to ``self.h[name]``),
     ``.w`` for getting the underlying widget
     (i.e., ``self.get_widget(name)`` is equivalent to ``self.w[name]``),
-    ``.v`` for settings/getting values
+    ``.v`` for settings/getting values using the default getting method
+    (equivalent to ``.wv`` if ``cache_values=False`` in :meth:`setup`, and to ``.cv`` otherwise),
+    ``.wv`` for settings/getting current current widget values without caching
+    (i.e., ``self.get_value(name)`` is equivalent to ``self.v[name]``, and ``self.set_value(name, value)`` is equivalent to ``self.v[name]=value``),
+    ``.cv`` for settings/getting values using cached value's table for getting
+    (i.e., ``self.current_values[name]`` is equivalent to ``self.cv[name]``, and ``self.set_value(name, value)`` is equivalent to ``self.cv[name]=value``),
     (i.e., ``self.get_value(name)`` is equivalent to ``self.v[name]``, and ``self.set_value(name, value)`` is equivalent to ``self.v[name]=value``),
     ``.i`` for settings/getting indicator values
     (i.e., ``self.get_indicator(name)`` is equivalent to ``self.i[name]``, and ``self.set_indicator(name, value)`` is equivalent to ``self.i[name]=value``)
@@ -39,18 +44,25 @@ class ParamTable(layout_manager.QLayoutManagedWidget):
     """
     def __init__(self, parent=None, name=None):
         super().__init__(parent)
-        self.name=name
+        self.name=None
+        self.setup_name(name)
         self.params={}
         self.h=dictionary.ItemAccessor(self.get_handler)
         self.w=dictionary.ItemAccessor(self.get_widget)
-        self.v=dictionary.ItemAccessor(self.get_value,self.set_value)
+        self.wv=dictionary.ItemAccessor(self.get_value,self.set_value)
+        self.v=self.wv
+        self.cv=dictionary.ItemAccessor(lambda name: self.current_values[name],self.set_value)
         self.i=dictionary.ItemAccessor(self.get_indicator,self.set_indicator)
         self.vs=dictionary.ItemAccessor(self.get_value_changed_signal)
         self.setup_gui_values("new")
+    def _make_new_layout(self, kind, *args, **kwargs):
+        layout=super()._make_new_layout(kind,*args,**kwargs)
+        if kind=="grid":
+            layout.setSpacing(5)
+        return layout
     def _set_main_layout(self):
         super()._set_main_layout()
         self.main_layout.setContentsMargins(5,5,5,5)
-        self.main_layout.setSpacing(5)
         self.main_layout.setColumnStretch(1,1)
     def setup_gui_values(self, gui_values=None, gui_values_path=""):
         if self.params:
@@ -59,7 +71,12 @@ class ParamTable(layout_manager.QLayoutManagedWidget):
             if gui_values_path is None:
                 gui_values_path=self.name
             self.gui_values,self.gui_values_path=value_handling.get_gui_values(gui_values,gui_values_path)
-    def setup(self, name, add_indicator=True, gui_values=None, gui_values_path="", gui_thread_safe=False, cache_values=False, change_focused_control=False):
+    def setup_name(self, name):
+        """Set the table's name"""
+        if name is not None:
+            self.name=name
+            self.setObjectName(name)
+    def setup(self, name=None, add_indicator=True, gui_values=None, gui_values_path="", gui_thread_safe=False, cache_values=False, change_focused_control=False):
         """
         Setup the table.
 
@@ -74,21 +91,22 @@ class ParamTable(layout_manager.QLayoutManagedWidget):
                 (``get/set_value``, ``get/set_all_values``, ``get/set_indicator``, and ``update_indicators``) are automatically called in the GUI thread.
             cache_values (bool): if ``True`` or ``"update_one"``, store a dictionary with all the current values and update it every time a GUI value is changed;
                 provides a thread-safe way to check current parameters without lag
-                (unlike :meth:`get_all_values` with ``gui_thread_safe==True``, which re-routes call to a GUI thread and may cause up to 50ms delay)
+                (unlike :meth:`get_value` or :meth:`get_all_values` with ``gui_thread_safe==True``, which re-route calls to a GUI thread and may cause up to 100ms delay)
                 can also be set to ``"update_all"``, in which case change of any value will cause value update of all variables;
                 otherwise, change of a value will only cause update of that same value (might potentially miss some value updates for custom controls).
             change_focused_control (bool): if ``False`` and :meth:`set_value` method is called while the widget has user focus, ignore the value;
                 note that :meth:`set_all_values` will still set the widget value.
         """
-        self.name=name
-        self.setObjectName(self.name)
         super().setup()
+        if self.name is None:
+            self.setup_name(name)
         self.add_indicator=add_indicator
         self.setup_gui_values(gui_values=gui_values,gui_values_path=gui_values_path)
         self.gui_thread_safe=gui_thread_safe
         self.change_focused_control=change_focused_control
         self.cache_values=cache_values
         self.current_values=dictionary.Dictionary()
+        self.v=self.cv if cache_values else self.wv
 
     value_changed=Signal(object,object)
     @controller.exsafeSlot()
@@ -239,8 +257,22 @@ class ParamTable(layout_manager.QLayoutManagedWidget):
 
         Doesn't correspond to any actual widget, but behaves very similarly from the application point of view
         (its value can be set or read, it has on-change events, it can have indicator).
+        The element value is simply stored on set and retrieved on get.
         """
         value_handler=value_handling.VirtualValueHandler(value)
+        if add_indicator is None:
+            add_indicator=self.add_indicator
+        indicator_handler=value_handling.VirtualIndicatorHandler if add_indicator else None
+        self._add_widget(name,self.ParamRow(None,None,None,value_handler,indicator_handler))
+    def add_property_element(self, name, getter=None, setter=None, add_indicator=True):
+        """
+        Add a property value element.
+
+        Doesn't correspond to any actual widget, but behaves very similarly from the application point of view;
+        each time the value is set or get, the corresponding setter and getter methods are called.
+        If ``add_indicator==True``, add default (stored value) indicator handler as well.
+        """
+        value_handler=value_handling.PropertyValueHandler(getter=getter,setter=setter)
         if add_indicator is None:
             add_indicator=self.add_indicator
         indicator_handler=value_handling.VirtualIndicatorHandler if add_indicator else None

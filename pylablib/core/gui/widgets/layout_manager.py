@@ -6,41 +6,42 @@ from .. import QtCore, QtWidgets
 import contextlib
 
 
-def _make_layout(kind, *args, **kwargs):
-    """Make a layout of the given kind"""
-    if kind=="grid":
-        return QtWidgets.QGridLayout(*args,**kwargs)
-    if kind=="vbox":
-        return QtWidgets.QVBoxLayout(*args,**kwargs)
-    if kind=="hbox":
-        return QtWidgets.QHBoxLayout(*args,**kwargs)
-    raise ValueError("unrecognized layout kind: {}".format(kind))
 class QLayoutManagedWidget(QtWidgets.QWidget):
     """
     GUI widget which can manage layouts.
 
     Typically, first it is set up using :meth:`setup` method to specify the master layout kind;
-    afterwards, widgets and sublayout can be added using :meth:`add_layout_element`.
+    afterwards, widgets and sublayout can be added using :meth:`add_to_layout`.
     In addition, it can directly add named sublayouts using :meth:`add_sublayout` method.
     """
     def __init__(self, parent=None):
         super().__init__(parent)
         self.main_layout=None
         self._default_layout="main"
+    
+    def _make_new_layout(self, kind, *args, **kwargs):
+        """Make a layout of the given kind"""
+        if kind=="grid":
+            return QtWidgets.QGridLayout(*args,**kwargs)
+        if kind=="vbox":
+            return QtWidgets.QVBoxLayout(*args,**kwargs)
+        if kind=="hbox":
+            return QtWidgets.QHBoxLayout(*args,**kwargs)
+        raise ValueError("unrecognized layout kind: {}".format(kind))
     def _set_main_layout(self):
-        self.main_layout=_make_layout(self.main_layout_kind,self)
+        self.main_layout=self._make_new_layout(self.main_layout_kind,self)
         self.main_layout.setObjectName(self.name+"_main_layout" if hasattr(self,"name") and self.name else "main_layout")
         if self.no_margins:
             self.main_layout.setContentsMargins(0,0,0,0)
-    def setup(self, layout_kind="grid", no_margins=False):
+    def setup(self, layout="grid", no_margins=False):
         """
         Setup the layout.
 
         Args:
-            kind: layout kind; can be ``"grid"``, ``"vbox"`` (vertical single-column box), or ``"hbox"`` (horizontal single-row box).
+            layout: layout kind; can be ``"grid"``, ``"vbox"`` (vertical single-column box), or ``"hbox"`` (horizontal single-row box).
             no_margins: if ``True``, set all layout margins to zero (useful when the widget is in the middle of layout hierarchy)
         """
-        self.main_layout_kind=layout_kind
+        self.main_layout_kind=layout
         self.no_margins=no_margins
         self._set_main_layout()
         self._sublayouts={"main":(self.main_layout,self.main_layout_kind)}
@@ -115,7 +116,7 @@ class QLayoutManagedWidget(QtWidgets.QWidget):
                 layout.insertLayout(idx,element)
             else:
                 raise ValueError("unrecognized element kind: {}".format(kind))
-    def add_layout_element(self, element, location=None, kind="widget"):
+    def add_to_layout(self, element, location=None, kind="widget"):
         """
         Add an existing `element` to the layout at the given `location`.
 
@@ -124,6 +125,7 @@ class QLayoutManagedWidget(QtWidgets.QWidget):
         lname,location=self._normalize_location(location)
         if location!="skip":
             self._insert_layout_element(lname,element,location,kind=kind)
+        return element
     def remove_layout_element(self, element):
         """Remove a previously added layout element"""
         for layout,_ in self._sublayouts.values():
@@ -141,10 +143,10 @@ class QLayoutManagedWidget(QtWidgets.QWidget):
         """
         if name in self._sublayouts:
             raise ValueError("sublayout {} already exists".format(name))
-        layout=_make_layout(kind)
+        layout=self._make_new_layout(kind)
         layout.setContentsMargins(0,0,0,0)
         layout.setObjectName(name)
-        self.add_layout_element(layout,location,kind="layout")
+        self.add_to_layout(layout,location,kind="layout")
         self._sublayouts[name]=(layout,kind)
         return layout
     @contextlib.contextmanager
@@ -170,7 +172,7 @@ class QLayoutManagedWidget(QtWidgets.QWidget):
         spacer=QtWidgets.QSpacerItem(width,height,
             QtWidgets.QSizePolicy.MinimumExpanding if stretch_width else QtWidgets.QSizePolicy.Minimum,
             QtWidgets.QSizePolicy.MinimumExpanding if stretch_height else QtWidgets.QSizePolicy.Minimum)
-        self.add_layout_element(spacer,location,kind="item")
+        self.add_to_layout(spacer,location,kind="item")
         self._spacers.append(spacer)  # otherwise the reference is lost, and the object might be deleted
         return spacer
     def add_padding(self, kind="auto", location="next"):
@@ -196,7 +198,7 @@ class QLayoutManagedWidget(QtWidgets.QWidget):
         label=QtWidgets.QLabel(self)
         label.setText(str(text))
         label.setAlignment(QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter)
-        self.add_layout_element(label,location)
+        self.add_to_layout(label,location)
         return label
     def insert_row(self, row, sublayout=None):
         """Insert a new row at the given location in the grid layout"""
