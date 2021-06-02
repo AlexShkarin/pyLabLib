@@ -9,6 +9,7 @@ def clear_build():
     shutil.rmtree("build",ignore_errors=True)
     shutil.rmtree("dist",ignore_errors=True)
     shutil.rmtree("pylablib.egg-info",ignore_errors=True)
+    shutil.rmtree("pylablib_lightweight.egg-info",ignore_errors=True)
 def make():
     subprocess.call(["python","setup.py","sdist","bdist_wheel"])
 def upload(production=False):

@@ -1,5 +1,4 @@
-from ...core.utils import files, general
-from ...core.utils.library_parameters import library_parameters
+from ...core.utils import files, general, library_parameters
 
 import platform
 import ctypes
@@ -83,14 +82,16 @@ def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, depe
         else:
             if loc.startswith("parameter/"):
                 par_name=loc[len("parameter/"):]
-                if ("devices/dlls",par_name) in library_parameters:
-                    loc=library_parameters["devices/dlls",par_name]
+                if ("devices/dlls",par_name) in library_parameters.library_parameters:
+                    loc=library_parameters.library_parameters["devices/dlls",par_name]
                 else:
                     continue
             if loc.lower().endswith(".dll"):
                 folder,n=os.path.split(loc)
             else:
                 folder=loc
+            if folder.startswith("."):
+                folder=os.path.abspath(folder)
         path=os.path.join(folder,n)
         lock=_load_lock if locally else general.DummyResource()
         with lock:

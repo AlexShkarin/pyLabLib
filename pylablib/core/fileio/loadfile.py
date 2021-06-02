@@ -3,13 +3,12 @@ Utilities for reading data files.
 """
 
 from . import datafile, location, dict_entry, parse_csv, loadfile_utils
-from ..utils import funcargparse
-from ..utils.library_parameters import library_parameters
+from ..utils import funcargparse, library_parameters
 
 import numpy as np
 
-library_parameters.update({"fileio/loadfile/csv/out_type":"pandas"})
-library_parameters.update({"fileio/loadfile/dict/inline_out_type":"pandas"})
+library_parameters.library_parameters.update({"fileio/loadfile/csv/out_type":"pandas"})
+library_parameters.library_parameters.update({"fileio/loadfile/dict/inline_out_type":"pandas"})
 
 
 ##### File formats #####
@@ -75,7 +74,7 @@ class CSVTableInputFileFormat(ITextInputFileFormat):
     """
     def __init__(self, out_type="default", dtype="numeric", columns=None, delimiters=None, empty_entry_substitute=None, ignore_corrupted_lines=True, skip_lines=0):
         ITextInputFileFormat.__init__(self)
-        self.out_type=library_parameters["fileio/loadfile/csv/out_type"] if out_type=="default" else out_type
+        self.out_type=library_parameters.library_parameters["fileio/loadfile/csv/out_type"] if out_type=="default" else out_type
         self.dtype=dtype
         self.columns=columns
         self.delimiters=delimiters or parse_csv._table_delimiters
@@ -123,7 +122,7 @@ class DictionaryInputFileFormat(ITextInputFileFormat):
         ITextInputFileFormat.__init__(self)
         self.case_normalization=case_normalization
         self.inline_dtype=inline_dtype
-        self.inline_out_type=library_parameters["fileio/loadfile/dict/inline_out_type"] if inline_out_type=="default" else inline_out_type
+        self.inline_out_type=library_parameters.library_parameters["fileio/loadfile/dict/inline_out_type"] if inline_out_type=="default" else inline_out_type
         if not entry_format in {"branch","dict_entry","value"}:
             raise ValueError("unrecognized entry format: {0}".format(entry_format))
         self.entry_format=entry_format
@@ -178,7 +177,7 @@ class BinaryTableInputFileFormatter(IInputFileFormat):
     """
     def __init__(self, out_type="default", dtype="<f8", columns=None, packing="flatten", preamble=None, skip_bytes=0):
         IInputFileFormat.__init__(self)
-        self.out_type=library_parameters["fileio/loadfile/csv/out_type"] if out_type=="default" else out_type
+        self.out_type=library_parameters.library_parameters["fileio/loadfile/csv/out_type"] if out_type=="default" else out_type
         self.preamble=preamble or {}
         self.dtype=self.preamble.get("dtype",dtype)
         try:
