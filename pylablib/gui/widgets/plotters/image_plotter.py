@@ -59,7 +59,7 @@ class ImagePlotterCtl(QWidgetContainer):
         self.plotter=plotter
         self.plotter._attach_controller(self)
         self.params=ParamTable(self)
-        self.add_widget("params",self.params)
+        self.add_child("params",self.params)
         self.params.setup(add_indicator=False)
         self.img_lim=(0,65536)
         self.params.add_text_label("size",label="Image size:")
@@ -589,10 +589,10 @@ class ImagePlotterCombined(QWidgetContainer):
         with self.using_new_sublayout("sidebar","vbox"):
             self.ctl=ImagePlotterCtl(self)
             if ctl_caption is None:
-                self.add_widget("ctl",self.ctl)
+                self.add_child("ctl",self.ctl)
             else:
-                self.add_group_box("ctl_box",caption=ctl_caption).add_widget("ctl",self.ctl)
-                self.w["ctl_box"].setMaximumWidth(200)
+                self.add_group_box("ctl_box",caption=ctl_caption).add_child("ctl",self.ctl)
+                self.c["ctl_box"].setMaximumWidth(200)
             self.ctl.setup(self.plt,save_values=save_values)
             self.add_padding()
         self.get_sublayout().setStretch(0,1)

@@ -43,12 +43,12 @@ class TracePlotterCtl(QWidgetContainer):
         self.plotter=plotter
         self.plotter._attach_controller(self)
         self.channels_table=ParamTable(self)
-        self.add_group_box("channels_box",caption="Channels").add_widget("channels",self.channels_table,gui_values_path="channels")
+        self.add_group_box("channels_box",caption="Channels").add_child("channels",self.channels_table,gui_values_path="channels")
         self.channels_table.setMinimumSize(QtCore.QSize(20,20))
         self.channels_table.setup(add_indicator=False)
         self.setup_channels()
         self.plot_params_table=ParamTable(self)
-        self.add_group_box("plotting_box",caption="Plotting").add_widget("plotting",self.plot_params_table,gui_values_path="plotting")
+        self.add_group_box("plotting_box",caption="Plotting").add_child("plotting",self.plot_params_table,gui_values_path="plotting")
         self.plot_params_table.setMinimumSize(QtCore.QSize(20,20))
         self.plot_params_table.setup(add_indicator=False)
         self.plot_params_table.add_toggle_button("update_plot","Updating")
@@ -326,7 +326,7 @@ class TracePlotterCombined(QWidgetContainer):
         self.plt.setup(name="plt",add_end_marker=add_end_marker,update_only_on_visible=update_only_on_visible)
         with self.using_new_sublayout("sidebar","vbox"):
             self.ctl=TracePlotterCtl(self)
-            self.add_widget("ctl",self.ctl)
+            self.add_child("ctl",self.ctl)
             self.ctl.setup(self.plt)
             self.add_padding()
         self.get_sublayout().setStretch(0,1)

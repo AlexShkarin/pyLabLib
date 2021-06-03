@@ -524,6 +524,9 @@ class ParamTable(layout_manager.QLayoutManagedWidget):
         """Get a value-changed signal for a widget with the given name"""
         return self.params[self._normalize_name(name)].value_handler.get_value_changed_signal()
 
+    get_child=get_widget  # form compatibility with QContainer
+    remove_child=remove_widget
+
     @controller.gui_thread_method
     def get_indicator(self, name=None):
         """Get indicator value for a widget with the given name"""

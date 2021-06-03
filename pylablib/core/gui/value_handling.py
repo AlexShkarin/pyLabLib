@@ -650,6 +650,8 @@ class GUIValues:
 
     def add_handler(self, name, handler):
         """Add a value handler under a given name"""
+        if name in self.handlers:
+            raise ValueError("handler {} already exists".format(name))
         self.handlers[name]=handler
         return handler
     def remove_handler(self, name, remove_indicator=True, disconnect=False):
@@ -661,10 +663,17 @@ class GUIValues:
         Unlike most methods (e.g., :meth:`get_value` or :meth:`get_handler`), does not recursively query the children,
         so it only works if the handler is contained in this table.
         """
+        if not self.handlers.has_entry(name,kind="leaf"):
+            if name in self.handlers:
+                raise KeyError("can not delete handler branch '{}'".format(name))
+            else:
+                raise KeyError("missing handler '{}'".format(name))
         if disconnect:
             handler=self.get_handler(name)
             try:
-                handler.get_value_changed_signal().disconnect()
+                signal=handler.get_value_changed_signal()
+                if signal is not None:
+                    handler.get_value_changed_signal().disconnect()
             except TypeError: # no signals connected or no handle
                 pass
         del self.handlers[name]

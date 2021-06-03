@@ -11,7 +11,7 @@ import collections
 
 TTimer=collections.namedtuple("TTimer",["name","period","timer"])
 TTimerEvent=collections.namedtuple("TTimerEvent",["start","loop","stop","timer"])
-TWidget=collections.namedtuple("TWidget",["name","widget","gui_values_path"])
+TChild=collections.namedtuple("TChild",["name","widget","gui_values_path"])
 class QContainer(QtCore.QObject):
     """
     Basic controller object which combines and controls several other widget.
@@ -29,10 +29,11 @@ class QContainer(QtCore.QObject):
         self._timers={}
         self._timer_events={}
         self._running=False
-        self._widgets=dictionary.Dictionary()
+        self._children=dictionary.Dictionary()
         self.setup_gui_values("new")
         self.ctl=None
         self.w=dictionary.ItemAccessor(self.get_widget)
+        self.c=dictionary.ItemAccessor(self.get_child)
         self.v=dictionary.ItemAccessor(self.get_value,self.set_value)
         self.i=dictionary.ItemAccessor(self.get_indicator,self.set_indicator)
 
@@ -46,8 +47,8 @@ class QContainer(QtCore.QObject):
         or ``"new"`` (make a new storage; in this case `gui_values_path` is ignored), and
         `gui_values_path` is the container's path within this storage.
         """
-        if self._widgets:
-            raise RuntimeError("can not change gui values after widgets have been added")
+        if self._children:
+            raise RuntimeError("can not change gui values after children have been added")
         if gui_values is not None:
             self.gui_values,self.gui_values_path=value_handling.get_gui_values(gui_values,gui_values_path)
     def setup_name(self, name):
@@ -141,22 +142,24 @@ class QContainer(QtCore.QObject):
                 elif evt.loop is not None and t.isActive(): # discard all possible after-stop queued events
                     evt.loop()
 
-    def add_widget_values(self, path, widget):
+    def add_child_values(self, path, widget):
         """
-        Add widget's values to the container's table.
+        Add child's values to the container's table.
 
-        If `widget` is a container and ``path==""``,
+        If `widget` is a container and ``path==""`` or ends in ``"/*"`` (e.g., ``"subpath/*"``),
         use its :meth:`setup_gui_values` to make it share the same GUI values;
         otherwise, simply add it to the GUI values under the given path.
         """
-        if path=="":
+        if path=="" or path=="*" or path.endswith("/*"):
+            if path.endswith("*"):
+                path=path[:-1]
             if hasattr(widget,"setup_gui_values"):
-                widget.setup_gui_values(self,"")
+                widget.setup_gui_values(self,path)
             else:
                 raise ValueError("can not store a non-container widget under an empty path")
         else:
             self.gui_values.add_widget(path,widget)
-    def _setup_widget_name(self, widget, name):
+    def _setup_child_name(self, widget, name):
         if name is None:
             name=getattr(widget,"name",None)
             if name is None:
@@ -164,42 +167,45 @@ class QContainer(QtCore.QObject):
         elif hasattr(widget,"setup_name"):
             widget.setup_name(name)
         return name
-    def add_widget(self, name, widget, gui_values_path=True):
+    def add_child(self, name, widget, gui_values_path=True):
         """
-        Add a contained widget.
+        Add a contained child widget.
 
         If `gui_values_path` is ``False`` or ``None``, do not add it to the GUI values table;
         if it is ``True``, add it under the same root (``path==""``) if it's a container, and under `name` if it's not;
         otherwise, ``gui_values_path`` specifies the path under which the widget values are stored.
         """
-        name=self._setup_widget_name(widget,name)
-        if name in self._widgets:
-            raise ValueError("widget {} is already present")
+        name=self._setup_child_name(widget,name)
+        if name in self._children:
+            raise ValueError("child {} is already present")
         if gui_values_path!=False and gui_values_path is not None:
             if gui_values_path==True:
                 gui_values_path="" if hasattr(widget,"setup_gui_values") else name
-            self.add_widget_values(gui_values_path,widget)
-        self._widgets[name]=TWidget(name,widget,gui_values_path)
+            self.add_child_values(gui_values_path,widget)
+        self._children[name]=TChild(name,widget,gui_values_path)
         return widget
-    def get_widget(self, name):
-        """Get the widget with the given name"""
-        path,subpath=self._widgets.get_max_prefix(name,kind="leaf")
+    def get_child(self, name):
+        """Get the child widget with the given name"""
+        path,subpath=self._children.get_max_prefix(name,kind="leaf")
         if path:
-            return self._widgets[path].widget.get_widget(subpath) if subpath else self._widgets[path].widget
+            return self._children[path].widget.get_child(subpath) if subpath else self._children[path].widget
         raise KeyError("can't find widget {}".format(name))
-    def _clear_widget(self, widget):
-        if hasattr(widget.widget,"clear"):
-            widget.widget.clear()
-        if widget.gui_values_path is not None:
-            self.gui_values.remove_handler((self.gui_values_path,widget.gui_values_path),remove_indicator=True,disconnect=True)
-    def remove_widget(self, name):
-        """Remove widget from the container and clear it"""
-        path,subpath=self._widgets.get_max_prefix(name,kind="leaf")
+    def _clear_child(self, child):
+        if hasattr(child.widget,"clear"):
+            child.widget.clear()
+        if child.gui_values_path is not None:
+            try:
+                self.gui_values.remove_handler((self.gui_values_path,child.gui_values_path),remove_indicator=True,disconnect=True)
+            except KeyError:
+                pass
+    def remove_child(self, name):
+        """Remove child from the container and clear it"""
+        path,subpath=self._children.get_max_prefix(name,kind="leaf")
         if path:
             if subpath:
-                return self._widgets[path].widget.remove_widget(subpath)
-            w=self._widgets.pop(path)
-            self._clear_widget(w)
+                return self._children[path].widget.remove_child(subpath)
+            ch=self._children.pop(path)
+            self._clear_child(ch)
         else:
             raise KeyError("can't find widget {}".format(name))
 
@@ -211,10 +217,10 @@ class QContainer(QtCore.QObject):
         Starts all the internal timers, and calls ``start`` method for all the contained widgets.
         """
         if self._running:
-            raise RuntimeError("widget '{}' loop is already running".format(self.name))
-        for w in self._widgets.iternodes():
-            if hasattr(w.widget,"start"):
-                w.widget.start()
+            raise RuntimeError("container '{}' loop is already running".format(self.name))
+        for ch in self._children.iternodes():
+            if hasattr(ch.widget,"start"):
+                ch.widget.start()
         for n in self._timers:
             self.start_timer(n)
         self._running=True
@@ -226,13 +232,13 @@ class QContainer(QtCore.QObject):
         Stops all the internal timers, and calls ``stop`` method for all the contained widgets.
         """
         if not self._running:
-            raise RuntimeError("widget '{}' loop is not running".format(self.name))
+            raise RuntimeError("container '{}' loop is not running".format(self.name))
         self._running=False
         for n in self._timers:
             self.stop_timer(n)
-        for w in self._widgets.iternodes():
-            if hasattr(w.widget,"stop"):
-                w.widget.stop()
+        for ch in self._children.iternodes():
+            if hasattr(ch.widget,"stop"):
+                ch.widget.stop()
 
     def clear(self):
         """
@@ -243,14 +249,15 @@ class QContainer(QtCore.QObject):
         """
         if self._running:
             self.stop()
-        for w in self._widgets.iternodes():
-            self._clear_widget(w)
-        self._widgets=dictionary.Dictionary()
+        for ch in self._children.iternodes():
+            self._clear_child(ch)
+        self._children=dictionary.Dictionary()
 
     def get_handler(self, name):
         """Get value handler of a widget with the given name"""
         return self.gui_values.get_handler((self.gui_values_path,name or ""))
-
+    def get_widget(self, name):
+        return self.gui_values.get_widget((self.gui_values_path,name or ""))
     def get_value(self, name=None):
         """Get value of a widget with the given name (``None`` means all values)"""
         return self.gui_values.get_value((self.gui_values_path,name or ""))
@@ -291,19 +298,21 @@ class QWidgetContainer(QLayoutManagedWidget, QContainer):
 
     Typically, adding widget adds them both to the container values and to the layout;
     however, this can be skipped by either using :meth:`.QLayoutManagedWidget.add_to_layout`
-    (only add to the layout), or specifying ``location="skip"`` in :meth:`add_widget` (only add to the container).
+    (only add to the layout), or specifying ``location="skip"`` in :meth:`add_child` (only add to the container).
     """
     def setup(self, layout="vbox", no_margins=False, name=None, gui_values=None, gui_values_path=""):
         QContainer.setup(self,name=name,gui_values=gui_values,gui_values_path=gui_values_path)
         QLayoutManagedWidget.setup(self,layout=layout,no_margins=no_margins)
-    def add_widget(self, name, widget, location=None, gui_values_path=True):
+    def add_child(self, name, widget, location=None, gui_values_path=True):
         """
-        Add a contained widget.
+        Add a contained child widget.
 
-        If ``name==False``, only add the widget to they layout, but not to the container.
+        `name` specifies the child storage name;
+        if ``name==False``, only add the widget to they layout, but not to the container.
         `location` specifies the layout location to which the widget is added;
-        if it is ``"skip"``, skip adding it to the layout (can be manually added later).
-        Note that if the widget is added to the layout, it will be completely deleted when :meth:`clear` method is called;
+        if ``location=="skip"``, skip adding it to the layout (can be manually added later).
+        Note that if the widget is added to the layout, it will be completely deleted
+        when :meth:`clear`or :meth:`remove_child` methods are called;
         otherwise, simply its ``clear`` method will be called, and its GUI values will be deleted.
 
         If `gui_values_path` is ``False`` or ``None``, do not add it to the GUI values table;
@@ -311,18 +320,18 @@ class QWidgetContainer(QLayoutManagedWidget, QContainer):
         otherwise, ``gui_values_path`` specifies the path under which the widget values are stored.
         """
         if name!=False:
-            QContainer.add_widget(self,name=name,widget=widget,gui_values_path=gui_values_path)
+            QContainer.add_child(self,name=name,widget=widget,gui_values_path=gui_values_path)
         if isinstance(widget,QtWidgets.QWidget):
             QLayoutManagedWidget.add_to_layout(self,widget,location=location)
         return widget
-    def remove_widget(self, name):
+    def remove_child(self, name):
         """Remove widget from the container and the layout, clear it, and remove it"""
-        if name in self._widgets:
-            widget=self._widgets[name].widget
-            QContainer.remove_widget(self,name)
+        if name in self._children:
+            widget=self._children[name].widget
+            QContainer.remove_child(self,name)
             QLayoutManagedWidget.remove_layout_element(self,widget)
         else:
-            QContainer.remove_widget(self,name)
+            QContainer.remove_child(self,name)
     def add_frame(self, name, layout="vbox", location=None, gui_values_path=True, no_margins=True):
         """
         Add a new frame container to the layout.
@@ -330,10 +339,10 @@ class QWidgetContainer(QLayoutManagedWidget, QContainer):
         `layout` specifies the layout (``"vbox"``, ``"hbox"``, or ``"grid"``) of the new frame,
         and `location` specifies its location within the container layout.
         If ``no_margins==True``, the frame will have no inner layout margins.
-        The other parameters are the same as in :meth:`add_widget` method.
+        The other parameters are the same as in :meth:`add_child` method.
         """
         frame=QFrameContainer(self)
-        self.add_widget(name,frame,location=location,gui_values_path=gui_values_path)
+        self.add_child(name,frame,location=location,gui_values_path=gui_values_path)
         frame.setup(layout=layout,no_margins=no_margins)
         return frame
     def add_group_box(self, name, caption, layout="vbox", location=None, gui_values_path=True, no_margins=True):
@@ -343,10 +352,10 @@ class QWidgetContainer(QLayoutManagedWidget, QContainer):
         `layout` specifies the layout (``"vbox"``, ``"hbox"``, or ``"grid"``) of the new frame,
         and `location` specifies its location within the container layout.
         If ``no_margins==True``, the frame will have no inner layout margins.
-        The other parameters are the same as in :meth:`add_widget` method.
+        The other parameters are the same as in :meth:`add_child` method.
         """
         group_box=QGroupBoxContainer(self)
-        self.add_widget(name,group_box,location=location,gui_values_path=gui_values_path)
+        self.add_child(name,group_box,location=location,gui_values_path=gui_values_path)
         group_box.setup(caption=caption,layout=layout,no_margins=no_margins)
         return group_box
     def clear(self):
@@ -391,12 +400,12 @@ class QTabContainer(QtWidgets.QTabWidget, QContainer):
         `layout` specifies the layout (``"vbox"``, ``"hbox"``, or ``"grid"``) of the new frame,
         and `location` specifies its location within the container layout.
         If ``no_margins==True``, the frame will have no inner layout margins.
-        The other parameters are the same as in :meth:`add_widget` method.
+        The other parameters are the same as in :meth:`add_child` method.
         """
         if name in self._tabs:
             raise ValueError("tab {} already exists".format(name))
         frame=QFrameContainer(self)
-        self.add_widget(name=name,widget=frame,gui_values_path=gui_values_path)
+        self.add_child(name=name,widget=frame,gui_values_path=gui_values_path)
         frame.setup(layout=layout,no_margins=no_margins)
         if index is None:
             index=self.count()
@@ -413,7 +422,7 @@ class QTabContainer(QtWidgets.QTabWidget, QContainer):
 
         Clear it, remove its GUI values, and delete it and all contained widgets.
         """
-        super().remove_widget(name)
+        super().remove_child(name)
         frame=self._tabs.pop(name)
         idx=self.indexOf(frame)
         self.removeTab(idx)
