@@ -3,6 +3,7 @@
 Installation
 =========================
 
+.. _install-standard:
 
 Standard install
 -------------------------
@@ -13,7 +14,7 @@ You can install the library from PyPi:
 
     pip install pylablib
 
-If you already, have it install, you need to upgrade it:
+If you already have it installed, you must upgrade it to get the newest version:
 
 .. code-block:: none
 
@@ -24,6 +25,8 @@ This will install the full set of dependencies: basic dependencies and computing
 .. code-block:: none
 
     pip install -U pylablib[devio-full]
+
+.. _install-minimal:
 
 Minimal install
 -------------------------
@@ -50,6 +53,8 @@ The options can be combined. For example,
 
 installs the dependencies as the usual pylablib distribution, but with PySide2 Qt5 backend instead of PyQt5.
 
+.. _install-usage:
+
 Usage
 -------------------------
 
@@ -67,6 +72,8 @@ More advanced features (e.g., :ref:`device communication <devices_basics>`) shou
     cam.set_exposure(0.1)  # set exposure to 100ms
     frame = cam.snap()  # grab a single frame
     cam.close()  # close the connection
+
+.. _install-requirements:
 
 Dependencies and requirements
 ------------------------------
@@ -118,6 +125,8 @@ The most recent and extensive, but less tested and documented, version of this l
         git pull
 
       in the library folder. Keep in mind that any changes that you make to the library code might conflict with the new version that you pull from GitHub, so you should not modify anything in this folder if possible.
+
+.. _install-feedback:
 
 Support and feedback
 -------------------------

@@ -32,6 +32,9 @@ Additional utilities are added to simplify data acquisition, storage, and proces
 
 The library only works on Python 3, and has been most extensively tested on Windows 10 with 64-bit Python. Linux is, in principle, supported, but devices which require manufacturer-provided DLLs (mostly cameras) might, potentially, have problems.
 
+.. note::
+   This is documentation for the newer **1.x** version of the library. The older **0.x** documentation can be found at https://pylablib-v0.readthedocs.io/en/latest/ .
+
 .. toctree::
    :maxdepth: 2
    :includehidden:
