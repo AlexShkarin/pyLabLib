@@ -6,6 +6,9 @@ import threading
 import time
 import collections
 
+
+### Remote call results ###
+
 class QCallResultSynchronizer(QThreadNotifier):
     def get_progress(self):
         """
@@ -115,9 +118,16 @@ class QDirectResultSynchronizer:
     def notifying_state(self):
         return "done"
 
+
+
+
+### Remote call ###
+
 class QScheduledCall:
     """
     Object representing a scheduled remote call.
+
+    Can be called, skipped, or failed in the target thread, in which case it notifies the result synchronizer (if supplied).
 
     Args:
         func: callable to be invoked in the destination thread
@@ -279,7 +289,7 @@ class QQueueScheduler(QScheduler):
         - :meth:`call_added`: called when a new call has been added to the queue
         - :meth:`call_popped`: called when a call has been removed from the queue (either for execution, or for skipping)
     """
-    def __init__(self, on_full_queue="current", call_info_argname=None):
+    def __init__(self, on_full_queue="skip_current", call_info_argname=None):
         QScheduler.__init__(self,call_info_argname=call_info_argname)
         self.call_queue=collections.deque()
         funcargparse.check_parameter_range(on_full_queue,"on_full_queue",{"skip_current","skip_newest","skip_oldest","call","wait"})

@@ -6,8 +6,10 @@ from ..gui import QtCore, Slot, Signal
 import threading
 import contextlib
 import time
-import sys, traceback
+import sys
+import traceback
 import heapq
+import warnings
 
 _default_multicast_pool=mpool.MulticastPool()
 
@@ -86,7 +88,7 @@ class QThreadControllerThread(QtCore.QThread):
     finalized=Signal()
     _stop_request=Signal()
     def __init__(self, controller):
-        QtCore.QThread.__init__(self)
+        super().__init__()
         self.moveToThread(self)
         self.controller=controller
         self._stop_request.connect(self._do_quit)
@@ -172,7 +174,7 @@ class QThreadController(QtCore.QObject):
         - ``finished``: emitted on thread finish (before :meth:`on_finish` is executed)
     """
     def __init__(self, name=None, kind="loop", multicast_pool=None):
-        QtCore.QObject.__init__(self)
+        super().__init__()
         funcargparse.check_parameter_range(kind,"kind",{"loop","run","main"})
         if kind=="main":
             name="gui"
@@ -222,6 +224,7 @@ class QThreadController(QtCore.QObject):
         self._stop_notifiers=[]
         # set up life control
         self._stop_requested=(self.kind!="main")
+        self._suspend_stop_request=False
         self._lifetime_state_lock=threading.Lock()
         self._lifetime_state="stopped"
         # set up signals
@@ -399,8 +402,7 @@ class QThreadController(QtCore.QObject):
         with self._inner_loop(as_toploop=as_toploop):
             ctd=general.Countdown(timeout)
             while True:
-                if self._stop_requested:
-                    raise threadprop.InterruptExceptionStop()
+                self._check_stop_request()
                 if timeout is not None:
                     time_left=ctd.time_left()
                     if time_left:
@@ -499,20 +501,40 @@ class QThreadController(QtCore.QObject):
         """
         with self._inner_loop(as_toploop=top_loop):
             threadprop.get_app().processEvents(QtCore.QEventLoop.AllEvents)
-        if self._stop_requested:
-            raise threadprop.InterruptExceptionStop()
-    def sleep(self, timeout, top_loop=False):
+        self._check_stop_request()
+    def sleep(self, timeout, wake_on_message=False, top_loop=False):
         """
         Sleep for a given time (in seconds).
 
         Unlike :func:`time.sleep`, constantly checks the event loop for new messages (e.g., if stop or interrupt commands are issued).
+        In addition, if ``wake_on_message==True``, wake up if any message has been received;
+        it this case. return ``True`` if the wait has been completed, and ``False`` if it has been interrupted by a message.
         If ``top_loop==True``, treat the waiting as the top message loop (i.e., any top loop message or signal can be executed here).
         Local call method.
         """
         try:
-            self._wait_in_process_loop(lambda: (False,None),timeout=timeout,as_toploop=top_loop)
+            self._wait_in_process_loop(lambda: (wake_on_message,None),timeout=timeout,as_toploop=top_loop)
+            return False
         except threadprop.TimeoutThreadError:
-            pass
+            return True
+    def _check_stop_request(self):
+        if self._stop_requested and not self._suspend_stop_request:
+            raise threadprop.InterruptExceptionStop
+    @contextlib.contextmanager
+    def no_stopping(self):
+        """
+        Context manager, which temporarily suspends stop requests (:exc:`.InterruptExceptionStop` exceptions).
+
+        If the stop request has been made within this block, raise the excpetion on exit.
+        Note that :meth:`stop` method and, correspondingly, :func:`stop_controller` still work, when called from the controlled thread.
+        """
+        try:
+            suspend_stop_request=self._suspend_stop_request
+            self._suspend_stop_request=True
+            yield
+        finally:
+            self._suspend_stop_request=suspend_stop_request
+        self._check_stop_request()
 
 
     ### Overloaded methods for thread events ###
@@ -1023,24 +1045,44 @@ class QThreadController(QtCore.QObject):
 
 
 
-class QMultiRepeatingThread(QThreadController):
+class QTaskThread(QThreadController):
     """
     Thread which allows to set up and run jobs and batch jobs with a certain time period, and execute commands in the meantime.
 
-    Mostly serves as a base to a much more flexible :class:`QTaskThread` class; should rarely be considered directly.
-
     Args:
         name(str): thread name (by default, generate a new unique name)
+        args: args supplied to :meth:`setup_task` method
+        kwargs: keyword args supplied to :meth:`setup_task` method
         multicast_pool: :class:`.MulticastPool` for this thread (by default, use the default common pool)
 
+    Attributes:
+        ca: asynchronous command accessor, which makes calls more function-like;
+            ``ctl.ca.comm(*args,**kwarg)`` is equivalent to ``ctl.call_command("comm",args,kwargs,sync=False)``
+        cs: synchronous command accessor, which makes calls more function-like;
+            ``ctl.cs.comm(*args,**kwarg)`` is equivalent to ``ctl.call_command("comm",args,kwargs,sync=True)``
+        css: synchronous command accessor which is made 'exception-safe' via :func:`exsafe` wrapper (i.e., safe to directly connect to slots)
+            ``ctl.css.comm(*args,**kwarg)`` is equivalent to ``with exint(): ctl.call_command("comm",args,kwargs,sync=True)``
+        csi: synchronous command accessor which ignores and silences any exceptions (including missing /stopped controller)
+            useful for sending queries during thread finalizing / application shutdown, when it's not guaranteed that the command recipient is running
+            (commands already ignore any errors, unless their results are specifically requested);
+            useful for synchronous commands in finalizing functions, where other threads might already be stopped
+        m: method accessor; directly calls the method corresponding to the command;
+            ``ctl.m.comm(*args,**kwarg)`` is equivalent to ``ctl.call_command("comm",*args,**kwargs)``, which is often also equivalent to ``ctl.comm(*args,**kwargs)``;
+            for most practical purposes it's the same as directly invoking the class method, but it makes intent more explicit
+            (as command methods are usually not called directly from other threads), and it doesn't invoke warning about calling method instead of command from another thread.
+
     Methods to overload:
-        - ``on_start``: executed on the thread startup (between synchronization points ``"start"`` and ``"run"``)
-        - :meth:`on_finish`: executed on thread cleanup (attempts to execute in any case, including exceptions)
-        - :meth:`check_commands`: executed once a scheduling cycle to check for new commands / events and execute them
+        - :meth:`setup_task`: executed on the thread startup (between synchronization points ``"start"`` and ``"run"``)
+        - :meth:`finalize_task`: executed on thread cleanup (attempts to execute in any case, including exceptions)
     """
+    ## Action performed when another thread explicitly calls a method corresponding to a command (which is usually a typo)
+    ## Can be used to overload default behavior in children classes or instances
+    ## Can be ``"warning"``, which prints warning about this call (default),
+    ## or one of the accessor names (e.g., ``"c"`` or ``"q"``), which routes the call through this accessor
+    _direct_comm_call_action="warning"
     _new_jobs_check_period=0.02 # command refresh period if no jobs are scheduled (otherwise, after every job)
-    def __init__(self, name=None, multicast_pool=None):
-        QThreadController.__init__(self,name,kind="run",multicast_pool=multicast_pool)
+    def __init__(self, name=None, args=None, kwargs=None, multicast_pool=None):
+        super().__init__(name=name,kind="run",multicast_pool=multicast_pool)
         self.sync_period=0
         self._last_sync_time=0
         self.jobs={}
@@ -1048,7 +1090,18 @@ class QMultiRepeatingThread(QThreadController):
         self._jobs_list=[]
         self.batch_jobs={}
         self._batch_jobs_args={}
-        
+        self.args=args or []
+        self.kwargs=kwargs or {}
+        self._commands={}
+        self._sched_order=[]
+        self._multicast_schedulers={}
+        self._command_warned=set()
+        self.ca=self.CommandAccess(self,sync=False)
+        self.cs=self.CommandAccess(self,sync=True)
+        self.css=self.CommandAccess(self,sync=True,safe=True)
+        self.csi=self.CommandAccess(self,sync=True,safe=True,ignore_errors=True)
+        self.m=self.CommandAccess(self,sync=True,direct=True)
+
     ### Job handling ###
     # Called only in the controlled thread #
 
@@ -1188,15 +1241,6 @@ class QMultiRepeatingThread(QThreadController):
         if cleanup:
             cleanup(*args,**kwargs)
 
-    def check_commands(self):
-        """
-        Check for commands to execute.
-
-        Called once every scheduling cycle: after any recurrent or batch job, but at least every `self._new_jobs_check_period` seconds (by default 20ms).
-        Local method, called automatically.
-        """
-
-
     def _get_next_job(self, ct):
         if not self._jobs_list:
             return None,None
@@ -1219,6 +1263,9 @@ class QMultiRepeatingThread(QThreadController):
             self.timers[name].acknowledge(nmin=1)
         except ValueError:
             pass
+    
+    ### Start/run/stop control (called automatically) ###
+
     def run(self):
         while True:
             ct=time.time()
@@ -1243,71 +1290,21 @@ class QMultiRepeatingThread(QThreadController):
                     job()
             self.check_commands()
 
+    def on_start(self):
+        super().on_start()
+        self.setup_task(*self.args,**self.kwargs)
     def on_finish(self):
-        QThreadController.on_finish(self)
+        super().on_finish()
         for n in self.batch_jobs:
             if n in self.jobs:
                 self.stop_batch_job(n)
+        self.finalize_task()
+        for name in self._commands:
+            self._commands[name][1].clear()
 
 
+    ### Command methods ###
 
-
-
-
-class QTaskThread(QMultiRepeatingThread):
-    """
-    Thread which allows to set up and run jobs and batch jobs with a certain time period, and execute commands in the meantime.
-
-    Extension of :class:`QMultiRepeatingThread` with more powerful command scheduling and more user-friendly interface.
-
-    Args:
-        name(str): thread name (by default, generate a new unique name)
-        args: args supplied to :meth:`setup_task` method
-        kwargs: keyword args supplied to :meth:`setup_task` method
-        multicast_pool: :class:`.MulticastPool` for this thread (by default, use the default common pool)
-
-    Attributes:
-        ca: asynchronous command accessor, which makes calls more function-like;
-            ``ctl.ca.comm(*args,**kwarg)`` is equivalent to ``ctl.call_command("comm",args,kwargs,sync=False)``
-        cs: synchronous command accessor, which makes calls more function-like;
-            ``ctl.cs.comm(*args,**kwarg)`` is equivalent to ``ctl.call_command("comm",args,kwargs,sync=True)``
-        css: synchronous command accessor which is made 'exception-safe' via :func:`exsafe` wrapper (i.e., safe to directly connect to slots)
-            ``ctl.csi.comm(*args,**kwarg)`` is equivalent to ``with exint(): ctl.call_command("comm",args,kwargs,sync=True)``
-        csi: synchronous command accessor which ignores and silences any exceptions (including missing /stopped controller)
-            useful for sending queries during thread finalizing / application shutdown, when it's not guaranteed that the command recipient is running
-            (commands already ignore any errors, unless their results are specifically requested);
-            useful for synchronous commands in finalizing functions, where other threads might already be stopped
-        m: method accessor; directly calls the method corresponding to the command;
-            ``ctl.m.comm(*args,**kwarg)`` is equivalent to ``ctl.call_command("comm",*args,**kwargs)``, which is often also equivalent to ``ctl.comm(*args,**kwargs)``;
-            for most practical purposes it's the same as directly invoking the class method, but it makes intent more explicit
-            (as command methods are usually not called directly from other threads), and it doesn't invoke warning about calling method instead of command from another thread.
-
-    Methods to overload:
-        - :meth:`setup_task`: executed on the thread startup (between synchronization points ``"start"`` and ``"run"``)
-        - :meth:`finalize_task`: executed on thread cleanup (attempts to execute in any case, including exceptions)
-        - :meth:`process_multicast`: process a directed multicast (multicast with ``dst`` equal to this thread name); by default, does nothing
-    """
-    ## Action performed when another thread explicitly calls a method corresponding to a command (which is usually a typo)
-    ## Can be used to overload default behavior in children classes or instances
-    ## Can be ``"warning"``, which prints warning about this call (default),
-    ## or one of the accessor names (e.g., ``"c"`` or ``"q"``), which routes the call through this accessor
-    _direct_comm_call_action="warning"
-    def __init__(self, name=None, args=None, kwargs=None, multicast_pool=None):
-        QMultiRepeatingThread.__init__(self,name=name,multicast_pool=multicast_pool)
-        self.args=args or []
-        self.kwargs=kwargs or {}
-        self._directed_multicast.connect(self._on_directed_multicast,QtCore.Qt.QueuedConnection)
-        self._commands={}
-        self._sched_order=[]
-        self._multicast_schedulers={}
-        self._command_warned=set()
-        self.ca=self.CommandAccess(self,sync=False)
-        self.cs=self.CommandAccess(self,sync=True)
-        self.css=self.CommandAccess(self,sync=True,safe=True)
-        self.csi=self.CommandAccess(self,sync=True,safe=True,ignore_errors=True)
-        self.m=self.CommandAccess(self,sync=True,direct=True)
-
-    
     def _call_command_method(self, name, original_method, args, kwargs):
         """Call given method taking into account ``_direct_comm_call_action``"""
         if threadprop.current_controller() is not self:
@@ -1318,7 +1315,7 @@ class QTaskThread(QMultiRepeatingThread):
                             name,self.name,threadprop.current_controller().name),file=sys.stderr)
                     self._command_warned.add(name)
             else:
-                accessor=QMultiRepeatingThread.__getattribute__(self,action)
+                accessor=getattr(self,action)
                 return accessor.__getattr__(name)(*args,**kwargs)
         return original_method(*args,**kwargs)
     def _override_command_method(self, name):
@@ -1334,12 +1331,6 @@ class QTaskThread(QMultiRepeatingThread):
     def setup_task(self, *args, **kwargs):
         """
         Setup the thread (called before the main task loop).
-        
-        Local call method, called automatically.
-        """
-    def process_multicast(self, src, tag, value):
-        """
-        Process a named multicast (with `dst` equal to the thread name) from the multicast pool.
         
         Local call method, called automatically.
         """
@@ -1368,24 +1359,6 @@ class QTaskThread(QMultiRepeatingThread):
         if text:
             self.set_variable(status_str+"_text",text)
             self.send_multicast("any",status_str+"_text",text)
-
-    ### Start/stop control (called automatically) ###
-    def on_start(self):
-        QMultiRepeatingThread.on_start(self)
-        self.setup_task(*self.args,**self.kwargs)
-        self.subscribe_direct(self._recv_directed_multicast)
-    def on_finish(self):
-        QMultiRepeatingThread.on_finish(self)
-        self.finalize_task()
-        for name in self._commands:
-            self._commands[name][1].clear()
-
-    _directed_multicast=Signal(object)
-    @toploopSlot(object)
-    def _on_directed_multicast(self, msg):
-        self.process_multicast(*msg)
-    def _recv_directed_multicast(self, tag, src, value):
-        self._directed_multicast.emit((tag,src,value))
 
     ### Command control ###
     def _add_scheduler(self, scheduler, priority):
@@ -1449,6 +1422,12 @@ class QTaskThread(QMultiRepeatingThread):
             command=getattr(self,name)
         self._commands[name]=(command,"direct_sync" if error_on_async else "direct")
     def check_commands(self):
+        """
+        Check for commands to execute.
+
+        Called once every scheduling cycle: after any recurrent or batch job, but at least every `self._new_jobs_check_period` seconds (by default 20ms).
+        Local method, called automatically.
+        """
         while True:
             called=False
             for _,scheduler in self._sched_order:
@@ -1501,7 +1480,7 @@ class QTaskThread(QMultiRepeatingThread):
             return sid
 
     def unsubscribe(self, sid):
-        QMultiRepeatingThread.unsubscribe(self,sid)
+        super().unsubscribe(sid)
         if sid in self._multicast_schedulers:
             self._remover_scheduler(self._multicast_schedulers[sid])
             del self._multicast_schedulers[sid]
@@ -1590,7 +1569,7 @@ def _store_created_controller(controller):
     """
     with _running_threads_lock:
         if _running_threads_stopping:
-            raise threadprop.InterruptExceptionStop()
+            raise threadprop.InterruptExceptionStop
         name=controller.name
         if (name in _running_threads) or (name in _created_threads):
             raise threadprop.DuplicateControllerThreadError("thread with name {} already exists".format(name))
@@ -1603,7 +1582,7 @@ def _register_controller(controller):
     """
     with _running_threads_lock:
         if _running_threads_stopping:
-            raise threadprop.InterruptExceptionStop()
+            raise threadprop.InterruptExceptionStop
         name=controller.name
         if name in _running_threads:
             raise threadprop.DuplicateControllerThreadError("thread with name {} already exists".format(name))
@@ -1678,9 +1657,9 @@ def get_gui_controller(sync=False, timeout=None, create_if_missing=True):
     return gui_ctl
 
 
-def stop_controller(name, code=0, sync=True, require_controller=False):
+def stop_controller(name=None, code=0, sync=True, require_controller=False):
     """
-    Stop a controller with a given name.
+    Stop a controller with a given name (current controller by default).
 
     `code` specifies controller exit code (only applies to the main thread controller).
     If ``require_controller==True`` and the controller is not present, raise and error; otherwise, do nothing.
