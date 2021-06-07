@@ -639,22 +639,41 @@ class Countdown:
     def reset(self):
         """Restart the countdown from the current moment"""
         self.start=time.time()
-        if self.timeout is None:
-            self.end=None
-        else:
-            self.end=self.timeout+self.start
-    def time_left(self, bound_below=True):
+        self.set_timeout(self.timeout)
+    def time_left(self, t=None, bound_below=True):
         """
         Return the amount of time left. For infinite timeout, return ``None``.
         
         If ``bound_below==True``, instead of negative time return zero.
+        If `t` is supplied, it indicates the current time; otherwise, use ``time.time()``.
         """
         if self.timeout==0 or self.timeout is None:
             return self.timeout
-        dtime=self.end-time.time()
+        t=t or time.time()
+        dtime=self.end-t
         if bound_below:
             dtime=max(dtime,0.)
         return dtime
+    def add_time(self, dt, t=None, bound_below=True):
+        """
+        Add a given amount of time (positive or negative) to the start time (timeout stays the same).
+
+        If ``bound_below==True``, do not let the end time (start time plus timeout) to get below the current time.
+        If `t` is supplied, it indicates the current time; otherwise, use ``time.time()``.
+        """
+        self.start+=dt
+        if self.end is not None:
+            self.end+=dt
+            if bound_below:
+                t=t or time.time()
+                self.end=max(self.end,t)
+    def set_timeout(self, timeout):
+        """Change the timer timeout"""
+        self.timeout=timeout
+        if self.timeout is None:
+            self.end=None
+        else:
+            self.end=self.timeout+self.start
     def time_passed(self):
         """Return the amount of time passed since the countdown start/reset"""
         return time.time()-self.start

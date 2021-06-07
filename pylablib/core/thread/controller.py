@@ -9,7 +9,7 @@ import time
 import sys
 import traceback
 import heapq
-import warnings
+import collections
 
 _default_multicast_pool=mpool.MulticastPool()
 
@@ -282,7 +282,7 @@ class QThreadController(QtCore.QObject):
         while self._call_queue and self._call_queue[0][0]==self._next_execute_call_counter:
             _,call=heapq.heappop(self._call_queue)
             self._next_execute_call_counter+=1
-            call()
+            call.execute()
     _thread_call_request=Signal(object)
     @exsafeSlot(object)
     def _on_call_in_thread(self, call): # call signal processing
@@ -580,7 +580,7 @@ class QThreadController(QtCore.QObject):
 
 
     ### Managing multicast pool interaction ###
-    def subscribe_sync(self, callback, srcs="any", tags=None, dsts=None, filt=None, priority=0, limit_queue=1, call_interrupt=True, add_call_info=False, sid=None):
+    def subscribe_sync(self, callback, srcs="any", tags=None, dsts=None, filt=None, subscription_priority=0, limit_queue=1, call_interrupt=True, add_call_info=False, sid=None):
         """
         Subscribe a synchronous callback to a multicast.
 
@@ -604,15 +604,15 @@ class QThreadController(QtCore.QObject):
                 (if the multicast is sent while at least `limit_queue` callbacks are already in queue to be executed, ignore it)
                 0 or negative value means no limit (not recommended, as it can increase the queue indefinitely if the multicast rate is high enough)
             call_interrupt: whether the call is an interrupt (call inside any loop, e.g., during waiting or sleeping), or it should be called in the main event loop
-            priority(int): subscription priority (higher priority subscribers are called first).
+            subscription_priority(int): subscription priority (higher priority subscribers are called first).
             sid(int): subscription ID (by default, generate a new unique id and return it).
         """
         if self._multicast_pool:
-            sid=self._multicast_pool.subscribe_sync(callback,srcs=srcs,dsts=dsts or self.name,tags=tags,filt=filt,priority=priority,call_interrupt=call_interrupt,
+            sid=self._multicast_pool.subscribe_sync(callback,srcs=srcs,dsts=dsts or self.name,tags=tags,filt=filt,priority=subscription_priority,call_interrupt=call_interrupt,
                 limit_queue=limit_queue,add_call_info=add_call_info,dest_controller=self,sid=sid)
             self._multicast_pool_sids.append(sid)
             return sid
-    def subscribe_direct(self, callback, srcs="any", tags=None, dsts=None, filt=None, priority=0, scheduler=None, sid=None):
+    def subscribe_direct(self, callback, srcs="any", tags=None, dsts=None, filt=None, subscription_priority=0, scheduler=None, sid=None):
         """
         Subscribe asynchronous callback to a multicast.
         
@@ -631,18 +631,20 @@ class QThreadController(QtCore.QObject):
                 can be ``"any"`` (any destination) or ``"all"`` (only source specifically having ``"all"`` as a destination).
             filt(callable): additional filter function which takes 4 arguments: source, destination, tag, and value,
                 and checks whether multicast passes the requirements.
-            priority(int): subscription priority (higher priority subscribers are called first).
+            subscription_priority(int): subscription priority (higher priority subscribers are called first).
             scheduler: if defined, multicast call gets scheduled using this scheduler instead of being called directly (which is the default behavior)
             sid(int): subscription ID (by default, generate a new unique id and return it).
         """
         if self._multicast_pool:
-            sid=self._multicast_pool.subscribe_direct(callback,srcs=srcs,dsts=dsts or self.name,tags=tags,filt=filt,priority=priority,scheduler=scheduler,sid=sid)
+            sid=self._multicast_pool.subscribe_direct(callback,srcs=srcs,dsts=dsts or self.name,tags=tags,filt=filt,priority=subscription_priority,scheduler=scheduler,sid=sid)
             self._multicast_pool_sids.append(sid)
             return sid
     def unsubscribe(self, sid):
         """
         Unsubscribe from a subscription with a given ID.
         
+        Note that multicasts which are already emitted but not processed will remain in the queue;
+        if they need to be ignored, it should be handled explicitly.
         Local call method.
         """
         self._multicast_pool_sids.pop(sid)
@@ -1002,7 +1004,7 @@ class QThreadController(QtCore.QObject):
         """
         call=callsync.QScheduledCall(func,args,kwargs,result_synchronizer="async")
         if callback:
-            call.add_callback(callback,pass_result=True,call_on_fail=False)
+            call.add_callback(callback,pass_result=True,call_on_exception=False)
         self._place_call(call,tag=tag,priority=priority,interrupt=interrupt)
     def call_in_thread_sync(self, func, args=None, kwargs=None, sync=True, callback=None, timeout=None, default_result=None, pass_exception=True, tag=None, priority=0, interrupt=True, error_on_stopped=True, same_thread_shortcut=True):
         """
@@ -1027,9 +1029,9 @@ class QThreadController(QtCore.QObject):
             return res
         call=callsync.QScheduledCall(func,args,kwargs)
         if callback:
-            call.add_callback(callback,pass_result=True,call_on_fail=False)
+            call.add_callback(callback,pass_result=True,call_on_exception=False)
         if self.add_stop_notifier(call.fail):
-            call.add_callback(lambda: self.remove_stop_notifier(call.fail),call_on_fail=True,pass_result=False)
+            call.add_callback(lambda: self.remove_stop_notifier(call.fail),call_on_exception=True,pass_result=False)
         self._place_call(call,tag=tag,priority=priority,interrupt=interrupt)
         result=call.result_synchronizer
         if sync:
@@ -1058,6 +1060,8 @@ class QTaskThread(QThreadController):
     Attributes:
         ca: asynchronous command accessor, which makes calls more function-like;
             ``ctl.ca.comm(*args,**kwarg)`` is equivalent to ``ctl.call_command("comm",args,kwargs,sync=False)``
+        cad: asynchronous command accessor returning a result synchronizer, which makes calls more function-like;
+            ``ctl.cad.comm(*args,**kwarg)`` is equivalent to ``ctl.call_command("comm",args,kwargs,sync="delayed")``
         cs: synchronous command accessor, which makes calls more function-like;
             ``ctl.cs.comm(*args,**kwarg)`` is equivalent to ``ctl.call_command("comm",args,kwargs,sync=True)``
         css: synchronous command accessor which is made 'exception-safe' via :func:`exsafe` wrapper (i.e., safe to directly connect to slots)
@@ -1080,23 +1084,26 @@ class QTaskThread(QThreadController):
     ## Can be ``"warning"``, which prints warning about this call (default),
     ## or one of the accessor names (e.g., ``"c"`` or ``"q"``), which routes the call through this accessor
     _direct_comm_call_action="warning"
-    _new_jobs_check_period=0.02 # command refresh period if no jobs are scheduled (otherwise, after every job)
+    _new_jobs_check_period=.1 # maximal time to sleep in the scheduling loop if there are no pending calls
+    TBatchJob=collections.namedtuple("TBatchJob",["job","cleanup","min_run_time","priority"])
+    TCommand=collections.namedtuple("TCommand",["command","scheduler","priority"])
     def __init__(self, name=None, args=None, kwargs=None, multicast_pool=None):
         super().__init__(name=name,kind="run",multicast_pool=multicast_pool)
         self.sync_period=0
         self._last_sync_time=0
         self.jobs={}
-        self.timers={}
         self._jobs_list=[]
         self.batch_jobs={}
         self._batch_jobs_args={}
         self.args=args or []
         self.kwargs=kwargs or {}
         self._commands={}
-        self._sched_order=[]
-        self._multicast_schedulers={}
+        self._in_command_loop=False
+        self._priority_queues={}
+        self._priority_queues_order=[]
         self._command_warned=set()
         self.ca=self.CommandAccess(self,sync=False)
+        self.cad=self.CommandAccess(self,sync="delayed")
         self.cs=self.CommandAccess(self,sync=True)
         self.css=self.CommandAccess(self,sync=True,safe=True)
         self.csi=self.CommandAccess(self,sync=True,safe=True,ignore_errors=True)
@@ -1105,21 +1112,93 @@ class QTaskThread(QThreadController):
     ### Job handling ###
     # Called only in the controlled thread #
 
-    def add_job(self, name, job, period, initial_call=True):
+    class Job:
+        """
+        A single job loop.
+
+        Deals with scheduling, time counting, pausing, and cleanup.
+
+        Args:
+            job: job function
+            period: job period
+            queue: thread controller's scheduling queue, to which the jub must be added
+            jobs_order: thread controller's job queue which determines the jobs scheduling order
+        """
+        def __init__(self, job, period, queue, jobs_order):
+            self.job=job
+            self.ctd=general.Countdown(period)
+            self.queue=queue
+            self.jobs_order=jobs_order
+            self.jobs_order.append(self)
+            self.paused=False
+            self.call=None
+            self.scheduled=False
+        def schedule(self):
+            """Schedule the job"""
+            if self.scheduled:
+                raise RuntimeError("command is already scheduled")
+            self.call=self.queue.build_call(self.job,sync_result=False)
+            self.call.add_callback(self.mark_unscheduled,pass_result=False,call_on_unschedule=True)
+            self.scheduled=True
+            self.queue.schedule(self.call)
+            self.jobs_order.remove(self)
+            self.jobs_order.append(self)
+            self.ctd.add_time(self.ctd.timeout)
+        def mark_unscheduled(self):
+            """
+            Mark the job as unscheduled.
+
+            Called automatically on job completion.
+            """
+            if not self.scheduled:
+                raise RuntimeError("unscheduled command can't be marked as popped")
+            self.call=None
+            self.scheduled=False
+        def unschedule(self):
+            """Manually unschedule the job (e.g., when paused or removed)"""
+            if not self.scheduled:
+                raise RuntimeError("unscheduled command can't be unscheduled")
+            self.queue.unschedule(self.call)
+            self.call=None
+            self.scheduled=False
+        def clear(self):
+            """Clear the job and remove it from the jobs list"""
+            if self.scheduled:
+                self.unschedule()
+            self.jobs_order.remove(self)
+        def change_period(self, period):
+            """Change the job period"""
+            self.ctd.set_timeout(period)
+        def pause(self, paused=True, unschedule=True):
+            """
+            Pause or resume the job.
+
+            If pausing and ``unschedule==True``, remove already scheduled job from the queue.
+            """
+            if not self.paused and paused and unschedule:
+                self.unschedule()
+            self.paused=paused
+        def time_left(self, t=None):
+            """Get the amount of time left till the next call, or ``None`` if the job is paused"""
+            if self.paused:
+                return None
+            return self.ctd.time_left(t)
+        
+
+    def add_job(self, name, job, period, initial_call=True, priority=-10):
         """
         Add a recurrent `job` which is called every `period` seconds.
 
         The job starts running automatically when the main thread loop start executing.
         If ``initial_call==True``, call `job` once immediately after adding.
+        `priority` specifies the call priority in the scheduling queue;
+        by default, it is lower than the command and multicasts (0).
         Local call method.
         """
         if name in self.jobs:
             raise ValueError("job {} already exists".format(name))
-        self.jobs[name]=job
-        self.timers[name]=general.Timer(period)
-        self._jobs_list.append(name)
+        self.jobs[name]=self.Job(job,period,self._get_priority_queue(priority),self._jobs_list)
         if initial_call:
-            self._acknowledge_job(name)
             job()
     def change_job_period(self, name, period):
         """
@@ -1129,7 +1208,7 @@ class QTaskThread(QThreadController):
         """
         if name not in self.jobs:
             raise ValueError("job {} doesn't exists".format(name))
-        self.timers[name].change_period(period)
+        self.jobs[name].change_period(period)
     def remove_job(self, name):
         """
         Remove the job `name` from the job list.
@@ -1138,11 +1217,10 @@ class QTaskThread(QThreadController):
         """
         if name not in self.jobs:
             raise ValueError("job {} doesn't exists".format(name))
-        self._jobs_list.remove(name)
+        self.jobs[name].clear()
         del self.jobs[name]
-        del self.timers[name]
-
-    def add_batch_job(self, name, job, cleanup=None, min_runtime=0):
+        
+    def add_batch_job(self, name, job, cleanup=None, min_runtime=0, priority=-10):
         """
         Add a batch `job` which is executed once, but with continuations.
 
@@ -1157,34 +1235,38 @@ class QTaskThread(QThreadController):
         When the job is running, the generator is periodically called until it raises :exc:`StopIteration` exception, which signifies that the job is finished.
         From generator function point of view, after the job is started, the function is executed normally,
         but every time ``yield`` statement is encountered, the execution is suspended for `period` seconds (specified in :meth:`start_batch_job`).
+        `priority` specifies the call priority in the scheduling queue;
+        by default, it is lower than the command and multicasts (0).
         Local call method.
         """
         if name in self.jobs or name in self.batch_jobs:
             raise ValueError("job {} already exists".format(name))
-        self.batch_jobs[name]=(job,cleanup,min_runtime)
-    def change_batch_job_params(self, name, job=None, cleanup=None, min_runtime=None, stop=False, restart=False):
+        self.batch_jobs[name]=self.TBatchJob(job,cleanup,min_runtime,priority)
+    def change_batch_job_parameters(self, name, job="keep", cleanup="keep", min_runtime="keep", priority="keep", stop=False, restart=False):
         """
         Change parameters (main body, cleanup function, and minimal runtime) of the batch job.
 
-        The parameters are the same as for :meth:`add_batch_job`. If any of them are ``None``, don't change them.
+        The parameters are the same as for :meth:`add_batch_job`. If any of them are ``"keep"``, don't change them.
         If ``stop==True``, stop the job before changing the parameters;
         otherwise the job is continued with the previous parameters (including cleanup) until it is stopped and restarted.
         If ``restart==True``, restart the job after changing the parameters.
         Local call method.
         """
         if name not in self.batch_jobs:
-            raise ValueError("job {} doesn't exists".format(name))
-        running=self.batch_job_running(name)
+            raise ValueError("batch job {} doesn't exists".format(name))
+        running=self.is_batch_job_running(name)
         if (stop or restart) and running:
             period,args,kwargs,_=self._batch_jobs_args[name]
             self.stop_batch_job(name,error_on_stopped=False)
-        if job is None:
-            job=self.batch_jobs[name][0]
-        if cleanup is None:
-            cleanup=self.batch_jobs[name][1]
-        if min_runtime is None:
-            min_runtime=self.batch_jobs[name][2]
-        self.batch_jobs[name]=(job,cleanup,min_runtime)
+        if job=="keep":
+            job=self.batch_jobs[name].job
+        if cleanup=="keep":
+            cleanup=self.batch_jobs[name].cleanup
+        if min_runtime=="keep":
+            min_runtime=self.batch_jobs[name].min_runtime
+        if priority=="keep":
+            priority=self.batch_jobs[name].priority
+        self.batch_jobs[name]=self.TBatchJob(job,cleanup,min_runtime,priority)
         if restart and running:
             self.start_batch_job(name,period,*args,**kwargs)
     def start_batch_job(self, name, period, *args, **kwargs):
@@ -1198,7 +1280,7 @@ class QTaskThread(QThreadController):
             raise ValueError("job {} doesn't exists".format(name))
         if name in self.jobs:
             self.stop_batch_job(name)
-        job,cleanup,min_runtime=self.batch_jobs[name]
+        job,cleanup,min_runtime,priority=self.batch_jobs[name]
         self._batch_jobs_args[name]=(period,args,kwargs,cleanup)
         gen=job(*args,**kwargs)
         def do_step():
@@ -1213,8 +1295,8 @@ class QTaskThread(QThreadController):
             except StopIteration:
                 pass
             self.stop_batch_job(name)
-        self.add_job(name,do_step,period,initial_call=False)
-    def batch_job_running(self, name):
+        self.add_job(name,do_step,period,priority=priority,initial_call=False)
+    def is_batch_job_running(self, name):
         """
         Check if a given batch job running.
         
@@ -1241,54 +1323,71 @@ class QTaskThread(QThreadController):
         if cleanup:
             cleanup(*args,**kwargs)
 
-    def _get_next_job(self, ct):
-        if not self._jobs_list:
-            return None,None
-        name=None
-        left=None
-        for n in self._jobs_list:
-            t=self.timers[n]
-            l=t.time_left(ct)
-            if l==0:
-                name,left=n,0
+    def _get_priority_queue(self, priority):
+        """Get the queue with the given priority, creating one if it does not exist"""
+        if priority not in self._priority_queues:
+            q=callsync.QQueueScheduler()
+            self._priority_queues[priority]=q
+            self._priority_queues_order=[self._priority_queues[p] for p in sorted(self._priority_queues,reverse=True)]
+        return self._priority_queues[priority]
+    def _check_priority_queues(self):
+        """
+        Check all priority queues for pending calls.
+
+        If calls are available, execute the oldest highest priority call and return ``True``; otherwise, return ``False``.
+        """
+        for scheduler in self._priority_queues_order:
+            call=scheduler.pop_call()
+            if call is not None:
+                call.execute()
+                return True
+        return False
+    def _schedule_pending_jobs(self, t=None):
+        """
+        Check if there are any pending jobs and schedule them.
+
+        Return the time to wait until the next job needs to be scheduled.
+        Return time is 0 if a jos has been scheduled during that call,
+        and ``None`` if there are not jobs to schedule.
+        """
+        wait_time=None
+        t=t or time.time()
+        for job in self._jobs_list:
+            if not job.scheduled:
+                l=job.time_left(t)
+                if l is not None:
+                    if l<=0:
+                        job.schedule()
+                    wait_time=l if wait_time is None else min(wait_time,l)
+        return wait_time
+    def _exhaust_queued_calls(self):
+        """Keep extracting and executing queued calls (commands, jobs, multicasts) as long as there are any available"""
+        self._in_command_loop=True
+        while True:
+            self._schedule_pending_jobs()
+            called=self._check_priority_queues()
+            if not called:
                 break
-            elif (left is None) or (l<left):
-                name,left=n,l
-        return name,left
-    def _acknowledge_job(self, name):
-        try:
-            idx=self._jobs_list.index(name)
-            self._jobs_list.pop(idx)
-            self._jobs_list.append(name)
-            self.timers[name].acknowledge(nmin=1)
-        except ValueError:
-            pass
+            if self.sync_period<=0:
+                self.check_messages(top_loop=True)
+            else:
+                t=time.time()
+                if t>self._last_sync_time+self.sync_period:
+                    self._last_sync_time=t
+                    self.check_messages(top_loop=True)
+        self._in_command_loop=False
+        self._check_priority_queues()
     
     ### Start/run/stop control (called automatically) ###
 
     def run(self):
         while True:
             ct=time.time()
-            name,to=self._get_next_job(ct)
-            if name is None:
-                self.sleep(self._new_jobs_check_period)
-            else:
-                run_job=True
-                if (self._last_sync_time is None) or (self._last_sync_time+self.sync_period<=ct):
-                    self._last_sync_time=ct
-                    if not to:
-                        self.check_messages(top_loop=True)
-                if to:
-                    if to>self._new_jobs_check_period:
-                        run_job=False
-                        self.sleep(self._new_jobs_check_period)
-                    else:
-                        self.sleep(to)
-                if run_job:
-                    self._acknowledge_job(name)
-                    job=self.jobs[name]
-                    job()
-            self.check_commands()
+            to=self._schedule_pending_jobs(ct)
+            sleep_time=self._new_jobs_check_period if to is None else min(self._new_jobs_check_period,to)
+            if sleep_time>=0:
+                self.sleep(sleep_time,wake_on_message=True)
+            self._exhaust_queued_calls()
 
     def on_start(self):
         super().on_start()
@@ -1299,11 +1398,11 @@ class QTaskThread(QThreadController):
             if n in self.jobs:
                 self.stop_batch_job(n)
         self.finalize_task()
-        for name in self._commands:
-            self._commands[name][1].clear()
+        for q in self._priority_queues.values():
+            q.clear()
 
 
-    ### Command methods ###
+    ### Command call methods ###
 
     def _call_command_method(self, name, original_method, args, kwargs):
         """Call given method taking into account ``_direct_comm_call_action``"""
@@ -1361,17 +1460,7 @@ class QTaskThread(QThreadController):
             self.send_multicast("any",status_str+"_text",text)
 
     ### Command control ###
-    def _add_scheduler(self, scheduler, priority):
-        for i,(p,_) in enumerate(self._sched_order):
-            if p<priority:
-                self._sched_order.insert(i,(priority,scheduler))
-                return
-        self._sched_order.append((priority,scheduler))
-    def _remover_scheduler(self, scheduler):
-        for i,(_,s) in enumerate(self._sched_order):
-            if s is scheduler:
-                del scheduler[i]
-                return
+    
     def add_command(self, name, command=None, scheduler=None, limit_queue=None, on_full_queue="skip_current", priority=0):
         """
         Add a new command to the command set.
@@ -1385,20 +1474,25 @@ class QTaskThread(QThreadController):
             scheduler: a command scheduler; by default, it is a :class:`.QQueueLengthLimitScheduler`,
                 which maintains a call queue with the given length limit and full queue behavior
             limit_queue: command call queue limit; ``None`` means no limit
-            on_full_queue: call queue overflow behavior; can be ``"skip_current"`` (skip the call which is being scheduled),
-                ``"skip_newest"`` (skip the most recent call, place the current), ``"skip_oldest"`` (skip the oldest call in the queue, place the current),
-                ``"wait"`` (wait until queue has at least one free spot, place the call),
-                or ``"call"`` (execute the call directly in the calling thread; should be used with caution).
+            on_full_queue: action to be taken if the call can't be scheduled (the queue is full); can be
+                ``"skip_current"`` (skip the call which is being scheduled),
+                ``"skip_newest"`` (skip the most recent call; place the current)
+                ``"skip_oldest"`` (skip the oldest call in the queue; place the current),
+                ``"call_current"`` (execute the call which is being scheduled immediately in the caller thread),
+                ``"call_newest"`` (execute the most recent call immediately in the caller thread), 
+                ``"call_oldest"`` (execute the oldest call in the queue immediately in the caller thread), or
+                ``"wait"`` (wait until the call can be scheduled, which is checked after every call removal from the queue; place the call)
             priority: command priority; higher-priority multicasts and commands are always executed before the lower-priority ones.
         """
         if name in self._commands:
             raise ValueError("command {} already exists".format(name))
         if command is None:
             command=getattr(self,name)
-        if scheduler is None:
+        psch=self._get_priority_queue(priority)
+        if scheduler is None and limit_queue is not None:
             scheduler=callsync.QQueueLengthLimitScheduler(max_len=limit_queue or 0,on_full_queue=on_full_queue)
-        self._commands[name]=(command,scheduler)
-        self._add_scheduler(scheduler,priority)
+        multischeduler=callsync.QMultiQueueScheduler([psch] if scheduler is None else [scheduler,psch],[self._command_poke])
+        self._commands[name]=self.TCommand(command,multischeduler,priority)
         self._override_command_method(name)
         return scheduler
     def add_direct_call_command(self, name, command=None, error_on_async=True):
@@ -1420,27 +1514,9 @@ class QTaskThread(QThreadController):
             raise ValueError("command {} already exists".format(name))
         if command is None:
             command=getattr(self,name)
-        self._commands[name]=(command,"direct_sync" if error_on_async else "direct")
-    def check_commands(self):
-        """
-        Check for commands to execute.
+        self._commands[name]=self.TCommand(command,"direct_sync" if error_on_async else "direct",None)
 
-        Called once every scheduling cycle: after any recurrent or batch job, but at least every `self._new_jobs_check_period` seconds (by default 20ms).
-        Local method, called automatically.
-        """
-        while True:
-            called=False
-            for _,scheduler in self._sched_order:
-                call=scheduler.pop_call()
-                if call is not None:
-                    call()
-                    called=True
-                    break
-            if not called:
-                return
-            self.check_messages(top_loop=True)
-
-    def subscribe_commsync(self, callback, srcs="any", tags=None, dsts=None, filt=None, priority=0, scheduler=None, limit_queue=1, on_full_queue="skip_current", add_call_info=False, sid=None):
+    def subscribe_commsync(self, callback, srcs="any", tags=None, dsts=None, filt=None, subscription_priority=0, scheduler=None, limit_queue=1, on_full_queue="skip_current", priority=0, add_call_info=False, sid=None):
         """
         Subscribe a callback to a multicast which is synchronized with commands and jobs execution.
 
@@ -1457,41 +1533,41 @@ class QTaskThread(QThreadController):
                 can be ``"any"`` (any destination) or ``"all"`` (only source specifically having ``"all"`` as a destination).
             filt(callable): additional filter function which takes 4 arguments: source, destination, tag, and value,
                 and checks whether multicast passes the requirements.
-            priority(int): subscription priority (higher priority subscribers are called first).
+            subscription_priority(int): subscription priority (higher priority subscribers are called first).
             scheduler: if defined, multicast call gets scheduled using this scheduler;
                 by default, create a new call queue scheduler with the given `limit_queue`, `on_full_queue` and `add_call_info` arguments.
             limit_queue(int): limits the maximal number of scheduled calls
                 (if the multicast is sent while at least `limit_queue` callbacks are already in queue to be executed, ignore it)
                 0 or negative value means no limit (not recommended, as it can increase the queue indefinitely if the multicast rate is high enough)
-            on_full_queue: action to be taken if the call can't be scheduled (i.e., :meth:`.QQueueScheduler.can_schedule` returns ``False``);
-                can be ``"skip_current"`` (skip the call which is being scheduled), ``"skip_newest"`` (skip the most recent call; place the current)
+            on_full_queue: action to be taken if the call can't be scheduled (the queue is full); can be
+                ``"skip_current"`` (skip the call which is being scheduled),
+                ``"skip_newest"`` (skip the most recent call; place the current)
                 ``"skip_oldest"`` (skip the oldest call in the queue; place the current),
-                ``"wait"`` (wait until the call can be scheduled, which is checked after every call removal from the queue; place the call),
-                or ``"call"`` (execute the call directly in the calling thread; should be used with caution).
+                ``"call_current"`` (execute the call which is being scheduled immediately in the caller thread),
+                ``"call_newest"`` (execute the most recent call immediately in the caller thread), 
+                ``"call_oldest"`` (execute the oldest call in the queue immediately in the caller thread), or
+                ``"wait"`` (wait until the call can be scheduled, which is checked after every call removal from the queue; place the call)
             add_call_info(bool): if ``True``, add a fourth argument containing a call information (tuple with a single element, a timestamps of the call).
             sid(int): subscription ID (by default, generate a new unique id and return it).
         """
         if self._multicast_pool:
-            if scheduler is None:
+            psch=self._get_priority_queue(priority)
+            if scheduler is None and (limit_queue is not None or add_call_info):
                 scheduler=callsync.QQueueLengthLimitScheduler(max_len=limit_queue or 0,on_full_queue=on_full_queue,call_info_argname="call_info" if add_call_info else None)
-            sid=self.subscribe_direct(callback,srcs=srcs,tags=tags,dsts=dsts or self.name,filt=filt,priority=priority,scheduler=scheduler,sid=sid)
-            self._multicast_schedulers[sid]=scheduler
-            self._add_scheduler(scheduler,priority)
+            multischeduler=callsync.QMultiQueueScheduler([psch] if scheduler is None else [scheduler,psch],[self._command_poke])
+            sid=self.subscribe_direct(callback,srcs=srcs,tags=tags,dsts=dsts or self.name,filt=filt,subscription_priority=subscription_priority,scheduler=multischeduler,sid=sid)
             return sid
-
-    def unsubscribe(self, sid):
-        super().unsubscribe(sid)
-        if sid in self._multicast_schedulers:
-            self._remover_scheduler(self._multicast_schedulers[sid])
-            del self._multicast_schedulers[sid]
 
     ##########  EXTERNAL CALLS  ##########
     ## Methods to be called by functions executing in other thread ##
 
     ### Request calls ###
+    def _command_poke(self):
+        if not self._in_command_loop:
+            self.poke()
     def _schedule_comm(self, name, args, kwargs, callback=None, sync_result=True):
-        comm,sched=self._commands[name]
-        call=sched.build_call(comm,args,kwargs,callback=callback,pass_result=True,callback_on_fail=False,sync_result=sync_result)
+        comm,sched,_=self._commands[name]
+        call=sched.build_call(comm,args,kwargs,callback=callback,pass_result=True,callback_on_exception=False,sync_result=sync_result)
         sched.schedule(call)
         return call.result_synchronizer
     def call_command_direct(self, name, args=None, kwargs=None):
@@ -1500,29 +1576,35 @@ class QTaskThread(QThreadController):
 
         Universal call method.
         """
-        comm,_=self._commands[name]
+        comm=self._commands[name].command
         return comm(*(args or []),**(kwargs or {}))
     def call_command(self, name, args=None, kwargs=None, sync=False, callback=None, timeout=None, ignore_errors=False):
         """
         Invoke command call with the given name and arguments
         
         If `callback` is not ``None``, call it after the command is successfully executed (from the target thread), with a single parameter being the command result.
-        If ``sync==False``, return :class:`.QCallResultSynchronizer` object which can be used to wait for and read the command result.
         If ``sync==True``, pause caller thread execution (for at most `timeout` seconds) until the command has been executed by the target thread, and then return the command result.
+        If ``sync=="delayed"``, return :class:`.QCallResultSynchronizer` object which can be used to wait for and read the command result;
+        otherwise, return ``None``.
         In the latter case, if ``ignore_errors==True``, ignore all possible problems with the call (controller stopped, call raised an exception, call was skipped)
         and return ``None`` instead; otherwise, these problems raise exceptions in the caller thread.
         Universal call method.
         """
-        if self._commands[name][1] in {"direct","direct_sync"}:
-            if self._commands[name][1]=="direct_sync" and not sync:
+        sch=self._commands[name].scheduler
+        if sch in ["direct","direct_sync"]:
+            if sch=="direct_sync" and not sync:
                 raise RuntimeError("direct call command {} can only be called synchronously".format(name))
             value=self.call_command_direct(name,args=args,kwargs=kwargs)
-            return value if sync else callsync.QDirectResultSynchronizer(value)
-        synchronizer=self._schedule_comm(name,args,kwargs,callback=callback)
-        if sync:
-            return synchronizer.get_value_sync(timeout=timeout,error_on_fail=not ignore_errors,error_on_skip=not ignore_errors,pass_exception=not ignore_errors)
-        else:
+            if sync=="delayed":
+                return callsync.QDirectResultSynchronizer(value)
+            if sync:
+                return value
+            return None
+        synchronizer=self._schedule_comm(name,args,kwargs,callback=callback,sync_result=bool(sync))
+        if sync=="delayed":
             return synchronizer
+        elif sync:
+            return synchronizer.get_value_sync(timeout=timeout,error_on_fail=not ignore_errors,error_on_skip=not ignore_errors,pass_exception=not ignore_errors)
 
     class CommandAccess:
         """
