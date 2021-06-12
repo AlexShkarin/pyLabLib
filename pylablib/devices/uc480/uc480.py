@@ -12,7 +12,9 @@ import ctypes
 
 
 class uc480TimeoutError(uc480Error):
-    "uc480 frame timeout error"
+    """uc480 frame timeout error"""
+class uc480FrameTransferError(uc480Error):
+    """uc480 frame transfer error"""
 
 
 TCameraInfo=collections.namedtuple("TCameraInfo",["cam_id","dev_id","sens_id","model","serial_number","in_use","status"])
@@ -35,7 +37,7 @@ def find_by_serial(serial_number):
 
 
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["cam_id","model","manufacturer","serial_number","usb_version","date","dll_version","camera_type"])
-TAcquiredFramesStatus=collections.namedtuple("TAcquiredFramesStatus",["acquired","transfer_missed"])
+TAcquiredFramesStatus=collections.namedtuple("TAcquiredFramesStatus",["acquired","transfer_missed","frameskip_events"])
 TTimestamp=collections.namedtuple("TTimestamp",["year","month","day","hour","minute","second","millisecond"])
 TFrameInfo=collections.namedtuple("TFrameInfo",["frame_index","framestamp","timestamp","timestamp_dev","size","io_status","flags"])
 class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
@@ -54,6 +56,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
     """
     Error=uc480Error
     TimeoutError=uc480TimeoutError
+    FrameTransferError=uc480FrameTransferError
     _TFrameInfo=TFrameInfo
     _frameinfo_fields=general.make_flat_namedtuple(TFrameInfo,fields={"timestamp":TTimestamp,"size":camera.TFrameSize})._fields
     def __init__(self, cam_id=0, roi_binning_mode="auto", dev_id=None):
@@ -67,6 +70,10 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
             self.is_dev_id=True
         self.hcam=None
         self._buffers=None
+        self._frameskip_behavior="skip"
+        self._acq_offset=0  # offset between old and new acquired frame counter (changed when 'acquisition restart' happens)
+        self._buff_offset=0  # offset between acquired frame counter and buffer counter (changed when 'acquisition restart' happens)
+        self._frameskip_events=0
         self._acq_in_progress=False
         self.open()
         self._all_color_modes=self._check_all_color_modes()
@@ -140,15 +147,49 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         bpp=self._get_pixel_mode_settings()[0]
         self._buffers=[]
         for _ in range(n):
-            self._buffers.append(lib.is_AllocImageMem(1,frame_size[0],frame_size[1],bpp))
-            lib.is_AddToSequence(self.hcam,*self._buffers[-1])
+            self._buffers.append((lib.is_AllocImageMem(self.hcam,frame_size[0],frame_size[1],bpp),(frame_size[0],frame_size[1]),bpp))
+            lib.is_AddToSequence(self.hcam,*self._buffers[-1][0])
         return n
     def _deallocate_buffers(self):
         if self._buffers is not None:
             lib.is_ClearSequence(self.hcam)
             for b in self._buffers:
-                lib.is_FreeImageMem(self.hcam,*b)
+                lib.is_FreeImageMem(self.hcam,*b[0])
             self._buffers=None
+    def _find_buffer(self, buff):
+        baddr=[ctypes.cast(b[0][0],ctypes.c_void_p).value for b in self._buffers]
+        buffaddr=ctypes.cast(buff,ctypes.c_void_p).value
+        return baddr.index(buffaddr)
+    def _get_buffer_state(self):
+        bs=lib.is_GetActSeqBuf(self.hcam)
+        return bs[0],self._find_buffer(bs[1]),self._find_buffer(bs[2])
+    def _update_buffer_counter(self, timeout=None, skip_gap=False):
+        ctd=general.Countdown(timeout)
+        while True:
+            bs=self._get_buffer_state()
+            if bs!=(1,0,0):
+                break
+            if ctd.passed():
+                return False
+        last_acq=lib.is_CameraStatus(self.hcam,uc480_defs.CAMINFO.IS_SEQUENCE_CNT,uc480_defs.CAMINFO.IS_GET_STATUS)+self._acq_offset-1
+        last_buffer=bs[2]
+        frame_stat=self._frame_counter.get_frames_status()
+        prev_acq=frame_stat[0]
+        prev_buffer=prev_acq%frame_stat[3]
+        dbuff=(last_buffer-prev_buffer)%frame_stat[3]
+        dacq=last_acq-prev_acq
+        acq_shift=dbuff-dacq
+        self._acq_offset+=acq_shift
+        if skip_gap:
+            last_stamp=lib.is_GetImageInfo(self.hcam,self._buffers[last_buffer][0][1]).u64FrameNumber
+            prev_stamp=lib.is_GetImageInfo(self.hcam,self._buffers[prev_buffer][0][1]).u64FrameNumber
+            dstamp=last_stamp-prev_stamp
+            stamp_shift=dstamp-dbuff
+            self._acq_offset+=stamp_shift
+            self._buff_offset+=stamp_shift
+            self._frame_counter.set_first_valid_frame(self._acq_offset)
+        self._frameskip_events+=1
+        return True
 
 
     ### Generic controls ###
@@ -331,6 +372,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
     def clear_acquisition(self):
         self.stop_acquisition()
         self._deallocate_buffers()
+        self._reset_skip_counter()
         super().clear_acquisition()
     def start_acquisition(self, *args, **kwargs):
         self.stop_acquisition()
@@ -338,21 +380,51 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         lib.is_ResetCaptureStatus(self.hcam)
         lib.is_CaptureVideo(self.hcam,uc480_defs.LIVEFREEZE.IS_DONT_WAIT,check=True)
         self._acq_in_progress=True
+        self._reset_skip_counter()
         self._frame_counter.reset(self._acq_params["nframes"])
     def stop_acquisition(self):
         if self.acquisition_in_progress():
-            self._frame_counter.update_acquired_frames(self._get_acquired_frames())
+            self._frame_counter.update_acquired_frames(self._get_acquired_frames(error_on_skip=False))
             lib.is_StopLiveVideo(self.hcam,0)
             self._acq_in_progress=False
     def acquisition_in_progress(self):
         return self._acq_in_progress
+    def get_frames_status(self):
+        if self.acquisition_in_progress():
+            self._frame_counter.update_acquired_frames(self._get_acquired_frames(error_on_skip=False))
+        return self._TFramesStatus(*self._frame_counter.get_frames_status())
     def get_acquired_frame_status(self):
-        acquired=self._get_acquired_frames()
+        acquired=self._get_acquired_frames(error_on_skip=False)
         cstat=lib.is_GetCaptureStatus(self.hcam).adwCapStatusCnt_Detail
         transfer_missed=sum([cstat[i] for i in [0xa2,0xa3,0xb2,0xc7]])
-        return TAcquiredFramesStatus(acquired,transfer_missed)
-    def _get_acquired_frames(self):
-        return lib.is_CameraStatus(self.hcam,uc480_defs.CAMINFO.IS_SEQUENCE_CNT,uc480_defs.CAMINFO.IS_GET_STATUS)
+        return TAcquiredFramesStatus(acquired,transfer_missed,self._frameskip_events)
+    _p_frameskip_behavior=interface.EnumParameterClass("frameskip_behavior",["error","ignore","skip"])
+    @interface.use_parameters(behavior="frameskip_behavior")
+    def set_frameskip_behavior(self, behavior):
+        """
+        Choose the camera behavior if frame skip event is encountered when waiting for a new frame, reading frames, getting buffer status, etc.
+
+        Can be ``"error"`` (raise ``uc480FrameTransferError``), ``"ignore"`` (continue acquisition, ignore the gap),
+        or ``"skip"`` (mark some number of frames as skipped, but keep the frame counters consistent).
+        """
+        self._frameskip_behavior=behavior
+    def _reset_skip_counter(self):
+        self._acq_offset=0
+        self._buff_offset=0
+        self._frameskip_events=0
+    def _get_acquired_frames(self, error_on_skip=True):
+        acq=lib.is_CameraStatus(self.hcam,uc480_defs.CAMINFO.IS_SEQUENCE_CNT,uc480_defs.CAMINFO.IS_GET_STATUS)+self._acq_offset
+        prev_acq=self._frame_counter.get_frames_status()[0]
+        if acq<prev_acq:
+            updated=False
+            if self._frameskip_behavior in {"ignore","skip"}:
+                updated=self._update_buffer_counter(skip_gap=(self._frameskip_behavior=="skip"))
+            if updated:
+                return self._get_acquired_frames()
+            if error_on_skip:
+                raise self.FrameTransferError("acquisition restart detect: last acquired frame is {}, next acquired frame is {}".format(prev_acq,acq))
+            return prev_acq
+        return acq
 
 
     ### Image settings and transfer controls ###
@@ -510,21 +582,24 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
 
     
     _np_dtypes={8:"u1",16:"<u2",32:"<u4"}
-    def _read_buffer(self, n):
-        buff=self._buffers[n%len(self._buffers)]
-        frame_info=lib.is_GetImageInfo(self.hcam,buff[1])
-        bpp,nchan=self._get_pixel_mode_settings()
-        shape=(frame_info.dwImageHeight,frame_info.dwImageWidth)+((nchan,) if nchan>1 else ())
+    def _read_buffer(self, n, return_info=False, nchan=None):
+        buff,dim,bpp=self._buffers[(n-self._buff_offset)%len(self._buffers)]
+        frame_info=lib.is_GetImageInfo(self.hcam,buff[1]) if return_info else None
+        if nchan is None:
+            nchan=self._get_pixel_mode_settings()[1]
+        shape=dim+((nchan,) if nchan>1 else ())
         frame=np.empty(shape=shape,dtype=self._np_dtypes[bpp//nchan])
         lib.is_CopyImageMem(self.hcam,buff[0],buff[1],frame.ctypes.data)
         frame=self._convert_indexing(frame,"rct")
-        ts=frame_info.TimestampSystem
-        ts=TTimestamp(ts.wYear,ts.wMonth,ts.wDay,ts.wHour,ts.wMinute,ts.wSecond,ts.wMilliseconds)
-        size=camera.TFrameSize(frame_info.dwImageWidth,frame_info.dwImageHeight)
-        frame_info=TFrameInfo(n,frame_info.u64FrameNumber,ts,frame_info.u64TimestampDevice,size,frame_info.dwIoStatus,frame_info.dwFlags)
+        if return_info:
+            ts=frame_info.TimestampSystem
+            ts=TTimestamp(ts.wYear,ts.wMonth,ts.wDay,ts.wHour,ts.wMinute,ts.wSecond,ts.wMilliseconds)
+            size=camera.TFrameSize(frame_info.dwImageWidth,frame_info.dwImageHeight)
+            frame_info=TFrameInfo(n,frame_info.u64FrameNumber,ts,frame_info.u64TimestampDevice,size,frame_info.dwIoStatus,frame_info.dwFlags)
         return frame,self._convert_frame_info(frame_info)
     def _read_frames(self, rng, return_info=False):
-        data=[self._read_buffer(n) for n in range(rng[0],rng[1])]
+        nchan=self._get_pixel_mode_settings()[1]
+        data=[self._read_buffer(n,return_info=return_info,nchan=nchan) for n in range(rng[0],rng[1])]
         return [d[0] for d in data],[d[1] for d in data]
     def _zero_frame(self, n):
         bpp,nchan=self._get_pixel_mode_settings()

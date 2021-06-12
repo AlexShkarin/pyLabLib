@@ -1,4 +1,4 @@
-from .base import AndorError, AndorTimeoutError, AndorNotSupportedError
+from .base import AndorError, AndorTimeoutError, AndorFrameTransferError, AndorNotSupportedError
 from . import atcore_lib
 from .atcore_lib import lib, AndorSDK3LibError, feature_types, read_uint12
 
@@ -204,6 +204,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
     """
     Error=AndorError
     TimeoutError=AndorTimeoutError
+    FrameTransferError=AndorFrameTransferError
     _TFrameInfo=TFrameInfo
     _frameinfo_fields=general.make_flat_namedtuple(TFrameInfo,fields={"size":camera.TFrameSize})._fields
     def __init__(self, idx=0):
@@ -629,7 +630,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         """
         Choose the camera behavior if buffer overflow is encountered when waiting for a new frame.
 
-        Can be ``"error"`` (raise ``AndorError``), ``"restart"`` (restart the acquisition), or ``"ignore"`` (ignore the overflow, which will cause the wait to time out).
+        Can be ``"error"`` (raise ``AndorFrameTransferError``), ``"restart"`` (restart the acquisition), or ``"ignore"`` (ignore the overflow, which will cause the wait to time out).
         """
         self._overflow_behavior=behavior
 
@@ -758,7 +759,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
                 return False
             if self._overflow_behavior=="error":
                 self.stop_acquisition()
-                raise AndorError("buffer overflow")
+                raise self.FrameTransferError("buffer overflow while waiting for a new frame")
             self.start_acquisition()
             return True
         return False

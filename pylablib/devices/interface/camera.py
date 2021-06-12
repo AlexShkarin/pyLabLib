@@ -10,6 +10,10 @@ import functools
 import threading
 
 
+
+class DefaultFrameTransferError(comm_backend.DeviceError):
+    """Generic frame transfer error"""
+
 TFramesStatus=collections.namedtuple("TFramesStatus",["acquired","unread","skipped","buffer_size"])
 TFrameSize=collections.namedtuple("TFrameSize",["width","height"])
 TFramePosition=collections.namedtuple("TFramePosition",["left","top"])
@@ -26,6 +30,7 @@ class ICamera(interface.IDevice):
     _clear_pausing_acquisition=False
     Error=comm_backend.DeviceError
     TimeoutError=comm_backend.DeviceError
+    FrameTransferError=DefaultFrameTransferError
     def __init__(self):
         super().__init__()
         self._acq_params=None
@@ -290,6 +295,8 @@ class ICamera(interface.IDevice):
         """
         return list(self._frameinfo_fields)
     def _convert_frame_info(self, info, fmt=None):
+        if info is None:
+            return None
         if fmt is None:
             fmt=self._frameinfo_format
         if fmt=="namedtuple":
@@ -502,6 +509,7 @@ class FrameCounter:
         self.last_acquired_frame=-1
         self.last_wait_frame=-1
         self.last_read_frame=-1
+        self.first_valid_frame=-1
         self.skipped_frames=0
     def update_acquired_frames(self, acquired_frames):
         """Update the counter of acquired frames (needs to be called by the camera whenever necessary)"""
@@ -553,7 +561,8 @@ class FrameCounter:
             return (0,0,0,0)
         self.update_acquired_frames(acquired_frames)
         full_unread=self.last_acquired_frame-self.last_read_frame
-        unread=min(full_unread,self.buffer_size)
+        valid_chunk=max(0,min(self.buffer_size,self.last_acquired_frame-self.first_valid_frame))
+        unread=min(full_unread,valid_chunk)
         skipped=self.skipped_frames+(full_unread-unread)
         return (self.last_acquired_frame+1,unread,skipped,self.buffer_size)
 
@@ -581,7 +590,7 @@ class FrameCounter:
         rng[1]=min(rng[1],acquired_frames)
         if rng[1]<=rng[0]:
             rng=rng[0],rng[0]
-        oldest_valid_frame=self.last_acquired_frame-self.buffer_size+1
+        oldest_valid_frame=max(self.first_valid_frame,self.last_acquired_frame-self.buffer_size+1)
         if rng[1]<=oldest_valid_frame:
             return (oldest_valid_frame,oldest_valid_frame),rng[1]-rng[0]
         else:
@@ -593,6 +602,10 @@ class FrameCounter:
             return
         self.skipped_frames+=max(rng[0]-1-self.last_read_frame,0)
         self.last_read_frame=max(self.last_read_frame,rng[1]-1)
+    def set_first_valid_frame(self, first_valid_frame):
+        """Set the first valid frame; all frames older than it are considered invalid when calculating skipped frames and trimming ranges"""
+        if self.buffer_size is not None:
+            self.first_valid_frame=first_valid_frame
 
 
 
