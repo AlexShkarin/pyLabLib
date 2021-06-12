@@ -252,7 +252,7 @@ def load_csv(path=None, out_type="default", dtype="numeric", columns=None, delim
     Load data table from a CSV/table file.
 
     Args:
-        path (str): path to the file
+        path (str): path to the file of a file-like object
         out_type (str): type of the result: ``'array'`` for numpy array, ``'pandas'`` for pandas DataFrame,
             or ``'default'`` (determined by the library default; ``'pandas'`` by default)
         dtype: dtype of entries; can be either a single type, or a list of types (one per column).
@@ -282,7 +282,7 @@ def load_csv_desc(path=None, loc="file", return_file=False):
     Analogous to :func:`load_dict`, but doesn't allow any additional parameters (which don't matter in this case).
 
     Args:
-        path (str): path to the file
+        path (str): path to the file of a file-like object
         loc (str): location type (``"file"`` means the usual file location; see :func:`.location.get_location` for details)
         return_file (bool): if ``True``, return :class:`.DataFile` object (contains some metainfo); otherwise, return just the file data
     """
@@ -293,7 +293,7 @@ def load_bin(path=None, out_type="default", dtype="<f8", columns=None, packing="
     Load data from the binary file.
 
     Args:
-        path (str): path to the file
+        path (str): path to the file of a file-like object
         out_type (str): type of the result: ``'array'`` for numpy array, ``'pandas'`` for pandas DataFrame,
             or ``'default'`` (determined by the library default; ``'pandas'`` by default)
         dtype: :class:`numpy.dtype` describing the data.
@@ -320,7 +320,7 @@ def load_bin_desc(path=None, loc="file", return_file=False):
     Analogous to :func:`load_dict`, but doesn't allow any additional parameters (which don't matter in this case).
 
     Args:
-        path (str): path to the file
+        path (str): path to the file of a file-like object
         loc (str): location type (``"file"`` means the usual file location; see :func:`.location.get_location` for details)
         return_file (bool): if ``True``, return :class:`.DataFile` object (contains some metainfo); otherwise, return just the file data
     """
@@ -331,7 +331,7 @@ def load_dict(path=None, case_normalization=None, inline_dtype="generic", entry_
     Load data from the dictionary file.
 
     Args:
-        path (str): path to the file
+        path (str): path to the file of a file-like object
         case_normalization (str): If ``None``, the dictionary paths are case-sensitive;
             otherwise, defines the way the entries are normalized (``'lower'`` or ``'upper'``).
         inline_dtype (str): dtype for inlined tables.
@@ -364,7 +364,7 @@ def load_generic(path=None, file_format=None, loc="file", return_file=False, **k
     Load data from the file.
     
     Args:
-        path (str): path to the file
+        path (str): path to the file of a file-like object
         file_format (str): input file format; if ``None``, attempt to auto-detect file format (same as ``'generic'``);
             can also be an :class:`IInputFileFormat` instance for specific reading method
         loc (str): location type (``"file"`` means the usual file location; see :func:`.location.get_location` for details)

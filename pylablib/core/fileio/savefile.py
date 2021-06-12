@@ -328,7 +328,7 @@ def save_csv(data, path, delimiters="\t", value_formats=None, use_rep_classes=Fa
     
     Args:
         data: Data to be saved (2D numpy array, pandas DataFrame, or a :class:`.datafile.DataFile` object containing this data).
-        path (str): Path to the file.
+        path (str): Path to the file or a file-like object.
         delimiters (str): Used to separate entries in a row.
         value_formats (str): If not ``None``, defines value formats to be passed to :func:`.utils.string.to_string` function.
         use_rep_classes (bool): If ``True``, use representation classes for Dictionary entries (e.g., numpy arrays will be represented as ``"array([1, 2, 3])"`` instead of just ``"[1, 2, 3]"``);
@@ -352,7 +352,7 @@ def save_csv_desc(data, path, loc="file"):
     
     Args:
         data: Data to be saved (2D numpy array, pandas DataFrame, or a :class:`.datafile.DataFile` object containing this data).
-        path (str): Path to the file.
+        path (str): Path to the file or a file-like object.
         loc (str): Location type.
     """
     data,output_format=get_output_format(data,"csv_desc")
@@ -365,7 +365,7 @@ def save_bin(data, path, dtype=None, transposed=False, loc="file"):
     
     Args:
         data: Data to be saved (2D numpy array, pandas DataFrame, or a :class:`.datafile.DataFile` object containing this data).
-        path (str): Path to the file.
+        path (str): Path to the file or a file-like object.
         dtype: :class:`numpy.dtype` describing the data. By default, use little-endian (``"<"``) variant kind of the supplied data array dtype.
         transposed (bool): If ``False``, write the data row-wise; otherwise, write it column-wise.
         loc (str): Location type.
@@ -380,7 +380,7 @@ def save_bin_desc(data, path, loc="file"):
     
     Args:
         data: Data to be saved (2D numpy array, pandas DataFrame, or a :class:`.datafile.DataFile` object containing this data).
-        path (str): Path to the file.
+        path (str): Path to the file or a file-like object.
         loc (str): Location type.
     """
     data,output_format=get_output_format(data,"bin_desc")
@@ -393,7 +393,7 @@ def save_dict(data, path, param_formats=None, use_rep_classes=False, table_forma
     
     Args:
         data: Data to be saved.
-        path (str): Path to the file.
+        path (str): Path to the file or a file-like object.
         param_formats (str): If not ``None``, defines value formats to be passed to :func:`.utils.string.to_string` function when writing Dictionary entries.
         use_rep_classes (bool): If ``True``, use representation classes for Dictionary entries (e.g., numpy arrays will be represented as ``"array([1, 2, 3])"`` instead of just ``"[1, 2, 3]"``);
             This improves storage fidelity, but makes result harder to parse (e.g., by external string parsers).
@@ -417,13 +417,13 @@ def save_dict(data, path, param_formats=None, use_rep_classes=False, table_forma
 
 
 
-def save_generic(data, path="", output_format=None, loc="file", **kwargs):
+def save_generic(data, path, output_format=None, loc="file", **kwargs):
     """
     Save data to a file.
     
     Args:
         data: Data to be saved.
-        path (str): Path to the file.
+        path (str): Path to the file or a file-like object.
         output_format (str): Output file format. Can be either
             ``None`` (defaults to ``'csv'`` for table data and ``'dict'`` for Dictionary data),
             a string with one of the default format names, or 

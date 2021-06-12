@@ -339,6 +339,9 @@ class ImagePlotter(QLayoutManagedWidget):
         although race conditions on simultaneous calls from multiple threads still might happen).
         """
         if self.do_image_update or self.single_armed:
+            img=np.asarray(img)
+            if img.ndim!=2 or (img.ndim==3 and img.shape[2] not in (3,4)):
+                raise ValueError("only 2D images or 3D images with 3 or 4 color channels are allowed; got image with the shape {}".format(img.shape))
             self.img=img
             self.single_armed=False
             self.single_acquired=True

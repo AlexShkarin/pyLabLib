@@ -540,6 +540,10 @@ class UIDGenerator:
             self._lock=threading.Lock()
         else:
             self._lock=DummyResource()
+    def reset(self, value=0):
+        """Reset the generator to the given value"""
+        with self._lock:
+            self._value=value
     def __call__(self, inc=True):
         """
         Return a new unique numeric ID.
@@ -547,9 +551,10 @@ class UIDGenerator:
         If ``inc==False``, don't increase the internal counter (the next call will return the same ID). 
         """
         with self._lock:
+            value=self._value
             if inc:
                 self._value=self._value+1
-            return self._value
+            return value
             
 class NamedUIDGenerator:
     """

@@ -7,6 +7,7 @@ Classes for describing a generic file location.
 from ..utils import files as file_utils
 from ..utils import dictionary
 
+import io
 import os
 
 
@@ -231,6 +232,44 @@ class IDataLocation:
         """Get a dictionary ``{string_name: location_file}`` of all files opened in this location"""
         raise NotImplementedError("IDataLocation.get_open_files")
     
+class OpenedFileLocation:
+    """
+    File location which corresponds to an already opened file.
+    """
+    def __init__(self, f, open_error=False, check_mode=False, check_data_type=True):
+        super().__init__()
+        self.f=f
+        self.open_error=open_error
+        self.check_mode=check_mode
+        self.check_data_type=check_data_type
+        self.mode,self.data_type=_default_file_modes[f.mode]
+    def _check_name(self, name):
+        name=LocationName.from_object(name)
+        if name.path is not None or name.ext is not None:
+            raise ValueError("OpenedFileLocation can only use default path")
+    def is_free(self, name=None):
+        self._check_name(name)
+        return False
+    def generate_new_name(self, prefix_name, idx=0):
+        raise RuntimeError("OpenedFileLocation can not generate new file names")
+    
+    def open(self, name=None, mode="read", data_type="text"):
+        self._check_name(name)
+        if self.open_error:
+            raise IOError("OpenedFileLocation can not be opened")
+        mode,data_type=_default_file_modes.get(mode,(mode,data_type))
+        if self.check_mode and self.mode!=mode:
+            raise IOError("opened mode '{}' is different from the requested mode '{}'".format(self.mode,mode))
+        if self.check_data_type and self.data_type!=data_type:
+            raise IOError("opened data type '{}' is different from the requested data type '{}'".format(self.data_type,data_type))
+        return self.f
+    def close(self, name):
+        self._check_name(name)
+        if self.open_error:
+            raise IOError("OpenedFileLocation can not be closed")
+    def list_opened_files(self):
+        raise IOError("OpenedFileLocation can not hold a list of opened files")
+    
 
 
 class IFileSystemDataLocation(IDataLocation):
@@ -427,6 +466,8 @@ def get_location(path, loc, *args, **kwargs):
         return loc
     elif isinstance(path,IDataLocation):
         return path
+    elif isinstance(path,io.IOBase) and loc in ["file","single_file","prefixed_file"]:
+        return OpenedFileLocation(path)
     elif loc=="single_file":
         return SingleFileSystemDataLocation(path,*args,**kwargs)
     elif loc=="file" or loc=="prefixed_file":
