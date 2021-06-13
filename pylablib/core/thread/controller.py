@@ -1,4 +1,4 @@
-from ..utils import general, funcargparse, dictionary, functions as func_utils
+from ..utils import general, funcargparse, dictionary, functions as func_utils, py3
 from . import multicast_pool as mpool, threadprop, synchronizing, callsync
 
 from ..gui import QtCore, Slot, Signal
@@ -334,6 +334,7 @@ class QThreadController(QtCore.QObject):
     def _on_finish_event(self):
         with self._lifetime_state_lock:
             self._lifetime_state="finishing"
+        self.notify_exec_point("cleanup")
         self._stop_requested=False
         self.finished.emit()
         try:
@@ -669,12 +670,13 @@ class QThreadController(QtCore.QObject):
 
     ### Variable management ###
     _variable_change_tag="#sync.wait.variable"
-    def set_variable(self, name, value, notify=False, notify_tag="changed/*"):
+    def set_variable(self, name, value, update=False, notify=False, notify_tag="changed/*"):
         """
         Set thread variable.
 
         Can be called in any thread (controlled or external).
         If ``notify==True``, send an multicast with the given `notify_tag` (where ``"*"`` symbol is replaced by the variable name).
+        If ``update==True`` and the value is a dictionary, update the branch rather than overwrite it.
         Local call method.
         """
         split_name=tuple(dictionary.normalize_path(name))
@@ -682,7 +684,10 @@ class QThreadController(QtCore.QObject):
         with self._params_val_lock:
             if name in self._params_funcs:
                 del self._params_funcs[name]
-            self._params_val.add_entry(name,value,force=True)
+            if update:
+                self._params_val.merge(name,value)
+            else:
+                self._params_val.add_entry(name,value,force=True)
             for exp_name in self._params_exp:
                 if exp_name==split_name[:len(exp_name)] or split_name==exp_name[:len(split_name)]:
                     notify_list.append((self._params_val[exp_name],self._params_exp[exp_name]))
@@ -911,7 +916,8 @@ class QThreadController(QtCore.QObject):
         """
         Mark the given execution point as passed.
         
-        Automatically invoked points include ``"start"`` (thread starting), ``"run"`` (thread setup and ready to run), and ``"stop"`` (thread finished).
+        Automatically invoked points include ``"start"`` (thread starting), ``"run"`` (thread setup and ready to run),
+        ``"cleanup"`` (thread stopping is invoked, starting to clean up) and ``"stop"`` (thread finished).
         Can be extended for arbitrary points.
         Local call method.
         """
@@ -921,7 +927,7 @@ class QThreadController(QtCore.QObject):
         Mark the given execution point as failed.
         
         Automatically invoked for ``"run"`` (thread setup and ready to run) if the startup raised an error before the thread properly started
-        (``"start"`` and ``"stop"`` are notified in any case)
+        (``"start"``, ``"cleanup"``, and ``"stop"`` are notified in any case)
         Can be extended for arbitrary points.
         Local call method.
         """
@@ -938,7 +944,8 @@ class QThreadController(QtCore.QObject):
         """
         Wait for the given execution point.
         
-        Automatically invoked points include ``"start"`` (thread starting), ``"run"`` (thread setup and ready to run), and ``"stop"`` (thread finished).
+        Automatically invoked points include ``"start"`` (thread starting), ``"run"`` (thread setup and ready to run),
+        ``"cleanup"`` (thread stopping is invoked, starting to clean up) and ``"stop"`` (thread finished).
         If timeout is passed, raise :exc:`.threadprop.TimeoutThreadError`.
         `counter` specifies the minimal number of pre-requisite :meth:`notify_exec_point` calls to finish the waiting (by default, a single call is enough).
         Return actual number of notifier calls up to date.
@@ -1095,12 +1102,14 @@ class QTaskThread(QThreadController):
         self._jobs_list=[]
         self.batch_jobs={}
         self._batch_jobs_args={}
+        self._batch_jobs_namegen=general.NamedUIDGenerator()
         self.args=args or []
         self.kwargs=kwargs or {}
         self._commands={}
         self._in_command_loop=False
         self._priority_queues={}
         self._priority_queues_order=[]
+        self._priority_queues_lock=threading.Lock()
         self._command_warned=set()
         self.ca=self.CommandAccess(self,sync=False)
         self.cad=self.CommandAccess(self,sync="delayed")
@@ -1136,7 +1145,7 @@ class QTaskThread(QThreadController):
         def schedule(self):
             """Schedule the job"""
             if self.scheduled:
-                raise RuntimeError("command is already scheduled")
+                raise RuntimeError("job is already scheduled")
             self.call=self.queue.build_call(self.job,sync_result=False)
             self.call.add_callback(self.mark_unscheduled,pass_result=False,call_on_unschedule=True)
             self.scheduled=True
@@ -1150,15 +1159,12 @@ class QTaskThread(QThreadController):
 
             Called automatically on job completion.
             """
-            if not self.scheduled:
-                raise RuntimeError("unscheduled command can't be marked as popped")
             self.call=None
             self.scheduled=False
         def unschedule(self):
             """Manually unschedule the job (e.g., when paused or removed)"""
             if not self.scheduled:
-                raise RuntimeError("unscheduled command can't be unscheduled")
-            self.queue.unschedule(self.call)
+                raise RuntimeError("unscheduled job can't be unscheduled")
             self.call=None
             self.scheduled=False
         def clear(self):
@@ -1269,6 +1275,14 @@ class QTaskThread(QThreadController):
         self.batch_jobs[name]=self.TBatchJob(job,cleanup,min_runtime,priority)
         if restart and running:
             self.start_batch_job(name,period,*args,**kwargs)
+    def remove_batch_job(self, name):
+        """
+        Remove the batch job `name`, stopping it if necessary.
+        
+        Local call method.
+        """
+        self.stop_batch_job(name)
+        del self.batch_jobs[name]
     def start_batch_job(self, name, period, *args, **kwargs):
         """
         Start the batch job with the given name.
@@ -1316,19 +1330,55 @@ class QTaskThread(QThreadController):
             raise ValueError("job {} doesn't exists".format(name))
         if name not in self.jobs:
             if error_on_stopped:
-                raise ValueError("job {} doesn't exists".format(name))
+                raise ValueError("job {} is not running".format(name))
             return
         self.remove_job(name)
         _,args,kwargs,cleanup=self._batch_jobs_args.pop(name)
         if cleanup:
             cleanup(*args,**kwargs)
+    def restart_batch_job(self, name, error_on_stopped=False):
+        """
+        Restart the running batch job with its current arguments.
+
+        If ``error_on_stopped==True`` and the job is not currently running, raise an error. Otherwise, do nothing.
+        Local call method.
+        """
+        period,args,kwargs,_=self._batch_jobs_args[name]
+        self.stop_batch_job(name,error_on_stopped=error_on_stopped)
+        self.start_batch_job(name,period,*args,**kwargs)
+    def run_as_batch_job(self, job, period, cleanup=None, name=None, priority=-10, args=None, kwargs=None):
+        """
+        Create a temporarily batch job and immediately run it.
+
+        If `name` is ``None``, generate a new unique name.
+        The job is removed after it is complete (i.e., after cleanup).
+        Note that this implies, that it can not be restarted using :meth:`restart_batch_job`, as it will be removed after the stopping before the restart.
+        All the parameters are the same as for :meth:`add_batch_job` and :meth:`start_batch_job`.
+        Return the batch job name (either supplied or newly generated).
+        """
+        if name is None:
+            while True:
+                name=self._batch_jobs_namegen("temp_job")
+                if name not in self.batch_jobs:
+                    break
+        if cleanup is None:
+            def full_cleanup(*args, **kwargs):  # pylint: disable=unused-argument
+                self.remove_batch_job(name)
+        else:
+            def full_cleanup(*args, **kwargs):
+                cleanup(*args,**kwargs)
+                self.remove_batch_job(name)
+        self.add_batch_job(name,job,cleanup=full_cleanup,priority=priority)
+        self.start_batch_job(name,period,*(args or []),**(kwargs or {}))
+        return name
 
     def _get_priority_queue(self, priority):
         """Get the queue with the given priority, creating one if it does not exist"""
         if priority not in self._priority_queues:
-            q=callsync.QQueueScheduler()
-            self._priority_queues[priority]=q
-            self._priority_queues_order=[self._priority_queues[p] for p in sorted(self._priority_queues,reverse=True)]
+            with self._priority_queues_lock:
+                q=callsync.QQueueScheduler()
+                self._priority_queues[priority]=q
+                self._priority_queues_order=[self._priority_queues[p] for p in sorted(self._priority_queues,reverse=True)]
         return self._priority_queues[priority]
     def _check_priority_queues(self):
         """
@@ -1391,6 +1441,19 @@ class QTaskThread(QThreadController):
 
     def on_start(self):
         super().on_start()
+        self.add_command("add_job",priority=10)
+        self.add_command("change_job_period",priority=10)
+        self.add_command("remove_job",priority=10)
+        self.add_command("add_batch_job",priority=10)
+        self.add_command("change_batch_job_parameters",priority=10)
+        self.add_command("remove_batch_job",priority=10)
+        self.add_command("start_batch_job",priority=10)
+        self.add_command("is_batch_job_running",priority=10)
+        self.add_command("stop_batch_job",priority=10)
+        self.add_command("restart_batch_job",priority=10)
+        self.add_command("run_as_batch_job",priority=10)
+        self.add_command("add_command",priority=10)
+        self.add_command("subscribe_commsync",priority=10)
         self.setup_task(*self.args,**self.kwargs)
     def on_finish(self):
         super().on_finish()
@@ -1406,7 +1469,7 @@ class QTaskThread(QThreadController):
 
     def _call_command_method(self, name, original_method, args, kwargs):
         """Call given method taking into account ``_direct_comm_call_action``"""
-        if threadprop.current_controller() is not self:
+        if not self.is_in_controlled():
             action=self._direct_comm_call_action
             if action=="warning":
                 if name not in self._command_warned:
@@ -1472,7 +1535,9 @@ class QTaskThread(QThreadController):
             name: command name
             command: command function; if ``None``, look for the method with the given `name`.
             scheduler: a command scheduler; by default, it is a :class:`.QQueueLengthLimitScheduler`,
-                which maintains a call queue with the given length limit and full queue behavior
+                which maintains a call queue with the given length limit and full queue behavior;
+                can also be a name of a different command, with which it will share a single queue with the same limitations;
+                if supplied, `limit_queue` and `on_full_queue` parameters are ignored
             limit_queue: command call queue limit; ``None`` means no limit
             on_full_queue: action to be taken if the call can't be scheduled (the queue is full); can be
                 ``"skip_current"`` (skip the call which is being scheduled),
@@ -1491,6 +1556,9 @@ class QTaskThread(QThreadController):
         psch=self._get_priority_queue(priority)
         if scheduler is None and limit_queue is not None:
             scheduler=callsync.QQueueLengthLimitScheduler(max_len=limit_queue or 0,on_full_queue=on_full_queue)
+        elif isinstance(scheduler,py3.textstring):
+            multischeduler=self._commands[scheduler].scheduler
+            scheduler=multischeduler.schedulers[0]
         multischeduler=callsync.QMultiQueueScheduler([psch] if scheduler is None else [scheduler,psch],[self._command_poke])
         self._commands[name]=self.TCommand(command,multischeduler,priority)
         self._override_command_method(name)
@@ -1586,7 +1654,7 @@ class QTaskThread(QThreadController):
         If ``sync==True``, pause caller thread execution (for at most `timeout` seconds) until the command has been executed by the target thread, and then return the command result.
         If ``sync=="delayed"``, return :class:`.QCallResultSynchronizer` object which can be used to wait for and read the command result;
         otherwise, return ``None``.
-        In the latter case, if ``ignore_errors==True``, ignore all possible problems with the call (controller stopped, call raised an exception, call was skipped)
+        In the ``sync==True`` case, if ``ignore_errors==True``, ignore all possible problems with the call (controller stopped, call raised an exception, call was skipped)
         and return ``None`` instead; otherwise, these problems raise exceptions in the caller thread.
         Universal call method.
         """
@@ -1601,6 +1669,37 @@ class QTaskThread(QThreadController):
                 return value
             return None
         synchronizer=self._schedule_comm(name,args,kwargs,callback=callback,sync_result=bool(sync))
+        if sync=="delayed":
+            return synchronizer
+        elif sync:
+            return synchronizer.get_value_sync(timeout=timeout,error_on_fail=not ignore_errors,error_on_skip=not ignore_errors,pass_exception=not ignore_errors)
+    def call_in_thread_commsync(self, func, args=None, kwargs=None, sync=True, timeout=None, priority=0, ignore_errors=False, same_thread_shortcut=True):
+        """
+        Call a function in this thread such that it is synchronous with other commands, and jobs.
+
+        Mostly equivalent to calling a command, only the command function is supplied instead of its name, and the advanced scheduling
+        (maximal schedule size, sharing with different commands, etc.) is not used.
+        `args` and `kwargs` specify the function arguments.
+        If ``sync==True``, pause caller thread execution (for at most `timeout` seconds) until the command has been executed by the target thread, and then return the command result.
+        If ``sync=="delayed"``, return :class:`.QCallResultSynchronizer` object which can be used to wait for and read the command result;
+        otherwise, return ``None``.
+        `priority` sets the call priority (by default, the same as the standard commands).
+        In the ``sync==True`` case, if ``ignore_errors==True``, ignore all possible problems with the call (controller stopped, call raised an exception, call was skipped)
+        and return ``None`` instead; otherwise, these problems raise exceptions in the caller thread.
+        If ``same_thread_shortcut==True`` (default) and the caller thread is the same as the controlled thread, call the function directly.
+        Universal call method.
+        """
+        if same_thread_shortcut and self.is_in_controlled():
+            value=func(*(args or []),**(kwargs or {}))
+            if sync=="delayed":
+                return callsync.QDirectResultSynchronizer(value)
+            if sync:
+                return value
+            return None
+        sched=self._get_priority_queue(priority)
+        call=sched.build_call(func,args,kwargs,pass_result=True,callback_on_exception=False,sync_result=bool(sync))
+        sched.schedule(call)
+        synchronizer=call.result_synchronizer
         if sync=="delayed":
             return synchronizer
         elif sync:

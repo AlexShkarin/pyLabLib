@@ -398,7 +398,7 @@ class QQueueScheduler(QScheduler):
         Designed for joint queue operation, so the call is not notified (assume that it has been already notified elsewhere).
         """
         if call in self._last_popped:
-            return
+            return False
         with self.lock:
             try:
                 idx=self.call_queue.index(call)
@@ -406,8 +406,9 @@ class QQueueScheduler(QScheduler):
                 if self.call_popped_notifier is not None:
                     self.call_popped_notifier.notify()
                 self.call_popped(call,idx)
+                return True
             except ValueError:
-                pass
+                return False
     def has_calls(self):
         """Check if there are queued calls"""
         return bool(self.call_queue)
