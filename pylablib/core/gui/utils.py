@@ -62,12 +62,13 @@ def get_first_empty_row(layout, start_row=0):
         if is_layout_row_empty(layout,r):
             return r
     return layout.rowCount()
-def insert_layout_row(layout, row, compress=False):
+def insert_layout_row(layout, row, stretch=0, compress=False):
     """
     Insert row in a grid layout at a given index.
 
     Any multi-column item spanning over the row (i.e., starting at least one row before `row` and ending at least one row after `row`) gets stretched.
     Anything else either stays in place (if it's above `row`), or gets moved one row down.
+    `stretch` determines the stretch factor of the new row.
     If ``compress==True``, try to find an empty row below the inserted position and shit it to the new row's place;
     otherwise, add a completely new row.
     """
@@ -83,6 +84,9 @@ def insert_layout_row(layout, row, compress=False):
         for i,p in items_to_shift:
             row_shift=1 if p[0]>=row else 0
             layout.addItem(i,p[0]+row_shift,p[1],p[2]+(1-row_shift),p[3])
+        for r in range(free_row,row,-1):
+            layout.setRowStretch(r,layout.rowStretch(r-1))
+        layout.setRowStretch(row,stretch)
 
 
 def is_layout_column_empty(layout, col):
@@ -111,12 +115,13 @@ def get_first_empty_column(layout, start_col=0):
         if is_layout_column_empty(layout,c):
             return c
     return layout.colCount()
-def insert_layout_column(layout, col, compress=False):
+def insert_layout_column(layout, col, stretch=0, compress=False):
     """
     Insert column in a grid layout at a given index.
 
     Any multi-row item spanning over the column (i.e., starting at least one column before `col` and ending at least one column after `col`) gets stretched.
     Anything else either stays in place (if it's above `col`), or gets moved one column to the right.
+    `stretch` determines the stretch factor of the new column.
     If ``compress==True``, try to find an empty column below the inserted position and shit it to the new column's place;
     otherwise, add a completely new column.
     """
@@ -132,6 +137,9 @@ def insert_layout_column(layout, col, compress=False):
         for i,p in items_to_shift:
             col_shift=1 if p[0]>=col else 0
             layout.addItem(i,p[0],p[1]+col_shift,p[2],p[3]+(1-col_shift))
+        for c in range(free_col,col,-1):
+            layout.setColumnsStretch(c,layout.columnStretch(c-1))
+        layout.setColumnsStretch(col,stretch)
 
 
 def compress_grid_layout(layout):

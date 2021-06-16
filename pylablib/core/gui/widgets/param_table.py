@@ -1,5 +1,5 @@
 from . import edit, label as widget_label, combo_box, button as widget_button
-from . import layout_manager
+from . import container
 from ...thread import threadprop, controller
 from .. import value_handling
 from ...utils import py3, dictionary
@@ -10,7 +10,7 @@ import collections
 import contextlib
 
 
-class ParamTable(layout_manager.QLayoutManagedWidget):
+class ParamTable(container.QWidgetContainer):
     """
     GUI parameter table.
     
@@ -43,10 +43,8 @@ class ParamTable(layout_manager.QLayoutManagedWidget):
         parent: parent widget
     """
     def __init__(self, parent=None, name=None):
-        super().__init__(parent)
-        self.name=None
-        self.setup_name(name)
         self.params={}
+        super().__init__(parent,name=name)
         self.h=dictionary.ItemAccessor(self.get_handler)
         self.w=dictionary.ItemAccessor(self.get_widget)
         self.wv=dictionary.ItemAccessor(self.get_value,self.set_value)
@@ -54,7 +52,6 @@ class ParamTable(layout_manager.QLayoutManagedWidget):
         self.cv=dictionary.ItemAccessor(lambda name: self.current_values[name],self.set_value)
         self.i=dictionary.ItemAccessor(self.get_indicator,self.set_indicator)
         self.vs=dictionary.ItemAccessor(self.get_value_changed_signal)
-        self.setup_gui_values("new")
     def _make_new_layout(self, kind, *args, **kwargs):
         layout=super()._make_new_layout(kind,*args,**kwargs)
         if kind=="grid":
@@ -64,18 +61,10 @@ class ParamTable(layout_manager.QLayoutManagedWidget):
         super()._set_main_layout()
         self.main_layout.setContentsMargins(5,5,5,5)
         self.main_layout.setColumnStretch(1,1)
-    def setup_gui_values(self, gui_values=None, gui_values_path=""):
+    def setup_gui_values(self, gui_values="new", gui_values_path=""):
         if self.params:
-            raise RuntimeError("can not change gui values after widgets have been added")
-        if gui_values is not None:
-            if gui_values_path is None:
-                gui_values_path=self.name
-            self.gui_values,self.gui_values_path=value_handling.get_gui_values(gui_values,gui_values_path)
-    def setup_name(self, name):
-        """Set the table's name"""
-        if name is not None:
-            self.name=name
-            self.setObjectName(name)
+            raise RuntimeError("can not change gui values after parameter widgets have been added")
+        super().setup_gui_values(gui_values=gui_values,gui_values_path=gui_values_path)
     def setup(self, name=None, add_indicator=True, gui_values=None, gui_values_path="", gui_thread_safe=False, cache_values=False, change_focused_control=False):
         """
         Setup the table.
@@ -97,11 +86,8 @@ class ParamTable(layout_manager.QLayoutManagedWidget):
             change_focused_control (bool): if ``False`` and :meth:`set_value` method is called while the widget has user focus, ignore the value;
                 note that :meth:`set_all_values` will still set the widget value.
         """
-        super().setup()
-        if self.name is None:
-            self.setup_name(name)
+        super().setup(name=name,layout="grid",gui_values=gui_values,gui_values_path=gui_values_path)
         self.add_indicator=add_indicator
-        self.setup_gui_values(gui_values=gui_values,gui_values_path=gui_values_path)
         self.gui_thread_safe=gui_thread_safe
         self.change_focused_control=change_focused_control
         self.cache_values=cache_values
@@ -117,14 +103,33 @@ class ParamTable(layout_manager.QLayoutManagedWidget):
             else:
                 self.current_values[name]=self.get_value(name)
 
-    def add_sublayout(self, name, kind="grid", location=("next",0,1,2)):
+    def add_sublayout(self, name, kind="grid", location=("next",0,1,"end")):
         return super().add_sublayout(name,kind=kind,location=location)
     @contextlib.contextmanager
-    def using_new_sublayout(self, name, kind="grid", location=("next",0,1,2)):
+    def using_new_sublayout(self, name, kind="grid", location=("next",0,1,"end")):
         with super().using_new_sublayout(name,kind=kind,location=location):
             yield
 
+    def pad_borders(self, kind="both", stretch=0):
+        """
+        Add expandable paddings on the bottom and/or right border.
+
+        `kind` can be ``"bottom"``, ``"right"``, ``"both"``, or ``"none"`` (do nothing).
+        Note that if more elements are added, they will be placed after the padding, so the table will be padded in the middle.
+        """
+        if kind in ["bottom","both"]:
+            self.add_padding("vertical",location=("next",0),stretch=stretch)
+        if kind in ["right","both"]:
+            self.add_padding("horizontal",location=(0,"next"),stretch=stretch)
+
+    def add_frame(self, name, layout="vbox", location=("next",0,1,"end"), gui_values_path=True, no_margins=True):
+        return super().add_frame(name,layout=layout,location=location,gui_values_path=gui_values_path,no_margins=no_margins)
+    def add_group_box(self, name, caption, layout="vbox", location=("next",0,1,"end"), gui_values_path=True, no_margins=True):
+        return super().add_group_box(name,caption,layout=layout,location=location,gui_values_path=gui_values_path,no_margins=no_margins)
+
     def _normalize_name(self, name):
+        if isinstance(name,tuple):
+            name=dictionary.normalize_path(name)
         if isinstance(name,(list,tuple)):
             return "/".join(name)
         return name
@@ -132,6 +137,8 @@ class ParamTable(layout_manager.QLayoutManagedWidget):
     def _add_widget(self, name, params, add_change_event=True):
         name=self._normalize_name(name)
         self.params[name]=params
+        if params.widget is not None:
+            self.add_child(name,params.widget,location="skip",gui_values_path=False)
         path=(self.gui_values_path,name)
         self.gui_values.add_handler(path,params.value_handler)
         if params.indicator_handler:
@@ -246,7 +253,7 @@ class ParamTable(layout_manager.QLayoutManagedWidget):
         par=self.params.pop(name)
         self.gui_values.remove_handler((self.gui_values_path,name),remove_indicator=True)
         if par.widget is not None:
-            self.remove_layout_element(par.widget)
+            self.remove_child(name)
         if par.label is not None:
             self.remove_layout_element(par.label)
         if par.indicator is not None:
@@ -335,7 +342,7 @@ class ParamTable(layout_manager.QLayoutManagedWidget):
         widget.setObjectName(self.name+"_"+name)
         widget.setChecked(value)
         return self.add_simple_widget(name,widget,label=label,add_indicator=add_indicator,location=location,tooltip=tooltip,add_change_event=add_change_event)
-    def add_text_label(self, name, value=None, label=None, location=None, tooltip=None, add_change_event=False, virtual=False):
+    def add_text_label(self, name, value="", label=None, location=None, tooltip=None, add_change_event=False, virtual=False):
         """
         Add a text label to the table.
 
@@ -371,7 +378,7 @@ class ParamTable(layout_manager.QLayoutManagedWidget):
         widget=widget_label.NumLabel(self,value=value,limiter=limiter,formatter=formatter)
         widget.setObjectName(self.name+"_"+name)
         return self.add_simple_widget(name,widget,label=label,add_indicator=False,location=location,tooltip=tooltip,add_change_event=add_change_event)
-    def add_text_edit(self, name, value=None, label=None, add_indicator=None, location=None, tooltip=None, add_change_event=True, virtual=False):
+    def add_text_edit(self, name, value="", label=None, add_indicator=None, location=None, tooltip=None, add_change_event=True, virtual=False):
         """
         Add a text edit to the table.
 
@@ -524,8 +531,14 @@ class ParamTable(layout_manager.QLayoutManagedWidget):
         """Get a value-changed signal for a widget with the given name"""
         return self.params[self._normalize_name(name)].value_handler.get_value_changed_signal()
 
-    get_child=get_widget  # form compatibility with QContainer
-    remove_child=remove_widget
+    def get_child(self, name):
+        if name in self.params:
+            return self.get_widget(name)
+        return super().get_child(name)
+    def remove_child(self, name):
+        if name in self.params:
+            return self.remove_widget(name)
+        return super().remove_child(name)
 
     @controller.gui_thread_method
     def get_indicator(self, name=None):

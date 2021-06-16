@@ -47,7 +47,7 @@ class RangeCtl(QtWidgets.QWidget):
         self.params=ParamTable(self)
         self.main_layout.addWidget(self.params)
         self.params.setup(name="params",add_indicator=False,change_focused_control=True)
-        self.params.main_layout.setContentsMargins(2,2,2,2)
+        self.params.main_layout.setContentsMargins(5,5,5,5)
         self.params.main_layout.setSpacing(4)
         if "minmax" in elements:
             self.params.add_num_edit("min",formatter=formatter,label=labels[0])
@@ -62,6 +62,7 @@ class RangeCtl(QtWidgets.QWidget):
         if "step" in elements:
             self.params.add_num_edit("step",formatter=formatter,limiter=(0,None),label=labels[4])
             self.params.vs["step"].connect(self._step_changed)
+        self.params.set_column_stretch([0,1,0,1])
         self._show_values(self.rng)
         self.set_limit(lim)
 
@@ -195,7 +196,7 @@ class ROICtl(QtWidgets.QWidget):
         self.params=ParamTable(self)
         self.main_layout.addWidget(self.params)
         self.params.setup(name="params",add_indicator=False)
-        self.params.main_layout.setContentsMargins(0,0,0,0)
+        self.params.main_layout.setContentsMargins(5,5,5,5)
         self.params.main_layout.setSpacing(4)
         self.params.add_decoration_label("ROI",(0,0))
         self.params.add_decoration_label("Min",(0,1))
@@ -207,8 +208,7 @@ class ROICtl(QtWidgets.QWidget):
         self.params.add_num_edit("y_min",value=0,formatter="int",limiter=(None,None,"coerce","int"),location=(2,1,1,1))
         self.params.add_num_edit("y_max",value=1,formatter="int",limiter=(None,None,"coerce","int"),location=(2,2,1,1))
         self.params.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum,QtWidgets.QSizePolicy.Preferred))
-        self.params.main_layout.setColumnStretch(1,1)
-        self.params.main_layout.setColumnStretch(2,1)
+        self.params.set_column_stretch([0,1,1])
         self.validate=validate
         for n in ["x_min","x_max","y_min","y_max"]:
             self.params.w[n].setMinimumWidth(30)
@@ -354,7 +354,7 @@ class BinROICtl(QtWidgets.QWidget):
         self.params=ParamTable(self)
         self.main_layout.addWidget(self.params)
         self.params.setup(name="params",add_indicator=False)
-        self.params.main_layout.setContentsMargins(0,0,0,0)
+        self.params.main_layout.setContentsMargins(5,5,5,5)
         self.params.main_layout.setSpacing(4)
         self.params.add_decoration_label("ROI",(0,0))
         self.params.add_decoration_label("Min",(0,1))
@@ -369,9 +369,7 @@ class BinROICtl(QtWidgets.QWidget):
         self.params.add_num_edit("y_max",value=1,formatter="int",limiter=(None,None,"coerce","int"),location=(2,2,1,1))
         self.params.add_num_edit("y_bin",value=1,formatter="int",limiter=(None,None,"coerce","int"),location=(2,3,1,1))
         self.params.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum,QtWidgets.QSizePolicy.Preferred))
-        self.params.main_layout.setColumnStretch(1,2)
-        self.params.main_layout.setColumnStretch(2,2)
-        self.params.main_layout.setColumnStretch(3,1)
+        self.params.set_column_stretch([0,2,2,1])
         self.validate=validate
         for n in ["x_min","x_max","x_bin","y_min","y_max","y_bin"]:
             self.params.w[n].setMinimumWidth(30)

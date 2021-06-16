@@ -32,8 +32,8 @@ class QContainer(QtCore.QObject):
         self._children=dictionary.Dictionary()
         self.setup_gui_values("new")
         self.ctl=None
-        self.w=dictionary.ItemAccessor(self.get_widget)
         self.c=dictionary.ItemAccessor(self.get_child)
+        self.w=dictionary.ItemAccessor(self.get_widget)
         self.v=dictionary.ItemAccessor(self.get_value,self.set_value)
         self.i=dictionary.ItemAccessor(self.get_indicator,self.set_indicator)
 
@@ -85,7 +85,7 @@ class QContainer(QtCore.QObject):
         if name in self._timers:
             raise ValueError("timer {} already exists".format(name))
         timer=QtCore.QTimer(self)
-        timer.timeout.connect(controller.exsafe(lambda : self._on_timer(name)))
+        timer.timeout.connect(controller.exsafe(lambda: self._on_timer(name)))
         self._timers[name]=TTimer(name,period,timer)
         if self._running and autostart:
             self.start_timer(name)
@@ -125,6 +125,8 @@ class QContainer(QtCore.QObject):
         """
         if timer is None and period is None:
             raise ValueError("either a period or a timer name should be provided")
+        if name in self._timer_events:
+            raise ValueError("timer event {} already exists".format(name))
         if timer is None:
             timer=self.add_timer(None,period,autostart=autostart)
         if start is not None and self.is_timer_running(timer):
@@ -158,7 +160,7 @@ class QContainer(QtCore.QObject):
             else:
                 raise ValueError("can not store a non-container widget under an empty path")
         else:
-            self.gui_values.add_widget(path,widget)
+            self.gui_values.add_widget((self.gui_values_path,path),widget)
     def _setup_child_name(self, widget, name):
         if name is None:
             name=getattr(widget,"name",None)
@@ -217,7 +219,7 @@ class QContainer(QtCore.QObject):
         Starts all the internal timers, and calls ``start`` method for all the contained widgets.
         """
         if self._running:
-            raise RuntimeError("container '{}' loop is already running".format(self.name))
+            return
         for ch in self._children.iternodes():
             if hasattr(ch.widget,"start"):
                 ch.widget.start()
@@ -232,7 +234,7 @@ class QContainer(QtCore.QObject):
         Stops all the internal timers, and calls ``stop`` method for all the contained widgets.
         """
         if not self._running:
-            raise RuntimeError("container '{}' loop is not running".format(self.name))
+            return
         self._running=False
         for n in self._timers:
             self.stop_timer(n)
@@ -392,30 +394,35 @@ class QTabContainer(QtWidgets.QTabWidget, QContainer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args,**kwargs)
         self._tabs={}
-    def add_tab(self, name, caption, index=None, layout="vbox", gui_values_path=True, no_margins=True):
-        """
-        Add a new tab container with the given `caption` to the widget.
-
-        `index` specifies the new tab's index (``None`` means adding to the end, negative values count from the end).
-        `layout` specifies the layout (``"vbox"``, ``"hbox"``, or ``"grid"``) of the new frame,
-        and `location` specifies its location within the container layout.
-        If ``no_margins==True``, the frame will have no inner layout margins.
-        The other parameters are the same as in :meth:`add_child` method.
-        """
-        if name in self._tabs:
-            raise ValueError("tab {} already exists".format(name))
-        frame=QFrameContainer(self)
-        self.add_child(name=name,widget=frame,gui_values_path=gui_values_path)
-        frame.setup(layout=layout,no_margins=no_margins)
+    def _insert_tab(self, tab, caption, index):
         if index is None:
             index=self.count()
         elif index<0:
             index=index%self.count()
         else:
             index=min(index,self.count())
-        self.insertTab(index,frame,caption)
-        self._tabs[name]=frame
-        return frame
+        self.insertTab(index,tab,caption)
+    def add_tab(self, name, caption, index=None, widget=None, layout="vbox", gui_values_path=True, no_margins=True):
+        """
+        Add a new tab container with the given `caption` to the widget.
+
+        `index` specifies the new tab's index (``None`` means adding to the end, negative values count from the end).
+        If `widget` is ``None``, create a new frame widget using the given `layout` (``"vbox"``, ``"hbox"``, or ``"grid"``)
+        and `no_margins` (specifies whether the frame has inner margins) arguments;
+        otherwise, use the supplied widget.
+        The other parameters are the same as in :meth:`add_child` method.
+        """
+        if name in self._tabs:
+            raise ValueError("tab {} already exists".format(name))
+        if widget is None:
+            widget=QFrameContainer(self)
+            self.add_child(name=name,widget=widget,gui_values_path=gui_values_path)
+            widget.setup(layout=layout,no_margins=no_margins)
+        else:
+            self.add_child(name=name,widget=widget,gui_values_path=gui_values_path)
+        self._insert_tab(widget,caption,index)
+        self._tabs[name]=widget
+        return widget
     def remove_tab(self, name):
         """
         Remove a tab with the given name.

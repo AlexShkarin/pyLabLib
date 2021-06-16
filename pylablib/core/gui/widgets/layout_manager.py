@@ -14,7 +14,13 @@ class QLayoutManagedWidget(QtWidgets.QWidget):
     afterwards, widgets and sublayout can be added using :meth:`add_to_layout`.
     In addition, it can directly add named sublayouts using :meth:`add_sublayout` method.
     """
-    def __init__(self, parent=None):
+    def __init__(self, *args, **kwargs):
+        if args:
+            parent=args[0]
+        elif "parent" in kwargs:
+            parent=kwargs["parent"]
+        else:
+            parent=None
         super().__init__(parent)
         self.main_layout=None
         self._default_layout="main"
@@ -163,24 +169,43 @@ class QLayoutManagedWidget(QtWidgets.QWidget):
         """Get the previously added sublayout"""
         return self._sublayouts[name or self._default_layout][0]
     
-    def add_spacer(self, height=0, width=0, stretch_height=False, stretch_width=False, location="next"):
+    def add_spacer(self, height=0, width=0, stretch_height=False, stretch_width=False, stretch=0, location="next"):
         """
         Add a spacer with the given width and height to the given location.
         
         If ``stretch_height==True`` or ``stretch_width==True``, the widget will stretch in these directions; otherwise, the widget size is fixed.
+        If `stretch` is not ``None``, it specifies stretch of the spacer the corresponding direction (applied to the upper row and leftmost column for multi-cell spacer);
+        if `kind=="both"``, it can also be a tuple with two stretches along vertical and horizontal directions.
         """
         spacer=QtWidgets.QSpacerItem(width,height,
             QtWidgets.QSizePolicy.MinimumExpanding if stretch_width else QtWidgets.QSizePolicy.Minimum,
             QtWidgets.QSizePolicy.MinimumExpanding if stretch_height else QtWidgets.QSizePolicy.Minimum)
+        lname,lpos=self._normalize_location(location)
         self.add_to_layout(spacer,location,kind="item")
         self._spacers.append(spacer)  # otherwise the reference is lost, and the object might be deleted
+        if lname is not None:
+            r,c=lpos[:2]
+            layout,lkind=self._sublayouts[lname]
+            if not isinstance(stretch,tuple):
+                stretch=(stretch,stretch)
+            if lkind=="grid":
+                if stretch_height:
+                    layout.setRowStretch(r,stretch[0])
+                if stretch_width:
+                    layout.setColumnStretch(c,stretch[1])
+            elif lkind=="vbox" and stretch_height:
+                layout.setStretch(r,stretch[0])
+            elif lkind=="hbox" and stretch_width:
+                layout.setStretch(c,stretch[1])
         return spacer
-    def add_padding(self, kind="auto", location="next"):
+    def add_padding(self, kind="auto", location="next", stretch=0):
         """
         Add a padding (expandable spacer) of the given kind to the given location.
         
         `kind` can be ``"vertical"``, ``"horizontal"``, ``"auto"`` (vertical for ``grid`` and ``vbox`` layouts, horizontal for ``hbox``),
         or ``"both"`` (stretches in both directions).
+        If `stretch` is not ``None``, it specifies stretch of the spacer the corresponding direction (applied to the upper row and leftmost column for multi-cell spacer);
+        can also be a tuple with two stretches along vertical and horizontal directions.
         """
         funcargparse.check_parameter_range(kind,"kind",{"auto","horizontal","vertical","both"})
         if kind=="auto":
@@ -192,7 +217,42 @@ class QLayoutManagedWidget(QtWidgets.QWidget):
                 kind="horizontal" if lkind=="hbox" else "vertical"
         stretch_height=kind in {"vertical","both"}
         stretch_width=kind in {"horizontal","both"}
-        return self.add_spacer(stretch_height=stretch_height,stretch_width=stretch_width,location=location)
+        return self.add_spacer(stretch_height=stretch_height,stretch_width=stretch_width,location=location,stretch=stretch)
+    def _normalize_stretch(self, args):
+        if len(args)==1:
+            return list(enumerate(args[0]))
+        if len(args)==2:
+            return [(args[0],args[1])]
+        raise TypeError("method takes one or two positional arguments, {} supplied".format(len(args)))
+    def set_row_stretch(self, *args, layout=None):
+        """
+        Set row stretch for a given layout.
+
+        Takes either two arguments ``index`` and ``stretch``, or a single list of stretches for all rows.
+        """
+        layout,lkind=self._sublayouts[layout or self._default_layout]
+        for i,s in self._normalize_stretch(args):
+            if lkind=="grid":
+                layout.setRowStretch(i,s)
+            elif lkind=="vbox":
+                layout.setStretch(i,s)
+            else:
+                raise ValueError("only gird and vbox layout support column stretch")
+    def set_column_stretch(self, *args, layout=None):
+        """
+        Set column stretch for a given layout.
+
+        Takes either two arguments ``index`` and ``stretch``, or a single list of stretches for all columns.
+        """
+        layout,lkind=self._sublayouts[layout or self._default_layout]
+        for i,s in self._normalize_stretch(args):
+            if lkind=="grid":
+                layout.setColumnStretch(i,s)
+            elif lkind=="hbox":
+                layout.setStretch(i,s)
+            else:
+                raise ValueError("only gird and hbox layout support column stretch")
+
     def add_decoration_label(self, text, location="next"):
         """Add a decoration text label with the given text"""
         label=QtWidgets.QLabel(self)
@@ -200,18 +260,18 @@ class QLayoutManagedWidget(QtWidgets.QWidget):
         label.setAlignment(QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter)
         self.add_to_layout(label,location)
         return label
-    def insert_row(self, row, sublayout=None):
+    def insert_row(self, row, sublayout=None, stretch=0):
         """Insert a new row at the given location in the grid layout"""
         layout,kind=self._sublayouts[sublayout or self._default_layout]
         if kind!="grid":
             raise ValueError("can add rows only to grid layouts (vbox layouts work automatically)")
-        utils.insert_layout_row(layout,row%(layout.rowCount() or 1))
-    def insert_column(self, col, sublayout=None):
+        utils.insert_layout_row(layout,row%(layout.rowCount() or 1),stretch=stretch)
+    def insert_column(self, col, sublayout=None, stretch=0):
         """Insert a new column at the given location in the grid layout"""
         layout,kind=self._sublayouts[sublayout or self._default_layout]
         if kind!="grid":
             raise ValueError("can add columns only to grid layouts (hbox layouts work automatically)")
-        utils.insert_layout_column(layout,col%(layout.colCount() or 1))
+        utils.insert_layout_column(layout,col%(layout.colCount() or 1),stretch=stretch)
 
     def clear(self):
         """Clear the layout and remove all the added elements"""
