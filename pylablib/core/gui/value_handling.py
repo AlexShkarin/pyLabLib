@@ -990,7 +990,7 @@ def get_gui_values(gui_values=None, gui_values_path=""):
             if hasattr(gui_values,"gui_values_path"):
                 root_path.append(gui_values.gui_values_path)
             gui_values=gui_values.gui_values
-        root_path.append(gui_values_path)
+        root_path+=dictionary.normalize_path(gui_values_path)
         return gui_values,"/".join(root_path)
 
 

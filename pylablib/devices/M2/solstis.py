@@ -181,8 +181,9 @@ class Solstis(interface.IDevice):
             with self.socket.using_timeout(timeout):
                 preport=self._recv_reply()
                 raise M2Error("received reply while waiting for a report: '{}'".format(preport[0]))
-        except net.SocketTimeout:
-            pass
+        except M2CommunicationError as err:
+            if not isinstance(err.backend_exc,net.SocketTimeout):
+                raise
     def get_last_report(self, op):
         """Get the latest report for the given operation"""
         rep=self._last_status.get(op,None)

@@ -225,7 +225,7 @@ class TracePlotter(QLayoutManagedWidget):
         """
         channels=self.get_required_channels()
         maxlen=self.ctl.plot_params_table.v["disp_last"] if self.ctl else None
-        return table_accum_thread.get_data_sync(channels,maxlen=maxlen,fmt="dict")
+        return table_accum_thread.csi.get_data(channels,maxlen=maxlen,fmt="dict")
 
 
     def setup_data_source(self, src=None):

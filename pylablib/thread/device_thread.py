@@ -47,7 +47,7 @@ class DeviceThread(controller.QTaskThread):
         - ``get_full_info``: get full info of the device
     """
     def __init__(self, name=None, args=None, kwargs=None, multicast_pool=None):
-        controller.QTaskThread.__init__(self,name=name,multicast_pool=multicast_pool,args=args,kwargs=kwargs)
+        super().__init__(name=name,multicast_pool=multicast_pool,args=args,kwargs=kwargs)
         self.device=None
         self.add_command("open",self.open)
         self.add_command("close",self.close)
@@ -96,7 +96,7 @@ class DeviceThread(controller.QTaskThread):
         """
         self.device.close()
 
-    def rpyc_devclass(self, cls, host=None, port=18812):
+    def rpyc_devclass(self, cls, host=None, port=18812, timeout=3., attempts=2):
         """
         Get a local or remote device class on a different PC via RPyC.
 
@@ -109,16 +109,18 @@ class DeviceThread(controller.QTaskThread):
             host: address of the remote host (it should be running RPyC server; see :func:`.rpyc_utils.run_device_service` for details);
                 if ``None`` (default), use local device class, which is exactly the same as simply creating device class without using this function
             port: port of the remote host
+            timeout: remote connection timeout per attempt
+            attempts: total number of connection attempts
         """
         if host is None:
-            module,cls=cls.rsplit(".",maxplit=1)
+            module,cls=cls.rsplit(".",maxsplit=1)
             try:
                 module=importlib.import_module(module)
             except ImportError:
                 module=importlib.import_module(module_utils.get_library_name()+".devices."+module)
             return getattr(module,cls)
         else:
-            self.rpyc_serv=rpyc_utils.connect_device_service(host,port=port,error_on_fail=False)
+            self.rpyc_serv=rpyc_utils.connect_device_service(host,port=port,timeout=timeout,attempts=attempts,error_on_fail=False)
             if not self.rpyc_serv:
                 return None
             return self.rpyc_serv.get_device_class(cls)
