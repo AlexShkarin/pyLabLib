@@ -65,11 +65,12 @@ def exsafeSlot(*slargs, **slkwargs):
     return wrapper
 def _toploop(func):
     @func_utils.getargsfrom(func,hide_outer_obj=True) # slots don't work well with bound methods
-    def tlfunc(self, *args, **kwargs):
-        if self._in_inner_loop():
-            self._toploop_calls.append(lambda: func(self,*args,**kwargs))
+    def tlfunc(*args, **kwargs):
+        ctl=threadprop.current_controller()
+        if ctl._in_inner_loop():
+            ctl._toploop_calls.append(lambda: func(*args,**kwargs))
         else:
-            func(self,*args,**kwargs)
+            func(*args,**kwargs)
     return tlfunc
 def toploopSlot(*slargs, **slkwargs):
     """Wrapper around Qt slot which intercepts exceptions and stops the execution in a controlled manner"""
@@ -216,6 +217,8 @@ class QThreadController(QtCore.QObject):
         self._thread_methods={}
         self.v=dictionary.ItemAccessor(getter=lambda name:self.get_variable(name,missing_error=True),
             setter=self.set_variable,deleter=self.delete_variable,contains_checker=self._has_variable)
+        self.sv=dictionary.ItemAccessor(getter=lambda name:self.get_variable(name,missing_error=True,simple=True),
+            setter=lambda name,value:self.set_variable(name,value,simple=True))
         # set up high-level synchronization
         self._exec_notes={}
         self._exec_notes_lock=threading.Lock()
@@ -670,30 +673,38 @@ class QThreadController(QtCore.QObject):
 
     ### Variable management ###
     _variable_change_tag="#sync.wait.variable"
-    def set_variable(self, name, value, update=False, notify=False, notify_tag="changed/*"):
+    def set_variable(self, name, value, update=False, notify=False, notify_tag="changed/*", simple=False):
         """
         Set thread variable.
 
         Can be called in any thread (controlled or external).
         If ``notify==True``, send an multicast with the given `notify_tag` (where ``"*"`` symbol is replaced by the variable name).
         If ``update==True`` and the value is a dictionary, update the branch rather than overwrite it.
+        If ``simple==True``, assume that the result is a single atomic variable, in which case the lock is not used;
+        note that in this case the threads waiting on this variable (or branches containing it) will not be notified.
         Local call method.
         """
-        split_name=tuple(dictionary.normalize_path(name))
-        notify_list=[]
-        with self._params_val_lock:
-            if name in self._params_funcs:
-                del self._params_funcs[name]
+        if simple:
             if update:
                 self._params_val.merge(name,value)
             else:
                 self._params_val.add_entry(name,value,force=True)
-            for exp_name in self._params_exp:
-                if exp_name==split_name[:len(exp_name)] or split_name==exp_name[:len(split_name)]:
-                    notify_list.append((self._params_val[exp_name],self._params_exp[exp_name]))
-        for val,lst in notify_list:
-            for ctl in lst:
-                ctl.send_interrupt(self._variable_change_tag,val)
+        else:
+            split_name=tuple(dictionary.normalize_path(name))
+            notify_list=[]
+            with self._params_val_lock:
+                if name in self._params_funcs:
+                    del self._params_funcs[name]
+                if update:
+                    self._params_val.merge(name,value)
+                else:
+                    self._params_val.add_entry(name,value,force=True)
+                for exp_name in self._params_exp:
+                    if exp_name==split_name[:len(exp_name)] or split_name==exp_name[:len(split_name)]:
+                        notify_list.append((self._params_val[exp_name],self._params_exp[exp_name]))
+            for val,lst in notify_list:
+                for ctl in lst:
+                    ctl.send_interrupt(self._variable_change_tag,val)
         if notify:
             notify_tag.replace("*",name)
             self.send_multicast("any",notify_tag,value)
@@ -790,14 +801,18 @@ class QThreadController(QtCore.QObject):
 
 
     ### Variables access ###
-    def get_variable(self, name, default=None, copy_branch=True, missing_error=False):
+    def get_variable(self, name, default=None, copy_branch=True, missing_error=False, simple=False):
         """
         Get thread variable.
 
         If ``missing_error==False`` and no variable exists, return `default`; otherwise, raise and error.
         If ``copy_branch==True`` and the variable is a :class:`.Dictionary` branch, return its copy to ensure that it stays unaffected on possible further variable assignments.
+        If ``simple==True``, assume that the result is a single atomic variable, in which case the lock is not used;
+        this only works with actual variables and not function variables.
         Universal call method.
         """
+        if simple:
+            return self._params_val[name] if missing_error else self._params_val.get(name,default)
         with self._params_val_lock:
             if name in self._params_val:
                 var=self._params_val[name]
@@ -1091,12 +1106,13 @@ class QTaskThread(QThreadController):
     ## Can be ``"warning"``, which prints warning about this call (default),
     ## or one of the accessor names (e.g., ``"c"`` or ``"q"``), which routes the call through this accessor
     _direct_comm_call_action="warning"
-    _new_jobs_check_period=.1 # maximal time to sleep in the scheduling loop if there are no pending calls
+    _loop_wait_period=1. # time to wait in the main loop between scheduling events, if no events come; exact value does not affect anything
     TBatchJob=collections.namedtuple("TBatchJob",["job","cleanup","min_run_time","priority"])
     TCommand=collections.namedtuple("TCommand",["command","scheduler","priority"])
     def __init__(self, name=None, args=None, kwargs=None, multicast_pool=None):
         super().__init__(name=name,kind="run",multicast_pool=multicast_pool)
-        self.sync_period=0
+        self.sync_period=0 # minimal time to check on the Qt event loop while running the internal scheduling loop
+        self.min_schedule_time=0. # minimal time to sleep between scheduling checks; acts as a quantum of scheduling
         self._last_sync_time=0
         self.jobs={}
         self._jobs_list=[]
@@ -1107,6 +1123,7 @@ class QTaskThread(QThreadController):
         self.kwargs=kwargs or {}
         self._commands={}
         self._in_command_loop=False
+        self._poked=False
         self._priority_queues={}
         self._priority_queues_order=[]
         self._priority_queues_lock=threading.Lock()
@@ -1165,6 +1182,7 @@ class QTaskThread(QThreadController):
             """Manually unschedule the job (e.g., when paused or removed)"""
             if not self.scheduled:
                 raise RuntimeError("unscheduled job can't be unscheduled")
+            self.queue.unschedule(self.call)
             self.call=None
             self.scheduled=False
         def clear(self):
@@ -1372,11 +1390,12 @@ class QTaskThread(QThreadController):
         self.start_batch_job(name,period,*(args or []),**(kwargs or {}))
         return name
 
-    def _get_priority_queue(self, priority):
+    def _get_priority_queue(self, priority, fast=False):
         """Get the queue with the given priority, creating one if it does not exist"""
         if priority not in self._priority_queues:
             with self._priority_queues_lock:
-                q=callsync.QQueueScheduler()
+                # q=callsync.QQueueScheduler()
+                q=callsync.QFastQueueScheduler() if fast else callsync.QQueueScheduler()
                 self._priority_queues[priority]=q
                 self._priority_queues_order=[self._priority_queues[p] for p in sorted(self._priority_queues,reverse=True)]
         return self._priority_queues[priority]
@@ -1426,18 +1445,29 @@ class QTaskThread(QThreadController):
                     self._last_sync_time=t
                     self.check_messages(top_loop=True)
         self._in_command_loop=False
+        self._poked=False
         self._check_priority_queues()
+    def _command_poke(self):
+        if not self._in_command_loop and not self._poked:
+            self.poke()
+            self._poked=True
     
     ### Start/run/stop control (called automatically) ###
 
     def run(self):
+        schedule_time=0
         while True:
             ct=time.time()
             to=self._schedule_pending_jobs(ct)
-            sleep_time=self._new_jobs_check_period if to is None else min(self._new_jobs_check_period,to)
-            if sleep_time>=0:
-                self.sleep(sleep_time,wake_on_message=True)
+            sleep_time=self._loop_wait_period if to is None else min(self._loop_wait_period,to)
+            if schedule_time<=0 and sleep_time>=0:
+                if not self._poked:
+                    self.sleep(sleep_time,wake_on_message=True)
+            self._poked=False
             self._exhaust_queued_calls()
+            schedule_time=ct+self.min_schedule_time-time.time()
+            if schedule_time>0:
+                self.sleep(schedule_time)
 
     def on_start(self):
         super().on_start()
@@ -1630,9 +1660,6 @@ class QTaskThread(QThreadController):
     ## Methods to be called by functions executing in other thread ##
 
     ### Request calls ###
-    def _command_poke(self):
-        if not self._in_command_loop:
-            self.poke()
     def _schedule_comm(self, name, args, kwargs, callback=None, sync_result=True):
         comm,sched,_=self._commands[name]
         call=sched.build_call(comm,args,kwargs,callback=callback,pass_result=True,callback_on_exception=False,sync_result=sync_result)
