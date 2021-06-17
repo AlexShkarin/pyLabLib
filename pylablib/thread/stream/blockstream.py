@@ -1,134 +1,10 @@
 from ...core.thread import controller
 from ...core.utils import general, funcargparse
 
+from . import stream_manager, stream_message
+
 import numpy as np
 import collections
-
-
-
-
-class DataBlockMessage:
-    """
-    A message containing a block of several aligned streams of data (e.g., several daq channels, or aligned data streams).
-
-    Also has methods for simple data extraction/modification.
-
-    Args:
-        channels: dictionary ``{name: values}`` of data chunks corresponding to each stream. All values should have the same length
-        order: default order of the channels (used when they are returned as a list instead of a dictionary); by default, use the dictionary keys order
-        metainfo: additional metainfo dictionary; the contents is arbitrary, but it's assumed to be message-wide, i.e., common for all frames in the message;
-            common keys are ``"source"`` (frames source, e.g., camera or processor), ``"rate"`` (data rate), ``"time"`` (creation time), or ``"tag"`` (additional batch tag)
-    """
-    def __init__(self, channels, order=None, metainfo=None):
-        self.channels=channels
-        self.order=order or list(channels)
-        if set(self.order)!=set(self.channels):
-            raise ValueError("channels order doesn't agree with supplied channels")
-        self.metainfo=metainfo or {}
-        lch=None,None
-        for name,col in channels.items():
-            if lch[0] is None:
-                lch=name,len(col)
-            elif len(col)!=lch[1]:
-                raise ValueError("channel length doesn't agree: {} for {} vs {} for {}".format(name,len(col),*lch))
-
-    def copy(self, **kwargs):
-        """
-        Make a copy of the message
-        
-        Any specified keyword parameter replaces the current message parameter.
-        Channels are not deep copied.
-        """
-        kwargs.setdefault("channels",dict(self.channels))
-        kwargs.setdefault("order",self.order)
-        kwargs.setdefault("metainfo",self.metainfo)
-        return DataBlockMessage(**kwargs)
-    
-    def __len__(self):
-        for ch in self.channels:
-            return len(self.channels[ch])
-        return 0
-    def __bool__(self):
-        return self.__len__()>0
-
-    def __getitem__(self, key):
-        return self.channels[key]
-
-    def filter_columns(self, include=None, exclude=None, strict=True):
-        if strict and include is not None:
-            for ch in include:
-                if ch not in self.channels:
-                    raise ValueError("included channel {} is missing".format(ch))
-        channels=set()
-        for ch in self.channels:
-            if include is None or ch in include:
-                if exclude is None or ch not in exclude:
-                    channels.add(ch)
-        self.channels={ch:val for ch,val in self.channels.items() if ch in channels}
-        self.order=[ch for ch in self.order if ch in channels]
-        
-    def cut_to_size(self, n, reverse=False):
-        if n==0:
-            self.channels={ch:[] for ch in self.channels}
-            return True
-        for ch in list(self.channels):
-            col=self.channels[ch]
-            if len(col)<n:
-                return False
-            self.channels[ch]=col[-n:] if reverse else col[n:]
-        return True
-    
-    def _normalize_rng(self, rng):
-        l=len(self)
-        if isinstance(rng,tuple):
-            if rng[1] is None:
-                rng=rng[0],l
-        elif rng>0:
-            rng=0,rng
-        else:
-            rng=-rng,l
-        return rng
-    def get_data_columns(self, channels=None, rng=None):
-        """
-        Get table data as a list of columns.
-        
-        Args:
-            channels: list of channels to get; all channels by default (in which case, order is determined by internal ``order`` variable)
-            maxlen: maximal column length (if stored length is larger, return last `maxlen` rows)
-        """
-        order=channels or self.order
-        if rng is None:
-            return [self.channels[ch] for ch in order]
-        rng=self._normalize_rng(rng)
-        return [self.channels[ch][rng[0]:rng[1]] for ch in order]
-    def get_data_rows(self, channels=None, rng=None):
-        """
-        Get table data as a list of rows.
-        
-        Args:
-            channels: list of channels to get; all channels by default
-            maxlen: maximal column length (if stored length is larger, return last `maxlen` rows)
-        """
-        return list(zip(*self.get_data_columns(channels=channels,rng=rng)))
-    def get_data_dict(self, channels=None, rng=None):
-        """
-        Get table data as a dictionary ``{name: column}``.
-        
-        Args:
-            channels: list of channels to get; all channels by default
-            maxlen: maximal column length (if stored length is larger, return last `maxlen` rows)
-        """
-        order=channels or self.order
-        if rng is None:
-            return dict(self.channels)
-        rng=self._normalize_rng(rng)
-        return {ch:self.channels[ch][rng[0]:rng[1]] for ch in order}
-
-
-
-
-
-
 
 
 
@@ -141,65 +17,61 @@ class StreamFormerThread(controller.QTaskThread):
     When the block is complete (determined by ``block_period`` attribute), :meth:`on_new_block` is called.
     Accumulated data can be accessed with :meth:`get_data` and :meth:`pop_data`, or by default through ``"stream/data"`` multicast.
 
-    Args:
-        name: thread name
-        args: args supplied to :meth:`setup` method
-        kwargs: keyword args supplied to :meth:`setup` method
-        multicast_pool: :class:`.MulticastPool` for this thread (by default, use the default common pool)
-
     Attributes:
-        block_period: size of a row block which causes :meth:`on_new_block` call
+        - ``block_period``: size of a row block which causes :meth:`on_new_block` call
 
     Commands:
         - ``get_data``: get the completed aligned data in a dictionary form
         - ``pop_data``: pop the completed aligned data (return the data and remove it from the internal storage)
         - ``clear_table``: clear the table with the completed aligned data
-        - ``clear_all``: remove all data (table and all filled channels)
+        - ``reset``: remove all data (table and all filled channels)
+        - ``set_cutoff``: set cutoff for session or message ID of a subscribed source
         - ``configure_channel``: configure a channel behavior (enable or disable)
         - ``get_channel_status``: get channel status (number of datapoints in the queue, maximal queue size, etc.)
         - ``get_source_status``: get lengths of multicast queues for all the data sources
 
     Methods to overload:
-        - :meth:`setup`: set up the thread
-        - :meth:`cleanup`: clean up the thread 
         - :meth:`on_new_block`: called every time a new block is completed; by default, send an multicast with the new block's data
         - :meth:`prepare_new_data`: modify a new data chunk (dictionary of columns) before adding it to the storage
     """
-    def setup(self):
-        """Set up the thread"""
     def prepare_new_data(self, columns):
         """
         Prepare a newly acquired chunk.
         
-        `column` is a dictionary ``{name: data}`` of newly acquired data,
+        `columns` is a dictionary ``{name: data}`` of newly acquired data,
         where ``name`` is a channel name, and ``data`` is a list of one or more newly acquired values.
         Returned data should be in the same format.
         By default, no modifications are made.
         """
         return columns
+    def _build_new_block(self):
+        data=self.pop_data()
+        sid,mid=self.cnt.get_ids()
+        self.cnt.next_message(self.sn)
+        block=stream_message.DataBlockMessage(data,source=self.name,sid=sid,mid=mid,sn=self.sn)
+        return block
     def on_new_block(self):
         """Gets called every time a new block is complete"""
-        data=self.pop_data()
-        self.send_multicast(tag="stream/data",value=DataBlockMessage(data,metainfo={"source":"stream_former"}))
-    def cleanup(self):
-        """Clean up the thread"""
+        self.send_multicast(tag="stream/data",value=self._build_new_block())
 
-    def setup_task(self, *args, **kwargs):
+    def setup_task(self):
         self.channels={}
         self.table={}
         self.source_schedulers={}
         self.add_command("get_data")
         self.add_command("pop_data")
         self.add_command("clear_table")
-        self.add_command("clear_all")
+        self.add_command("reset")
+        self.add_command("set_cutoff")
         self.add_command("configure_channel")
         self.add_command("get_channel_status")
         self.add_command("get_source_status")
+        self.sn=self.name
+        self.cnt=stream_manager.MultiStreamIDCounter()
+        self.cnt.add_counter(self.sn)
+        self.source_sns={}
         self._row_cnt=0
         self.block_period=1
-        self.setup(*args,**kwargs)
-    def finalize_task(self):
-        self.cleanup()
 
     class ChannelQueue:
         """
@@ -356,7 +228,7 @@ class StreamFormerThread(controller.QTaskThread):
         self.channels[name]=self.ChannelQueue(func,max_queue_len=max_queue_len,required=required,background=background,enabled=enabled,
             fill_on=fill_on,latching=latching,expand_list=expand_list,pure_func=pure_func,initial=initial)
         self.table[name]=[]
-    def subscribe_source(self, name, srcs, tags=None, dsts="any", filt=None, parse="default"):
+    def subscribe_source(self, name, srcs, tags=None, dsts="any", filt=None, parse="default", sn=None):
         """
         Subscribe a source multicast to a channels.
 
@@ -381,13 +253,30 @@ class StreamFormerThread(controller.QTaskThread):
         """
         if parse=="default":
             parse=self._parse_default
-        def on_multicast(src, tag, value):
-            self._add_data(name,value,src=src,tag=tag,parse=parse)
-        uid=self.subscribe_commsync(on_multicast,srcs=srcs,tags=tags,dsts=dsts,filt=filt,limit_queue=-1)
-        self.source_schedulers[name]=self._multicast_schedulers[uid]
+        if sn is not None:
+            self.source_sns[name]=sn
+            def on_multicast(src, tag, value):
+                self.cnt.receive_message(value,sn=sn)
+                if self.cnt.check_cutoff(value,sn=sn):
+                    self._add_data(name,value,src=src,tag=tag,parse=parse)
+        else:
+            def on_multicast(src, tag, value):
+                self._add_data(name,value,src=src,tag=tag,parse=parse)
+        uid=self.subscribe_commsync(on_multicast,srcs=srcs,tags=tags,dsts=dsts,filt=filt,limit_queue=None,priority=10)
+        # self.source_schedulers[name]=self._multicast_schedulers[uid]  #TODO: save all schedulers in the task controller
+        if sn is not None:
+            self.cnt.add_counter(sn)
     
+    def set_cutoff(self, name, sid=None, mid=0):
+        """
+        Set cutoffs for session and message IDs.
+
+        Any arriving subscribed messages with IDs below the cutoff will be ignored.
+        If `sid` or `mid` are ``None``, it implies no cutoff.
+        """
+        return self.cnt.set_cutoff(self.source_sns[name],sid=sid,mid=mid)
     def _parse_default(self, src, tag, value):
-        if isinstance(value,DataBlockMessage):
+        if isinstance(value,stream_message.DataBlockMessage):
             return value.get_data_dict()
         return value
     def _add_data(self, name, value, src=None, tag=None, parse=None):
@@ -491,14 +380,15 @@ class StreamFormerThread(controller.QTaskThread):
     def clear_table(self):
         """Clear table containing all complete rows"""
         self.table=dict([(n,[]) for n in self.table])
-    def clear_all(self):
+    def reset(self):
         """Clear everything: table of complete rows and all channel queues"""
         self.table=dict([(n,[]) for n in self.table])
         for _,ch in self.channels.items():
             ch.clear()
         self._partial_rows=[]
+        self.cnt.next_session(self.sn)
 
-    def configure_channel(self, name, enable=True, required="auto", clear=True):
+    def configure_channel(self, name, enable=True, required="auto", reset=True):
         """
         Reconfigure existing channel.
 
@@ -507,12 +397,12 @@ class StreamFormerThread(controller.QTaskThread):
             enabled (bool): determines if the channel is enabled by default (disabled channel always returns ``None``)
             required: determines if the channel is required to receive the value to complete the row;
                 by default, ``False`` if `func` is specified and ``True`` otherwise
-            clear (bool): if ``True``, clear all channels after reconfiguring
+            reset (bool): if ``True``, clear all channels after reconfiguring
         """
         self.channels[name].enable(enable)
         self.channels[name].set_required(required)
-        if clear:
-            self.clear_all()
+        if reset:
+            self.reset()
     def get_channel_status(self):
         """
         Get channel status.

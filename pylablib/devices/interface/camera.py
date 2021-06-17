@@ -913,3 +913,125 @@ class IBinROICamera(ICamera):
         """
         w,h=self.get_detector_size()
         return TAxisROILimit(w,w,w,w,1),TAxisROILimit(h,h,h,h,1)
+
+
+
+
+
+
+def _get_partial_frame(frame, excl_area):
+    nr,nc=frame.shape[-2:]
+    r0,r1,c0,c1=excl_area
+    is_row=r1-r0<c1-c0
+    row_edge=(r0==0) or (r1==nr-1)
+    col_edge=(c0==0) or (c1==nc-1)
+    if not (row_edge or col_edge):
+        return None
+    if (is_row and row_edge) or (not is_row and not col_edge):
+        return frame[:,r1+1:,:] if r0==0 else frame[:,:r0,:]
+    else:
+        return frame[:,:,c1+1:] if c0==0 else frame[:,:,:c0]
+
+def _normalize_sline_pos(status_line, shape):
+    _,(r0,r1,c0,c1)=status_line
+    nr,nc=shape[-2:]
+    r0=r0%nr if r0<0 else min(r0,nr)
+    r1=r1%nr if r1<0 else min(r1,nr)
+    c0=c0%nc if c0<0 else min(c0,nc)
+    c1=c1%nc if c1<0 else min(c1,nc)
+    return r0,r1,c0,c1
+def remove_status_line(frame, status_line, policy="duplicate", copy=True, value=0):
+    """
+    Remove status line, if present.
+
+    Args:
+        frame: a frame to process (2D or 3D numpy array; if 3D, the first axis is the frame number)
+        status_line: status line descriptor (from the frames message)
+        policy: determines way to deal with the status line;
+            can be ``"keep"`` (keep as is), ``"cut"`` (cut off the status-line-containing row/column), ``"zero"`` (set it to zero), ``"value"`` (set it to a given value),
+            ``"median"`` (set it to the image median), or ``"duplicate"`` (set it equal to the previous row; default)
+            ``"cut"`` is only possible of the status line is on the edge of the image.
+        copy: if ``True``, make copy of the original frames; otherwise, attempt to remove the line in-place
+    """
+    if copy:
+        frame=frame.copy()
+    if status_line is None:
+        return frame
+    if frame.ndim==2:
+        frame_2d=True
+        frame=frame[None]
+    else:
+        frame_2d=False
+    nr,nc=frame.shape[-2:]
+    r0,r1,c0,c1=_normalize_sline_pos(status_line,frame.shape)
+    is_row=r1-r0<c1-c0
+    if policy=="duplicate" and r0==0 and r1==nr-1 and c0==0 and c1==nc-1:
+        policy="zero"
+    if policy=="zero":
+        policy="value"
+        value=0
+    if policy=="median":
+        pframe=_get_partial_frame(frame,(r0,r1,c0,c1))
+        if pframe is None or any([d==0 for d in pframe.shape]):
+            med=np.median(frame,axis=(1,2))
+        else:
+            med=np.median(pframe,axis=(1,2))
+        frame[:,r0:r1+1,c0:c1+1]=med[:,None,None]
+    elif policy=="value":
+        frame[:,r0:r1+1,c0:c1+1]=value
+    elif policy=="cut":
+        pframe=_get_partial_frame(frame,(r0,r1,c0,c1))
+        if pframe is not None:
+            frame=pframe
+    elif policy=="duplicate":
+        if is_row and not (r0==0 and r1==nr-1):
+            graft=frame[:,r0-1,c0:c1+1] if r0>0 else frame[:,r1+1,c0:c1+1]
+            frame[:,r0:r1+1,c0:c1+1]=graft[:,None,:]
+        else:
+            graft=frame[:,r0:r1+1,c0-1] if c0>0 else frame[:,r0:r1+1,c1+1]
+            frame[:,r0:r1+1,c0:c1+1]=graft[:,:,None]
+    return frame[0] if frame_2d else frame
+def extract_status_line(frame, status_line, copy=True):
+    """
+    Extract status line, if present.
+
+    Args:
+        frame: a frame to process (2D or 3D numpy array; if 3D, the first axis is the frame number)
+        status_line: status line descriptor (from the frames message)
+        copy: if ``True``, make copy of the original status line data.
+    """
+    if status_line is None:
+        return None
+    if frame.ndim==2:
+        frame_2d=True
+        frame=frame[None,:,:]
+    else:
+        frame_2d=False
+    r0,r1,c0,c1=_normalize_sline_pos(status_line,frame.shape)
+    sline=frame[:,r0:r1+1,c0:c1+1]
+    if copy:
+        sline=sline.copy()
+    return sline[0] if frame_2d else sline
+def insert_status_line(frame, status_line, value, copy=True):
+    """
+    Insert status line, if present.
+
+    Args:
+        frame: a frame to process (2D or 3D numpy array; if 3D, the first axis is the frame number)
+        status_line: status line descriptor (from the frames message)
+        value: status line value
+        copy: if ``True``, make copy of the original status line data.
+    """
+    if status_line is None:
+        return frame.copy() if copy else frame
+    r0,r1,c0,c1=_normalize_sline_pos(status_line,frame.shape)
+    if value.ndim==2:
+        value=value[None,:,:]
+    value=value[:,:r1-r0+1,:c1-c0+1]
+    return remove_status_line(frame,status_line,policy="value",value=value,copy=copy)
+def get_status_line_roi(frame, status_line):
+    """Return ROI taken by the status line in the given frame"""
+    if status_line is None:
+        return None
+    r0,r1,c0,c1=_normalize_sline_pos(status_line,frame.shape)
+    return image_utils.ROI(r0,r1+1,c0,c1+1)

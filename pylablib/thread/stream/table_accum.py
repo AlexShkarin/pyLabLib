@@ -1,4 +1,5 @@
 from ...core.thread import controller
+from . import stream_message, stream_manager
 
 import threading
 
@@ -60,6 +61,8 @@ class TableAccumulator:
 
         Data can either be a list of columns, or a dictionary ``{name: [data]}`` with named columns.
         """
+        if isinstance(data,stream_message.DataBlockMessage):
+            data=data.data
         if isinstance(data,dict):
             table_data=[]
             for ch in self.channels:
@@ -141,9 +144,10 @@ class TableAccumulatorThread(controller.QTaskThread):
         self.channels=channels
         self.fmt=[None]*len(channels)
         self.table_accum=TableAccumulator(channels=channels,memsize=memsize)
-        self.subscribe_sync(self._accum_data,srcs=src,tags=tag,dsts="any",limit_queue=100)
+        self.subscribe_direct(self._accum_data,srcs=src,tags=tag,dsts="any")
         if reset_tag is not None:
             self.subscribe_sync(self._on_source_reset,srcs=src,tags=reset_tag,dsts="any")
+        self.cnt=stream_manager.StreamIDCounter()
         self.data_lock=threading.Lock()
         self.add_direct_call_command("get_data")
         self.add_direct_call_command("reset",error_on_async=False)
@@ -158,6 +162,8 @@ class TableAccumulatorThread(controller.QTaskThread):
 
     def _accum_data(self, src, tag, value):
         with self.data_lock:
+            if hasattr(value,"get_ids") and self.cnt.receive_message(value):
+                self.table_accum.reset_data()
             value=self.preprocess_data(value)
             self.table_accum.add_data(value)
 
