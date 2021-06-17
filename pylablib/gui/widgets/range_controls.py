@@ -188,7 +188,7 @@ class ROICtl(QtWidgets.QWidget):
                 and return their constrained versions.
         """
         self.kind=kind
-        self.setMinimumSize(QtCore.QSize(100,60))
+        self.setMinimumSize(QtCore.QSize(110,70))
         self.setMaximumSize(QtCore.QSize(2**16,60))
         self.main_layout=QtWidgets.QVBoxLayout(self)
         self.main_layout.setObjectName("main_layout")
@@ -346,7 +346,7 @@ class BinROICtl(QtWidgets.QWidget):
                 and return their constrained versions.
         """
         self.kind=kind
-        self.setMinimumSize(QtCore.QSize(100,60))
+        self.setMinimumSize(QtCore.QSize(110,70))
         self.setMaximumSize(QtCore.QSize(2**16,60))
         self.main_layout=QtWidgets.QVBoxLayout(self)
         self.main_layout.setObjectName("main_layout")

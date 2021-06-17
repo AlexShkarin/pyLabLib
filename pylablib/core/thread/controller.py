@@ -23,6 +23,7 @@ _running_threads_stopping=False
 
 _exception_print_lock=threading.Lock()
 
+_debug_mode=False
 
 @contextlib.contextmanager
 def exint(error_msg_template="{}:"):
@@ -33,12 +34,21 @@ def exint(error_msg_template="{}:"):
         pass
     except:  # pylint: disable=bare-except
         with _exception_print_lock:
+            ctl_name=None
             try:
                 ctl_name=get_controller(sync=False).name
                 print(error_msg_template.format("Exception raised in thread '{}'".format(ctl_name)),file=sys.stderr)
             except threadprop.NoControllerThreadError:
                 print(error_msg_template.format("Exception raised in an uncontrolled thread"),file=sys.stderr)
             traceback.print_exc()
+            if _debug_mode:
+                running_threads=", ".join(["'{}'".format(k) for k in _running_threads])
+                print("\nRunning threads: {}\n\n".format(running_threads),file=sys.stderr)
+                for thread_id,frame in sys._current_frames().items():
+                    ctl=_find_controller_by_id(thread_id)
+                    if ctl and ctl.name!=ctl_name:
+                        print("\n\n\nStack trace of thread '{}':".format(ctl.name),file=sys.stderr)
+                        traceback.print_stack(frame,file=sys.stderr)
             sys.stderr.flush()
         try:
             stop_controller("gui",code=1,sync=False,require_controller=True)
@@ -94,7 +104,9 @@ class QThreadControllerThread(QtCore.QThread):
         self.controller=controller
         self._stop_request.connect(self._do_quit)
         self._stop_requested=False
+        self.thread_id=None
     def run(self):
+        self.thread_id=threading.current_thread().ident
         with exint():
             try:
                 self.exec_() # main execution event loop
@@ -189,6 +201,7 @@ class QThreadController(QtCore.QObject):
             if threadprop.current_controller(require_controller=False):
                 raise threadprop.DuplicateControllerThreadError()
             self.thread=threadprop.get_gui_thread()
+            self.thread.thread_id=threading.current_thread().ident
             threadprop.local_data.controller=self
             _register_controller(self)
         else:
@@ -1814,7 +1827,12 @@ def _unregister_controller(controller):
     _running_threads_notifier.notify()
 
 
-
+def _find_controller_by_id(thread_id):
+    """Get a running thread for a given thread ID, or ``None`` if no thread is found"""
+    with _running_threads_lock:
+        for t in _running_threads.values():
+            if t.thread.thread_id==thread_id:
+                return t
 def get_controller(name=None, sync=True, timeout=None, sync_point=None):
     """
     Find a controller with a given name.

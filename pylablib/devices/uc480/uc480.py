@@ -143,11 +143,11 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
     ### Buffer controls ###
     def _allocate_buffers(self, n):
         self._deallocate_buffers()
-        frame_size=self._get_data_dimensions_rc()[::-1]
+        frame_size=self._get_data_dimensions_rc()
         bpp=self._get_pixel_mode_settings()[0]
         self._buffers=[]
         for _ in range(n):
-            self._buffers.append((lib.is_AllocImageMem(self.hcam,frame_size[0],frame_size[1],bpp),(frame_size[0],frame_size[1]),bpp))
+            self._buffers.append((lib.is_AllocImageMem(self.hcam,frame_size[1],frame_size[0],bpp),(frame_size[0],frame_size[1]),bpp))
             lib.is_AddToSequence(self.hcam,*self._buffers[-1][0])
         return n
     def _deallocate_buffers(self):
