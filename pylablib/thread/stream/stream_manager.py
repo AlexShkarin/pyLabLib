@@ -19,10 +19,14 @@ class StreamIDCounter:
             can be ``"ignore"`` (keep the current counter value), ``"set"`` (set the value to the new smaller one), or ``"error"`` (raise an exception)
         mid_ooo: behavior if supplied message ID in :meth:`next_message` or :meth:`update` is out of order (lower than the current count);
             can be ``"ignore"`` (keep the current counter value), ``"set"`` (set the value to the new smaller one), or ``"error"`` (raise an exception)
+        on_invalid: action on an invalid message (the one not having ``get_ids`` message);
+            can be ``"ignore"`` (ignore on :meth:`receive_message`), ``"advance"`` (advance message ID on ``default_sn`` with :meth:`receive_message`),
+            or ``"error"`` (raise an error)
     """
-    def __init__(self, use_mid=True, sid_ooo="ignore", mid_ooo="ignore"):
+    def __init__(self, use_mid=True, sid_ooo="ignore", mid_ooo="ignore", on_invalid="ignore"):
         funcargparse.check_parameter_range(sid_ooo,"sid_ooo",["ignore","set","error"])
         funcargparse.check_parameter_range(mid_ooo,"mid_ooo",["ignore","set","error"])
+        funcargparse.check_parameter_range(on_invalid,"on_invalid",["ignore","advance","error"])
         self.sid_gen=general.UIDGenerator()
         self.sid=self.sid_gen()
         self.use_mid=use_mid
@@ -30,6 +34,7 @@ class StreamIDCounter:
         self.mid=self.mid_gen()
         self.sid_ooo=sid_ooo
         self.mid_ooo=mid_ooo
+        self.on_invalid=on_invalid
         self.cutoff=(0,0)
     
     def update_session(self, sid):
@@ -102,7 +107,15 @@ class StreamIDCounter:
         `sn` specifies the stream name within the message.
         Return ``True`` if the session ID was incremented as a result.
         """
-        return self.update(*msg.get_ids(sn))
+        try:
+            return self.update(*msg.get_ids(sn))
+        except (AttributeError,TypeError):
+            if self.on_invalid=="ignore":
+                return False
+            if self.on_invalid=="advance":
+                self.next_message()
+                return False
+            raise
     def get_ids(self):
         """Get stored IDs as a tuple ``(sid, mid)``"""
         return self.sid,self.mid
@@ -122,20 +135,41 @@ class StreamIDCounter:
         """
         Check if the supplied IDs pass the cutoff (i.e., above or equal to it).
 
-        Values of ``None`` are not checked, i.e., assumed to always pass.
+        Values of ``None`` are set to the current counter values; values of ``"skip"`` always pass.
         """
-        if sid is not None and sid<self.cutoff[0]:
+        sid=self.sid if sid is None else sid
+        mid=self.mid if mid is None else mid
+        if sid!="pass" and sid<self.cutoff[0]:
             return False
-        if mid is not None and mid<self.cutoff[1]:
+        if mid!="pass" and mid<self.cutoff[1]:
             return False
         return True
 
 class MultiStreamIDCounter:
     """
     Combination of several counters for different streams.
+
+    Args:
+        default_sn: if not ``None``, it can specify a default stream name for anonymous stream;
+            if not specified, dealing with message from anonymous streams without specifying stream name raises an error
+        on_invalid: action on an invalid message (the one not having ``get_ids`` message);
+            can be ``"ignore"`` (ignore on :meth:`receive_message`, return ``False`` on :meth:`check_cutoff`),
+            ``"advance"`` (advance message ID on ``default_sn`` with :meth:`receive_message`, use current counters on :meth:`check_cutoff`),
+            or ``"error"`` (raise an error)
     """
-    def __init__(self):
+    def __init__(self, default_sn=None, on_invalid="ignore"):
         self.cnts={}
+        self.default_sn=default_sn
+        if self.default_sn is not None:
+            self.add_counter(self.default_sn)
+        funcargparse.check_parameter_range(on_invalid,"on_invalid",["ignore","advance","error"])
+        self.on_invalid=on_invalid
+    def _get_sn(self, sn):
+        if sn is None:
+            if self.default_sn is None:
+                raise ValueError("nether stream name nor default stream name are specified")
+            return self.default_sn
+        return sn
     def add_counter(self, sn, use_mid=True, sid_ooo="ignore", mid_ooo="ignore"):
         """
         Add a single counter associated with the given stream name `sn`.
@@ -148,6 +182,9 @@ class MultiStreamIDCounter:
                 can be ``"ignore"`` (keep the current counter value), ``"set"`` (set the value to the new smaller one), or ``"error"`` (raise an exception)
         """
         self.cnts[sn]=StreamIDCounter(use_mid=use_mid,sid_ooo=sid_ooo,mid_ooo=mid_ooo)
+    def has_counter(self, sn):
+        """Check if the given counter is present"""
+        return sn in self.cnts
     def update_session(self, sn, sid):
         """
         Update the session counter for the given stream name.
@@ -177,6 +214,7 @@ class MultiStreamIDCounter:
 
         If `sn` is ``None`` or ``"all"``, update all stored counters for all the session in the message.
         Otherwise, update only the IDs specified by `sn` (can be a single name or a list of names).
+        Return ``True`` if any session ID was incremented as a result.
         """
         if sn not in [None,"all"]:
             if not isinstance(sn,list):
@@ -185,7 +223,15 @@ class MultiStreamIDCounter:
             for n in sn:
                 new_sid=new_sid or self.cnts[n].receive_message(msg,sn=n)
             return new_sid
-        sid,mid=msg.get_ids("all")
+        try:
+            sid,mid=msg.get_ids("all")
+        except (AttributeError,TypeError):
+            if self.on_invalid=="ignore":
+                return None
+            if self.on_invalid=="error":
+                raise
+            if self.on_invalid=="advance":
+                sid,mid=None,"next"
         if isinstance(sid,dict):
             new_sid=False
             for n,s in sid.items():
@@ -193,6 +239,8 @@ class MultiStreamIDCounter:
                     m=None if mid is None else mid[n]
                     new_sid=new_sid or self.cnts[n].update(s,m)
             return new_sid
+        if self.default_sn is not None:
+            return self.cnts[self.default_sn].update(sid,mid)
         raise ValueError("name should be provided for anonymous stream messages")
     def get_ids(self, sn=None):
         """
@@ -205,7 +253,7 @@ class MultiStreamIDCounter:
             ids={n:c.get_ids() for n,c in self.cnts.items()}
             return {n:i[0] for n,i in ids.items()},{n:i[1] for n,i in ids.items()}
         return self.cnts[sn].get_ids()
-    def set_cutoff(self, sn, sid=None, mid=0):
+    def set_cutoff(self, sn=None, sid=None, mid=0):
         """
         Set the ID cutoff for a stream with the given name.
 
@@ -214,6 +262,12 @@ class MultiStreamIDCounter:
         Since IDs are normally non-negative, setting `sid` and `mid` to 0 effectively removes the cutoff.
         Return the updated cutoff value.
         """
+        if sn is None:
+            if self.default_sn is None:
+                raise ValueError("neither stream name nor default stream name are available")
+            sn=self.default_sn
+        if sn not in self.cnts:
+            self.add_counter(sn)
         return self.cnts[sn].set_cutoff(sid,mid)
     def check_cutoff(self, msg, sn=None):
         """
@@ -229,7 +283,15 @@ class MultiStreamIDCounter:
                 if not self.cnts[n].check_cutoff(*msg.get_ids(n)):
                     return False
             return True
-        sid,mid=msg.get_ids("all")
+        try:
+            sid,mid=msg.get_ids("all")
+        except (AttributeError,TypeError):
+            if self.on_invalid=="ignore":
+                return False
+            if self.on_invalid=="error":
+                raise
+            if self.on_invalid=="advance":
+                sid,mid=None,None
         if isinstance(sid,dict):
             for n,s in sid.items():
                 if n in self.cnts:
@@ -237,6 +299,8 @@ class MultiStreamIDCounter:
                     if not self.cnts[n].check_cutoff(s,m):
                         return False
             return True
+        if self.default_sn is not None:
+            return self.cnts[self.default_sn].check_cutoff(sid,mid)
         raise ValueError("name should be provided for anonymous stream messages")
 
 
@@ -342,7 +406,7 @@ class IStreamReceiver:
 
 
 
-TStreamEvent=collections.namedtuple("TStreamEvent",["src","tag","msg","ids"])
+TStreamEvent=collections.namedtuple("TStreamEvent",["src","tag","msg"])
 class AccumulatorStreamReceiver(IStreamReceiver):
     """
     Accumulator data stream receiver.
@@ -354,53 +418,51 @@ class AccumulatorStreamReceiver(IStreamReceiver):
     Args:
         ctl: thread controller which manages subscription and waiting (by default, the current controller)
         sn: specifies stream name for the incoming stream messages; used for counting IDs and applying cutoff
-        paused: if ``True``, the receiver strats paused, and needs to be started using :meth:`pause` method with `
-        only_valid: 
-        only_ids: if ``True``, any messages which do not support IDs (i.e., do not have ``get_ids`` method) are ignored;
-            otherwise, they are still placed in the queue with automatically generated session and message IDs (increment the message ID of the previous message by 1).
+        on_invalid: action on an invalid message (the one not having ``get_ids`` message);
+            can be ``"ignore"`` (ignore on :meth:`receive_message`, return ``False`` on :meth:`check_cutoff`),
+            or ``"advance"`` (advance message ID on ``default_sn`` with :meth:`receive_message`, use current counters on :meth:`check_cutoff`)
     """
-    def __init__(self, ctl=None, sn=None, paused=False, only_valid=True):
+    def __init__(self, ctl=None, sn=None, default_sn=None, on_invalid="ignore"):
         super().__init__(ctl)
-        self.reset()
-        self.sn=sn
-        self.only_valid=only_valid
-        self.cutoff_ids=(0,0)
-        self.paused=paused
+        self.paused=True
         self.waiting=False
-        self.cnt=StreamIDCounter()
+        self.acc=[]
+        self.cnt=MultiStreamIDCounter(default_sn=default_sn,on_invalid=on_invalid)
+        if sn is not None:
+            if not isinstance(sn,list):
+                sn=[sn]
+            for n in sn:
+                self.add_stream(n)
+        self.acc_checked=0
+        self._passing_msg=None
 
+    def start(self):
+        """Start receiver operation"""
+        self._check_waiting()
+        self.paused=False
+    def pause(self):
+        """Pause the receiver without affecting the message queue"""
+        self._check_waiting()
+        self.paused=True
+    def stop(self):
+        """Stop the receiver operation and reset the message queue"""
+        self._check_waiting()
+        with self.lock:
+            self.paused=True
+        self.reset()
     def reset(self):
         """Reset the message queue"""
+        self._check_waiting()
         with self.lock:
-            self.last_read=None
-            self.last_wait=None
-            self.last_recv=None
-            self.last_evt=None
             self.acc=[]
-    def pause(self, paused=True, reset=True):
-        """
-        Pause or resume the receiver.
 
-        While paused, all the received messages will be ignored.
-        If ``reset==True``, reset the queue on un-pausing.
-        """
-        reset=reset and self.paused and not paused
-        if reset:
-            self.reset()
-        self.paused=paused
-    def resume(self, reset=True):
-        """
-        Resume the receiver operation after the pause.
-
-        If ``reset==True`` and the receiver is currently paused, reset the queue.
-        Analogouse to ``self.pause(paused=False)``
-        """
-        self.pause(paused=False,reset=reset)
-
-    def current_ids(self):
+    def add_stream(self, sn):
+        """Add a monitored stream with the given name"""
+        self.cnt.add_counter(sn)
+    def current_ids(self, sn=None):
         """Get the current IDs (the last received message IDs)"""
-        return self.cnt.sid,self.cnt.mid
-    def set_cutoff(self, sid=None, mid=0):
+        return self.cnt.get_ids(sn=sn)
+    def set_cutoff(self, sn, sid=None, mid=0):
         """
         Set cutoffs for session and message IDs.
 
@@ -408,107 +470,63 @@ class AccumulatorStreamReceiver(IStreamReceiver):
         and such messages currently in the queue are removed.
         If `sid` or `mid` are ``None``, it implies no threshold.
         """
-        cutoff=self.cnt.set_cutoff(sid,mid)
+        self._check_waiting()
+        cutoff=self.cnt.set_cutoff(sn=sn,sid=sid,mid=mid)
         with self.lock:
-            ncut=len(self.acc)
-            for i,evt in enumerate(self.acc):
-                if evt.ids>=cutoff:
-                    ncut=i
-                    break
-            del self.acc[:ncut]
-            if self.last_read is not None and self.last_read<cutoff:
-                self.last_read=self.acc[0].ids if self.acc else None
-            if self.last_wait is not None and self.last_wait<cutoff:
-                self.last_wait=None
-            if self.last_recv is not None and self.last_recv<cutoff:
-                self.last_recv=None
+            self.acc=[evt for evt in self.acc if self.cnt.check_cutoff(evt.msg)]
         return cutoff
 
     def recv_message(self, src, tag, msg):
-        if self.paused:
+        if self.paused or not self.cnt.check_cutoff(msg):
             return
-        try:
-            sid,mid=msg.get_ids(self.sn)
-        except (AttributeError,KeyError):
-            if self.only_valid:
-                return
-            sid,mid=None,None
-        if sid is None:
-            sid=self.cnt.next_session()
-            mid=None
-        else:
-            self.cnt.update_session(sid)
-        if mid is None:
-            mid=self.cnt.next_message()
-        else:
-            self.cnt.update_message(mid)
-        if not self.cnt.check_cutoff(sid,mid):
-            return
-        self.last_recv=self.cnt.get_ids()
-        self.acc.append(TStreamEvent(src,tag,msg,(sid,mid)))
+        self.cnt.receive_message(msg)
+        self.acc.append(TStreamEvent(src,tag,msg))
         if self.waiting:
             self.ctl.poke()
 
+    def _check_waiting(self):
+        if self.waiting:
+            raise RuntimeError("operation can not be performed while waiting")
     def __len__(self):
         return len(self.acc)
-    def _normalize_since(self, since):
-        if since=="lastread":
-            return self.last_read
-        if since=="lastwait":
-            return self.last_wait
-        if since=="now":
-            return self.last_recv
-        return since
-    def get_checker(self, since="lastread", cond=None):
-        since=self._normalize_since(since)
-        self.last_evt=None
-        def check():
-            if not self.acc:
-                return False
-            evt=self.acc[-1]
-            if evt is self.last_evt:
-                return False
-            self.last_evt=evt
-            if since is not None and evt.ids<=since:
-                return False
-            if cond is not None and not cond(*evt):
-                return False
-            return True
-        return check
-    def wait(self, since="lastread", cond=None, timeout=None):
+    def wait(self, nacc=1, cond=None, timeout=None):
         """
-        Wait for a new message satisfying a specific condition.
+        Wait until at least `nacc` messages have been accumulated in the queue, or until a message satisfying `cond` has been received.
 
-        `since` can be ``"lastread"`` (wait until a new unread message is present),
-        ``"lastwait"`` (wait until a new message since the last time this method was called),
-        ``"now"`` (wait for a new message since the current moment in time),
-        or a tuple ``(sid, mid)`` (wait for a new message with the IDs larger than the given IDs).
+        `cond` is a function which takes 3 arguments ``src, tag, msg`` (same as a regular signal subscription method)
+        and returns ``True`` if the condition is satisfied. If `cond` is specified, `nacc` is ignored.
+
+        Return the index of the first message satisfying `cond` if it is specified, or 0 otherwise.
         """
-        since=self._normalize_since(since)
+        self._check_waiting()
         with self.lock:
-            if self.last_recv is not None and (since is None or self.last_recv>since):
-                if cond is not None:
-                    for evt in self.acc[::-1]:
-                        if evt.ids<=since:
-                            break
-                        if cond(*evt):
-                            do_wait=False
-                            self.last_evt=evt
-                            break
-                else:
-                    do_wait=False
-                    self.last_evt=self.acc[-1]
-            else:
-                do_wait=True
-                self.waiting=True
+            if cond is None:
+                if len(self.acc)>=nacc:
+                    return 0
+            elif self.acc:
+                for i,evt in enumerate(self.acc):
+                    if cond(*evt):
+                        return i
+            self.acc_checked=len(self.acc)
+            self.waiting=True
         try:
-            if do_wait:
-                check=self.get_checker(since=since,cond=cond)
-                self.ctl.wait_until(check,timeout=timeout)
+            def check():
+                with self.lock:
+                    if cond is None:
+                        self._passing_msg=0
+                        return len(self.acc)>=nacc
+                    if len(self.acc)>self.acc_checked:
+                        for i,evt in enumerate(self.acc[self.acc_checked:]):
+                            if cond(*evt):
+                                self._passing_msg=self.acc_checked+i
+                                return True
+                        self.acc_checked=len(self.acc)
+                return False
+            self.ctl.wait_until(check,timeout=timeout)
         finally:
             self.waiting=False
-        self.last_wait=self.last_evt.ids
-        return self.last_evt
+            self.acc_checked=0
+        return self._passing_msg
     def _get_acc_rng(self, i0, i1, peek, as_event):
         if i1 is not None and i1<=i0 or not self.acc:
             return []
@@ -518,8 +536,16 @@ class AccumulatorStreamReceiver(IStreamReceiver):
             evts=self.acc[i0:i1]
             if not peek:
                 del self.acc[:i1]
-                self.last_read=evts[-1].ids
         return evts if as_event else [evt.msg for evt in evts]
+    def peek_message(self, n=0, as_event=None):
+        """
+        Peek at the `n`th message in the accumulated queue.
+
+        If ``as_event==True``, return tuple ``(src, tag, msg)`` describing the received event;
+        otherwise, just message is returned.
+        """
+        evt=self.acc[n]
+        return evt if as_event else evt.msg
     def get_oldest(self, n=1, peek=False, as_event=False):
         """
         Get the oldest `n` messages from the accumulator queue.
@@ -527,9 +553,11 @@ class AccumulatorStreamReceiver(IStreamReceiver):
         If `n` is ``None``, return all messages.
         If there are less than `n` message in the queue, return all of them.
         If ``peek==True``, just return the messages; otherwise, pop the from the queue in mark the as read.
-        If ``as_event==True``, each message is represented as a tuple ``(src, tag, msg, ids)`` describing the received event;
+        If ``as_event==True``, each message is represented as a tuple ``(src, tag, msg)`` describing the received event;
         otherwise, just messages are returned.
         """
+        if not peek:
+            self._check_waiting()
         return self._get_acc_rng(0,n,peek=peek,as_event=as_event)
     def get_newest(self, n=1, peek=True, as_event=False):
         """
@@ -537,9 +565,11 @@ class AccumulatorStreamReceiver(IStreamReceiver):
 
         If there are less than `n` message in the queue, return all of them.
         If ``peek==True``, just return the messages; otherwise, clear the queue after reading.
-        If ``as_event==True``, each message is represented as a tuple ``(src, tag, msg, ids)`` describing the received event;
+        If ``as_event==True``, each message is represented as a tuple ``(src, tag, msg)`` describing the received event;
         otherwise, just messages are returned.
         """
+        if not peek:
+            self._check_waiting()
         if n<=0:
             return []
         return self._get_acc_rng(-n,-1,peek=peek,as_event=as_event)

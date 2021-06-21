@@ -65,7 +65,7 @@ class StreamFormerThread(controller.QTaskThread):
         self.add_command("set_cutoff")
         self.add_command("configure_channel")
         self.add_command("get_channel_status")
-        self.add_command("get_source_status")
+        self.add_command("get_scheduled_status")
         self.sn=self.name
         self.cnt=stream_manager.MultiStreamIDCounter()
         self.cnt.add_counter(self.sn)
@@ -262,8 +262,7 @@ class StreamFormerThread(controller.QTaskThread):
         else:
             def on_multicast(src, tag, value):
                 self._add_data(name,value,src=src,tag=tag,parse=parse)
-        uid=self.subscribe_commsync(on_multicast,srcs=srcs,tags=tags,dsts=dsts,filt=filt,limit_queue=None,priority=10)
-        # self.source_schedulers[name]=self._multicast_schedulers[uid]  #TODO: save all schedulers in the task controller
+        self.subscribe_commsync(on_multicast,srcs=srcs,tags=tags,dsts=dsts,filt=filt,limit_queue=None,priority=-5)
         if sn is not None:
             self.cnt.add_counter(sn)
     
@@ -413,13 +412,6 @@ class StreamFormerThread(controller.QTaskThread):
         for n,ch in self.channels.items():
             status[n]=ch.get_status()
         return status
-    def get_source_status(self):
-        """
-        Get source incoming queues status.
-
-        Return dictionary ``{name: queue_len}``.
-        """
-        status={}
-        for n,sch in self.source_schedulers.items():
-            status[n]=sch.get_current_len()
-        return status
+    def get_scheduled_status(self):
+        """Get the total number of pending calls in the queues (includes both commands and source multicasts)"""
+        return sum(len(sch) for sch in self._priority_queues.values())

@@ -2,6 +2,7 @@ from ..core.thread import controller
 from ..core.utils import rpyc_utils, module as module_utils
 
 import importlib
+import contextlib
 
 
 class DeviceThread(controller.QTaskThread):
@@ -10,18 +11,12 @@ class DeviceThread(controller.QTaskThread):
 
     Contains methods to open/close the device, obtaining device settings and info, and dealing with remote devices (e.g., connected to other PCs).
 
-    Args:
-        name: thread name
-        args: args supplied to :meth:`setup_task` method
-        kwargs: keyword args supplied to :meth:`setup_task` method
-        multicast_pool: :class:`.MulticastPool` for this thread (by default, use the default common pool)
-
     Attributes:
         device: managed device. Its opening should be specified in an overloaded :meth:`connect_device` method,
             and it is actually opened by calling :meth:`open_device` method (which also handles status updates and duplicate opening issues)
-        qd: device query accessor, which routes device method call through a command
-            ``ctl.qd.method(*args,**kwarg)`` is equivalent to ``ctl.device.method(args,kwargs)`` called as a synchronous command in the device thread
-        qdi: device query accessor, ignores and silences any exceptions (including missing /stopped controller); similar to ``.csi`` accessor for synchronous commands
+        csd: device query accessor, which routes device method call through a command
+            ``ctl.csd.method(*args,**kwarg)`` is equivalent to ``ctl.device.method(args,kwargs)`` called as a synchronous command in the device thread
+        csdi: device query accessor, ignores and silences any exceptions (including missing /stopped controller); similar to ``.csi`` accessor for synchronous commands
         device_reconnect_tries: number of attempts to connect to the device before when calling :meth:`open` before giving up and declaring it unavailable
         settings_variables: list of variables to list when requesting full info (e.g., using ``get_settings`` command);
             by default, read all variables, but if it takes too long, some can be omitted
@@ -60,8 +55,9 @@ class DeviceThread(controller.QTaskThread):
         self.device_reconnect_tries=0
         self._tried_device_connect=0
         self.rpyc_serv=None
-        self.qd=self.DeviceMethodAccessor(self,ignore_errors=False)
-        self.qdi=self.DeviceMethodAccessor(self,ignore_errors=True)
+        self.remote=None
+        self.csd=self.DeviceMethodAccessor(self,ignore_errors=False)
+        self.csdi=self.DeviceMethodAccessor(self,ignore_errors=True)
         
     def finalize_task(self):
         self.close()
@@ -136,6 +132,30 @@ class DeviceThread(controller.QTaskThread):
             return rpyc_utils.obtain(obj,serv=self.rpyc_serv)
         return obj
 
+    class ConnectionFailError(Exception):
+        """Error which can be raised on opening failure"""
+
+    @contextlib.contextmanager
+    def using_devclass(self, cls, host, timeout=3., attempts=2):
+        """
+        Context manager for simplifying device opening.
+
+        Creates a class based on `cls` and `host` parameters, catches device opening errors,
+        and automatically closes device and sets it to ``None`` if that happens.
+        If `host` is ``"disconnect"``, skip device connection (can be used for e.g., temporarily unavailable or buggy device).
+        """
+        if cls=="disconnect":
+            raise self.ConnectionFailError
+        try:
+            cls=self.rpyc_devclass(cls,host=host,timeout=timeout,attempts=attempts)
+        except IOError:
+            raise self.ConnectionFailError
+        try:
+            yield cls
+        except cls.Error:
+            if self.device is not None:
+                self.device.close()
+                self.device=None
     def open(self):
         """
         Open the device by calling :meth:`connect_device`.
@@ -148,7 +168,10 @@ class DeviceThread(controller.QTaskThread):
             return False
         self.update_status("connection","opening","Connecting...")
         if self.device is None:
-            self.connect_device()
+            try:
+                self.connect_device()
+            except self.ConnectionFailError:
+                pass
         if self.device is not None:
             if not self.device.is_opened():
                 self.open_device()

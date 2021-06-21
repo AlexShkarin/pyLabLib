@@ -33,7 +33,7 @@ class FrameBinningThread(controller.QTaskThread):
         - ``setup_binning``: setup binning parameters
     """
     def setup_task(self, src, tag_in, tag_out=None):
-        self.subscribe_commsync(self.process_input_frames,srcs=src,tags=tag_in,dsts="any",limit_queue=2,on_full_queue="wait",subscription_priority=-5)
+        self.subscribe_commsync(self.process_input_frames,srcs=src,tags=tag_in,dsts="any",limit_queue=2,on_full_queue="wait")
         self.tag_out=tag_out or tag_in
         self.v["params/spat"]={"bin":(1,1),"mode":"skip"}
         self.v["params/time"]={"bin":1,"mode":"skip"}
