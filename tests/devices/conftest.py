@@ -4,6 +4,7 @@ from pylablib.core.utils import string, files
 
 import os
 import re
+import time
 
 def parse_dev(dev):
     m=re.match(r"(\w+)(\(.*\))?$",dev)
@@ -64,9 +65,13 @@ def device(request, library_parameters):
                 except Exception:
                     if i==open_retry:
                         raise
+                    time.sleep(1.)
         except Exception:
-            devargstr=", ".join([str(a) for a in devargs])
-            pytest.xfail("couldn't connect to the device {}({})".format(devcls.__name__,devargstr))
+            if request.config.getoption("dev_no_conn_fail"):
+                devargstr=", ".join([str(a) for a in devargs])
+                pytest.xfail("couldn't connect to the device {}({})".format(devcls.__name__,devargstr))
+            else:
+                raise
         opened=True
         for _ in range(open_rep):
             dev.close()
@@ -78,6 +83,7 @@ def device(request, library_parameters):
                 except Exception:
                     if i==open_retry:
                         raise
+                    time.sleep(1.)
             opened=True
         yield dev
     finally:

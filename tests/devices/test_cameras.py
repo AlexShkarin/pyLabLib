@@ -134,3 +134,4 @@ class TestUC480(ROICameraTester):
     devname="uc480"
     devcls=uc480.UC480Camera
     rois=gen_rois(128,((1,1),(1,2),(2,2),((0,0),False),((3,3),False),((10,10),False),((100,100),False)))
+    default_roi=(0,512,0,512)
