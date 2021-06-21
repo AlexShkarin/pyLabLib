@@ -48,9 +48,8 @@ class Solstis(interface.IDevice):
         self.timeout=timeout
         self.socket=None
         self._operation_cooldown=0.02
+        self._start_link_on_open=start_link
         self.open()
-        if start_link:
-            self.start_link()
         self._last_status={}
         self.use_websocket=(websocket is not None) if use_websocket=="auto" else use_websocket
         self._websocket_lock=threading.Lock()
@@ -78,6 +77,9 @@ class Solstis(interface.IDevice):
             self.socket.close()
             raise
         self._last_status={}
+        if self._start_link_on_open:
+            self.start_link()
+        self._start_link_on_open=True
     @reraise
     def close(self):
         if self.socket is not None:

@@ -17,9 +17,9 @@ def get_os_lib_folder():
     arch=platform.architecture()[0]
     winarch="64bit" if platform.machine().endswith("64") else "32bit"
     if winarch==arch:
-        return os.path.join(os.environ["WINDIR"],"System32")
+        return os.path.join(os.environ.get("WINDIR","C:\\Windows"),"System32")
     else: # 32 bit Python on 64 but OS (the reverse is impossible)
-        return os.path.join(os.environ["WINDIR"],"SysWOW64")
+        return os.path.join(os.environ.get("WINDIR","C:\\Windows"),"SysWOW64")
 os_lib_folder=get_os_lib_folder()
 
 def get_program_files_folder(subfolder="", arch=None):
@@ -29,6 +29,8 @@ def get_program_files_folder(subfolder="", arch=None):
     If `arch` is ``None``, use the current Python architecture to determine the folder;
     otherwise, it specifies the architecture (``"32bit"`` for ``Program Files (x86)``, ``"64bit"`` for ``Program Files``)
     """
+    if sys.platform!="win32":
+        return ""
     if subfolder:
         return os.path.join(get_program_files_folder(arch=arch),subfolder)
     if arch is None:
@@ -97,10 +99,10 @@ def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, depe
         with lock:
             if locally:
                 loc_folder,loc_name=os.path.split(path)
-                old_env_path=os.environ["PATH"]
-                env_paths=old_env_path.split(";")
+                old_env_path=os.environ.get("PATH",None)
+                env_paths=old_env_path.split(os.pathsep) if old_env_path else []
                 if not any([files.paths_equal(loc_folder,ep) for ep in env_paths if ep]):
-                    os.environ["PATH"]=files.normalize_path(loc_folder)+";"+os.environ["PATH"]
+                    os.environ["PATH"]=files.normalize_path(loc_folder)+(os.pathsep+old_env_path if old_env_path else "")
                 path=loc_name if folder=="" else "./"+loc_name
                 folder=loc_folder
             depends=depends or []
@@ -117,7 +119,10 @@ def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, depe
                 return (dlls[-1],loc,paths[-1]) if return_location else dlls[-1]
             except OSError:
                 if locally:
-                    os.environ["PATH"]=old_env_path
+                    if old_env_path is None:
+                        del os.environ["PATH"]
+                    else:
+                        os.environ["PATH"]=old_env_path
     error_message="\n"+error_message if error_message else ""
     raise OSError("can't import library {}".format(" or ".join(name))+error_message)
 

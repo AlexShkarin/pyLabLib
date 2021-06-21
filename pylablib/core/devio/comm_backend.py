@@ -2,7 +2,7 @@
 Routines for defining a unified interface across multiple backends.
 """
 
-from ..utils import funcargparse, general, net, py3, module
+from ..utils import funcargparse, general, net, py3, module, functions as func_utils
 from . import interface
 from . import backend_logger
 from .base import DeviceError
@@ -20,7 +20,7 @@ import functools
 class DeviceBackendError(DeviceError):
     """Generic exception relaying a backend error"""
     def __init__(self, exc):
-        msg="backend exception: {}".format(repr(exc))
+        msg="backend exception: {} ('{}')".format(repr(exc),str(exc))
         super().__init__(msg)
         self.backend_exc=exc
 
@@ -361,7 +361,7 @@ try:
                 with self.instr.ignore_warning(visa.constants.VI_SUCCESS_DEV_NPRESENT,visa.constants.VI_SUCCESS_MAX_CNT):
                     while len(data)<size:
                         to_read=min(chunk_size,size-len(data))
-                        chunk=self.instr.visalib.read(to_read)
+                        chunk,_=self.instr.visalib.read(self.instr.session,to_read)
                         data.extend(chunk)
                 return bytes(data)
         else:
@@ -799,7 +799,7 @@ try:
             port=conn_dict.pop("port")
             self.opened=False
             try:
-                self.instr=ft232.Ft232(port,**conn_dict)
+                self.instr=self._open_instr(port,conn_dict)
                 self.opened=True
                 self._open_retry_times=open_retry_times
                 self.cooldown("open")
@@ -807,13 +807,19 @@ try:
                 self._conn_params=(port,conn_dict,timeout)
             except self.BackendError as e:
                 raise self.Error(e) from e
-            
+
+        def _open_instr(self, port, params):
+            sig=func_utils.funcsig(ft232.Ft232)
+            if "serial_number" in sig.arg_names: # pyft232 v0.11 signature change
+                return ft232.Ft232(serial_number=port,**params)
+            else:
+                return ft232.Ft232(port,**params)
         @reraise
         def _do_open(self):
             if self.is_opened():
                 return
             def reopen():
-                self.instr=ft232.Ft232(self._conn_params[0],**self._conn_params[1])
+                self.instr=self._open_instr(self._conn_params[0],self._conn_params[1])
                 self.set_timeout(self._conn_params[2])
                 self.opened=True
             general.retry_wait(reopen, self._open_retry_times, 0.3)

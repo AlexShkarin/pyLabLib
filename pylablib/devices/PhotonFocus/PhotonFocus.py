@@ -559,7 +559,7 @@ def remove_status_line(frame, sl_pos="calculate", policy="duplicate", copy=True)
             ``"median"`` (set it to the image median), or ``"duplicate"`` (set it equal to the previous row; default)
         copy: if ``True``, make copy of the original frames; otherwise, attempt to remove the line in-place
     """
-    if sl_pos is "calculate":
+    if sl_pos=="calculate":
         sl_pos=get_status_line_position(frame) if frame.ndim==2 else get_status_line_position(frame[0])
     if sl_pos and policy!="keep":
         if copy:

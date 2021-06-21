@@ -978,10 +978,10 @@ def _load_dictionary(v, loadf):
     d,case_normalization=v
     return Dictionary(loadf(d),case_normalization=case_normalization,copy=False)
 strdump.dumper.add_class(Dictionary,_dump_dictionary,_load_dictionary,"dict",recursive=True)
-                 
-    
-    
-    
+
+
+
+
 class DictionaryPointer(Dictionary):
     """
     Similar to :class:`Dictionary`, but can point at one of the branches instead of the full dictionary.

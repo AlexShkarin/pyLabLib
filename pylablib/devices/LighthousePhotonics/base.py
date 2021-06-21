@@ -101,5 +101,5 @@ class SproutG(comm_backend.ICommBackendWrapper):
         return float(self.query("POWER SET?"))
     def set_output_power(self, level):
         """Get the output power setpoint (in Watts)"""
-        self.query("POWER SET={:.2d}".format(level))
+        self.query("POWER SET={:.2f}".format(level))
         return self.get_output_setpoint()
