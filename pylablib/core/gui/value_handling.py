@@ -176,7 +176,7 @@ class PropertyValueHandler(IValueHandler):
 
     If getter or setter are not supplied but are called, they raise :exc:`NoParameterError`;
     this means that they are ignored in :meth:`GUIValues.get_all_values` and :meth:`GUIValues.set_all_values` methods,
-    but raise an error when access directly (e.g., using :meth:`GUIValues.get_values`).
+    but raise an error when access directly (e.g., using :meth:`GUIValues.get_value`).
 
     Args:
         getter: value getter method; takes 0 or 1 (name) arguments and returns the value
@@ -674,7 +674,7 @@ class GUIValues:
                 signal=handler.get_value_changed_signal()
                 if signal is not None:
                     handler.get_value_changed_signal().disconnect()
-            except TypeError: # no signals connected or no handle
+            except (TypeError,RuntimeError): # no signals connected or no handle
                 pass
         del self.handlers[name]
         if remove_indicator and name in self.indicator_handlers:
@@ -905,7 +905,7 @@ class GUIValues:
         except KeyError:
             return dictionary.Dictionary()
     @gui_thread_method
-    def set_indicator(self, name, value, ind_name=None, include=None, exclude=None, ignore_missing=True):
+    def set_indicator(self, name, value, ind_name=None, include=None, exclude=None, ignore_missing=False):
         """
         Set indicator value with a given name.
 
@@ -972,6 +972,21 @@ class GUIValues:
     def get_value_changed_signal(self, name):
         """Get changed events for a value under a given name"""
         return self.get_handler(name).get_value_changed_signal()
+    def update_value(self, name=None):
+        """
+        Send update signal for a handler with a given name or list of names.
+        
+        Emit a value changed signal with the current value to notify the subscribed slots.
+        If `name` is ``None``, emit for all values in the table.
+        """
+        if name is None:
+            name=self.handlers.keys(leafs=True)
+        elif not isinstance(name,list):
+            name=[name]
+        for n in name:
+            changed_event=self.get_value_changed_signal(n)
+            if changed_event:
+                changed_event.emit(self.get_value(n))
 
 
 def get_gui_values(gui_values=None, gui_values_path=""):

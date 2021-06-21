@@ -2,7 +2,7 @@ from ...utils import general, dictionary
 from .. import value_handling
 from .. import QtCore, QtWidgets
 from ...thread import controller
-from .layout_manager import QLayoutManagedWidget
+from .layout_manager import IQLayoutManagedWidget
 
 import collections
 
@@ -12,7 +12,7 @@ import collections
 TTimer=collections.namedtuple("TTimer",["name","period","timer"])
 TTimerEvent=collections.namedtuple("TTimerEvent",["start","loop","stop","timer"])
 TChild=collections.namedtuple("TChild",["name","widget","gui_values_path"])
-class QContainer(QtCore.QObject):
+class IQContainer:
     """
     Basic controller object which combines and controls several other widget.
 
@@ -20,9 +20,14 @@ class QContainer(QtCore.QObject):
 
     Args:
         name: entity name (used by default when adding this object to a values table)
+    
+    Abstract mix-in class, which needs to be added to a class inheriting from ``QObject``.
+    Alternatively, one can directly use :class:`QContainer`, which already inherits from ``QObject``.
     """
     TimerUIDGenerator=general.NamedUIDGenerator(thread_safe=True)
     def __init__(self, *args, name=None, **kwargs):
+        if not isinstance(self,QtCore.QObject):
+            raise RuntimeError("IQContainer should be mixed with a QObject class or subclass")
         super().__init__(*args,**kwargs)
         self.name=None
         self.setup_name(name)
@@ -43,7 +48,7 @@ class QContainer(QtCore.QObject):
         """
         Setup container's GUI values storage.
 
-        `gui_values` is a :class:`.GUIValues`` object, an object which has ``gui_values`` attribute,
+        `gui_values` is a :class:`.GUIValues` object, an object which has ``gui_values`` attribute,
         or ``"new"`` (make a new storage; in this case `gui_values_path` is ignored), and
         `gui_values_path` is the container's path within this storage.
         """
@@ -55,12 +60,12 @@ class QContainer(QtCore.QObject):
         """Set the object's name"""
         if name is not None:
             self.name=name
-            self.setObjectName(name)
+            self.setObjectName(name)  # pylint: disable=no-member
     def setup(self, name=None, gui_values=None, gui_values_path=""):
         """
         Setup the container by initializing its GUI values and setting the ``ctl`` attribute.
 
-        `gui_values` is a :class:`.GUIValues`` object, an object which has ``gui_values`` attribute,
+        `gui_values` is a :class:`.GUIValues` object, an object which has ``gui_values`` attribute,
         or ``"new"`` (make a new storage; in this case `gui_values_path` is ignored), and
         `gui_values_path` is the container's path within this storage.
         If ``gui_values`` is ``None``, skip the setup (assume that it's already done).
@@ -279,32 +284,48 @@ class QContainer(QtCore.QObject):
     def get_all_indicators(self):
         """Get indicator values of all widget in the container"""
         return self.gui_values.get_all_indicators(self.gui_values_path)
-    def set_indicator(self, name, value, ignore_missing=True):
+    def set_indicator(self, name, value, ignore_missing=False):
         """Set indicator value for a widget or a branch with the given name"""
         return self.gui_values.set_indicator((self.gui_values_path,name or ""),value,ignore_missing=ignore_missing)
-    set_all_indicators=set_indicator
+    def set_all_indicators(self, name, value, ignore_missing=True):
+        return self.set_indicator(name,value,ignore_missing=ignore_missing)
     def update_indicators(self):
         """Update all indicators to represent current values"""
         return self.gui_values.update_indicators(root=self.gui_values_path)
 
 
+class QContainer(IQContainer, QtCore.QObject):
+    """
+    Basic controller object which combines and controls several other widget.
+
+    Can either corresponds to a widget (e.g., a frame or a group box), or simply be an organizing entity.
+
+    Args:
+        name: entity name (used by default when adding this object to a values table)
+    
+    Simply a combination of :class:`IQContainer` and ``QObject``.
+    """
 
 
 
-class QWidgetContainer(QLayoutManagedWidget, QContainer):
+
+class IQWidgetContainer(IQLayoutManagedWidget, IQContainer):
     """
     Generic widget container.
 
-    Combines :class:`QContainer` management of GUI values and timers
-    with :class:`.QLayoutManagedWidget` management of the contained widget's layout.
+    Combines :class:`IQContainer` management of GUI values and timers
+    with :class:`.IQLayoutManagedWidget` management of the contained widget's layout.
 
     Typically, adding widget adds them both to the container values and to the layout;
     however, this can be skipped by either using :meth:`.QLayoutManagedWidget.add_to_layout`
     (only add to the layout), or specifying ``location="skip"`` in :meth:`add_child` (only add to the container).
+    
+    Abstract mix-in class, which needs to be added to a class inheriting from ``QWidget``.
+    Alternatively, one can directly use :class:`QWidgetContainer`, which already inherits from ``QWidget``.
     """
     def setup(self, layout="vbox", no_margins=False, name=None, gui_values=None, gui_values_path=""):
-        QContainer.setup(self,name=name,gui_values=gui_values,gui_values_path=gui_values_path)
-        QLayoutManagedWidget.setup(self,layout=layout,no_margins=no_margins)
+        IQContainer.setup(self,name=name,gui_values=gui_values,gui_values_path=gui_values_path)
+        IQLayoutManagedWidget.setup(self,layout=layout,no_margins=no_margins)
     def add_child(self, name, widget, location=None, gui_values_path=True):
         """
         Add a contained child widget.
@@ -314,7 +335,7 @@ class QWidgetContainer(QLayoutManagedWidget, QContainer):
         `location` specifies the layout location to which the widget is added;
         if ``location=="skip"``, skip adding it to the layout (can be manually added later).
         Note that if the widget is added to the layout, it will be completely deleted
-        when :meth:`clear`or :meth:`remove_child` methods are called;
+        when ``clear`` or ``remove_child`` methods are called;
         otherwise, simply its ``clear`` method will be called, and its GUI values will be deleted.
 
         If `gui_values_path` is ``False`` or ``None``, do not add it to the GUI values table;
@@ -322,18 +343,18 @@ class QWidgetContainer(QLayoutManagedWidget, QContainer):
         otherwise, ``gui_values_path`` specifies the path under which the widget values are stored.
         """
         if name!=False:
-            QContainer.add_child(self,name=name,widget=widget,gui_values_path=gui_values_path)
+            IQContainer.add_child(self,name=name,widget=widget,gui_values_path=gui_values_path)
         if isinstance(widget,QtWidgets.QWidget):
-            QLayoutManagedWidget.add_to_layout(self,widget,location=location)
+            IQLayoutManagedWidget.add_to_layout(self,widget,location=location)
         return widget
     def remove_child(self, name):
         """Remove widget from the container and the layout, clear it, and remove it"""
         if name in self._children:
             widget=self._children[name].widget
-            QContainer.remove_child(self,name)
-            QLayoutManagedWidget.remove_layout_element(self,widget)
+            IQContainer.remove_child(self,name)
+            IQLayoutManagedWidget.remove_layout_element(self,widget)
         else:
-            QContainer.remove_child(self,name)
+            IQContainer.remove_child(self,name)
     def add_frame(self, name, layout="vbox", location=None, gui_values_path=True, no_margins=True):
         """
         Add a new frame container to the layout.
@@ -366,17 +387,30 @@ class QWidgetContainer(QLayoutManagedWidget, QContainer):
 
         All the timers are stopped, all the contained widgets are cleared and removed.
         """
-        QContainer.clear(self)
-        QLayoutManagedWidget.clear(self)
+        IQContainer.clear(self)
+        IQLayoutManagedWidget.clear(self)
+
+class QWidgetContainer(IQWidgetContainer, QtWidgets.QWidget):
+    """
+    Generic widget container.
+
+    Combines :class:`IQContainer` management of GUI values and timers
+    with :class:`.IQLayoutManagedWidget` management of the contained widget's layout.
+
+    Typically, adding widget adds them both to the container values and to the layout;
+    however, this can be skipped by either using :meth:`.QLayoutManagedWidget.add_to_layout`
+    (only add to the layout), or specifying ``location="skip"`` in :meth:`add_child` (only add to the container).
+    
+    Simply a combination of :class:`IQWidgetContainer` and ``QWidget``.
+    """
 
 
 
+class QFrameContainer(IQWidgetContainer, QtWidgets.QFrame):
+    """An extension of :class:`IQWidgetContainer` for a ``QFrame`` Qt base class"""
 
-class QFrameContainer(QtWidgets.QFrame, QWidgetContainer):
-    """An extension of :class:`QWidgetContainer` for a ``QFrame`` Qt base class"""
-
-class QGroupBoxContainer(QtWidgets.QGroupBox, QWidgetContainer):
-    """An extension of :class:`QWidgetContainer` for a ``QGroupBox`` Qt base class"""
+class QGroupBoxContainer(IQWidgetContainer, QtWidgets.QGroupBox):
+    """An extension of :class:`IQWidgetContainer` for a ``QGroupBox`` Qt base class"""
     def setup(self, caption=None, layout="vbox", no_margins=False, name=None, gui_values=None, gui_values_path=""):
         QWidgetContainer.setup(self,layout=layout,no_margins=no_margins,name=name,gui_values=gui_values,gui_values_path=gui_values_path)
         if caption is not None:
@@ -385,7 +419,7 @@ class QGroupBoxContainer(QtWidgets.QGroupBox, QWidgetContainer):
 
 
 
-class QTabContainer(QtWidgets.QTabWidget, QContainer):
+class QTabContainer(IQContainer, QtWidgets.QTabWidget):
     """
     Container which manages tab widget.
 

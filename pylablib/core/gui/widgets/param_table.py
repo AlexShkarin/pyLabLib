@@ -549,10 +549,11 @@ class ParamTable(container.QWidgetContainer):
         """Get indicator values of all widget in the given branch"""
         return self.gui_values.get_all_indicators((self.gui_values_path,name or ""),include=self.params)
     @controller.gui_thread_method
-    def set_indicator(self, name, value, ignore_missing=True):
+    def set_indicator(self, name, value, ignore_missing=False):
         """Set indicator value for a widget or a branch with the given name"""
         return self.gui_values.set_indicator((self.gui_values_path,name or ""),value,include=self.params,ignore_missing=ignore_missing)
-    set_all_indicators=set_indicator
+    def set_all_indicators(self, name, value, ignore_missing=True):
+        return self.set_indicator(name,value,ignore_missing=ignore_missing)
     @controller.gui_thread_method
     def update_indicators(self):
         """Update all indicators to represent current values"""
@@ -568,7 +569,7 @@ class ParamTable(container.QWidgetContainer):
             if disconnect:
                 try:
                     self.value_changed.disconnect()
-                except TypeError: # no signals connected
+                except (TypeError,RuntimeError): # no signals connected
                     pass
             for name in self.params:
                 path=(self.gui_values_path,name)

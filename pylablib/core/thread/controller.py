@@ -807,7 +807,7 @@ class QThreadController(QtCore.QObject):
         """
         Send a synchronization signal with the given tag and UID.
 
-        This method is rarely invoked directly, and is usually used by synchronizers code (e.g., class:`QThreadNotifier`).
+        This method is rarely invoked directly, and is usually used by synchronizers code (e.g., :class:`.QThreadNotifier`).
         External call method.
         """
         self._control_sent.emit(("sync",tag,0,uid))
@@ -1474,7 +1474,9 @@ class QTaskThread(QThreadController):
             to=self._schedule_pending_jobs(ct)
             sleep_time=self._loop_wait_period if to is None else min(self._loop_wait_period,to)
             if schedule_time<=0 and sleep_time>=0:
-                if not self._poked:
+                if self._poked:
+                    self.check_messages()
+                else:
                     self.sleep(sleep_time,wake_on_message=True)
             self._poked=False
             self._exhaust_queued_calls()

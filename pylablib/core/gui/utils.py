@@ -78,9 +78,8 @@ def insert_layout_row(layout, row, stretch=0, compress=False):
         for i in range(layout.count()):
             pos=layout.getItemPosition(i)
             if pos[0]<free_row and pos[0]+pos[2]>row:
-                items_to_shift.append((layout.itemAt(i),pos))
-        for i,_ in items_to_shift:
-            layout.removeItem(i)
+                items_to_shift.append((i,pos))
+        items_to_shift=[(layout.takeAt(i),p) for (i,p) in items_to_shift[::-1]][::-1] # remove starting from the end
         for i,p in items_to_shift:
             row_shift=1 if p[0]>=row else 0
             layout.addItem(i,p[0]+row_shift,p[1],p[2]+(1-row_shift),p[3])
@@ -131,9 +130,8 @@ def insert_layout_column(layout, col, stretch=0, compress=False):
         for i in range(layout.count()):
             pos=layout.getItemPosition(i)
             if pos[1]<free_col and pos[1]+pos[3]>col:
-                items_to_shift.append((layout.itemAt(i),pos))
-        for i,_ in items_to_shift:
-            layout.removeItem(i)
+                items_to_shift.append((i,pos))
+        items_to_shift=[(layout.takeAt(i),p) for (i,p) in items_to_shift[::-1]][::-1] # remove starting from the end
         for i,p in items_to_shift:
             col_shift=1 if p[0]>=col else 0
             layout.addItem(i,p[0],p[1]+col_shift,p[2],p[3]+(1-col_shift))
@@ -153,9 +151,8 @@ def compress_grid_layout(layout):
                 for i in range(layout.count()):
                     pos=layout.getItemPosition(i)
                     if pos[0]>curr_row:
-                        items_to_shift.append((layout.itemAt(i),pos))
-                for i,_ in items_to_shift:
-                    layout.removeItem(i)
+                        items_to_shift.append((i,pos))
+                items_to_shift=[(layout.takeAt(i),p) for (i,p) in items_to_shift[::-1]][::-1] # remove starting from the end
                 for i,p in items_to_shift:
                     layout.addItem(i,p[0]-1,p[1],p[2],p[3])
                 filled_rows-=1

@@ -6,22 +6,21 @@ from .. import QtCore, QtWidgets
 import contextlib
 
 
-class QLayoutManagedWidget(QtWidgets.QWidget):
+class IQLayoutManagedWidget:
     """
     GUI widget which can manage layouts.
 
     Typically, first it is set up using :meth:`setup` method to specify the master layout kind;
     afterwards, widgets and sublayout can be added using :meth:`add_to_layout`.
     In addition, it can directly add named sublayouts using :meth:`add_sublayout` method.
+    
+    Abstract mix-in class, which needs to be added to a class inheriting from ``QWidget``.
+    Alternatively, one can directly use :class:`QLayoutManagedWidget`, which already inherits from ``QWidget``.
     """
     def __init__(self, *args, **kwargs):
-        if args:
-            parent=args[0]
-        elif "parent" in kwargs:
-            parent=kwargs["parent"]
-        else:
-            parent=None
-        super().__init__(parent)
+        if not isinstance(self,QtWidgets.QWidget):
+            raise RuntimeError("IQLayoutManagedWidget should be mixed with a QWidget class or subclass")
+        super().__init__(*args,**kwargs)
         self.main_layout=None
         self._default_layout="main"
     
@@ -36,7 +35,8 @@ class QLayoutManagedWidget(QtWidgets.QWidget):
         raise ValueError("unrecognized layout kind: {}".format(kind))
     def _set_main_layout(self):
         self.main_layout=self._make_new_layout(self.main_layout_kind,self)
-        self.main_layout.setObjectName(self.name+"_main_layout" if hasattr(self,"name") and self.name else "main_layout")
+        name=getattr(self,"name")
+        self.main_layout.setObjectName(name+"_main_layout" if name else "main_layout")
         if self.no_margins:
             self.main_layout.setContentsMargins(0,0,0,0)
     def setup(self, layout="grid", no_margins=False):
@@ -89,11 +89,11 @@ class QLayoutManagedWidget(QtWidgets.QWidget):
             row,rowspan=0,1
             row_cnt,col_cnt=1,layout.count()
         if lkind in {"grid","vbox"}:
-            row=row_cnt if row=="next" else (row%row_cnt if row<0 else row)
+            row=row_cnt if row=="next" else (row%max(row_cnt,1) if row<0 else row)
             if rowspan=="end":
                 rowspan=max(row_cnt-row,1)
         if lkind in {"grid","hbox"}:
-            col=col_cnt if col=="next" else (col%col_cnt if col<0 else col)
+            col=col_cnt if col=="next" else (col%max(col_cnt,1) if col<0 else col)
             if colspan=="end":
                 colspan=max(col_cnt-col,1)
         return lname,(row,col,rowspan,colspan)
@@ -280,3 +280,15 @@ class QLayoutManagedWidget(QtWidgets.QWidget):
             self._set_main_layout()
             self._sublayouts={"main":(self.main_layout,self.main_layout_kind)}
             self._spacers=[]
+
+
+class QLayoutManagedWidget(IQLayoutManagedWidget, QtWidgets.QWidget):
+    """
+    GUI widget which can manage layouts.
+
+    Typically, first it is set up using :meth:`setup` method to specify the master layout kind;
+    afterwards, widgets and sublayout can be added using :meth:`add_to_layout`.
+    In addition, it can directly add named sublayouts using :meth:`add_sublayout` method.
+    
+    Simply a combination of :class:`IQLayoutManagedWidget` and ``QWidget``.
+    """
