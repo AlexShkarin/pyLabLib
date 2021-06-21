@@ -16,10 +16,10 @@ with open(path.join(here,'README.rst')) as f:
 
 dep_base=['numpy','scipy','pandas']
 dep_extra=['rpyc','numba']
-dep_devio=['pyft232','pyvisa','pyserial','pyusb']
+dep_devio=['pyft232','pyvisa>=1.6','pyserial','pyusb']
 dep_devio_extra=['nidaqmx','websocket-client']
-dep_pyqt5=['pyqt5','sip','pyqtgraph']
-dep_pyside2=['pyside2','shiboken2','pyqtgraph']
+dep_pyqt5=['pyqt5>5.10','pyqtgraph']
+dep_pyside2=['pyside2','shiboken2','pyqtgraph>0.10']
 setup(
     name='pylablib',
     # name='pylablib-lightweight',
@@ -41,6 +41,7 @@ setup(
     'Programming Language :: Python :: 3.6',
     'Programming Language :: Python :: 3.7',
     'Programming Language :: Python :: 3.8',
+    'Programming Language :: Python :: 3.9',
     'Operating System :: Microsoft :: Windows'
     ],
     project_urls={

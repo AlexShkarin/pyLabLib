@@ -57,6 +57,9 @@ autodoc_mock_imports = ['nidaqmx', 'pyvisa', 'serial', 'ft232', 'PyQt5', 'pywinu
 sys.modules['pyvisa']=mock.Mock(VisaIOError=object, __version__='1.9.0')
 sys.modules['serial']=mock.Mock(SerialException=object)
 sys.modules['ft232']=mock.Mock(Ft232Exception=object)
+sys.modules['PyQt5.QtCore']=mock.Mock(QObject=object,QThread=object)
+sys.modules['PyQt5.QtWidgets']=mock.Mock(QWidget=object,QFrame=object,QGroupBox=object,QTabWidget=object,QPushButton=object,QComboBox=object,QLineEdit=object,QLabel=object)
+sys.modules['PyQt5']=mock.Mock(QtCore=sys.modules['PyQt5.QtCore'],QtWidgets=sys.modules['PyQt5.QtWidgets'])
 if os.path.exists(".skipped_apidoc"):
     with open(".skipped_apidoc","r") as f:
         for ln in f.readlines():
