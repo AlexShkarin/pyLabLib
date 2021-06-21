@@ -23,6 +23,9 @@ The controller has several communication modes: USB, R485, and Ethernet. USB mod
 
 The controller has only been tested with USB communication.
 
+.. warning::
+    There appear to be some issues with Python 3.6 which result in out-of-bounds write, memory corruption, and undefined behavior. Hence, Python 3.7+ is required to work with this device.
+
 
 Connection
 -----------------------
