@@ -8,6 +8,7 @@ import contextlib
 import time
 import functools
 import threading
+import ctypes
 
 
 
@@ -31,7 +32,7 @@ class ICamera(interface.IDevice):
     Error=comm_backend.DeviceError
     TimeoutError=comm_backend.DeviceError
     FrameTransferError=DefaultFrameTransferError
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         super().__init__()
         self._acq_params=None
         self._default_acq_params=function_utils.funcsig(self.setup_acquisition).defaults
@@ -649,6 +650,81 @@ class FrameNotifier:
 
 
 
+class ChunkBufferManager:
+    """
+    Buffer manager, which takes care of creating and removing the buffer chunks, and reading out some parts of them.
+    
+    Args:
+        chunk_size: the minimal size of a single buffer chunk (continuous memory segment potentially containing several frames).
+    """
+    def __init__(self, chunk_size=2**20):
+        self.chunks=None
+        self.nframes=None
+        self.frame_size=None
+        self.frames_per_chunk=None
+        self.chunk_size=chunk_size
+
+    def __bool__(self):
+        return self.chunks is not None
+    def get_ctypes_frames_list(self, ctype=ctypes.c_char_p):
+        """Get stored buffers as a ctypes array with pointer of the given type"""
+        if self.chunks:
+            cbuffs=(ctype*self.nframes)()
+            for i,b in enumerate(self.chunks):
+                for j in range(self.frames_per_chunk):
+                    nb=i*self.frames_per_chunk+j
+                    if nb<self.nframes:
+                        cbuffs[nb]=ctypes.addressof(b)+j*self.frame_size
+                    else:
+                        break
+            return cbuffs
+        else:
+            return None
+    def get_frames_data(self, idx, nframes=1):
+        """
+        Get frames data starting from `idx` and spanning `nframes` frames.
+
+        Return a list of tuples ``(nread, chunk_data)``, where ``nread`` is the number of frames in the chunk,
+        and ``chunk_data`` is the raw buffer pointer as a ``ctypes.c_char_p`` object.
+        """
+        idx%=self.nframes
+        ibuff=idx//self.frames_per_chunk
+        jbuff=idx%self.frames_per_chunk
+        read_chunks=[]
+        while nframes>0:
+            ch=self.chunks[ibuff]
+            chunk_frames=self.frames_per_chunk if ibuff<len(self.chunks)-1 else self.frames_per_chunk_last
+            nread=min(nframes,chunk_frames-jbuff)
+            chunk_data=ctypes.c_char_p(ctypes.addressof(ch)+jbuff*self.frame_size)
+            read_chunks.append((nread,chunk_data))
+            nframes-=nread
+            jbuff=0
+            ibuff=(ibuff+1)%len(self.chunks)
+        return read_chunks
+    def allocate(self, nframes, frame_size):
+        """Allocate buffers for the given number of frames and frame size (in bytes)"""
+        self.deallocate()
+        self.nframes=nframes
+        self.frame_size=frame_size
+        self.frames_per_chunk=max(self.chunk_size//frame_size,1)
+        nchunks=(nframes-1)//self.frames_per_chunk+1
+        if nchunks==1:
+            self.frames_per_chunk=nframes
+        self.chunks=[ctypes.create_string_buffer(self.frames_per_chunk*frame_size) for _ in range(nchunks)]
+        self.frames_per_chunk_last=nframes-self.frames_per_chunk*(nchunks-1)
+    def deallocate(self):
+        """Deallocate the buffers"""
+        self.chunks=None
+        self.frame_size=None
+        self.nframes=None
+        self.frames_per_chunk=None
+        self.frames_per_chunk_last=None
+
+
+
+
+
+
 
 
 
@@ -665,8 +741,8 @@ class IAttributeCamera(ICamera):
     One can also define ``_normalize_attribute_name``, which normalizes the attribute name into a dictionary name
     (e.g., replaces separators, removes spaces, or normalizes case).
     """
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args,**kwargs)
         self.attributes=dictionary.Dictionary()
         self._add_status_variable("camera_attributes",self.get_all_attribute_values,priority=-5)
         self.ca=dictionary.ItemAccessor(self.get_attribute,missing_error=self.Error)
@@ -750,12 +826,112 @@ class IAttributeCamera(ICamera):
 
 
 
+class IGrabberAttributeCamera(ICamera):
+    """
+    Camera class which supports frame grabber attributes.
+
+    Essentially the same as :class:`IAttributeCamera`, but with relevant methods and attributes renamed
+    to support both frame grabber and camera attrbiutes handling simultaneously.
+
+    The method ``_list_grabber_attributes`` must be defined in a subclass;
+    it should produce a list of camera attributes, which have ``name`` attribute for placing them into a dictionary.
+    Attributes can also have ``readable`` and ``writable`` attributes, which are used in
+    :meth:`get_all_grabber_attribute_values` and :meth:`set_all_grabber_attribute_values` to determine if the attribute values should be collected or set.
+    Method ``_update_grabber_attributes`` should be called on opening to populate the dictionary of available attributes.
+
+    One can also define ``_normalize_grabber_attribute_name``, which normalizes the attribute name into a dictionary name
+    (e.g., replaces separators, removes spaces, or normalizes case).
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args,**kwargs)
+        self.grabber_attributes=dictionary.Dictionary()
+        self._add_status_variable("grabber_attributes",self.get_all_grabber_attribute_values,priority=-5)
+        self.ga=dictionary.ItemAccessor(self.get_grabber_attribute,missing_error=self.Error)
+        self.gav=dictionary.ItemAccessor(self.get_grabber_attribute_value,self.set_grabber_attribute_value,missing_error=self.Error)
+    
+    def _normalize_grabber_attribute_name(self, name):
+        return name
+    def _list_grabber_attributes(self):
+        raise NotImplementedError("IGrabberAttributeCamera._list_grabber_attributes")
+    def _update_grabber_attributes(self, replace=False):
+        """Update ``grabber_attributes`` dictionary; if ``replace==True``, replace it entirely, otherwise, simply update it"""
+        attrs=self._list_grabber_attributes()
+        attrs_dict=dictionary.Dictionary({self._normalize_grabber_attribute_name(p.name):p for p in attrs})
+        if replace:
+            self.grabber_attributes=attrs_dict
+        else:
+            self.grabber_attributes.update(attrs_dict)
+    def get_grabber_attribute(self, name, error_on_missing=True):
+        """Get the camera attribute with the given name"""
+        name=self._normalize_grabber_attribute_name(name)
+        if name in self.grabber_attributes:
+            return self.grabber_attributes[name]
+        if error_on_missing:
+            raise self.Error("grabber attribute {} is missing".format(name))
+    def get_all_grabber_attributes(self, copy=False):
+        """
+        Return a dictionary of all available frame grabber grabber_attributes.
+        
+        If ``copy==True``, copy the dictionary; otherwise, return the internal dictionary structure (should not be modified).
+        """
+        return self.grabber_attributes.copy() if copy else self.grabber_attributes
+
+    def get_grabber_attribute_value(self, name, error_on_missing=True, default=None, **kwargs):
+        """
+        Get value of a frame grabber attribute with the given name.
+        
+        If the value doesn't exist and ``error_on_missing==True``, raise error; otherwise, return `default`.
+        If `default` is not ``None``, automatically assume that ``error_on_missing==False``.
+        If `name` points at a dictionary branch, return a dictionary with all values in this branch.
+        Additional arguments are passed to ``get_value`` methods of the individual attribute.
+        """
+        error_on_missing=error_on_missing and (default is None)
+        attr=self.get_grabber_attribute(name,error_on_missing=error_on_missing)
+        if dictionary.is_dictionary(attr):
+            return self.get_all_grabber_attribute_values(root=name,**kwargs)
+        return default if attr is None else attr.get_value(**kwargs)
+    def set_grabber_attribute_value(self, name, value, error_on_missing=True, **kwargs):
+        """
+        Set value of a frame grabber attribute with the given name.
+        
+        If the value doesn't exist and ``error_on_missing==True``, raise error; otherwise, do nothing.
+        If `name` points at a dictionary branch, set all values in this branch (in this case `value` must be a dictionary).
+        Additional arguments are passed to ``set_value`` methods of the individual attribute.
+        """
+        attr=self.get_grabber_attribute(name,error_on_missing=error_on_missing)
+        if dictionary.is_dictionary(attr):
+            return self.set_all_grabber_attribute_values(value,root=name,**kwargs)
+        if attr is not None:
+            attr.set_value(value,**kwargs)
+    
+    def get_all_grabber_attribute_values(self, root="", **kwargs):
+        """
+        Get values of all frame grabber attributes with the given `root`.
+
+        Additional arguments are passed to ``get_value`` methods of individual attributes.
+        """
+        grabber_attributes=self.get_grabber_attribute(root)
+        return grabber_attributes.copy().filter_self(lambda a: getattr(a,"readable",True)).map_self(lambda a: a.get_value(**kwargs))
+    def set_all_grabber_attribute_values(self, settings, root="", **kwargs):
+        """
+        Set values of all frame grabber attributes with the given `root`.
+
+        Additional arguments are passed to ``set_value`` methods of individual attributes.
+        """
+        grabber_attributes=self.get_grabber_attribute(root)
+        settings=dictionary.as_dict(settings,style="flat",copy=False)
+        for k,v in settings.items():
+            k=self._normalize_grabber_attribute_name(k)
+            if k in grabber_attributes and getattr(grabber_attributes[k],"writable",True):
+                grabber_attributes[k].set_value(v,**kwargs)
+
+
 
 
 TAcqTimings=collections.namedtuple("TAcqTimings",["exposure","frame_period"])
 class IExposureCamera(ICamera):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args,**kwargs)
         self._add_settings_variable("exposure",self.get_exposure,self.set_exposure)
         self._add_status_variable("frame_timings",self.get_frame_timings)
     def get_exposure(self):
@@ -836,8 +1012,8 @@ def truncate_roi_axis(roi, lim, symmetric=False):
             end=smax-start
     return (start,end,cbin)
 class IROICamera(ICamera):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args,**kwargs)
         self._add_settings_variable("roi",self.get_roi,self.set_roi)
         self._add_status_variable("roi_limits",self.get_roi_limits)
     def get_roi(self):
@@ -861,7 +1037,7 @@ class IROICamera(ICamera):
         raise NotImplementedError("ICamera.set_roi")
     def _truncate_roi_axis(self, roi, lim, symmetric=False):
         """Truncate ROI ``(start, end)`` to conform to `lim`"""
-        return truncate_roi_axis(roi,lim+(1,),symmetric=symmetric)[:2]
+        return truncate_roi_axis(roi+(1,),lim,symmetric=symmetric)[:2]
     def get_roi_limits(self, hbin=1, vbin=1):  # pylint: disable=unused-argument
         """
         Get the minimal and maximal ROI parameters.
@@ -876,8 +1052,8 @@ class IROICamera(ICamera):
 
 
 class IBinROICamera(ICamera):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args,**kwargs)
         self._add_settings_variable("roi",self.get_roi,self.set_roi)
         self._add_status_variable("roi_limits",self.get_roi_limits)
     def get_roi(self):

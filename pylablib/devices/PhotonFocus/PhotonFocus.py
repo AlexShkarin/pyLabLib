@@ -1,7 +1,8 @@
 from . import pfcam_lib
 from .pfcam_lib import lib, PFCamError, PFCamLibError
 
-from ..IMAQ.IMAQ import IMAQCamera, IMAQError
+from ..IMAQ.IMAQ import IMAQFrameGrabber
+from ..SiliconSoftware.fgrab import SiliconSoftwareFrameGrabber
 from ...core.utils import py3, dictionary
 from ...core.devio.comm_backend import DeviceError
 from ..interface import camera
@@ -45,7 +46,7 @@ def list_cameras(only_supported=True):
     
     If ``only_supported==True``, only return cameras which support PFCam protocol
     (this check only works if the camera is not currently accessed by some other software).
-    Return a list ``[(port, info)]``, where ``port`` is the pfcam port given to :class:`PhotonFocusIMAQCamera`,
+    Return a list ``[(port, info)]``, where ``port`` is the pfcam port given to :class:`IPhotonFocusCamera` and its subclasses,
     and ``info`` is the information returned by :func:`query_camera_name`.
     """
     libctl.preinit()
@@ -180,26 +181,25 @@ class PFCamAttribute:
 
 
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["model","serial_number","grabber_info"])
-class PhotonFocusIMAQCamera(IMAQCamera, camera.IAttributeCamera):
+class IPhotonFocusCamera(camera.IAttributeCamera): # pylint: disable=abstract-method
     """
-    IMAQ+PFCam interface to a PhotonFocus camera.
+    Generic PFCam interface to a PhotonFocus camera.
+    Does not handle frames acquisition, so needs to be mixed with a frame grabber class to be fully operational.
+    In this mixing, the class attribute ``GrabberClass`` should be set to this frame grabber class.
 
     Args:
-        imaq_name: IMAQ interface name (can be learned by :func:`.IMAQ.list_cameras`; usually, but not always, starts with ``"img"``)
         pfcam_port: port number for pfcam interface (can be learned by :func:`list_cameras`; port number is the first element of the camera data tuple)
+        kwargs: keyword arguments passed to the frame grabber initializer
     """
     Error=DeviceError
-    def __init__(self, imaq_name="img0", pfcam_port=0):
+    GrabberClass=None
+    def __init__(self, pfcam_port=0, **kwargs):
         self.pfcam_port=pfcam_port
         self.pfcam_opened=False
         self.ucav=dictionary.ItemAccessor(self.get_attribute_value,self.update_attribute_value)
-        try:
-            super().__init__(imaq_name)
-        except IMAQError:
-            self.close()
-            raise
+        super().__init__(do_open=False,**kwargs)
 
-        self._add_info_variable("pfcam_port",lambda: self.pfcam_port)
+        self._add_status_variable("baudrate",self.get_baudrate)
         self._add_settings_variable("trigger_interleave",self.get_trigger_interleave,self.set_trigger_interleave)
         self._add_settings_variable("cfr",self.is_CFR_enabled,self.enable_CFR)
         self._add_settings_variable("status_line",self.is_status_line_enabled,self.enable_status_line)
@@ -207,6 +207,8 @@ class PhotonFocusIMAQCamera(IMAQCamera, camera.IAttributeCamera):
         self._add_settings_variable("exposure",self.get_exposure,self.set_exposure)
         self._add_settings_variable("frame_period",self.get_frame_period,self.set_frame_period)
         self._add_status_variable("frame_timings",self.get_frame_timings)
+    
+        self.open()
     
     def setup_max_baudrate(self):
         """Setup the maximal available baudrate"""
@@ -218,24 +220,34 @@ class PhotonFocusIMAQCamera(IMAQCamera, camera.IAttributeCamera):
                     return
         except PFCamLibError: # pfSetBaudRate sometimes raises unknown error
             pass
+    def get_baudrate(self):
+        """Get the current baud rate"""
+        return lib.pfGetBaudRate(self.pfcam_port)
     def open(self):
         """Open connection to the camera"""
-        IMAQCamera.open(self)
-        libctl.preinit()
-        if not self.pfcam_opened:
-            lib.pfDeviceOpen(self.pfcam_port)
-            self.pfcam_opened=True
-            self.setup_max_baudrate()
-            self._update_attributes()
-            self._update_imaq()
-            self._hstep=self._get_roi_step("h")
-            self._vstep=self._get_roi_step("v")
+        super().open()
+        try:
+            libctl.preinit()
+            if not self.pfcam_opened:
+                lib.pfDeviceOpen(self.pfcam_port)
+                self.pfcam_opened=True
+                self.setup_max_baudrate()
+                self._update_attributes()
+                self._update_grabber_roi()
+                self._hstep=self._get_roi_step("h")
+                self._vstep=self._get_roi_step("v")
+        except self.Error:
+            super().close()
+            raise
     def close(self):
         """Close connection to the camera"""
-        IMAQCamera.close(self)
+        super().close()
         if self.pfcam_opened:
             lib.pfDeviceClose(self.pfcam_port)
             self.pfcam_opened=False
+    def _get_connection_parameters(self):
+        grabber_params=(self.GrabberClass._get_connection_parameters(self),) if self.GrabberClass else ()
+        return (self.pfcam_port,)+grabber_params
 
     def _normalize_attribute_name(self, name):
         return name.replace(".","/")
@@ -306,7 +318,7 @@ class PhotonFocusIMAQCamera(IMAQCamera, camera.IAttributeCamera):
         """
         model=py3.as_str(lib.pfProperty_GetName(self.pfcam_port,lib.pfDevice_GetRoot(self.pfcam_port)))
         serial_number=self.get_attribute_value("Header/Serial",default=0)
-        grabber_info=tuple(super().get_device_info())
+        grabber_info=tuple(self.GrabberClass.get_device_info(self)) if self.GrabberClass else None
         return TDeviceInfo(model,serial_number,grabber_info)
 
 
@@ -315,9 +327,10 @@ class PhotonFocusIMAQCamera(IMAQCamera, camera.IAttributeCamera):
         return self.ca["Window/W"].max,self.ca["Window/H"].max # pylint: disable=no-member
     def _get_pf_data_dimensions_rc(self):
         return self.cav["Window/H"],self.cav["Window/W"]
-    def _update_imaq(self):
-        r,c=self._get_pf_data_dimensions_rc()
-        IMAQCamera.set_roi(self,0,c,0,r)
+    def _update_grabber_roi(self):
+        if self.GrabberClass:
+            r,c=self._get_pf_data_dimensions_rc()
+            self.GrabberClass.set_roi(self,0,c,0,r)
     def get_roi(self):
         """
         Get current ROI.
@@ -369,18 +382,21 @@ class PhotonFocusIMAQCamera(IMAQCamera, camera.IAttributeCamera):
             if attr is None or not attr.writable:
                 return
         det_size=self.get_detector_size()
-        imaq_detector_size=IMAQCamera.get_detector_size(self)
+        if self.GrabberClass:
+            grabber_detector_size=self.GrabberClass.get_detector_size(self)
+        else:
+            grabber_detector_size=det_size
         if hend is None:
             hend=det_size[0]
         if vend is None:
             vend=det_size[1]
-        self.ucav["Window/W"]=min(hend-hstart,imaq_detector_size[0])
-        self.ucav["Window/H"]=min(vend-vstart,imaq_detector_size[1])
+        self.ucav["Window/W"]=min(hend-hstart,grabber_detector_size[0])
+        self.ucav["Window/H"]=min(vend-vstart,grabber_detector_size[1])
         self.ucav["Window/X"]=hstart
         self.ucav["Window/Y"]=vstart
-        self.ucav["Window/W"]=min(hend-hstart,imaq_detector_size[0]) # in case the previous assignment truncated
-        self.ucav["Window/H"]=min(vend-vstart,imaq_detector_size[1])
-        self._update_imaq()
+        self.ucav["Window/W"]=min(hend-hstart,grabber_detector_size[0]) # in case the previous assignment truncated
+        self.ucav["Window/H"]=min(vend-vstart,grabber_detector_size[1])
+        self._update_grabber_roi()
         return self.get_roi()
     def get_roi_limits(self, hbin=1, vbin=1):
         params=[self.ca[p] for p in ["Window/W","Window/H"]]
@@ -390,7 +406,7 @@ class PhotonFocusIMAQCamera(IMAQCamera, camera.IAttributeCamera):
         return hlim,vlim
 
     def _get_buffer_bpp(self):
-        bpp=IMAQCamera._get_buffer_bpp(self)
+        bpp=self.GrabberClass._get_buffer_bpp(self) if self.GrabberClass else 1
         attr=self.get_attribute("DataResolution",error_on_missing=False)
         if attr:
             res=attr.get_value()
@@ -475,6 +491,38 @@ class PhotonFocusIMAQCamera(IMAQCamera, camera.IAttributeCamera):
 
 
 
+
+class PhotonFocusIMAQCamera(IPhotonFocusCamera,IMAQFrameGrabber):
+    """
+    IMAQ+PFCam interface to a PhotonFocus camera.
+
+    Args:
+        imaq_name: IMAQ interface name (can be learned by :func:`.IMAQ.list_cameras`; usually, but not always, starts with ``"img"``)
+        pfcam_port: port number for pfcam interface (can be learned by :func:`list_cameras`; port number is the first element of the camera data tuple)
+    """
+    Error=DeviceError
+    GrabberClass=IMAQFrameGrabber
+    def __init__(self, imaq_name="img0", pfcam_port=0):
+        super().__init__(pfcam_port=pfcam_port,name=imaq_name)
+
+
+
+class PhotonFocusSiSoCamera(IPhotonFocusCamera,SiliconSoftwareFrameGrabber):
+    """
+    IMAQ+PFCam interface to a PhotonFocus camera.
+
+    Args:
+        siso_board: Silicon Software board index, starting from 0; available boards can be learned by :func:`.fgrab.list_boards`
+        siso_applet: Silicon Software applet name, which can be learned by :func:`.fgrab.list_applets`;
+            usually, a simple applet like ``"DualLineGray16"`` or ``"MediumLineGray16`` are most appropriate;
+            can be either an applet name, or a direct path to the applet DLL
+        siso_port: Silicon Software port number, if several ports are supported by the camera and the applet
+        pfcam_port: port number for pfcam interface (can be learned by :func:`list_cameras`; port number is the first element of the camera data tuple)
+    """
+    Error=DeviceError
+    GrabberClass=SiliconSoftwareFrameGrabber
+    def __init__(self, siso_board, siso_applet, siso_port=0, pfcam_port=0):
+        super().__init__(pfcam_port=pfcam_port,siso_board=siso_board,siso_applet=siso_applet,siso_port=siso_port)
 
 
 ##### Dealing with status line #####

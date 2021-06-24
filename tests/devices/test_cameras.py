@@ -97,6 +97,35 @@ class TestPhotonFocusIMAQ(ROICameraTester):
 
 
 
+class TestPhotonFocusSiSo(ROICameraTester):
+    """Testing class for PhotonFocus camera with SiliconSoftware interface"""
+    devname="photon_focus_siso"
+    devcls=PhotonFocus.PhotonFocusSiSoCamera
+    rois=gen_rois(128)
+    
+    def check_status_line(self, frames):
+        slines=PhotonFocus.get_status_lines(np.asarray(frames))
+        assert slines is not None
+        assert np.all(slines[1:,0]-slines[:-1,0]==1)
+    
+    @pytest.mark.devchange(5)
+    def test_large_acq(self, device):
+        """Test large fast acquisition"""
+        device.gav["CAMERA_LINK_CAMTYP"]="FG_CL_DUALTAP_12_BIT"
+        device.gav["FORMAT"]="FG_GRAY16"
+        device.cav["DataResolution"]="12bit"
+        for roi,ngrab,nbuff in [((0,None,0,None),100,50),((0,32,0,32),10**4,1000)]:
+            device.set_roi(*roi)
+            device.set_exposure(1E-4)
+            device.set_frame_period(0)
+            device.enable_status_line(True)
+            frames=device.grab(ngrab,buff_size=nbuff)
+            assert len(frames)==ngrab
+            self.check_status_line(frames)
+
+
+
+
 class TestIMAQdx(ROICameraTester):
     """Testing class for IMAQdx camera interface"""
     devname="imaqdx"
