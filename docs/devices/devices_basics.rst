@@ -182,11 +182,13 @@ Note that DLLs can have 32-bit and 64-bit version, and it should agree with the 
 In addition, you need to provide pylablib with the path to the DLLs. In many cases it checks the standard locations such as the default ``System32`` folder (used, e.g., in DCAM or IMAQ cameras) or defaults paths for manufacturer software (such as ``C:/Program Files/Andor SOLIS`` for Andor cameras). If the software path is different, or if you choose to obtain DLLs elsewhere, you can also explicitly provide path by setting the library parameter::
 
     import pylablib as pll
-    pll.par["devices/dlls/andor_sdk3"] = "path/to/dlls"
+    pll.par["devices/dlls/andor_sdk3"] = "D:/Program Files/Andor SOLIS"
     from pylablib.devices import Andor
     cam = Andor.AndorSDK3Camera()
 
 All of these requirements are described in detail for the specific devices.
+
+Starting from Python 3.8 the DLL search path is changed to not include the files contained in ``PATH`` environment variable and in the script folder. By default, this behavior is still emulated when pylablib searches for the DLLs, since it is required in some cases (e.g., Photon Focus pfcam interface). If needed, it can be turned off (i.e., switched to the new default behavior of Python 3.8+) by setting ``pll.par["devices/dlls/add_environ_paths"]=False``.
 
 
 Advanced examples

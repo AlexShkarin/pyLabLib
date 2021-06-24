@@ -26,6 +26,7 @@ class IMAQdxLibError(IMAQdxError):
         self.func=func
         self.code=code
         self.name=drIMAQdxError.get(self.code,"UNKNOWN")
+        self.desc=""
         try:
             if lib is not None:
                 self.desc=py3.as_str(lib.IMAQdxGetErrorString(code))

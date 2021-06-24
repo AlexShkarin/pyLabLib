@@ -106,12 +106,8 @@ class IMAQdxAttribute:
             self.min=lib.IMAQdxGetAttributeMinimum(sid,name,self._attr_type_n)
             self.max=lib.IMAQdxGetAttributeMaximum(sid,name,self._attr_type_n)
             self.inc=lib.IMAQdxGetAttributeIncrement(sid,name,self._attr_type_n)
-        else:
-            self.min=self.max=self.inc=None
         if self._attr_type_n==IMAQdxAttributeType.IMAQdxAttributeTypeEnum:
             self.values=lib.IMAQdxEnumerateAttributeValues(sid,name)
-        else:
-            self.values=None
     
     def update_limits(self):
         """Update minimal and maximal attribute limits and return tuple ``(min, max, inc)``"""
@@ -381,7 +377,7 @@ class IMAQdxCamera(camera.IROICamera, camera.IAttributeCamera):
         if size_bytes%dtype.itemsize:
             raise IMAQdxError("specified buffer size {} is not divisible by the element size {}".format(size_bytes,dtype.itemsize))
         arr=np.empty(size_bytes//dtype.itemsize,dtype)
-        lib.IMAQdxGetImageData(self.sid,arr.ctypes.get_data(),size_bytes,mode,buffer_num)
+        lib.IMAQdxGetImageData(self.sid,arr.ctypes.data,size_bytes,mode,buffer_num)
         return arr
     def _parse_data(self, data, shape, pixel_format):
         if self._raw_readout_format=="frame":
