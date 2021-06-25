@@ -61,6 +61,8 @@ nosetests.xml
 coverage.xml
 *.cover
 .hypothesis/
+.tox.*
+run-tox-dev.py
 
 # Translations
 *.mo

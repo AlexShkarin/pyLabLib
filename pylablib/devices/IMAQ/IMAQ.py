@@ -550,7 +550,7 @@ class IMAQFrameGrabber(camera.IROICamera):
             self._frame_counter.advance_read_frames(rng)
         return rng[0],skipped_frames,raw_frames
     
-    def read_multiple_images(self, rng=None, peek=False, missing_frame="skip", return_info=None, fastbuff=False):
+    def read_multiple_images(self, rng=None, peek=False, missing_frame="skip", return_info=False, fastbuff=False):
         """
         Read multiple images specified by `rng` (by default, all un-read images).
 
