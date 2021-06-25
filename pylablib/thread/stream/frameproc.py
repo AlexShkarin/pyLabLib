@@ -453,7 +453,7 @@ class BackgroundSubtractionThread(controller.QTaskThread):
         self.v["snapshot/background/state"]="acquiring"
     def setup_snapshot_saving(self, mode):
         """
-        Enable shnapshot background subtraction and saving
+        Enable snapshot background subtraction and saving
         
         `mode` can be ``"none"`` (don't save background), ``"only_bg"`` (only save background frame), or ``"all"`` (save background + all comprising frames).
         """

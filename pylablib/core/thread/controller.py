@@ -542,7 +542,7 @@ class QThreadController(QtCore.QObject):
         """
         Context manager, which temporarily suspends stop requests (:exc:`.InterruptExceptionStop` exceptions).
 
-        If the stop request has been made within this block, raise the excpetion on exit.
+        If the stop request has been made within this block, raise the exception on exit.
         Note that :meth:`stop` method and, correspondingly, :func:`stop_controller` still work, when called from the controlled thread.
         """
         try:
@@ -1160,7 +1160,7 @@ class QTaskThread(QThreadController):
         Args:
             job: job function
             period: job period
-            queue: thread controller's scheduling queue, to which the jub must be added
+            queue: thread controller's scheduling queue, to which the job must be added
             jobs_order: thread controller's job queue which determines the jobs scheduling order
         """
         def __init__(self, job, period, queue, jobs_order):
@@ -1429,7 +1429,7 @@ class QTaskThread(QThreadController):
         Check if there are any pending jobs and schedule them.
 
         Return the time to wait until the next job needs to be scheduled.
-        Return time is 0 if a jos has been scheduled during that call,
+        Return time is 0 if a job has been scheduled during that call,
         and ``None`` if there are not jobs to schedule.
         """
         wait_time=None

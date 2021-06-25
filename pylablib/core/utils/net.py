@@ -45,7 +45,7 @@ def as_addr_port(addr, port):
     Parse the given address and port combination.
 
     `addr` can be a host address, a tuple ``(addr, port)``, or a string ``"addr:port"``;
-    in the first case the given `port` is used, while in the other two it is ginore.
+    in the first case the given `port` is used, while in the other two it is ignore.
     Return tuple ``(addr, port)``.
     """
     if isinstance(addr, tuple):

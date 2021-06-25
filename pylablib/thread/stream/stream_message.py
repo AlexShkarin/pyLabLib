@@ -19,7 +19,7 @@ class IStreamMessage:
         mid: message numerical ID, a unique ID (usually an incrementing number) of the message within the stream
     
     Either `mid` or both IDs can be ``None``, indicating that the corresponding stream does not keep track of these IDs.
-    In addition, `sid` and `mid` can be dictionaries (preferrably with the same keys), which indicates that this message
+    In addition, `sid` and `mid` can be dictionaries (preferably with the same keys), which indicates that this message
     inherits IDs from several streams with the given keys (e.g., it comes from a producer which join several streams together into one).
     """
     _init_args=[]

@@ -624,5 +624,6 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         describing frame index, framestamp, global timestamp (real time),
         device timestamp (time from camera restart, in 0.1us steps), frame size, digital input state, and additional flags;
         if some frames are missing and ``missing_frame!="skip"``, the corresponding frame info is ``None``.
+        Note that obtaining frame info might take about 2ms, so at high frame rates it will become a limiting factor.
         """
         return super().read_multiple_images(rng=rng,peek=peek,missing_frame=missing_frame,return_info=return_info)

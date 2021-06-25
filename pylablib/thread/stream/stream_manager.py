@@ -206,7 +206,7 @@ class MultiStreamIDCounter:
         """
         return self.cnts[sn].update_message(mid)
     def next_message(self, sn):
-        """Mark the next messagefor the given stream name"""
+        """Mark the next message for the given stream name"""
         return self.cnts[sn].next_message()
     def receive_message(self, msg, sn=None):
         """
@@ -539,7 +539,7 @@ class AccumulatorStreamReceiver(IStreamReceiver):
         return evts if as_event else [evt.msg for evt in evts]
     def peek_message(self, n=0, as_event=None):
         """
-        Peek at the `n`th message in the accumulated queue.
+        Peek at the message number `n` in the accumulated queue.
 
         If ``as_event==True``, return tuple ``(src, tag, msg)`` describing the received event;
         otherwise, just message is returned.

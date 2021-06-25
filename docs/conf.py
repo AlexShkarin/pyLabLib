@@ -85,7 +85,7 @@ intersphinx_mapping = {'python': ('https://docs.python.org/3', None),
                        'rpyc': ('https://rpyc.readthedocs.io/en/latest/', None),
                        'pyqtgraph': ("https://pyqtgraph.readthedocs.io/en/latest/", None),
                        'pySerial': ("https://pythonhosted.org/pyserial/", None),
-                       'PyVISA': ("https://pyvisa.readthedocs.io/en/master/", None),
+                       'PyVISA': ("https://pyvisa.readthedocs.io/en/latest/", None),
                        'nidaqmx': ("https://nidaqmx-python.readthedocs.io/en/latest/", None),}
 
 
