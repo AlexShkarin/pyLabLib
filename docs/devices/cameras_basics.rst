@@ -248,6 +248,8 @@ Many cameras supply additional information together with the frames. Most freque
 
 There are several slightly different metainfo formats, which can be set using :meth:`.ICamera.set_frame_info_format` method. The default representation is a (possibly nested) named tuple, but it is also possible to represent it as a flat list, or a flat dictionary. The exact structure and values depend on the camera.
 
+Keep in mind, that for some camera interfaces (e.g., :ref:`Uc480 <cameras_uc480>` or :ref:`Silicon Software <cameras_siso>`) obtaining the additional information might take relatively long, even longer than the proper frame readout. Hence, at higher frame rates it might become a bottleneck, and would need to be turned off.
+
 
 Currently supported cameras
 -------------------------------------------

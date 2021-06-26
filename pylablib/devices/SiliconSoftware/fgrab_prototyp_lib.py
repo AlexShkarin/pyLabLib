@@ -61,8 +61,8 @@ class SIFgrabLib:
     def initlib(self):
         if self._initialized:
             return
-        error_message="The library is automatically supplied with Silicon Software Runtime software\n"+load_lib.par_error_message.format("sifgrab")
-        self.lib=load_lib.load_lib("fglib5.dll",locations=("parameter/sifgrab","global"),error_message=error_message,call_conv="cdecl")
+        error_message="The library is automatically supplied with Silicon Software Runtime software\n"+load_lib.par_error_message.format("sisofgrab")
+        self.lib=load_lib.load_lib("fglib5.dll",locations=("parameter/sisofgrab","global"),error_message=error_message,call_conv="cdecl")
         lib=self.lib
         define_functions(lib)
 
