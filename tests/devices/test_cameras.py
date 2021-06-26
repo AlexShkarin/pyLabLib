@@ -82,8 +82,9 @@ class TestPhotonFocusIMAQ(ROICameraTester):
         assert np.all(slines[1:,0]-slines[:-1,0]==1)
     
     @pytest.mark.devchange(5)
-    def test_large_acq(self, device):
+    def test_large_acq(self, devopener):
         """Test large fast acquisition"""
+        device=devopener()
         for roi,ngrab,nbuff in [((0,None,0,None),100,50),((0,32,0,32),10**5,5000)]:
             device.set_roi(*roi)
             device.set_exposure(0)
@@ -109,8 +110,9 @@ class TestPhotonFocusSiSo(ROICameraTester):
         assert np.all(slines[1:,0]-slines[:-1,0]==1)
     
     @pytest.mark.devchange(5)
-    def test_large_acq(self, device):
+    def test_large_acq(self, devopener):
         """Test large fast acquisition"""
+        device=devopener()
         device.gav["CAMERA_LINK_CAMTYP"]="FG_CL_DUALTAP_12_BIT"
         device.gav["FORMAT"]="FG_GRAY16"
         device.cav["DataResolution"]="12bit"
@@ -143,6 +145,7 @@ class TestTLCam(ROICameraTester):
     devcls=Thorlabs.ThorlabsTLCamera
     grab_size=100
     rois=gen_rois(128,((1,1),(1,2),(2,2),((0,0),False),((3,3),False),((10,10),False),((100,100),False)))
+    # rois=gen_rois(128,((1,1),))
 
 
 

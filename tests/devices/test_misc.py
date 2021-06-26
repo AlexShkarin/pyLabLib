@@ -11,7 +11,8 @@ class TestFW102(DeviceTester):
     devname="thorlabs_fw102"
     devcls=Thorlabs.FW
     @pytest.mark.devchange(4)
-    def test_motion(self, device):
+    def test_motion(self, devopener):
+        device=devopener()
         pos=device.get_position()
         npos=pos-1 if pos>1 else pos+1
         device.set_position(npos)
@@ -33,19 +34,17 @@ class TestNIDAQ(DeviceTester):
 
     ai_rate=1000
     samples=1000
-    @pytest.fixture(scope="class")
-    def device(self, device):
+    @classmethod
+    def post_open(cls, device):
         device.add_voltage_input("in0","ai0")
         device.add_voltage_input("in1","ai1")
         device.add_digital_input("din1","port0/line1")
         device.add_counter_input("c0","ctr0","pfi0")
-        device.setup_clock(self.ai_rate)
-        return device
+        device.setup_clock(cls.ai_rate)
     
-    def test_open_close(self, device):  # otherwise it removes preset channels
-        pass
-    def test_read(self, device):
+    def test_read(self, devopener):
         """Test samples reading"""
+        device=devopener()
         v=device.read(self.samples,timeout=self.samples/self.ai_rate*2+2)
         assert v.shape==(self.samples,4)
         device.start()
