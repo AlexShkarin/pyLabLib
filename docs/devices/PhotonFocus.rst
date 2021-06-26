@@ -6,9 +6,9 @@
 Photon Focus pfcam interface
 ============================
 
-Photon Focus cameras transfer their data to the PC using frame grabbers (e.g., via :ref:`NI IMAQ <cameras_imaq>` interface). Hence, the camera control is done through the serial port built into the CameraLink interface. However, the cameras use a closed binary protocol, so one needs to use a pfcam library provided by Photon Focus. It relies on the libraries exposed by the frame grabber manufacturers (e.g., the standard ``cl*serial.dll``) to communicate with the camera directly, meaning that the pfcam user simply calls its method, and all the communication happens behind the scenes.
+Photon Focus cameras transfer their data to the PC using frame grabbers (e.g., via :ref:`NI IMAQ <cameras_imaq>` or :ref:`Silicon Photonics <cameras_siso>` interfaces). Hence, the camera control is done through the serial port built into the CameraLink interface. However, the cameras use a closed binary protocol, so all the control is done through the pfcam library provided by Photon Focus. It relies on the libraries exposed by the frame grabber manufacturers (e.g., the standard ``cl*serial.dll``) to communicate with the camera directly, meaning that the pfcam user simply calls its method, and all the communication happens behind the scenes.
 
-In principle, pfcam can work with any frame grabber. However, so far it has only been developed and tested in conjunction with National Instruments frame grabbers using the :ref:`NI IMAQ <cameras_imaq>` interface. Hence, the main camera class :class:`pylablib.devices.PhotonFocus.PhotonFocusIMAQCamera<.PhotonFocus.PhotonFocusIMAQCamera>` already incorporates IMAQ functionality. This makes it easier to use, but restricts the use of pfcam to IMAQ-compatible frame grabbers.
+In principle, pfcam can work with any frame grabber. Because of that, there are two different kinds of classes for this camera. To start with, there is :class:`.PhotonFocus.IPhotonFocusCamera<.PhotonFocus.IPhotonFocusCamera>`, which provides interface for addressing camera properties, but can not handle actual frame acquisition. Using this class directly leads to errors in any frame data related methods (e.g., ``wait_for_frame``, or ``read_multiple_images``), and it is mostly intended to serve as a base class to be combined with the actual frame grabber. Two such classes are provided: :class:`.PhotonFocus.PhotonFocusIMAQCamera<.PhotonFocus.PhotonFocusIMAQCamera>` for National Instruments frame grabbers using the :ref:`NI IMAQ <cameras_imaq>` interface and :class:`.PhotonFocus.PhotonFocusSiSoCamera<.PhotonFocus.PhotonFocusSiSoCamera>` for :ref:`Silicon Photonics <cameras_siso>` frame grabbers. Both are classes are complete and ready to use. In addition to combining camera and frame grabber control, they also implement basic consistency support, such as automatic adjustment of frame grabber ROI and data transfer format.
 
 Software requirements
 -----------------------
@@ -24,7 +24,7 @@ These cameras require ``pfcam.dll``, which is installed with `PFInstaller <https
 Connection
 -----------------------
 
-The camera class requires two pieces of information. First is the NI IMAQ interface name (e.g., ``"img0"``), identified as described in the :ref:`NI IMAQ <cameras_imaq>` documentation. The second is the pfcam port, which is a number starting from zero. To list all of the connected pfcam-compatible cameras, you can run :func:`.PhotonFocus.list_cameras`::
+The camera class requires two pieces of information. First is the frame grabber interface connection: either NI IMAQ interface name (e.g., ``"img0"``) identified as described in the :ref:`NI IMAQ <cameras_imaq>` documentation, or Silicon Software board and applet described in :ref:`Silicon Software <cameras_siso>` documentation. The second piece of information is the pfcam port, which is a number starting from zero. To list all of the connected pfcam-compatible cameras, you can use the PFRemote software (the interface number is given in parentheses after every connection option in the list) or run :func:`.PhotonFocus.list_cameras`::
 
     >> from pylablib.devices import PhotonFocus, IMAQ
     >> IMAQ.list_cameras()  # get all IMAQ frame grabber devices
@@ -40,7 +40,7 @@ Operation
 
 The operation of these cameras is relatively standard. They support all the standard methods for dealing with ROI and exposure, starting and stopping acquisition, and operating the frame reading loop. However, there's a couple of differences from the standard libraries worth highlighting:
 
-    - The SDK also provides a universal interface for getting and setting various :ref:`camera attributes <cameras_basics_attributes>` (called "properties" in the documentation) using their name. You can use :meth:`.PhotonFocusIMAQCamera.get_attribute_value` and :meth:`.PhotonFocusIMAQCamera.set_attribute_value` for that, as well as ``.cav`` attribute which gives a dictionary-like access::
+    - The SDK also provides a universal interface for getting and setting various :ref:`camera attributes <cameras_basics_attributes>` (called "properties" in the documentation) using their name. You can use :meth:`.IPhotonFocusCamera.get_attribute_value` and :meth:`.IPhotonFocusCamera.set_attribute_value` for that, as well as ``.cav`` attribute which gives a dictionary-like access::
 
         >> cam = PhotonFocus.PhotonFocusIMAQCamera()
         >> cam.get_attribute_value("Window/W")  # get the ROI width
@@ -49,7 +49,7 @@ The operation of these cameras is relatively standard. They support all the stan
         >> cam.cav["ExposureTime"]  # get the exposure; could also use cam.get_attribute_value("ExposureTime")
         0.1
 
-      Some values (e.g., ``Window.Max`` or ``Reset``) serve as commands; these can be invoked using :meth:`.PhotonFocusIMAQCamera.call_command` method. To see all available attributes, you can call :meth:`.DCAMCamera.get_all_attributes` to get a dictionary with attribute objects, and :meth:`.DCAMCamera.get_all_attribute_values` to get the dictionary of attribute values. The attribute objects provide additional information: attribute range, step, and units::
+      Some values (e.g., ``Window.Max`` or ``Reset``) serve as commands; these can be invoked using :meth:`.PhotonFocusIMAQCamera.call_command` method. To see all available attributes, you can call :meth:`.IPhotonFocusCamera.get_all_attributes` to get a dictionary with attribute objects, and :meth:`.IPhotonFocusCamera.get_all_attribute_values` to get the dictionary of attribute values. The attribute objects provide additional information: attribute range, step, and units::
 
         >> cam = PhotonFocus.PhotonFocusIMAQCamera()
         >> attr = cam.get_attribute("Window/W")
@@ -58,5 +58,6 @@ The operation of these cameras is relatively standard. They support all the stan
         >> (attr.min, attr.max)
         (16, 1024)
 
-    - Being a subclass of :class:`.IMAQ.IMAQCamera` class, it supports all of its features, such as trigger control and fast buffer acquisition. Some methods have been modified to make them more convenient: e.g., :meth:`.PhotonFocusIMAQCamera.set_roi` method sets the camera ROI and automatically adjusts the frame grabber ROI to match.
+    - :class:`.PhotonFocus.PhotonFocusIMAQCamera` supports all of :class:`.IMAQ.IMAQCamera` features, such as trigger control and fast buffer acquisition. Some methods have been modified to make them more convenient: e.g., :meth:`.PhotonFocusIMAQCamera.set_roi` method sets the camera ROI and automatically adjusts the frame grabber ROI to match.
+    - Same is true for :class:`.PhotonFocus.PhotonFocusSiSoCamera`, which, e.g., provides access to all of the frame grabber variables.
     - The camera supports a status line, which replaces the bottom one or two rows of the frame with the encoded frame-related data such as frame number and timestamp. You can use :func:`.PhotonFocus.get_status_lines` function to identify and extract the data in the status lines from the supplied frames. In addition, you can use :func:`.PhotonFocus.remove_status_line` to remove the status lines in several possible ways: zeroing out, masking with the previous frame, cutting off entirely, etc.

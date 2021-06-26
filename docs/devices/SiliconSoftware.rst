@@ -8,12 +8,12 @@ Silicon Software frame grabbers interface
 
 Silicon Software produces a range of frame grabbers, which can be used to control different cameras with a CameraLink interface. It has been tested with microEnable IV AD4-CL frame grabber together with PhotonFocus MV-D1024E camera.
 
-The code is located in :mod:`pylablib.devices.SiliconSoftware`, and the main camera class is :class:`pylablib.devices.SiliconSoftware.SiliconSoftwareCamera<.SiliconSoftware.SiliconSoftwareCamera>`.
+The code is located in :mod:`pylablib.devices.SiliconSoftware`, and the main camera class is :class:`pylablib.devices.SiliconSoftware.SiliconSoftwareCamera<.fgrab.SiliconSoftwareCamera>`.
 
 Software requirements
 -----------------------
 
-This interfaces requires ``fglib5.dll``, which is installed with the freely available `Silicon Software Runtime Environment <https://www.baslerweb.com/en/sales-support/downloads/software-downloads/#type=framegrabbersoftware;language=all;version=all;os=windows64bit>`__ (the newest version for 64-bit Windows is `5.7.0 <https://www.baslerweb.com/en/sales-support/downloads/software-downloads/complete-installation-for-windows-64bit-ver-5-7-0/>`__), which also includes all the necessary drivers. After installation, the path to the DLL (located by default in ``SiliconSoftware/Runtime5.7.0/bin`` folder in ``Program Files``) is automatically added to system ``PATH`` variable, which is one of the places where pylablib looks for it by default. If the DLL is located elsewhere, the path can be specified using the library parameter ``devices/dlls/sisofgrab``::
+This interfaces requires ``fglib5.dll``, which is installed with the freely available (upon registration) `Silicon Software Runtime Environment <https://www.baslerweb.com/en/sales-support/downloads/software-downloads/#type=framegrabbersoftware;language=all;version=all;os=windows64bit>`__ (the newest version for 64-bit Windows is `5.7.0 <https://www.baslerweb.com/en/sales-support/downloads/software-downloads/complete-installation-for-windows-64bit-ver-5-7-0/>`__), which also includes all the necessary drivers. After installation, the path to the DLL (located by default in ``SiliconSoftware/Runtime5.7.0/bin`` folder in ``Program Files``) is automatically added to system ``PATH`` variable, which is one of the places where pylablib looks for it by default. If the DLL is located elsewhere, the path can be specified using the library parameter ``devices/dlls/sisofgrab``::
 
     import pylablib as pll
     pll.par["devices/dlls/sisofgrab"] = "path/to/dlls"
@@ -24,7 +24,7 @@ This interfaces requires ``fglib5.dll``, which is installed with the freely avai
 Connection
 -----------------------
 
-Figuring out the connection parameters is a multi-stage process. First, one must identify one of several boards. The boards can be identified using :func:`.SiliconSoftware.list_boards` function. Second, one must select an applet. These provide different board readout modes and, for Advanced Applets, various post-processing capabilities. These applets can be identified using :func:`.SiliconSoftware.list_applets` method, or directly from the Silicon Software RT microDisplay software supplied with the runtime. The choice depends on the color mode (color vs. grayscale and different bitness), readout mode (area or line), can camera connection (single, double, or quad). Finally, depending on the board and the camera connection, one of several ports must be selected. For example, if the frame grabber has two connectors, but the camera only uses a single interface, then the double camera applet (e.g., ``DualAreaGray16``) must be selected, and the port should specify the board connector (0 for ``A``, 1 for ``B``)::
+Figuring out the connection parameters is a multi-stage process. First, one must identify one of several boards. The boards can be identified using :func:`.SiliconSoftware.list_boards<.fgrab.list_boards>` function. Second, one must select an applet. These provide different board readout modes and, for Advanced Applets, various post-processing capabilities. These applets can be identified using :func:`.SiliconSoftware.list_applets<.fgrab.list_applets>` method, or directly from the Silicon Software RT microDisplay software supplied with the runtime. The choice depends on the color mode (color vs. gray-scale and different bitness), readout mode (area or line), can camera connection (single, double, or quad). Finally, depending on the board and the camera connection, one of several ports must be selected. For example, if the frame grabber has two connectors, but the camera only uses a single interface, then the double camera applet (e.g., ``DualAreaGray16``) must be selected, and the port should specify the board connector (0 for ``A``, 1 for ``B``)::
 
     >> from pylablib.devices import SiliconSoftware
     >> SiliconSoftware.list_boards()  # first list the connected boards
@@ -57,7 +57,7 @@ The SDK also provides a universal interface for getting and setting various :ref
 
 To see all available attributes, you can call :meth:`.SiliconSoftwareCamera.get_all_grabber_attributes` to get a dictionary with attribute objects, and :meth:`.SiliconSoftwareCamera.get_all_grabber_attribute_values` to get the dictionary of attribute values. The attribute objects provide additional information: attribute kind (integer, string, etc.), range (either numerical range, or selection of values for enum attributes), description string, etc.::
 
-    >> cam = IMAQdx.IMAQdxCamera()
+    >> cam = SiliconSoftware.SiliconSoftwareCamera()
     >> attr = cam.get_grabber_attribute("BITALIGNMENT")
     >> attr.values
     {1: 'FG_LEFT_ALIGNED', 0: 'FG_RIGHT_ALIGNED'}
@@ -72,12 +72,12 @@ At high frame rates (above ~10kFPS) dealing with each frame individually becomes
 This option can be accessed by supplying ``fastbuff=True`` in :meth:`.SiliconSoftwareCamera.read_multiple_images`. In this case, instead of a list of individual frames (which is the standard behavior), the method returns list of chunks about 1Mb in size, which contain several consecutive frames. Otherwise the method behaves identically to the standard one.
 
 
-Communication with the camera and camera files
+Communication with the camera
 --------------------------------------------------
 
-The frame grabber needs some basic information about the camera (sensor size, bit depth, timeouts, aux lines mapping), which are contained in the camera files. These files can be assigned to cameras in the NI MAX, and are usually supplied by NI or by the camera manufacturer. In addition, NI MAX allows one to adjust some settings within these files, which are read-only within the NI IMAQ software. These include frame timeout and camera bit depth.
+The frame grabber needs some basic information about the camera (sensor size, bit depth, timeouts, aux lines mapping), which can be set up using the grabber attributes. The most important transfer parameters are the number of taps and the bitness of the transferred data, which can be set up using :meth:`.SiliconSoftwareCamera.setup_camlink_pixel_format`. The values for this parameters can usually be obtained from the camera manuals.
 
-The communication with the camera itself greatly varies between different cameras. Some will have additional connection to control the parameters. However, most use serial communication built into the CameraLink interface. This communication can be set up with :meth:`.IMAQCamera.setup_serial_params` and used via :meth:`.IMAQCamera.serial_read` and  :meth:`.IMAQCamera.serial_write`. The communication protocols are camera-dependent. Yet some other cameras (e.g., Photon Focus) use proprietary communication protocol. In this case, the provide their own DLLs, which independently use NI-provided DLLs for serial communication (most notably, ``clallserial.dll``). In this case, one needs to maintain two independent connections: one directly to the NI frame grabber to obtain the frame data, and one to the manufacturer library to control the camera. This is the way it is implemented in PhotonFocus camera interface.
+.. The communication with the camera itself greatly varies between different cameras. Some will have additional connection to control the parameters. However, most use serial communication built into the CameraLink interface. This communication can be set up with :meth:`.SiliconSoftwareCamera.setup_serial_params` and used via :meth:`.SiliconSoftwareCamera.serial_read` and  :meth:`.IMAQCamera.serial_write`. The communication protocols are camera-dependent. Yet some other cameras (e.g., Photon Focus) use proprietary communication protocol. In this case, the provide their own DLLs, which independently use NI-provided DLLs for serial communication (most notably, ``clallserial.dll``). In this case, one needs to maintain two independent connections: one directly to the NI frame grabber to obtain the frame data, and one to the manufacturer library to control the camera. This is the way it is implemented in PhotonFocus camera interface.
 
 
 Known issues

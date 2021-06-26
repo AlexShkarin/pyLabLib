@@ -29,7 +29,7 @@ author = 'Alexey Shkarin'
 # The short X.Y version
 version = ''
 # The full version, including alpha/beta/rc tags
-release = '1.0.0'
+release = '1.1.0'
 
 
 # -- General configuration ---------------------------------------------------
@@ -213,7 +213,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'pylablib', 'pylablib Documentation',
-     author, 'pylablib', 'One line description of project.',
+     author, 'pylablib', 'Code for use in lab environment: experiment automation, data acquisition, device communication.',
      'Miscellaneous'),
 ]
 

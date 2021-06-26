@@ -21,5 +21,6 @@ Currently supported cameras:
     IMAQdx
     PhotonFocus
     PCO_SC2
+    SiliconSoftware
     Thorlabs_TLCamera
     uc480

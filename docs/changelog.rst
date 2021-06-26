@@ -23,7 +23,29 @@ you can write
     import pylablib.legacy as pll
     from pylablib.legacy.aux_libs.devices import Lakeshore
 
-.. + renamed ``setupUi`` -> ``setup`` for all widgets
+1.1.0
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- General
+
+    * Reorganized the core modules import structure: now ``__init__.py`` modules are mostly empty, and all the necessary imports are either exposed directly in ``pylablib`` (e.g., ``pylablib.Fitter``), or should be accessed directly by the module (e.g. ``pll.core.dataproc.fitting.Fitter``). Intermediate access (e.g., ``pll.core.dataproc.Fitter``) is no longer supported.
+    * File IO functions (e.g., ``read_csv``) can now take file-like objects in addition to paths.
+
+- Devices
+    
+    * Added Silicon Software frame grabbers interface and rearranged PhotonFocus code to include both IMAQ and SiliconSoftware frame grabbers.
+    * Fixed various compatibility bugs arising for specific versions of Python or dependency modules: Kinesis error with specific pyft232 versions, some DLL-dependent devices errors with Python 3.8+, DLL types in 32-bit Python
+    * Addressed issue with occasional uc480 acquisition restarts, fixed M2 communication report errors,
+
+- GUI and threading
+
+    * Added container and layout management classes in addition to parameter tables for more consistent GUI structure organization.
+    * Added ``pylablib.widgets`` module which combines all custom widgets for the ease of using in layout managers or custom applications.
+    * Fixed  support for ``PySide2`` Qt5 backed.
+    * Renamed ``setupUi`` -> ``setup`` for all widgets, and changed the GUI setup organization for many of them (the functioning stayed the same).
+    * Reorganized scheduling in ``QTaskThread`` to treat jobs, commands, and subscriptions more consistently.
+    * Added basic data stream management.
+
 
 
 1.0.0
