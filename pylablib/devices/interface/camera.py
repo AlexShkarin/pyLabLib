@@ -32,7 +32,7 @@ class ICamera(interface.IDevice):
     Error=comm_backend.DeviceError
     TimeoutError=comm_backend.DeviceError
     FrameTransferError=DefaultFrameTransferError
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs):  # pylint: disable=unused-argument
         super().__init__()
         self._acq_params=None
         self._default_acq_params=function_utils.funcsig(self.setup_acquisition).defaults
@@ -273,10 +273,11 @@ class ICamera(interface.IDevice):
 
         Can be ``"namedtuple"`` (potentially nested named tuples; convenient to get particular values),
         ``"list"`` (flat list of values, with field names are given by :meth:`get_frame_info_fields`; convenient for building a table),
+        ``"array"`` (same as ``"list"``, but with a numpy array, which is easier to use for ``fastbuff`` readout supported by some cameras),
         or ``"dict"`` (flat dictionary with the same fields as the ``"list"`` format; more resilient to future format changes)
         """
         return self._frameinfo_format
-    _p_frameinfo_format=interface.EnumParameterClass("frame_info_format",["namedtuple","list","dict"])
+    _p_frameinfo_format=interface.EnumParameterClass("frame_info_format",["namedtuple","list","array","dict"])
     @interface.use_parameters(fmt="frame_info_format")
     def set_frame_info_format(self, fmt):
         """
@@ -284,6 +285,7 @@ class ICamera(interface.IDevice):
 
         Can be ``"namedtuple"`` (potentially nested named tuples; convenient to get particular values),
         ``"list"`` (flat list of values, with field names are given by :meth:`get_frame_info_fields`; convenient for building a table),
+        ``"array"`` (same as ``"list"``, but with a numpy array, which is easier to use for ``fastbuff`` readout supported by some cameras),
         or ``"dict"`` (flat dictionary with the same fields as the ``"list"`` format; more resilient to future format changes)
         """
         self._frameinfo_format=fmt
@@ -304,6 +306,11 @@ class ICamera(interface.IDevice):
             return info
         if fmt=="list":
             return list(general_utils.flatten_list(info))
+        if fmt=="array":
+            arr=np.array(list(general_utils.flatten_list(info)))
+            if arr.ndim==2:
+                arr=arr.T
+            return arr
         return dict(zip(self._frameinfo_fields,general_utils.flatten_list(info)))
 
     def get_new_images_range(self):
@@ -831,7 +838,7 @@ class IGrabberAttributeCamera(ICamera):
     Camera class which supports frame grabber attributes.
 
     Essentially the same as :class:`IAttributeCamera`, but with relevant methods and attributes renamed
-    to support both frame grabber and camera attrbiutes handling simultaneously.
+    to support both frame grabber and camera attributes handling simultaneously.
 
     The method ``_list_grabber_attributes`` must be defined in a subclass;
     it should produce a list of camera attributes, which have ``name`` attribute for placing them into a dictionary.

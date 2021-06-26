@@ -582,7 +582,8 @@ class IMAQFrameGrabber(camera.IROICamera):
                 frame_info=[]
                 idx=first_frame
                 for d in parsed_data:
-                    frame_info.append(self._convert_frame_info(self._TFrameInfo(idx)))
+                    idx_data=np.arange(len(d))+idx if return_info=="all" else idx
+                    frame_info.append(self._convert_frame_info(self._TFrameInfo(idx_data)))
                     idx+=len(d)
             else:
                 frame_info=[self._TFrameInfo(first_frame+n) for n in range(len(parsed_data))]

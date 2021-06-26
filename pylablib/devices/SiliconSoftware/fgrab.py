@@ -1,6 +1,7 @@
 from . import fgrab_prototyp_lib
 from .fgrab_prototyp_defs import FgAppletIntProperty, FgAppletStringProperty, FgAppletIteratorSource, FgParamTypes, FgProperty, Fg_Info_Selector, drFg_Info_Selector
-from .fgrab_define_defs import FG_STATUS, FG_GETSTATUS, FG_ACQ
+from .fgrab_prototyp_defs import MeCameraLinkFormat
+from .fgrab_define_defs import FG_STATUS, FG_GETSTATUS, FG_ACQ, FG_IMGFMT, FG_PARAM
 from .fgrab_prototyp_lib import lib, SiliconSoftwareError, SIFgrabLibError
 
 from ...core.utils import py3, funcargparse, general as general_utils, dictionary
@@ -244,6 +245,7 @@ class FGrabAttribute:
 
 
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["applet_info","system_info","software_version"])
+TFrameInfo=collections.namedtuple("TFrameInfo",["frame_index","framestamp","timestamp","timestamp_long"])
 class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICamera):
     """
     Generic Silicon Software frame grabber interface.
@@ -262,6 +264,7 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
     """
     Error=SiliconSoftwareError
     TimeoutError=SiliconSoftwareTimeoutError
+    _TFrameInfo=TFrameInfo
     def __init__(self, siso_board=0, siso_applet="DualAreaGray16", siso_port=0, siso_detector_size=None, do_open=True, **kwargs):
         super().__init__(**kwargs)
         lib.initlib()
@@ -281,6 +284,8 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
         self.siso_detector_size=siso_detector_size
 
         self._add_info_variable("device_info",self.get_device_info)
+        self._add_info_variable("camlink_pixel_formats",self.get_available_camlink_pixel_formats)
+        self._add_status_variable("pixel_format",self.get_camlink_pixel_format,ignore_error=SiliconSoftwareError)
 
         if do_open:
             self.open()
@@ -290,9 +295,11 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
         if name.startswith("FG_"):
             return name[3:]
         return name
+    _fixed_parameters=[FG_PARAM.FG_CAMSTATUS,FG_PARAM.FG_IMAGE_TAG,FG_PARAM.FG_TIMEOUT,FG_PARAM.FG_TIMESTAMP,FG_PARAM.FG_TIMESTAMP_LONG,FG_PARAM.FG_TRANSFER_LEN,FG_PARAM.FG_GLOBAL_ACCESS]
     def _list_grabber_attributes(self):
         pnum=lib.Fg_getNrOfParameter(self.fg)
         attrs=[FGrabAttribute(self.fg,lib.Fg_getParameterId(self.fg,i),port=self.siso_port) for i in range(pnum)]
+        attrs+=[FGrabAttribute(self.fg,aid,port=self.siso_port) for aid in self._fixed_parameters]
         return [a for a in attrs if a.kind in ["i32","u32","i64","u64","f64","str"]]
     def _get_connection_parameters(self):
         return self.siso_board,self.siso_applet,self.siso_port,self.siso_applet_path
@@ -436,6 +443,59 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
         if buffer_size!=self._buffer_mgr.frame_size:
             self._setup_buffers(nbuff)
 
+    _camlink_fmts={ ( 8,1):MeCameraLinkFormat.FG_CL_SINGLETAP_8_BIT,
+                    (10,1):MeCameraLinkFormat.FG_CL_SINGLETAP_10_BIT,
+                    (12,1):MeCameraLinkFormat.FG_CL_SINGLETAP_12_BIT,
+                    (14,1):MeCameraLinkFormat.FG_CL_SINGLETAP_14_BIT,
+                    (16,1):MeCameraLinkFormat.FG_CL_SINGLETAP_16_BIT,
+                    ( 8,2):MeCameraLinkFormat.FG_CL_DUALTAP_8_BIT,
+                    (10,2):MeCameraLinkFormat.FG_CL_DUALTAP_10_BIT,
+                    (12,2):MeCameraLinkFormat.FG_CL_DUALTAP_12_BIT,}
+    def setup_camlink_pixel_format(self, bits_per_pixel=8, taps=1, output_fmt=None, fmt=None):
+        """
+        Set up CameraLink pixel format.
+        
+        If `fmt` is ``None``, use supplied `bits_per_pixel` (8, 10, 12, 14, or 16) and `taps` (1 or 2) to figure out the format;
+        otherwise, `fmt` should be a numerical (e.g., ``210``) or string (e.g., ``"FG_CL_MEDIUM_10_BIT"``) format.
+        `output_fmt` specifies the result frame format; if ``None``, use grayscale with the given `bits_per_pixel`
+        if `fmt` is ``None``, or 16 bit grayscale otherwise.
+        """
+        if fmt is None:
+            try:
+                fmt=self._camlink_fmts[bits_per_pixel,taps]
+                if output_fmt is None:
+                    if bits_per_pixel<=8:
+                        output_fmt=FG_IMGFMT.FG_GRAY
+                    elif bits_per_pixel<=16:
+                        output_fmt=FG_IMGFMT.FG_GRAY16
+                    else:
+                        output_fmt=FG_IMGFMT.FG_GRAY32
+            except KeyError:
+                raise KeyError("combination for {} bits per pixel and {} taps is not supported".format(bits_per_pixel,taps))
+        else:
+            if output_fmt is None:
+                output_fmt=FG_IMGFMT.FG_GRAY16
+        self.gav["CAMERA_LINK_CAMTYP"]=fmt
+        self.gav["FORMAT"]=output_fmt
+    def get_camlink_pixel_format(self):
+        """Get CamLink pixel format and the output pixel format as a tuple"""
+        try:
+            return (self.gav["CAMERA_LINK_CAMTYP"],self.gav["FORMAT"])
+        except KeyError:
+            return None
+    def get_available_camlink_pixel_formats(self):
+        """Get all available CamLink pixel formats and the output pixel formats as a tuple of 2 lists"""
+        try:
+            clfmts=list(self.get_grabber_attribute("CAMERA_LINK_CAMTYP").values.values())
+        except KeyError:
+            clfmts=None
+        try:
+            pxfmts=list(self.get_grabber_attribute("FORMAT").values.values())
+        except KeyError:
+            pxfmts=None
+        return pxfmts,clfmts
+
+
     @interface.use_parameters(mode="acq_mode")
     def setup_acquisition(self, mode="sequence", nframes=100):
         """
@@ -515,7 +575,7 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
             rng=(rng[0]//self._frame_merge)*self._frame_merge,((rng[1]-1)//self._frame_merge+1)*self._frame_merge
             rng,skipped=self._frame_counter.trim_frames_range(rng)
         return rng,skipped
-    def _read_multiple_images_raw(self, rng=None, peek=False):
+    def _read_multiple_images_raw(self, rng=None, peek=False, return_info=False):
         """
         Read multiple images specified by `rng` (by default, all un-read images).
 
@@ -525,16 +585,38 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
         (array of tuples ``[(nframes,data)]`` with the number of frames and the raw buffer data).
         """
         if not self._buffer_mgr:
-            return 0,0,None
+            return 0,0,None,None
         rng,skipped_frames=self._trim_images_range(rng)
         if rng is None:
-            return 0,0,[]
+            return 0,0,[],[]
         raw_frames=self._buffer_mgr.get_frames_data(rng[0]//self._frame_merge,rng[1]//self._frame_merge-rng[0]//self._frame_merge) if rng[1]>rng[0] else []
+        if return_info:
+            params=[FG_PARAM.FG_IMAGE_TAG,FG_PARAM.FG_TIMESTAMP,FG_PARAM.FG_TIMESTAMP_LONG]
+            frame_info=[]
+            chn=[n for n,_ in raw_frames]
+            chidx=np.cumsum([rng[0]]+chn[:-1])
+            if return_info in ["full","chunks"]:
+                frng=range(rng[0]//self._frame_merge,rng[1]//self._frame_merge)
+            else:
+                frng=chidx
+            frame_info.append(np.array(frng)*self._frame_merge)
+            for p in params:
+                try:
+                    frame_info.append([lib.Fg_getParameterEx_auto(self.fg,p,self.siso_port,self._buffer_head,i+1) for i in frng])
+                except SIFgrabLibError:
+                    frame_info.append([0]*len(frng))
+            frame_info=np.array(frame_info)
+            if return_info=="chunks":
+                frame_info=[frame_info[:,i:i+n].T for i,n in zip(chidx-chidx[0],chn)]
+            else:
+                frame_info=list(frame_info.T)
+        else:
+            frame_info=None
         if not peek:
             self._frame_counter.advance_read_frames(rng)
-        return rng[0],skipped_frames,raw_frames
+        return rng[0],skipped_frames,raw_frames,frame_info
     
-    def read_multiple_images(self, rng=None, peek=False, missing_frame="skip", return_info=None, fastbuff=False):
+    def read_multiple_images(self, rng=None, peek=False, missing_frame="skip", return_info=False, fastbuff=False):
         """
         Read multiple images specified by `rng` (by default, all un-read images).
 
@@ -543,17 +625,24 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
         If ``peek==True``, return images but not mark them as read.
         `missing_frame` determines what to do with frames which are out of range (missing or lost):
         can be ``"none"`` (replacing them with ``None``), ``"zero"`` (replacing them with zero-filled frame), or ``"skip"`` (skipping them).
-        If ``return_info==True``, return tuple ``(frames, infos)``, where ``infos`` is a list of ``TFrameInfo`` single-element tuples
-        containing frame index; if some frames are missing and ``missing_frame!="skip"``, the corresponding frame info is ``None``.
+        If ``return_info==True``, return tuple ``(frames, infos)``, where ``infos`` is a list of ``TFrameInfo`` instances
+        describing frame index, framestamp, and two timestamps (lower and higher precision);
+        if some frames are missing and ``missing_frame!="skip"``, the corresponding frame info is ``None``.
+        Note that obtaining frame info takes about 100us, so ``return_info="all"`` should be avoided fro rates above 5-10kFPS.
         If ``fastbuff==False``, return a list of individual frames (2D numpy arrays).
         Otherwise, return a list of 'chunks', which are 3D numpy arrays containing several frames;
-        in this case, ``frame_info`` will only have one entry per chunk corresponding to the first frame in the chunk.
+        in this case, if `return_info` is ``True``, then ``frame_info`` will only have one entry per chunk corresponding to the first frame in the chunk,
+        and if `return_info` is ``"all"``, it will return info for each frame in the chunk, also in chunk form.
         Using ``fastbuff`` results in faster operation at high frame rates (>~1kFPS), at the expense of a more complicated frame processing in the following code.
         """
         funcargparse.check_parameter_range(missing_frame,"missing_frame",["none","zero","skip"])
         if fastbuff and missing_frame=="none":
             raise ValueError("'none' missing frames mode is not supported if fastbuff==True")
-        first_frame,skipped_frames,raw_data=self._read_multiple_images_raw(rng=rng,peek=peek)
+        if return_info and not fastbuff:
+            return_info="full"
+        elif return_info=="all":
+            return_info="chunks"
+        _,skipped_frames,raw_data,frame_info=self._read_multiple_images_raw(rng=rng,peek=peek,return_info=return_info)
         if raw_data is None:
             return (None,None) if return_info else None
         dim=self._get_data_dimensions_rc()
@@ -561,15 +650,10 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
         parsed_data=[self._parse_buffer(b,nframes=n) for n,b in raw_data]
         if not fastbuff:
             parsed_data=[f for chunk in parsed_data for f in chunk]
-        if return_info:
-            if fastbuff:
-                frame_info=[]
-                idx=first_frame
-                for d in parsed_data:
-                    frame_info.append(self._convert_frame_info(self._TFrameInfo(idx)))
-                    idx+=len(d)
-            else:
-                frame_info=[self._TFrameInfo(first_frame+n) for n in range(len(parsed_data))]
+        if return_info=="chunks":
+            frame_info=[self._convert_frame_info(self._TFrameInfo(*list(fi.T))) for fi in frame_info]
+        elif return_info:
+            frame_info=[self._convert_frame_info(self._TFrameInfo(*fi)) for fi in frame_info]
         if skipped_frames and missing_frame!="skip":
             if fastbuff: # only missing_frame=="zero" is possible
                 parsed_data=[np.zeros((skipped_frames,)+dim,dtype=dt)]+parsed_data

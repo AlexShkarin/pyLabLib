@@ -125,7 +125,7 @@ def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, depe
                 env_paths=old_env_path.split(os.pathsep) if old_env_path else []
                 if not any([files.paths_equal(loc_folder,ep) for ep in env_paths if ep]):
                     os.environ["PATH"]=files.normalize_path(loc_folder)+(os.pathsep+old_env_path if old_env_path else "")
-                path=loc_name if folder=="" else "./"+loc_name
+                path=loc_name
                 folder=loc_folder
             depends=depends or []
             paths=[os.path.join(folder,dn) for dn in depends]+[path]

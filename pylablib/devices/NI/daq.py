@@ -69,6 +69,7 @@ class NIDAQ(interface.IDevice):
         self.rate=rate
         self.clk_src=None
         self.buffer_size=buffer_size
+        self.ai_task=None
         self.ai_channels={}
         self.ci_tasks={}
         self.ci_counters={}
@@ -80,8 +81,6 @@ class NIDAQ(interface.IDevice):
         self.clk_channel_base=20E6
         self.max_ao_write_rate=1000 # maximal rate of repeating ao waveform with continuous repetition
         self.open()
-        self._update_channel_names()
-        self._running=False
         self._add_info_variable("device_info",self.get_device_info)
         self._add_status_variable("input_channels",lambda: self.get_input_channels(include=("ai","ci","di","cpi")))
         self._add_status_variable("voltage_input_parameters",self.get_voltage_input_parameters)
@@ -100,11 +99,15 @@ class NIDAQ(interface.IDevice):
         return self.dev_name
     @reraise
     def open(self):
+        if self.ai_task is not None:
+            return
         self.ai_task=nidaqmx.Task()
         self.di_task=nidaqmx.Task()
         self.do_task=nidaqmx.Task()
         self.ao_task=nidaqmx.Task()
         self.cpi_task=nidaqmx.Task()
+        self._update_channel_names()
+        self._running=False
     @reraise
     def close(self):
         if self.ai_task is not None:

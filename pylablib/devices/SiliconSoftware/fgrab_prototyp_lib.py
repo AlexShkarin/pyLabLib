@@ -377,7 +377,7 @@ class SIFgrabLib:
     def Fg_getParameterEx_auto(self, Fg, Parameter, DmaIndex, pMem, ImgNr):
         ptypes={FG_PARAM.FG_IMAGE_TAG:ctypes.c_uint, FG_PARAM.FG_TIMESTAMP:ctypes.c_uint, FG_PARAM.FG_TIMESTAMP_LONG:ctypes.c_uint64, FG_PARAM.FG_TRANSFER_LEN:ctypes.c_size_t}
         v=ptypes[Parameter]()
-        self.Fg_getParameterEx(Fg,Parameter,v,DmaIndex,pMem,ImgNr)
+        self.Fg_getParameterEx(Fg,Parameter,ctypes.byref(v),DmaIndex,pMem,ImgNr)
         return v.value
 
 

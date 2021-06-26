@@ -11,6 +11,7 @@ from ..utils import load_lib
 import numpy as np
 import collections
 import re
+import warnings
 
 
 
@@ -189,7 +190,7 @@ class IPhotonFocusCamera(camera.IAttributeCamera): # pylint: disable=abstract-me
 
     Args:
         pfcam_port: port number for pfcam interface (can be learned by :func:`list_cameras`; port number is the first element of the camera data tuple)
-        kwargs: keyword arguments passed to the frame grabber initializer
+        kwargs: keyword arguments passed to the frame grabber initialization
     """
     Error=DeviceError
     GrabberClass=None
@@ -212,7 +213,7 @@ class IPhotonFocusCamera(camera.IAttributeCamera): # pylint: disable=abstract-me
     
     def setup_max_baudrate(self):
         """Setup the maximal available baudrate"""
-        brs=[115200,57600,38400,19200,9600,4800,2400,1200]
+        brs=[921600,460800,230400,115200,57600,38400,19200,9600,4800,2400,1200]
         try:
             for br in brs:
                 if lib.pfIsBaudRateSupported(self.pfcam_port,br):
@@ -398,7 +399,7 @@ class IPhotonFocusCamera(camera.IAttributeCamera): # pylint: disable=abstract-me
         self.ucav["Window/H"]=min(vend-vstart,grabber_detector_size[1])
         self._update_grabber_roi()
         return self.get_roi()
-    def get_roi_limits(self, hbin=1, vbin=1):
+    def get_roi_limits(self, hbin=1, vbin=1): # pylint: disable=unused-argument
         params=[self.ca[p] for p in ["Window/W","Window/H"]]
         minp,maxp=[list(p) for p in zip(*[p.update_limits() for p in params])]
         hlim=camera.TAxisROILimit(minp[0],maxp[0],self._hstep,minp[0],1)
@@ -407,13 +408,25 @@ class IPhotonFocusCamera(camera.IAttributeCamera): # pylint: disable=abstract-me
 
     def _get_buffer_bpp(self):
         bpp=self.GrabberClass._get_buffer_bpp(self) if self.GrabberClass else 1
-        attr=self.get_attribute("DataResolution",error_on_missing=False)
-        if attr:
-            res=attr.get_value()
-            m=re.match(r"Res(\d+)Bit",res)
-            if m:
-                bpp=(int(m.group(1))-1)//8+1
+        ppbpp=self._get_camera_bytepp()
+        if ppbpp is not None:
+            bpp=(ppbpp-1)//8+1
         return bpp
+    def _get_camera_bytepp(self):
+        fmt=self.get_attribute_value("DataResolution",error_on_missing=False)
+        if fmt is None:
+            return None
+        m=re.match(r"(?:res)?(\d+)bit",fmt.lower())
+        if m:
+            return int(m[1])
+        return None
+    def _set_camera_bytepp(self, bpp):
+        fmt=self.get_attribute_value("DataResolution",error_on_missing=False)
+        if fmt:
+            m=re.match(r"^([^\d]*)(\d+)([^\d]*)$",fmt)
+            if m:
+                fmt="{}{}{}".format(m[1],bpp,m[3])
+                self.cav["DataResolution"]=fmt
     def _get_data_dimensions_rc(self):
         roi=self.get_roi()
         w,h=roi[1]-roi[0],roi[3]-roi[2]
@@ -505,6 +518,19 @@ class PhotonFocusIMAQCamera(IPhotonFocusCamera,IMAQFrameGrabber):
     def __init__(self, imaq_name="img0", pfcam_port=0):
         super().__init__(pfcam_port=pfcam_port,name=imaq_name)
 
+    def open(self):
+        super().open()
+        self._ensure_pixel_format()
+
+    def _ensure_pixel_format(self):
+        fgbpp=self.get_grabber_attribute_value("BITSPERPIXEL")
+        ppbpp=self._get_camera_bytepp()
+        if ppbpp is not None and ppbpp!=fgbpp:
+            msg=(   "PhotonFocus pixel format {} does not agree with the frame grabber {} bits per pixel; "
+                    "changing PhotonFocus pixel format accordingly; to use the original format, alter the camera file".format(self.cav["DataResolution"],fgbpp))
+            warnings.warn(msg)
+            self._set_camera_bytepp(fgbpp)
+
 
 
 class PhotonFocusSiSoCamera(IPhotonFocusCamera,SiliconSoftwareFrameGrabber):
@@ -524,6 +550,14 @@ class PhotonFocusSiSoCamera(IPhotonFocusCamera,SiliconSoftwareFrameGrabber):
     def __init__(self, siso_board, siso_applet, siso_port=0, pfcam_port=0):
         super().__init__(pfcam_port=pfcam_port,siso_board=siso_board,siso_applet=siso_applet,siso_port=siso_port)
 
+    def open(self):
+        super().open()
+        self._ensure_pixel_format()
+
+    def _ensure_pixel_format(self):
+        ppbpp=self._get_camera_bytepp()
+        if ppbpp is not None:
+            self.setup_camlink_pixel_format(ppbpp,2)
 
 ##### Dealing with status line #####
 
