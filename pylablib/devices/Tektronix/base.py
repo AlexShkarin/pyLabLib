@@ -1,14 +1,14 @@
 import numpy as np
 
-from ...core.devio import SCPI, data_format, interface, DeviceError, DeviceBackendError
+from ...core.devio import SCPI, data_format, interface, comm_backend
 from ...core.utils import funcargparse, general
 
 import collections
 
 
-class TektronixError(DeviceError):
+class TektronixError(comm_backend.DeviceError):
     """Generic Tektronix devices error"""
-class TektronixBackendError(TektronixError,DeviceBackendError):
+class TektronixBackendError(TektronixError,comm_backend.DeviceBackendError):
     """Generic Tektronix backend communication error"""
 
 def muxchannel(*args, **kwargs):

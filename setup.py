@@ -16,15 +16,15 @@ with open(path.join(here,'README.rst')) as f:
 
 dep_base=['numpy','scipy','pandas']
 dep_extra=['rpyc','numba']
-dep_devio=['pyft232','pyvisa','pyserial','pyusb']
+dep_devio=['pyft232','pyvisa>=1.6','pyserial','pyusb']
 dep_devio_extra=['nidaqmx','websocket-client']
-dep_pyqt5=['pyqt5','sip','pyqtgraph']
-dep_pyside2=['pyside2','shiboken2','pyqtgraph']
+dep_pyqt5=['pyqt5>5.10','pyqtgraph']
+dep_pyside2=['pyside2','shiboken2','pyqtgraph>0.10']
 setup(
     name='pylablib',
     # name='pylablib-lightweight',
-    version='1.0.0',
-    description='Collection of Python code for using in lab environment: experiment automation, data acquisition, device communication',
+    version='1.1.0',
+    description='Code for use in lab environment: experiment automation, data acquisition, device communication',
     long_description=long_description,
     long_description_content_type="text/x-rst",
     url='https://github.com/AlexShkarin/pyLabLib',
@@ -41,6 +41,7 @@ setup(
     'Programming Language :: Python :: 3.6',
     'Programming Language :: Python :: 3.7',
     'Programming Language :: Python :: 3.8',
+    'Programming Language :: Python :: 3.9',
     'Operating System :: Microsoft :: Windows'
     ],
     project_urls={

@@ -28,6 +28,7 @@ Subpackages
     pylablib.devices.Pfeiffer
     pylablib.devices.PhotonFocus
     pylablib.devices.Rigol
+    pylablib.devices.SiliconSoftware
     pylablib.devices.SmarAct
     pylablib.devices.Tektronix
     pylablib.devices.Thorlabs

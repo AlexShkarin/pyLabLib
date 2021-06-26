@@ -1,5 +1,5 @@
-from ...core.devio import interface, DeviceError
-from ...core.dataproc import image_utils
+from ...core.devio import interface, comm_backend
+from ...core.dataproc import image as image_utils
 from ...core.utils import functions as function_utils, general as general_utils, dictionary
 
 import numpy as np
@@ -8,7 +8,12 @@ import contextlib
 import time
 import functools
 import threading
+import ctypes
 
+
+
+class DefaultFrameTransferError(comm_backend.DeviceError):
+    """Generic frame transfer error"""
 
 TFramesStatus=collections.namedtuple("TFramesStatus",["acquired","unread","skipped","buffer_size"])
 TFrameSize=collections.namedtuple("TFrameSize",["width","height"])
@@ -24,9 +29,10 @@ class ICamera(interface.IDevice):
     _default_frameinfo_format="namedtuple"
     _default_image_dtype="<u2"
     _clear_pausing_acquisition=False
-    Error=DeviceError
-    TimeoutError=DeviceError
-    def __init__(self):
+    Error=comm_backend.DeviceError
+    TimeoutError=comm_backend.DeviceError
+    FrameTransferError=DefaultFrameTransferError
+    def __init__(self, *args, **kwargs):  # pylint: disable=unused-argument
         super().__init__()
         self._acq_params=None
         self._default_acq_params=function_utils.funcsig(self.setup_acquisition).defaults
@@ -267,10 +273,11 @@ class ICamera(interface.IDevice):
 
         Can be ``"namedtuple"`` (potentially nested named tuples; convenient to get particular values),
         ``"list"`` (flat list of values, with field names are given by :meth:`get_frame_info_fields`; convenient for building a table),
+        ``"array"`` (same as ``"list"``, but with a numpy array, which is easier to use for ``fastbuff`` readout supported by some cameras),
         or ``"dict"`` (flat dictionary with the same fields as the ``"list"`` format; more resilient to future format changes)
         """
         return self._frameinfo_format
-    _p_frameinfo_format=interface.EnumParameterClass("frame_info_format",["namedtuple","list","dict"])
+    _p_frameinfo_format=interface.EnumParameterClass("frame_info_format",["namedtuple","list","array","dict"])
     @interface.use_parameters(fmt="frame_info_format")
     def set_frame_info_format(self, fmt):
         """
@@ -278,6 +285,7 @@ class ICamera(interface.IDevice):
 
         Can be ``"namedtuple"`` (potentially nested named tuples; convenient to get particular values),
         ``"list"`` (flat list of values, with field names are given by :meth:`get_frame_info_fields`; convenient for building a table),
+        ``"array"`` (same as ``"list"``, but with a numpy array, which is easier to use for ``fastbuff`` readout supported by some cameras),
         or ``"dict"`` (flat dictionary with the same fields as the ``"list"`` format; more resilient to future format changes)
         """
         self._frameinfo_format=fmt
@@ -290,12 +298,19 @@ class ICamera(interface.IDevice):
         """
         return list(self._frameinfo_fields)
     def _convert_frame_info(self, info, fmt=None):
+        if info is None:
+            return None
         if fmt is None:
             fmt=self._frameinfo_format
         if fmt=="namedtuple":
             return info
         if fmt=="list":
             return list(general_utils.flatten_list(info))
+        if fmt=="array":
+            arr=np.array(list(general_utils.flatten_list(info)))
+            if arr.ndim==2:
+                arr=arr.T
+            return arr
         return dict(zip(self._frameinfo_fields,general_utils.flatten_list(info)))
 
     def get_new_images_range(self):
@@ -502,6 +517,7 @@ class FrameCounter:
         self.last_acquired_frame=-1
         self.last_wait_frame=-1
         self.last_read_frame=-1
+        self.first_valid_frame=-1
         self.skipped_frames=0
     def update_acquired_frames(self, acquired_frames):
         """Update the counter of acquired frames (needs to be called by the camera whenever necessary)"""
@@ -553,7 +569,8 @@ class FrameCounter:
             return (0,0,0,0)
         self.update_acquired_frames(acquired_frames)
         full_unread=self.last_acquired_frame-self.last_read_frame
-        unread=min(full_unread,self.buffer_size)
+        valid_chunk=max(0,min(self.buffer_size,self.last_acquired_frame-self.first_valid_frame))
+        unread=min(full_unread,valid_chunk)
         skipped=self.skipped_frames+(full_unread-unread)
         return (self.last_acquired_frame+1,unread,skipped,self.buffer_size)
 
@@ -581,7 +598,7 @@ class FrameCounter:
         rng[1]=min(rng[1],acquired_frames)
         if rng[1]<=rng[0]:
             rng=rng[0],rng[0]
-        oldest_valid_frame=self.last_acquired_frame-self.buffer_size+1
+        oldest_valid_frame=max(self.first_valid_frame,self.last_acquired_frame-self.buffer_size+1)
         if rng[1]<=oldest_valid_frame:
             return (oldest_valid_frame,oldest_valid_frame),rng[1]-rng[0]
         else:
@@ -593,6 +610,10 @@ class FrameCounter:
             return
         self.skipped_frames+=max(rng[0]-1-self.last_read_frame,0)
         self.last_read_frame=max(self.last_read_frame,rng[1]-1)
+    def set_first_valid_frame(self, first_valid_frame):
+        """Set the first valid frame; all frames older than it are considered invalid when calculating skipped frames and trimming ranges"""
+        if self.buffer_size is not None:
+            self.first_valid_frame=first_valid_frame
 
 
 
@@ -636,6 +657,81 @@ class FrameNotifier:
 
 
 
+class ChunkBufferManager:
+    """
+    Buffer manager, which takes care of creating and removing the buffer chunks, and reading out some parts of them.
+    
+    Args:
+        chunk_size: the minimal size of a single buffer chunk (continuous memory segment potentially containing several frames).
+    """
+    def __init__(self, chunk_size=2**20):
+        self.chunks=None
+        self.nframes=None
+        self.frame_size=None
+        self.frames_per_chunk=None
+        self.chunk_size=chunk_size
+
+    def __bool__(self):
+        return self.chunks is not None
+    def get_ctypes_frames_list(self, ctype=ctypes.c_char_p):
+        """Get stored buffers as a ctypes array with pointer of the given type"""
+        if self.chunks:
+            cbuffs=(ctype*self.nframes)()
+            for i,b in enumerate(self.chunks):
+                for j in range(self.frames_per_chunk):
+                    nb=i*self.frames_per_chunk+j
+                    if nb<self.nframes:
+                        cbuffs[nb]=ctypes.addressof(b)+j*self.frame_size
+                    else:
+                        break
+            return cbuffs
+        else:
+            return None
+    def get_frames_data(self, idx, nframes=1):
+        """
+        Get frames data starting from `idx` and spanning `nframes` frames.
+
+        Return a list of tuples ``(nread, chunk_data)``, where ``nread`` is the number of frames in the chunk,
+        and ``chunk_data`` is the raw buffer pointer as a ``ctypes.c_char_p`` object.
+        """
+        idx%=self.nframes
+        ibuff=idx//self.frames_per_chunk
+        jbuff=idx%self.frames_per_chunk
+        read_chunks=[]
+        while nframes>0:
+            ch=self.chunks[ibuff]
+            chunk_frames=self.frames_per_chunk if ibuff<len(self.chunks)-1 else self.frames_per_chunk_last
+            nread=min(nframes,chunk_frames-jbuff)
+            chunk_data=ctypes.c_char_p(ctypes.addressof(ch)+jbuff*self.frame_size)
+            read_chunks.append((nread,chunk_data))
+            nframes-=nread
+            jbuff=0
+            ibuff=(ibuff+1)%len(self.chunks)
+        return read_chunks
+    def allocate(self, nframes, frame_size):
+        """Allocate buffers for the given number of frames and frame size (in bytes)"""
+        self.deallocate()
+        self.nframes=nframes
+        self.frame_size=frame_size
+        self.frames_per_chunk=max(self.chunk_size//frame_size,1)
+        nchunks=(nframes-1)//self.frames_per_chunk+1
+        if nchunks==1:
+            self.frames_per_chunk=nframes
+        self.chunks=[ctypes.create_string_buffer(self.frames_per_chunk*frame_size) for _ in range(nchunks)]
+        self.frames_per_chunk_last=nframes-self.frames_per_chunk*(nchunks-1)
+    def deallocate(self):
+        """Deallocate the buffers"""
+        self.chunks=None
+        self.frame_size=None
+        self.nframes=None
+        self.frames_per_chunk=None
+        self.frames_per_chunk_last=None
+
+
+
+
+
+
 
 
 
@@ -652,8 +748,8 @@ class IAttributeCamera(ICamera):
     One can also define ``_normalize_attribute_name``, which normalizes the attribute name into a dictionary name
     (e.g., replaces separators, removes spaces, or normalizes case).
     """
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args,**kwargs)
         self.attributes=dictionary.Dictionary()
         self._add_status_variable("camera_attributes",self.get_all_attribute_values,priority=-5)
         self.ca=dictionary.ItemAccessor(self.get_attribute,missing_error=self.Error)
@@ -737,12 +833,112 @@ class IAttributeCamera(ICamera):
 
 
 
+class IGrabberAttributeCamera(ICamera):
+    """
+    Camera class which supports frame grabber attributes.
+
+    Essentially the same as :class:`IAttributeCamera`, but with relevant methods and attributes renamed
+    to support both frame grabber and camera attributes handling simultaneously.
+
+    The method ``_list_grabber_attributes`` must be defined in a subclass;
+    it should produce a list of camera attributes, which have ``name`` attribute for placing them into a dictionary.
+    Attributes can also have ``readable`` and ``writable`` attributes, which are used in
+    :meth:`get_all_grabber_attribute_values` and :meth:`set_all_grabber_attribute_values` to determine if the attribute values should be collected or set.
+    Method ``_update_grabber_attributes`` should be called on opening to populate the dictionary of available attributes.
+
+    One can also define ``_normalize_grabber_attribute_name``, which normalizes the attribute name into a dictionary name
+    (e.g., replaces separators, removes spaces, or normalizes case).
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args,**kwargs)
+        self.grabber_attributes=dictionary.Dictionary()
+        self._add_status_variable("grabber_attributes",self.get_all_grabber_attribute_values,priority=-5)
+        self.ga=dictionary.ItemAccessor(self.get_grabber_attribute,missing_error=self.Error)
+        self.gav=dictionary.ItemAccessor(self.get_grabber_attribute_value,self.set_grabber_attribute_value,missing_error=self.Error)
+    
+    def _normalize_grabber_attribute_name(self, name):
+        return name
+    def _list_grabber_attributes(self):
+        raise NotImplementedError("IGrabberAttributeCamera._list_grabber_attributes")
+    def _update_grabber_attributes(self, replace=False):
+        """Update ``grabber_attributes`` dictionary; if ``replace==True``, replace it entirely, otherwise, simply update it"""
+        attrs=self._list_grabber_attributes()
+        attrs_dict=dictionary.Dictionary({self._normalize_grabber_attribute_name(p.name):p for p in attrs})
+        if replace:
+            self.grabber_attributes=attrs_dict
+        else:
+            self.grabber_attributes.update(attrs_dict)
+    def get_grabber_attribute(self, name, error_on_missing=True):
+        """Get the camera attribute with the given name"""
+        name=self._normalize_grabber_attribute_name(name)
+        if name in self.grabber_attributes:
+            return self.grabber_attributes[name]
+        if error_on_missing:
+            raise self.Error("grabber attribute {} is missing".format(name))
+    def get_all_grabber_attributes(self, copy=False):
+        """
+        Return a dictionary of all available frame grabber grabber_attributes.
+        
+        If ``copy==True``, copy the dictionary; otherwise, return the internal dictionary structure (should not be modified).
+        """
+        return self.grabber_attributes.copy() if copy else self.grabber_attributes
+
+    def get_grabber_attribute_value(self, name, error_on_missing=True, default=None, **kwargs):
+        """
+        Get value of a frame grabber attribute with the given name.
+        
+        If the value doesn't exist and ``error_on_missing==True``, raise error; otherwise, return `default`.
+        If `default` is not ``None``, automatically assume that ``error_on_missing==False``.
+        If `name` points at a dictionary branch, return a dictionary with all values in this branch.
+        Additional arguments are passed to ``get_value`` methods of the individual attribute.
+        """
+        error_on_missing=error_on_missing and (default is None)
+        attr=self.get_grabber_attribute(name,error_on_missing=error_on_missing)
+        if dictionary.is_dictionary(attr):
+            return self.get_all_grabber_attribute_values(root=name,**kwargs)
+        return default if attr is None else attr.get_value(**kwargs)
+    def set_grabber_attribute_value(self, name, value, error_on_missing=True, **kwargs):
+        """
+        Set value of a frame grabber attribute with the given name.
+        
+        If the value doesn't exist and ``error_on_missing==True``, raise error; otherwise, do nothing.
+        If `name` points at a dictionary branch, set all values in this branch (in this case `value` must be a dictionary).
+        Additional arguments are passed to ``set_value`` methods of the individual attribute.
+        """
+        attr=self.get_grabber_attribute(name,error_on_missing=error_on_missing)
+        if dictionary.is_dictionary(attr):
+            return self.set_all_grabber_attribute_values(value,root=name,**kwargs)
+        if attr is not None:
+            attr.set_value(value,**kwargs)
+    
+    def get_all_grabber_attribute_values(self, root="", **kwargs):
+        """
+        Get values of all frame grabber attributes with the given `root`.
+
+        Additional arguments are passed to ``get_value`` methods of individual attributes.
+        """
+        grabber_attributes=self.get_grabber_attribute(root)
+        return grabber_attributes.copy().filter_self(lambda a: getattr(a,"readable",True)).map_self(lambda a: a.get_value(**kwargs))
+    def set_all_grabber_attribute_values(self, settings, root="", **kwargs):
+        """
+        Set values of all frame grabber attributes with the given `root`.
+
+        Additional arguments are passed to ``set_value`` methods of individual attributes.
+        """
+        grabber_attributes=self.get_grabber_attribute(root)
+        settings=dictionary.as_dict(settings,style="flat",copy=False)
+        for k,v in settings.items():
+            k=self._normalize_grabber_attribute_name(k)
+            if k in grabber_attributes and getattr(grabber_attributes[k],"writable",True):
+                grabber_attributes[k].set_value(v,**kwargs)
+
+
 
 
 TAcqTimings=collections.namedtuple("TAcqTimings",["exposure","frame_period"])
 class IExposureCamera(ICamera):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args,**kwargs)
         self._add_settings_variable("exposure",self.get_exposure,self.set_exposure)
         self._add_status_variable("frame_timings",self.get_frame_timings)
     def get_exposure(self):
@@ -823,8 +1019,8 @@ def truncate_roi_axis(roi, lim, symmetric=False):
             end=smax-start
     return (start,end,cbin)
 class IROICamera(ICamera):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args,**kwargs)
         self._add_settings_variable("roi",self.get_roi,self.set_roi)
         self._add_status_variable("roi_limits",self.get_roi_limits)
     def get_roi(self):
@@ -848,7 +1044,7 @@ class IROICamera(ICamera):
         raise NotImplementedError("ICamera.set_roi")
     def _truncate_roi_axis(self, roi, lim, symmetric=False):
         """Truncate ROI ``(start, end)`` to conform to `lim`"""
-        return truncate_roi_axis(roi,lim+(1,),symmetric=symmetric)[:2]
+        return truncate_roi_axis(roi+(1,),lim,symmetric=symmetric)[:2]
     def get_roi_limits(self, hbin=1, vbin=1):  # pylint: disable=unused-argument
         """
         Get the minimal and maximal ROI parameters.
@@ -863,8 +1059,8 @@ class IROICamera(ICamera):
 
 
 class IBinROICamera(ICamera):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args,**kwargs)
         self._add_settings_variable("roi",self.get_roi,self.set_roi)
         self._add_status_variable("roi_limits",self.get_roi_limits)
     def get_roi(self):
@@ -900,3 +1096,125 @@ class IBinROICamera(ICamera):
         """
         w,h=self.get_detector_size()
         return TAxisROILimit(w,w,w,w,1),TAxisROILimit(h,h,h,h,1)
+
+
+
+
+
+
+def _get_partial_frame(frame, excl_area):
+    nr,nc=frame.shape[-2:]
+    r0,r1,c0,c1=excl_area
+    is_row=r1-r0<c1-c0
+    row_edge=(r0==0) or (r1==nr-1)
+    col_edge=(c0==0) or (c1==nc-1)
+    if not (row_edge or col_edge):
+        return None
+    if (is_row and row_edge) or (not is_row and not col_edge):
+        return frame[:,r1+1:,:] if r0==0 else frame[:,:r0,:]
+    else:
+        return frame[:,:,c1+1:] if c0==0 else frame[:,:,:c0]
+
+def _normalize_sline_pos(status_line, shape):
+    _,(r0,r1,c0,c1)=status_line
+    nr,nc=shape[-2:]
+    r0=r0%nr if r0<0 else min(r0,nr)
+    r1=r1%nr if r1<0 else min(r1,nr)
+    c0=c0%nc if c0<0 else min(c0,nc)
+    c1=c1%nc if c1<0 else min(c1,nc)
+    return r0,r1,c0,c1
+def remove_status_line(frame, status_line, policy="duplicate", copy=True, value=0):
+    """
+    Remove status line, if present.
+
+    Args:
+        frame: a frame to process (2D or 3D numpy array; if 3D, the first axis is the frame number)
+        status_line: status line descriptor (from the frames message)
+        policy: determines way to deal with the status line;
+            can be ``"keep"`` (keep as is), ``"cut"`` (cut off the status-line-containing row/column), ``"zero"`` (set it to zero), ``"value"`` (set it to a given value),
+            ``"median"`` (set it to the image median), or ``"duplicate"`` (set it equal to the previous row; default)
+            ``"cut"`` is only possible of the status line is on the edge of the image.
+        copy: if ``True``, make copy of the original frames; otherwise, attempt to remove the line in-place
+    """
+    if copy:
+        frame=frame.copy()
+    if status_line is None:
+        return frame
+    if frame.ndim==2:
+        frame_2d=True
+        frame=frame[None]
+    else:
+        frame_2d=False
+    nr,nc=frame.shape[-2:]
+    r0,r1,c0,c1=_normalize_sline_pos(status_line,frame.shape)
+    is_row=r1-r0<c1-c0
+    if policy=="duplicate" and r0==0 and r1==nr-1 and c0==0 and c1==nc-1:
+        policy="zero"
+    if policy=="zero":
+        policy="value"
+        value=0
+    if policy=="median":
+        pframe=_get_partial_frame(frame,(r0,r1,c0,c1))
+        if pframe is None or any([d==0 for d in pframe.shape]):
+            med=np.median(frame,axis=(1,2))
+        else:
+            med=np.median(pframe,axis=(1,2))
+        frame[:,r0:r1+1,c0:c1+1]=med[:,None,None]
+    elif policy=="value":
+        frame[:,r0:r1+1,c0:c1+1]=value
+    elif policy=="cut":
+        pframe=_get_partial_frame(frame,(r0,r1,c0,c1))
+        if pframe is not None:
+            frame=pframe
+    elif policy=="duplicate":
+        if is_row and not (r0==0 and r1==nr-1):
+            graft=frame[:,r0-1,c0:c1+1] if r0>0 else frame[:,r1+1,c0:c1+1]
+            frame[:,r0:r1+1,c0:c1+1]=graft[:,None,:]
+        else:
+            graft=frame[:,r0:r1+1,c0-1] if c0>0 else frame[:,r0:r1+1,c1+1]
+            frame[:,r0:r1+1,c0:c1+1]=graft[:,:,None]
+    return frame[0] if frame_2d else frame
+def extract_status_line(frame, status_line, copy=True):
+    """
+    Extract status line, if present.
+
+    Args:
+        frame: a frame to process (2D or 3D numpy array; if 3D, the first axis is the frame number)
+        status_line: status line descriptor (from the frames message)
+        copy: if ``True``, make copy of the original status line data.
+    """
+    if status_line is None:
+        return None
+    if frame.ndim==2:
+        frame_2d=True
+        frame=frame[None,:,:]
+    else:
+        frame_2d=False
+    r0,r1,c0,c1=_normalize_sline_pos(status_line,frame.shape)
+    sline=frame[:,r0:r1+1,c0:c1+1]
+    if copy:
+        sline=sline.copy()
+    return sline[0] if frame_2d else sline
+def insert_status_line(frame, status_line, value, copy=True):
+    """
+    Insert status line, if present.
+
+    Args:
+        frame: a frame to process (2D or 3D numpy array; if 3D, the first axis is the frame number)
+        status_line: status line descriptor (from the frames message)
+        value: status line value
+        copy: if ``True``, make copy of the original status line data.
+    """
+    if status_line is None:
+        return frame.copy() if copy else frame
+    r0,r1,c0,c1=_normalize_sline_pos(status_line,frame.shape)
+    if value.ndim==2:
+        value=value[None,:,:]
+    value=value[:,:r1-r0+1,:c1-c0+1]
+    return remove_status_line(frame,status_line,policy="value",value=value,copy=copy)
+def get_status_line_roi(frame, status_line):
+    """Return ROI taken by the status line in the given frame"""
+    if status_line is None:
+        return None
+    r0,r1,c0,c1=_normalize_sline_pos(status_line,frame.shape)
+    return image_utils.ROI(r0,r1+1,c0,c1+1)

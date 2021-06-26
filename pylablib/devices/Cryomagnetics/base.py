@@ -1,11 +1,11 @@
 from ...core.utils.py3 import textstring
 from ...core.utils import general
-from ...core.devio import SCPI, interface, DeviceError, DeviceBackendError
+from ...core.devio import SCPI, interface, comm_backend
 
 
-class CryomagneticsError(DeviceError):
+class CryomagneticsError(comm_backend.DeviceError):
     """Generic Cryomagnetics devices error"""
-class CryomagneticsBackendError(CryomagneticsError,DeviceBackendError):
+class CryomagneticsBackendError(CryomagneticsError,comm_backend.DeviceBackendError):
     """Generic Cryomagnetics backend communication error"""
 
 class LM500(SCPI.SCPIDevice):

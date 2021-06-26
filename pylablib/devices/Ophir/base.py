@@ -1,11 +1,11 @@
-from ...core.devio import comm_backend, interface, DeviceError, DeviceBackendError
+from ...core.devio import comm_backend, interface
 from ...core.utils import py3, units
 
 import collections
 
-class OphirError(DeviceError):
+class OphirError(comm_backend.DeviceError):
     """Generic Ophir device error"""
-class OphirBackendError(OphirError,DeviceBackendError):
+class OphirBackendError(OphirError,comm_backend.DeviceBackendError):
     """Generic Ophir backend communication error"""
 
 class OphirDevice(comm_backend.ICommBackendWrapper):

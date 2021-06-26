@@ -19,7 +19,7 @@ def muxchannel(*args, **kwargs):
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["model","serial_number","revision_number","compilation_number"])
 class WLM(interface.IDevice):
     """
-    Generic Arcus Performax translation stage.
+    Generic HighFinesse wavemeter.
 
     Args:
         version(int): wavemeter version; if ``None``, use any available version
@@ -110,7 +110,8 @@ class WLM(interface.IDevice):
         """Set the default channel (starting from 1) which is used for querying"""
         self.dchannel=self._get_channel(channel)
 
-    _get_error_codes={  EGetError.ErrNoSignal:"nosig",
+    _get_error_codes={  EGetError.ErrNoValue:"noval",
+                        EGetError.ErrNoSignal:"nosig",
                         EGetError.ErrBadSignal:"badsig",
                         EGetError.ErrLowSignal:"under",
                         EGetError.ErrBigSignal:"over"}
@@ -122,7 +123,7 @@ class WLM(interface.IDevice):
         `channel` is the measurement channel (starting from 1); if ``None``, use the default channel.
         If ``error_on_invalid==True``, raise an error if the measurement is invalid (e.g., over- or underexposure);
         otherwise, the method can return ``"under"`` if the meter is underexposed or ``"over"`` is it is overexposed,
-        ``"badsig"`` if there is no calculable signal, or ``"nosig"`` if there is no signal.
+        ``"badsig"`` if there is no calculable signal, ``"noval"`` if there are no values acquire yet, or ``"nosig"`` if there is no signal.
         """
         try:
             return self.lib.GetFrequencyNum(self._get_channel(channel),0.)*1E12
@@ -179,7 +180,7 @@ class WLM(interface.IDevice):
                 e2=self.get_exposure(2,channel=channel)
                 return [e1,e2]
             except WlmDataLibError:
-                return e1
+                return [e1]
         else:
             if self.auto_channel_tab:
                 self._set_channel_tab(self._get_channel(channel))
@@ -199,7 +200,7 @@ class WLM(interface.IDevice):
                     e2=self.set_exposure(exposure,2,channel=channel)
                     return [e1,e2]
                 except WlmDataLibError:
-                    return e1
+                    return [e1]
         else:
             self.lib.SetExposureNum(self._get_channel(channel),sensor,int(exposure*1E3))
             return self.get_exposure(sensor=sensor,channel=channel)

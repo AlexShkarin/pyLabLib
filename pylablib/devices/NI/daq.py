@@ -1,4 +1,4 @@
-from ...core.devio import interface, DeviceError, DeviceBackendError
+from ...core.devio import interface, comm_backend
 from ...core.devio.comm_backend import reraise
 from ...core.utils import general, funcargparse
 
@@ -6,9 +6,9 @@ import time
 import numpy as np
 import collections
 
-class NIError(DeviceError):
+class NIError(comm_backend.DeviceError):
     """Generic NI error"""
-class NIDAQmxError(NIError,DeviceBackendError):
+class NIDAQmxError(NIError,comm_backend.DeviceBackendError):
     """NI DAQmx backend operation error"""
 
 try:
@@ -69,6 +69,7 @@ class NIDAQ(interface.IDevice):
         self.rate=rate
         self.clk_src=None
         self.buffer_size=buffer_size
+        self.ai_task=None
         self.ai_channels={}
         self.ci_tasks={}
         self.ci_counters={}
@@ -80,12 +81,7 @@ class NIDAQ(interface.IDevice):
         self.clk_channel_base=20E6
         self.max_ao_write_rate=1000 # maximal rate of repeating ao waveform with continuous repetition
         self.open()
-        self._update_channel_names()
-        self._running=False
         self._add_info_variable("device_info",self.get_device_info)
-        self._add_settings_variable("clock_cfg",self.get_clock_parameters,self.setup_clock)
-        self._add_settings_variable("clock_export",self.get_export_clock_terminal,self.export_clock)
-        self._add_settings_variable("voltage_output_clock_cfg",self.get_voltage_output_clock_parameters,self.setup_voltage_output_clock)
         self._add_status_variable("input_channels",lambda: self.get_input_channels(include=("ai","ci","di","cpi")))
         self._add_status_variable("voltage_input_parameters",self.get_voltage_input_parameters)
         self._add_status_variable("counter_input_parameters",self.get_counter_input_parameters)
@@ -95,16 +91,23 @@ class NIDAQ(interface.IDevice):
         self._add_status_variable("digital_output_values",self.get_digital_outputs)
         self._add_status_variable("voltage_output_parameters",self.get_voltage_output_parameters)
         self._add_status_variable("voltage_output_values",self.get_voltage_outputs)
+        self._add_settings_variable("clock_cfg",self.get_clock_parameters,self.setup_clock)
+        self._add_settings_variable("clock_export",self.get_export_clock_terminal,self.export_clock)
+        self._add_settings_variable("voltage_output_clock_cfg",self.get_voltage_output_clock_parameters,self.setup_voltage_output_clock)
         
     def _get_connection_parameters(self):
         return self.dev_name
     @reraise
     def open(self):
+        if self.ai_task is not None:
+            return
         self.ai_task=nidaqmx.Task()
         self.di_task=nidaqmx.Task()
         self.do_task=nidaqmx.Task()
         self.ao_task=nidaqmx.Task()
         self.cpi_task=nidaqmx.Task()
+        self._update_channel_names()
+        self._running=False
     @reraise
     def close(self):
         if self.ai_task is not None:
@@ -638,6 +641,8 @@ class NIDAQ(interface.IDevice):
                 and then latches the output on the last value
             samps_per_chan: if ``continuous==False``, it determines number of samples to output before stopping
         """
+        if not len(self.ao_task.ao_channels):
+            return
         self.ao_task.stop()
         sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS if continuous else nidaqmx.constants.AcquisitionType.FINITE
         if rate==0 and not sync_with_ai:
@@ -654,7 +659,7 @@ class NIDAQ(interface.IDevice):
         """
         Get analog output clock configuration.
 
-        Return tuple ``(rate, sync_with_ai, samps_per_chan, continuous)``.
+        Return tuple ``(rate, sync_with_ai, continuous, samps_per_chan)``.
         """
         if (not self.ao_channels) or self.ao_task.timing.samp_timing_type==nidaqmx.constants.SampleTimingType.ON_DEMAND:
             return (0,False,1000,True)
@@ -662,4 +667,4 @@ class NIDAQ(interface.IDevice):
         rate=self.ao_task.timing.samp_clk_rate
         samps_per_chan=self.ao_task.timing.samp_quant_samp_per_chan
         continuous=self.ao_task.timing.samp_quant_samp_mode!=nidaqmx.constants.AcquisitionType.FINITE
-        return (rate,sync_with_ai,samps_per_chan,continuous)
+        return (rate,sync_with_ai,continuous,samps_per_chan)

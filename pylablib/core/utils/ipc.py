@@ -105,7 +105,7 @@ class SharedMemIPCChannel(PipeIPCChannel):
             return PipeIPCChannel.send_numpy(self,data)
         if not self._check_strides(data): # need continuous array to send
             data=data.copy()
-        buff_ptr,count=data.ctypes.get_data(),data.nbytes
+        buff_ptr,count=data.ctypes.data,data.nbytes
         self.conn.send(TPipeMsg(_sharedmem_start,(count,data.dtype.str,data.shape)))
         while count>0:
             chunk_size=min(count,self.arr_size)
@@ -124,7 +124,7 @@ class SharedMemIPCChannel(PipeIPCChannel):
         else:
             count,dtype,shape=msg.data
             data=np.empty(shape,dtype=dtype)
-            buff_ptr=data.ctypes.get_data()
+            buff_ptr=data.ctypes.data
             while count>0:
                 chunk_size=self._recv_with_timeout(timeout)
                 ctypes.memmove(buff_ptr,ctypes.addressof(self.arr.get_obj()),chunk_size)

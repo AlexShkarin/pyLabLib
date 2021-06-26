@@ -1,13 +1,13 @@
 from ...core.utils import py3
-from ...core.devio import comm_backend, interface, DeviceError, DeviceBackendError
+from ...core.devio import comm_backend, interface
 
 import collections
 
 
 
-class PfeifferError(DeviceError):
+class PfeifferError(comm_backend.DeviceError):
     """Generic Pfeiffer device error"""
-class PfeifferBackendError(PfeifferError,DeviceBackendError):
+class PfeifferBackendError(PfeifferError,comm_backend.DeviceBackendError):
     """Generic Pfeiffer backend communication error"""
 
 

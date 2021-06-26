@@ -254,6 +254,8 @@ def _decimation_filter(a, decimation_function, width, axis=0, mode="drop"):
         raise ValueError("unrecognized binning mode: "+mode)
     width=int(width)
     shape=np.shape(a)
+    if axis<0:
+        axis=max(axis+len(shape),0)
     actual_len=shape[axis]
     dec_len=int(actual_len/width)*width
     if mode=="drop":

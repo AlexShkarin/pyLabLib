@@ -1,12 +1,12 @@
-from ...core.devio import comm_backend, DeviceError, DeviceBackendError
+from ...core.devio import comm_backend
 from ...core.utils import py3, funcargparse
 
 import collections
 
 
-class LighthousePhotonicsError(DeviceError):
+class LighthousePhotonicsError(comm_backend.DeviceError):
     """Generic Lighthouse Photonics devices error"""
-class LighthousePhotonicsBackendError(LighthousePhotonicsError,DeviceBackendError):
+class LighthousePhotonicsBackendError(LighthousePhotonicsError,comm_backend.DeviceBackendError):
     """Generic Lighthouse Photonics backend communication error"""
 
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["product","version","serial","configuration"])
@@ -101,5 +101,5 @@ class SproutG(comm_backend.ICommBackendWrapper):
         return float(self.query("POWER SET?"))
     def set_output_power(self, level):
         """Get the output power setpoint (in Watts)"""
-        self.query("POWER SET={:.2d}".format(level))
+        self.query("POWER SET={:.2f}".format(level))
         return self.get_output_setpoint()

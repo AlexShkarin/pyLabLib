@@ -10,7 +10,9 @@ class GenericOscilloscopeTester(DeviceTester):
     """Testing a generic oscilloscope"""
     
     @pytest.mark.devchange(4)
-    def test_grab(self, device):
+    def test_grab(self, devopener):
+        """Test trace readout"""
+        device=devopener()
         channels=list(range(1,device.get_channels_number()+1))
         for ch in channels:
             device.enable_channel(ch)

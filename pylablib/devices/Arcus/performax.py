@@ -55,6 +55,7 @@ class GenericPerformaxStage(stage.IMultiaxisStage):
     def open(self):
         """Open the connection to the stage"""
         self.close()
+        lib.fnPerformaxComGetNumDevices()  # sometimes needed to set up the dll
         lib.fnPerformaxComSetTimeouts(5000,5000)
         for _ in range(5):
             try:

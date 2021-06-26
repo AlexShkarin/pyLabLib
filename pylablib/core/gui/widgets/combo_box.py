@@ -20,7 +20,10 @@ class ComboBox(QtWidgets.QComboBox):
             return self._index_values[idx]
     def value_to_index(self, value):
         """Turn value into a numerical index"""
-        return value if self._index_values is None else self._index_values.index(value)
+        try:
+            return value if self._index_values is None else self._index_values.index(value)
+        except ValueError as err:
+            raise ValueError("value {} is not among available option {}".format(value,self._index_values)) from err
     def _on_index_changed(self, index):
         if self._index!=index:
             self._index=index
@@ -48,7 +51,9 @@ class ComboBox(QtWidgets.QComboBox):
         
         If ``notify_value_change==True``, emit the `value_changed` signal; otherwise, change value silently.
         """
-        index=self.value_to_index(value)
+        if not self.count():
+            return
+        index=max(0,min(self.value_to_index(value),self.count()-1))
         if self._index!=index:
             self._index=index
             self.setCurrentIndex(self._index)

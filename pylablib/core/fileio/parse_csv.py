@@ -129,6 +129,8 @@ def _try_convert_column(column, dtype, min_dtype="int"):
                     pass
                 except OverflowError: # need to use the standard Python long integer type, which can't be stored in a numpy array 
                     break
+                except TypeError: # some numpy version can not convert string into complex
+                    break
         column=[string.from_string(e) for e in column]
         if dtype=="numeric":
             for e in column:

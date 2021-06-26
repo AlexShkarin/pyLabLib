@@ -4,6 +4,7 @@ from pylablib.core.utils import string, files
 
 import os
 import re
+import time
 
 def parse_dev(dev):
     m=re.match(r"(\w+)(\(.*\))?$",dev)
@@ -42,47 +43,67 @@ def pytest_collection_modifyitems(config, items):
 def library_parameters():
     pass
 
+
+class DeviceOpener:
+    def __init__(self, devcls, devargs, open_retry, no_conn_fail=False, post_open=False):
+        self.devcls=devcls
+        self.devargs=devargs
+        self.open_retry=open_retry
+        self.no_conn_fail=no_conn_fail
+        self.post_open=post_open
+        self.device=None
+        self.failed=False
+    def _fail(self):
+        devargstr=", ".join([str(a) for a in self.devargs])
+        pytest.xfail("couldn't connect to the device {}({})".format(self.devcls.__name__,devargstr))
+    def open(self):
+        if self.device is not None:
+            return self.device
+        if self.failed:
+            self._fail()
+        try:
+            for i in range(self.open_retry+1):
+                try:
+                    self.device=self.devcls(*self.devargs)
+                    if self.post_open:
+                        self.post_open(self.device)
+                    return self.device
+                except Exception:
+                    if i==self.open_retry:
+                        raise
+                    time.sleep(1.)
+        except Exception:
+            self.failed=True
+            if self.no_conn_fail:
+                self._fail()
+            else:
+                raise
+    def close(self):
+        if self.device is not None:
+            self.device.close()
+            self.device=None
+    def __call__(self):
+        return self.open()
+
+
 @pytest.fixture(scope="class")
-def device(request, library_parameters):
+def devopener(request, library_parameters):
     devcls=request.cls.devcls
     devargs=getattr(request.cls,"devargs",())
     open_retry=getattr(request.cls,"open_retry",0)
+    post_open=getattr(request.cls,"post_open",None)
     devname=request.cls.devname
     devlist=get_device_list(request.config)
     if devname not in devlist:
         pytest.skip("skipping test of missing device {}".format(devname))
     elif devlist[devname] is not None:
         devargs=devlist[devname]
-    open_rep=getattr(request.cls,"open_rep",0)
-    opened=False
+    opener=DeviceOpener(devcls,devargs,open_retry,no_conn_fail=request.config.getoption("dev_no_conn_fail"),post_open=post_open)
     try:
-        try:
-            for i in range(open_retry+1):
-                try:
-                    dev=devcls(*devargs)
-                    break
-                except Exception:
-                    if i==open_retry:
-                        raise
-        except Exception:
-            devargstr=", ".join([str(a) for a in devargs])
-            pytest.xfail("couldn't connect to the device {}({})".format(devcls.__name__,devargstr))
-        opened=True
-        for _ in range(open_rep):
-            dev.close()
-            opened=False
-            for i in range(open_retry+1):
-                try:
-                    dev.open()
-                    break
-                except Exception:
-                    if i==open_retry:
-                        raise
-            opened=True
-        yield dev
+        yield opener
     finally:
-        if opened:
-            dev.close()
+        opener.close()
+
 
 
 @pytest.fixture

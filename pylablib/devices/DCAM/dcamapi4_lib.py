@@ -10,7 +10,7 @@ from .dcamapi4_defs import DCAMERR, drDCAMERR, define_functions
 from .dcamapi4_defs import DCAMCAP_STATUS, DCAMWAIT_EVENT, DCAM_IDSTR  # pylint: disable=unused-import
 
 from ...core.utils import ctypes_wrap
-from ...core.devio import DeviceError
+from ...core.devio.comm_backend import DeviceError
 from ..utils import load_lib
 import ctypes
 
@@ -120,7 +120,7 @@ class DCAMLib:
         if self._initialized:
             return
         error_message="The library is automatically supplied with Hamamatsu HOKAWO or DCAM-API software\n"+load_lib.par_error_message.format("dcamapi")
-        self.lib=load_lib.load_lib("dcamapi.dll",locations=("parameter/dcamapi","global"),error_message=error_message,call_conv="stdcall")
+        self.lib=load_lib.load_lib("dcamapi.dll",locations=("parameter/dcamapi","global"),error_message=error_message,call_conv="cdecl")
         lib=self.lib
         define_functions(lib)
 

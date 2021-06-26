@@ -22,6 +22,15 @@ pylablib.core.gui.widgets.combo\_box module
     :undoc-members:
     :show-inheritance:
 
+pylablib.core.gui.widgets.container module
+------------------------------------------
+
+.. automodule:: pylablib.core.gui.widgets.container
+    :members:
+    :inherited-members:
+    :undoc-members:
+    :show-inheritance:
+
 pylablib.core.gui.widgets.edit module
 -------------------------------------
 
@@ -35,6 +44,15 @@ pylablib.core.gui.widgets.label module
 --------------------------------------
 
 .. automodule:: pylablib.core.gui.widgets.label
+    :members:
+    :inherited-members:
+    :undoc-members:
+    :show-inheritance:
+
+pylablib.core.gui.widgets.layout\_manager module
+------------------------------------------------
+
+.. automodule:: pylablib.core.gui.widgets.layout_manager
     :members:
     :inherited-members:
     :undoc-members:

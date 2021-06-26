@@ -50,7 +50,8 @@ def get_method_kind(method, add_args=0):
     if method is None:
         return None
     fsig=FunctionSignature.from_function(method)
-    if len(fsig.arg_names)>=1+add_args and fsig.arg_names[0]=="name":
+    arg_names=fsig.arg_names if fsig.obj is None else fsig.arg_names[1:]
+    if len(arg_names)>=1+add_args and arg_names[0]=="name":
         return "named"
     else:
         return "simple"
@@ -60,6 +61,8 @@ def get_method_kind(method, add_args=0):
 
 
 
+class NoParameterError(KeyError):
+    """Error raised by some handlers to indicate that the parameter is missing"""
 
 class IValueHandler:
     """
@@ -94,6 +97,11 @@ class IValueHandler:
         If ``name`` is not ``None``, it specifies the name of the value parameter inside the widget (for complex widgets).
         """
         return str(value)
+    def get_handler(self, name=None):
+        """Get handler of a contained widget (or same widget, if ``name==None``)"""
+        if name is None:
+            return self
+        raise KeyError("can't find handler for widget {} with name {}".format(self.widget,name))
     def get_value_changed_signal(self):
         """Get the Qt signal emitted when the value is changed"""
         if hasattr(self.widget,"value_changed"):
@@ -162,6 +170,59 @@ class VirtualValueHandler(IValueHandler):
         self._notify_value_changed_handlers(value)
 
 
+class PropertyValueHandler(IValueHandler):
+    """
+    Virtual value handler which uses custom getter/setter methods to simulate a value.
+
+    If getter or setter are not supplied but are called, they raise :exc:`NoParameterError`;
+    this means that they are ignored in :meth:`GUIValues.get_all_values` and :meth:`GUIValues.set_all_values` methods,
+    but raise an error when access directly (e.g., using :meth:`GUIValues.get_value`).
+
+    Args:
+        getter: value getter method; takes 0 or 1 (name) arguments and returns the value
+        setter: value setter method; takes 1 (value) or 2 (name and value) arguments and sets the value
+        default_name(str): default name to be supplied to ``getter`` and ``setter`` methods if they require a name argument
+    """
+    def __init__(self, getter=None, setter=None, default_name=None):
+        IValueHandler.__init__(self,None)
+        self.getter=getter
+        self.getter_kind=get_method_kind(getter)
+        self.setter=setter
+        self.setter_kind=get_method_kind(setter)
+        self.default_name=default_name
+    def get_value(self, name=None):
+        if self.getter is None:
+            raise NoParameterError("no getter defined for the parameter")
+        if name is None:
+            if self.getter_kind=="simple":
+                return self.getter()
+            elif self.getter_kind=="named":
+                return self.getter(self.default_name)
+        else:
+            if self.getter_kind=="named":
+                return self.getter(name)
+        raise KeyError("can't find getter for with name {}".format(name))
+    def _set_notify(self, *args):
+        result=self.setter(*args)
+        try:
+            self._notify_value_changed_handlers(self.get_value(*args[:-1]))
+        except NoParameterError:
+            pass
+        return result
+    def set_value(self, value, name=None):
+        if self.setter is None:
+            raise NoParameterError("no setter defined for the parameter")
+        if name is None:
+            if self.setter_kind=="simple":
+                return self._set_notify(value)
+            elif self.setter_kind=="named":
+                return self._set_notify(self.default_name,value)
+        else:
+            if self.setter_kind=="named":
+                return self._set_notify(name,value)
+        raise KeyError("can't find setter for widget {} with name {}".format(self.widget,name))
+
+
 
 _default_getters=("get_value","get_all_values")
 _default_setters=("set_value","set_all_values")
@@ -178,7 +239,7 @@ class StandardValueHandler(IValueHandler):
         default_name(str): default name to be supplied to ``get/set_value`` and ``get/set_all_values`` methods if they require a name argument.
     """
     def __init__(self, widget, default_name=None):
-        IValueHandler.__init__(self,widget)
+        super().__init__(widget)
         self.get_value_kind=get_method_kind(getattr(self.widget,"get_value",None))
         self.get_all_values_kind="simple" if hasattr(self.widget,"get_all_values") else None
         if not (self.get_value_kind or self.get_all_values_kind):
@@ -188,29 +249,30 @@ class StandardValueHandler(IValueHandler):
         if not (self.set_value_kind or self.set_all_values_kind):
             raise ValueError("can't find default setter for widget {}".format(self.widget))
         self.repr_value_kind=get_method_kind(getattr(self.widget,"repr_value",None),add_args=1)
+        self.get_handler_kind=get_method_kind(getattr(self.widget,"get_handler",None))
         self.default_name=default_name
     def get_value(self, name=None):
         if name is None:
-            if self.get_value_kind=="simple":
+            if self.get_all_values_kind=="simple":
+                return self.widget.get_all_values()
+            elif self.get_value_kind=="simple":
                 return self.widget.get_value()
             elif self.get_value_kind=="named":
                 return self.widget.get_value(self.default_name)
-            else:
-                return self.widget.get_all_values()
         else:
             if self.get_value_kind=="named":
                 return self.widget.get_value(name)
             elif self.get_all_values_kind=="simple":
                 return self.widget.get_all_values()[name]
-        raise ValueError("can't find getter for widget {} with name {}".format(self.widget,name))
+        raise KeyError("can't find getter for widget {} with name {}".format(self.widget,name))
     def set_value(self, value, name=None):
         if name is None:
-            if self.set_value_kind=="simple":
+            if self.set_all_values_kind=="simple":
+                return self.widget.set_all_values(value)
+            elif self.set_value_kind=="simple":
                 return self.widget.set_value(value)
             elif self.set_value_kind=="named":
                 return self.widget.set_value(self.default_name,value)
-            else:
-                return self.widget.set_all_values(value)
         else:
             if self.set_value_kind=="named":
                 return self.widget.set_value(name,value)
@@ -218,7 +280,7 @@ class StandardValueHandler(IValueHandler):
                 if isinstance(name,list):
                     name="/".join(name)
                 return self.widget.set_all_values({name:value})
-        raise ValueError("can't find setter for widget {} with name {}".format(self.widget,name))
+        raise KeyError("can't find setter for widget {} with name {}".format(self.widget,name))
     def repr_value(self, value, name=None):
         if name is None:
             if self.repr_value_kind=="simple":
@@ -227,9 +289,12 @@ class StandardValueHandler(IValueHandler):
                 return self.widget.repr_value(self.default_name,value)
         else:
             if self.repr_value_kind=="named":
-                return self.widget.repr_value(value)
+                return self.widget.repr_value(name,value)
         return str(value)
-
+    def get_handler(self, name=None):
+        if self.get_handler_kind=="named" and name is not None:
+            return self.widget.get_handler(name)
+        return super().get_handler(name)
 
 
 class ISingleValueHandler(IValueHandler):
@@ -241,8 +306,6 @@ class ISingleValueHandler(IValueHandler):
     Args:
         widget: handled widget
     """
-    def __init__(self, widget):
-        IValueHandler.__init__(self,widget)
     def get_single_value(self):
         """Get the widget value"""
         raise ValueError("can't find default getter for widget {}".format(self.widget))
@@ -394,7 +457,7 @@ def create_value_handler(widget):
         return ComboBoxValueHandler(widget)
     if isinstance(widget,QtWidgets.QProgressBar):
         return ProgressBarValueHandler(widget)
-    return IValueHandler(widget)
+    raise ValueError("can not determine widget handler type for widget {}".format(widget))
 
 
 
@@ -448,7 +511,7 @@ class StandardIndicatorHandler(IIndicatorHandler):
         self.default_name=default_name
     def get_value(self, name=None):
         if not (self.get_indicator_kind or self.get_all_indicators_kind):
-            raise ValueError("can't find default indicator getter for widget {}".format(self.widget))
+            raise KeyError("can't find default indicator getter for widget {}".format(self.widget))
         if name is None:
             if self.get_indicator_kind=="simple":
                 return self.widget.get_indicator()
@@ -461,10 +524,10 @@ class StandardIndicatorHandler(IIndicatorHandler):
                 return self.widget.get_indicator()
             elif self.get_all_indicators_kind=="simple":
                 return self.widget.get_all_indicators()[name]
-        raise ValueError("can't find indicator getter for widget {} with name {}".format(self.widget,name))
+        raise KeyError("can't find indicator getter for widget {} with name {}".format(self.widget,name))
     def set_value(self, value, name=None):
         if not (self.set_indicator_kind or self.set_all_indicators_kind):
-            raise ValueError("can't find default indicator setter for widget {}".format(self.widget))
+            raise KeyError("can't find default indicator setter for widget {}".format(self.widget))
         if name is None:
             if self.set_indicator_kind=="simple":
                 return self.widget.set_indicator(value)
@@ -479,7 +542,7 @@ class StandardIndicatorHandler(IIndicatorHandler):
                 if isinstance(name,list):
                     name="/".join(name)
                 return self.widget.set_all_indicators({name:value})
-        raise ValueError("can't find indicator setter for widget {} with name {}".format(self.widget,name))
+        raise KeyError("can't find indicator setter for widget {} with name {}".format(self.widget,name))
 class LabelIndicatorHandler(IIndicatorHandler):
     """
     Indicator handler which uses a label to show the value.
@@ -518,18 +581,21 @@ class LabelIndicatorHandler(IIndicatorHandler):
         return self.label_handler.get_value()
     def repr_value(self, value, name=None):
         """Represent a value with a given name"""
-        if self.widget_handler is not None:
-            return self.widget_handler.repr_value(value,name=self.repr_value_name if name is None else name)
-        elif self.repr_func is not None:
-            if name is None:
-                if self.repr_func_kind=="simple":
-                    return self.repr_func(value)
-                else:
-                    return self.repr_func(self.repr_value_name,value)
-            elif self.repr_func_kind=="named":
-                return self.repr_func(name,value)
-        if name:
-            raise KeyError("no indicator value with name {}".format(name))
+        try:
+            if self.widget_handler is not None:
+                return self.widget_handler.repr_value(value,name=self.repr_value_name if name is None else name)
+            elif self.repr_func is not None:
+                if name is None:
+                    if self.repr_func_kind=="simple":
+                        return self.repr_func(value)
+                    else:
+                        return self.repr_func(self.repr_value_name,value)
+                elif self.repr_func_kind=="named":
+                    return self.repr_func(name,value)
+            if name:
+                raise KeyError("no indicator value with name {}".format(name))
+        except (KeyError,ValueError):
+            pass
         return str(value)
     def set_value(self, value, name=None):
         return self.label_handler.set_value(self.repr_value(value,name=name))
@@ -579,19 +645,48 @@ class GUIValues:
         self.h=dictionary.ItemAccessor(self.get_handler,self.add_handler,self.remove_handler,contains_checker=self.__contains__)
         self.w=dictionary.ItemAccessor(self.get_widget,contains_checker=self.__contains__)
         self.v=dictionary.ItemAccessor(self.get_value,self.set_value,contains_checker=self.__contains__)
-        self.i=dictionary.ItemAccessor(self.get_indicator,self.set_indicator)
+        self.i=dictionary.ItemAccessor(self.get_indicator,self.set_indicator,contains_checker=self.__contains__)
         self.vs=dictionary.ItemAccessor(self.get_value_changed_signal,contains_checker=self.__contains__)
 
     def add_handler(self, name, handler):
         """Add a value handler under a given name"""
+        if name in self.handlers:
+            raise ValueError("handler {} already exists".format(name))
         self.handlers[name]=handler
         return handler
-    def remove_handler(self, name):
-        """Remove the value handler with a given name"""
+    def remove_handler(self, name, remove_indicator=True, disconnect=False):
+        """
+        Remove the value handler with a given name.
+        
+        If ``remove_indicator==True``, also try to remove the indicator widget.
+        If ``disconnect==True``, also disconnect all slots connected to the ``value_changed`` signal.
+        Unlike most methods (e.g., :meth:`get_value` or :meth:`get_handler`), does not recursively query the children,
+        so it only works if the handler is contained in this table.
+        """
+        if not self.handlers.has_entry(name,kind="leaf"):
+            if name in self.handlers:
+                raise KeyError("can not delete handler branch '{}'".format(name))
+            else:
+                raise KeyError("missing handler '{}'".format(name))
+        if disconnect:
+            handler=self.get_handler(name)
+            try:
+                signal=handler.get_value_changed_signal()
+                if signal is not None:
+                    handler.get_value_changed_signal().disconnect()
+            except (TypeError,RuntimeError): # no signals connected or no handle
+                pass
         del self.handlers[name]
+        if remove_indicator and name in self.indicator_handlers:
+            self.remove_indicator_handler(name)
     def get_handler(self, name):
         """Get the value handler with the given name"""
-        return self.handlers[name]
+        path,subpath=self.handlers.get_max_prefix(name,kind="leaf")
+        if path is None:
+            raise KeyError("missing handler {}".format(name))
+        if not subpath:
+            return self.handlers[path]
+        return self.handlers[path].get_handler(subpath)
 
     def __contains__(self, name):
         return name in self.handlers
@@ -617,11 +712,24 @@ class GUIValues:
 
         Doesn't correspond to any actual widget, but behaves very similarly from the application point of view
         (its value can be set or read, it has on-change events, it can have indicator).
+        The element value is simply stored on set and retrieved on get.
         If ``add_indicator==True``, add default indicator handler as well.
         """
         h=self.add_handler(name,VirtualValueHandler(value,multivalued=multivalued))
         if add_indicator:
             self.add_indicator_handler(name,VirtualIndicatorHandler(value))
+        return h
+    def add_property_element(self, name, getter=None, setter=None, add_indicator=True):
+        """
+        Add a property value element.
+
+        Doesn't correspond to any actual widget, but behaves very similarly from the application point of view;
+        each time the value is set or get, the corresponding setter and getter methods are called.
+        If ``add_indicator==True``, add default (stored value) indicator handler as well.
+        """
+        h=self.add_handler(name,PropertyValueHandler(getter=getter,setter=setter))
+        if add_indicator:
+            self.add_indicator_handler(name,VirtualIndicatorHandler())
         return h
     _default_value_types=(edit.TextEdit,edit.NumEdit,QtWidgets.QLineEdit,QtWidgets.QCheckBox,QtWidgets.QPushButton,QtWidgets.QComboBox,QtWidgets.QProgressBar)
     def add_all_children(self, root, root_name=None, types_include=None, types_exclude=(), names_exclude=None):
@@ -699,40 +807,42 @@ class GUIValues:
         return self.add_indicator_handler(name,LabelIndicatorHandler(label,formatter=formatter),ind_name=ind_name)
 
     @gui_thread_method
-    def get_value(self, name=None, include=None):
+    def get_value(self, name=None, include=None, exclude=None):
         """
         Get a value or a set of values in a subtree under a given name (all values by default).
 
         Automatically handles complex widgets and sub-names.
         If `name` refers to a branch, return a :class:`.Dictionary` object containing tree structure of the names.
-        If supplied, `include` is a container specifies which specifies names (relative to the root) to include in the result; by default, include everything.
+        If supplied, `include` and `exclude` are containers specifying included and excluded names (relative to the root); by default, include everything and exclude nothing.
         """
         name=name or ""
         path,subpath=self.handlers.get_max_prefix(name,kind="leaf")
         if path: # path is in handlers and handlers are not empty
-            if include is None or "/".join(path) in include:
-                return self.handlers[path].get_value(subpath or None)
+            return self.handlers[path].get_value(subpath or None)
         elif name in self.handlers:
             values=dictionary.Dictionary()
             subtree=self.handlers[name]
             for n in subtree.paths():
-                if include is None or "/".join(n) in include:
-                    values[n]=subtree[n].get_value()
+                if (include is None or "/".join(n) in include) and (exclude is None or "/".join(n) not in exclude):
+                    try:
+                        values[n]=subtree[n].get_value()
+                    except NoParameterError:
+                        pass
             if values:
                 return values
         raise KeyError("missing handler '{}'".format(name))
-    def get_all_values(self, name=None, include=None):
+    def get_all_values(self, root=None, include=None, exclude=None):
         """
         Get all values in the given sub-branch.
 
         Same as :meth:`get_value`, but returns an empty dictionary if the `name` is missing.
         """
         try:
-            return self.get_value(name,include=include)
+            return self.get_value(root,include=include,exclude=exclude)
         except KeyError:
             return dictionary.Dictionary()
     @gui_thread_method
-    def set_value(self, name, value, include=None):
+    def set_value(self, name, value, include=None, exclude=None):
         """
         Set value under a given name.
 
@@ -741,85 +851,87 @@ class GUIValues:
         name=name or ""
         path,subpath=self.handlers.get_max_prefix(name,kind="leaf")
         if path: # path is in handlers and handlers are not empty
-            if include is None or "/".join(path) in include:
-                return self.handlers[path].set_value(value,subpath or None)
+            return self.handlers[path].set_value(value,subpath or None)
         elif name in self.handlers:  # assigning to a branch
             subtree=self.handlers[name]
             for n,v in dictionary.as_dictionary(value).iternodes(to_visit="all",topdown=True,include_path=True):
                 if subtree.has_entry(n,kind="leaf"):
-                    if (include is None) or ("/".join(n) in include):
-                        subtree[n].set_value(v)
+                    if (include is None or "/".join(n) in include) and (exclude is None or "/".join(n) not in exclude):
+                        try:
+                            subtree[n].set_value(v)
+                        except NoParameterError:
+                            pass
             return
         elif not dictionary.as_dict(value):  # assign empty values
             return
         raise KeyError("missing handler '{}'".format(name))
-    def set_all_values(self, value, root="", include=None):
-        return self.set_value(root,value,include=include)
+    def set_all_values(self, value, root="", include=None, exclude=None):
+        return self.set_value(root,value,include=include,exclude=exclude)
 
     @gui_thread_method
-    def get_indicator(self, name=None, ind_name="__default__", include=None):
+    def get_indicator(self, name=None, ind_name="__default__", include=None, exclude=None):
         """
         Get indicator value with a given name.
 
         `ind_name` can distinguish different sub-indicators with the same name, if the same value has multiple indicators.
+        If supplied, `include` and `exclude` are containers specifying included and excluded names (relative to the root); by default, include everything and exclude nothing.
         """
         name=name or ""
         path,subpath=self.indicator_handlers.get_max_prefix(name,kind="leaf")
         if path: # path is in indicator_handlers and indicator_handlers are not empty
-            if include is None or "/".join(path) in include:
-                ind_set=self.indicator_handlers[path].ind
-                if ind_name not in ind_set:
-                    raise KeyError("missing indicator handler '{}' for with sub-name '{}'".format(name,ind_name))
-                return ind_set[ind_name].get_value(subpath or None)
+            ind_set=self.indicator_handlers[path].ind
+            if ind_name not in ind_set:
+                raise KeyError("missing indicator handler '{}' for with sub-name '{}'".format(name,ind_name))
+            return ind_set[ind_name].get_value(subpath or None)
         elif name in self.indicator_handlers:  # getting branch values
             values=dictionary.Dictionary()
             subtree=self.indicator_handlers[name]
             for n in subtree.paths():
-                if (include is None) or ("/".join(n) in include):
+                if (include is None or "/".join(n) in include) and (exclude is None or "/".join(n) not in exclude):
                     ind_set=subtree[n].ind
                     if ind_name in ind_set:
                         values[n]=ind_set[ind_name].get_value()
             if values:
                 return values
         raise KeyError("missing indicator handler '{}'".format(name))
-    def get_all_indicators(self, name=None, ind_name="__default__", include=None):
+    def get_all_indicators(self, root=None, ind_name="__default__", include=None, exclude=None):
         """
         Get all indicator values in the given sub-branch.
 
-        Same as :meth:`get_indicator`, but returns an empty dictionary if the `name` is missing.
+        Same as :meth:`get_indicator`, but returns an empty dictionary if the `root` is missing.
         """
         try:
-            return self.get_indicator(name,ind_name=ind_name,include=include)
+            return self.get_indicator(root,ind_name=ind_name,include=include,exclude=exclude)
         except KeyError:
             return dictionary.Dictionary()
     @gui_thread_method
-    def set_indicator(self, name, value, ind_name=None, include=None, ignore_missing=True):
+    def set_indicator(self, name, value, ind_name=None, include=None, exclude=None, ignore_missing=False):
         """
         Set indicator value with a given name.
 
         `ind_name` can distinguish different sub-indicators with the same name, if the same value has multiple indicators.
         By default, set all sub-indicators to the given value.
+        If supplied, `include` and `exclude` are containers specifying included and excluded names (relative to the root); by default, include everything and exclude nothing.
         If ``ignore_missing==True`` and the given indicator and sub-indicator names are missing, raise an error;
         otherwise, do nothing.
         """
         name=name or ""
         path,subpath=self.indicator_handlers.get_max_prefix(name,kind="leaf")
         if path: # path is in indicator_handlers and indicator_handlers are not empty
-            if include is None or "/".join(path) in include:
-                ind_set=self.indicator_handlers[path].ind
-                if ind_name is None:
-                    for ind in ind_set.values():
-                        ind.set_value(value,subpath or None)
-                    return
-                elif ind_name in ind_set:
-                    return ind_set[ind_name].set_value(value,subpath or None)
-                elif not ignore_missing:
-                    raise KeyError("missing handler '{}' for indicator with sub-name '{}'".format(name,ind_name))
+            ind_set=self.indicator_handlers[path].ind
+            if ind_name is None:
+                for ind in ind_set.values():
+                    ind.set_value(value,subpath or None)
+                return
+            elif ind_name in ind_set:
+                return ind_set[ind_name].set_value(value,subpath or None)
+            elif not ignore_missing:
+                raise KeyError("missing handler '{}' for indicator with sub-name '{}'".format(name,ind_name))
         elif name in self.indicator_handlers:  # assigning to a branch
             subtree=self.indicator_handlers[name]
             for n,v in dictionary.as_dictionary(value).iternodes(to_visit="all",topdown=True,include_path=True):
                 if subtree.has_entry(n,kind="leaf"):
-                    if (include is None) or ("/".join(n) in include):
+                    if (include is None or "/".join(n) in include) and (exclude is None or "/".join(n) not in exclude):
                         ind_set=subtree[n].ind
                         if ind_name is None:
                             for ind in ind_set.values():
@@ -829,22 +941,22 @@ class GUIValues:
             return
         elif not ignore_missing:
             raise KeyError("missing handler '{}'".format(name))
-    def set_all_indicators(self, value, root="", ind_name=None, include=None, ignore_missing=True):
-        return self.set_indicator(root,value,ind_name=ind_name,include=include,ignore_missing=ignore_missing)
+    def set_all_indicators(self, value, root="", ind_name=None, include=None, exclude=None, ignore_missing=True):
+        return self.set_indicator(root,value,ind_name=ind_name,include=include,exclude=exclude,ignore_missing=ignore_missing)
     @gui_thread_method
-    def update_indicators(self, root="", include=None):
+    def update_indicators(self, root="", include=None, exclude=None):
         """
         Update all indicators in a subtree with the given root (all values by default) to represent current values.
         
-        If supplied, `include` is a container specifies which specifies names (relative to the root) to include in the result; by default, include everything.
+        If supplied, `include` and `exclude` are containers specifying included and excluded names (relative to the root); by default, include everything and exclude nothing.
         """
         for n in self.handlers[root].paths():
-            if (include is None) or ("/".join(n) in include):
+            if (include is None or "/".join(n) in include) and (exclude is None or "/".join(n) not in exclude):
                 p=(root,n)
                 if p in self.indicator_handlers:
                     try:
                         self.set_indicator(p,self.get_value(p))
-                    except ValueError:
+                    except (KeyError,ValueError):
                         pass
             
     def repr_value(self, name, value):
@@ -856,14 +968,48 @@ class GUIValues:
         path,subpath=self.handlers.get_max_prefix(name,kind="leaf")
         if path is None:
             raise KeyError("missing handler {}".format(name))
-        return self.handlers[path].repr_value(value,subpath)
+        return self.handlers[path].repr_value(value,subpath or None)
     def get_value_changed_signal(self, name):
         """Get changed events for a value under a given name"""
-        return self.handlers[name].get_value_changed_signal()
+        return self.get_handler(name).get_value_changed_signal()
+    def update_value(self, name=None):
+        """
+        Send update signal for a handler with a given name or list of names.
+        
+        Emit a value changed signal with the current value to notify the subscribed slots.
+        If `name` is ``None``, emit for all values in the table.
+        """
+        if name is None:
+            name=self.handlers.keys(leafs=True)
+        elif not isinstance(name,list):
+            name=[name]
+        for n in name:
+            changed_event=self.get_value_changed_signal(n)
+            if changed_event:
+                changed_event.emit(self.get_value(n))
 
 
+def get_gui_values(gui_values=None, gui_values_path=""):
+    """
+    Get new or existing :class:`GUIValues` object and the sub-branch path inside it based on the supplied arguments.
+    
+    If `gui_values` is ``None`` or ``"new"``, create a new object and set empty root path.
+    If `gui_values` itself has ``gui_values`` attribute, get this attribute, and prepend object's ``gui_values_path`` attribute to the given path.
+    Otherwise, assume that `gui_values` is :class:`GUIValues` object, and use the supplied root.
+    """
+    if gui_values is None or gui_values=="new":
+        return GUIValues(),""
+    else:
+        root_path=[]
+        while hasattr(gui_values,"gui_values"):  # covers for container widgets
+            if hasattr(gui_values,"gui_values_path"):
+                root_path.append(gui_values.gui_values_path)
+            gui_values=gui_values.gui_values
+        root_path+=dictionary.normalize_path(gui_values_path)
+        return gui_values,"/".join(root_path)
 
-def create_virtual_values(**kwargs):
+
+def virtual_gui_values(**kwargs):
     """
     Create a gui values set with all virtual values.
 

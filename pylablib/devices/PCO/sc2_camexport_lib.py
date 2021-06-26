@@ -8,7 +8,7 @@ from . import sc2_defs_defs as sc2_defs  # pylint: disable=unused-import
 from .sc2_defs_defs import CAPS1, CAPS3  # pylint: disable=unused-import
 
 from ...core.utils import ctypes_wrap, py3
-from ...core.devio import DeviceError
+from ...core.devio.comm_backend import DeviceError
 from ..utils import load_lib
 
 import ctypes

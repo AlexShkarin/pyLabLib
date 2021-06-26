@@ -11,7 +11,7 @@ from .NIIMAQdx_defs import IMAQdxVideoMode
 from .NIIMAQdx_defs import define_functions
 
 from ...core.utils import ctypes_wrap, py3
-from ...core.devio import DeviceError
+from ...core.devio.comm_backend import DeviceError
 from ..utils import load_lib
 
 import ctypes
@@ -26,6 +26,7 @@ class IMAQdxLibError(IMAQdxError):
         self.func=func
         self.code=code
         self.name=drIMAQdxError.get(self.code,"UNKNOWN")
+        self.desc=""
         try:
             if lib is not None:
                 self.desc=py3.as_str(lib.IMAQdxGetErrorString(code))

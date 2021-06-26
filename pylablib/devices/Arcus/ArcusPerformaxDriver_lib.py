@@ -1,9 +1,11 @@
 # pylint: disable=wrong-spelling-in-comment
 
 from ...core.utils import ctypes_wrap
-from ...core.devio import DeviceError
-from .ArcusPerformaxDriver_defs import define_functions
+from ...core.devio.comm_backend import DeviceError
+from .ArcusPerformaxDriver_defs import define_functions, AR_HANDLE
 from ..utils import load_lib
+
+import ctypes
 
 
 class ArcusError(DeviceError):
@@ -46,7 +48,10 @@ class ArcusPerformaxLib:
             argprep={"lpDeviceString":strprep})
         
         #  AR_BOOL fnPerformaxComOpen(AR_DWORD dwDeviceNum, ctypes.POINTER(AR_HANDLE) pHandle)
-        self.fnPerformaxComOpen=wrapper(lib.fnPerformaxComOpen,rvals=["pHandle"])
+        # self.fnPerformaxComOpen=wrapper(lib.fnPerformaxComOpen,rvals=["pHandle"])
+        lib.fnPerformaxComOpen.argtypes=[ctypes.c_long,ctypes.c_void_p]
+        lib.fnPerformaxComOpen.errcheck=errchecker
+        self.fnPerformaxComOpen_lib=lib.fnPerformaxComOpen
         #  AR_BOOL fnPerformaxComClose(AR_HANDLE pHandle)
         self.fnPerformaxComClose=wrapper(lib.fnPerformaxComClose)
         
@@ -60,6 +65,11 @@ class ArcusPerformaxLib:
         
         self._initialized=True
 
+    def fnPerformaxComOpen(self, dwDeviceNum):  # some problems with argtypes conversion on Python 3.6
+        buff=ctypes.create_string_buffer(32)
+        self.fnPerformaxComOpen_lib(dwDeviceNum,buff)
+        rtype=ctypes.POINTER(AR_HANDLE)
+        return ctypes.cast(buff,rtype).contents
 
 
 lib=ArcusPerformaxLib()

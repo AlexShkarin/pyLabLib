@@ -1,1 +1,1 @@
-from .solstis import M2Error, Solstis
+from .solstis import M2Error, Solstis, c

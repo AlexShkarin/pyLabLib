@@ -4,7 +4,7 @@ from . import pfcam_defs  # pylint: disable=unused-import
 from .pfcam_defs import define_functions
 
 from ...core.utils import ctypes_wrap, py3
-from ...core.devio import DeviceError
+from ...core.devio.comm_backend import DeviceError
 from ..utils import load_lib
 
 import ctypes
@@ -110,7 +110,7 @@ class PFCamLib:
         if self._initialized:
             return
         error_message="The library is automatically supplied with PhotonFocus PFRemote software\n"+load_lib.par_error_message.format("pfcam")
-        self.lib=load_lib.load_lib("pfcam.dll",locations=("parameter/pfcam","global"),error_message=error_message)
+        self.lib=load_lib.load_lib("pfcam.dll",locations=("parameter/pfcam","global"),error_message=error_message,call_conv="cdecl")
         lib=self.lib
         define_functions(lib)
 

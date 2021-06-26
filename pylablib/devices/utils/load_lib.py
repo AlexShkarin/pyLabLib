@@ -1,5 +1,4 @@
-from ...core.utils import files, general
-from ...core.utils.library_parameters import library_parameters
+from ...core.utils import files, general, library_parameters
 
 import platform
 import ctypes
@@ -18,9 +17,9 @@ def get_os_lib_folder():
     arch=platform.architecture()[0]
     winarch="64bit" if platform.machine().endswith("64") else "32bit"
     if winarch==arch:
-        return os.path.join(os.environ["WINDIR"],"System32")
+        return os.path.join(os.environ.get("WINDIR","C:\\Windows"),"System32")
     else: # 32 bit Python on 64 but OS (the reverse is impossible)
-        return os.path.join(os.environ["WINDIR"],"SysWOW64")
+        return os.path.join(os.environ.get("WINDIR","C:\\Windows"),"SysWOW64")
 os_lib_folder=get_os_lib_folder()
 
 def get_program_files_folder(subfolder="", arch=None):
@@ -30,6 +29,8 @@ def get_program_files_folder(subfolder="", arch=None):
     If `arch` is ``None``, use the current Python architecture to determine the folder;
     otherwise, it specifies the architecture (``"32bit"`` for ``Program Files (x86)``, ``"64bit"`` for ``Program Files``)
     """
+    if sys.platform!="win32":
+        return ""
     if subfolder:
         return os.path.join(get_program_files_folder(arch=arch),subfolder)
     if arch is None:
@@ -46,6 +47,28 @@ program_files_folder=get_program_files_folder()
 
 _load_lock=threading.RLock()
 par_error_message="If you already have it, specify its path as pylablib.par['devices/dlls/{}']='path/to/dll/'"
+def _load_dll(path, kind, add_environ_paths=True):
+    """Load dll using PATH environment variable in Python 3.8+"""
+    if add_environ_paths and hasattr(os,"add_dll_directory"):
+        try:
+            return _load_dll(path,kind,add_environ_paths=False)
+        except OSError:
+            pass
+        add_paths=[os.path.abspath(p) for p in os.environ.get("PATH","").split(os.pathsep) if p]
+        add_paths+=[os.path.abspath(".")]
+        added_dirs=[]
+        try:
+            for p in add_paths:
+                try:
+                    added_dirs.append(os.add_dll_directory(p)) # pylint: disable=no-member
+                except OSError:  # missing folder
+                    pass
+            return ctypes.cdll.LoadLibrary(path) if kind=="cdecl" else ctypes.windll.LoadLibrary(path)
+        finally:
+            for d in added_dirs:
+                d.close()
+    else:
+        return ctypes.cdll.LoadLibrary(path) if kind=="cdecl" else ctypes.windll.LoadLibrary(path)
 def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, depends=None, error_message=None, check_order="location", return_location=False):
     """
     Load DLL.
@@ -83,40 +106,44 @@ def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, depe
         else:
             if loc.startswith("parameter/"):
                 par_name=loc[len("parameter/"):]
-                if ("devices/dlls",par_name) in library_parameters:
-                    loc=library_parameters["devices/dlls",par_name]
+                if ("devices/dlls",par_name) in library_parameters.library_parameters:
+                    loc=library_parameters.library_parameters["devices/dlls",par_name]
                 else:
                     continue
             if loc.lower().endswith(".dll"):
                 folder,n=os.path.split(loc)
             else:
                 folder=loc
+            if folder.startswith("."):
+                folder=os.path.abspath(folder)
         path=os.path.join(folder,n)
         lock=_load_lock if locally else general.DummyResource()
         with lock:
             if locally:
                 loc_folder,loc_name=os.path.split(path)
-                old_env_path=os.environ["PATH"]
-                env_paths=old_env_path.split(";")
+                old_env_path=os.environ.get("PATH",None)
+                env_paths=old_env_path.split(os.pathsep) if old_env_path else []
                 if not any([files.paths_equal(loc_folder,ep) for ep in env_paths if ep]):
-                    os.environ["PATH"]=files.normalize_path(loc_folder)+";"+os.environ["PATH"]
-                path=loc_name if folder=="" else "./"+loc_name
+                    os.environ["PATH"]=files.normalize_path(loc_folder)+(os.pathsep+old_env_path if old_env_path else "")
+                path=loc_name
                 folder=loc_folder
             depends=depends or []
             paths=[os.path.join(folder,dn) for dn in depends]+[path]
             try:
                 dlls=[]
+                add_environ_paths=library_parameters.library_parameters.get("devices/dlls/add_environ_paths",True)
                 for p in paths:
-                    if call_conv=="cdecl":
-                        dlls.append(ctypes.cdll.LoadLibrary(p))
-                    elif call_conv=="stdcall":
-                        dlls.append(ctypes.windll.LoadLibrary(p))
+                    if call_conv in ["cdecl","stdcall"]:
+                        dlls.append(_load_dll(p,call_conv,add_environ_paths=add_environ_paths))
                     else:
                         raise ValueError("unrecognized call convention: {}".format(call_conv))
                 return (dlls[-1],loc,paths[-1]) if return_location else dlls[-1]
             except OSError:
                 if locally:
-                    os.environ["PATH"]=old_env_path
+                    if old_env_path is None:
+                        del os.environ["PATH"]
+                    else:
+                        os.environ["PATH"]=old_env_path
     error_message="\n"+error_message if error_message else ""
     raise OSError("can't import library {}".format(" or ".join(name))+error_message)
 

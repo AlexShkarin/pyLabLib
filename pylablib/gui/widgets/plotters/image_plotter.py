@@ -6,18 +6,20 @@ Includes additional extensions: pair of lines to extract coordinates, line cuts,
 Has 2 parts: :class:`ImagePlotter` which displays the image,
 and :class:`ImagePlotterCtl` which controls the image display (value ranges, flipping or transposing, etc.)
 :class:`ImagePlotter` can also operate alone without a controller.
-When both are used, :class:`ImagePlotter` is created and set up first, and then supplied to :meth:`ImagePlotterCtl.setupUi` method.
+When both are used, :class:`ImagePlotter` is created and set up first, and then supplied to :meth:`ImagePlotterCtl.setup` method.
 """
 
 from ....core.gui.widgets.param_table import ParamTable
-from ....core.gui.value_handling import create_virtual_values
+from ....core.gui.widgets.container import QWidgetContainer
+from ....core.gui.widgets.layout_manager import QLayoutManagedWidget
+from ....core.gui.value_handling import virtual_gui_values
 from ....core.thread import controller
 from ....core.utils import funcargparse, module, dictionary
 from ....core.dataproc import filters
 
 import pyqtgraph
 
-from ....core.gui import QtWidgets, QtCore
+from ....core.gui import QtCore
 import numpy as np
 import contextlib
 import time
@@ -30,19 +32,16 @@ _pre_0p11=module.cmp_package_version("pyqtgraph","0.11.0")=="<"
 
 
 
-class ImagePlotterCtl(QtWidgets.QWidget):
+class ImagePlotterCtl(QWidgetContainer):
     """
     Class for controlling an image inside :class:`ImagePlotter`.
 
-    Like most widgets, requires calling :meth:`setupUi` to set up before usage.
+    Like most widgets, requires calling :meth:`setup` to set up before usage.
 
     Args:
         parent: parent widget
     """
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-    def setupUi(self, name, plotter, gui_values=None, gui_values_root=None, save_values=("colormap","img_lim_preset")):
+    def setup(self, plotter, name=None, gui_values=None, gui_values_path=None, save_values=("colormap","img_lim_preset")):
         """
         Setup the image plotter controller.
 
@@ -50,56 +49,50 @@ class ImagePlotterCtl(QtWidgets.QWidget):
             name (str): widget name
             plotter (ImagePlotter): controlled image plotter
             gui_values (bool): as :class:`.GUIValues` object used to access table values; by default, create one internally
-            gui_values_root (str): if not ``None``, specify root (i.e., path prefix) for values inside the table.
+            gui_values_path (str): if not ``None``, specifies the path prefix for values inside the control
             save_values (tuple): optional parameters to include on :meth:`get_all_values`;
                 can include ``"colormap"`` (colormap defined in the widget), and ``"img_lim_preset"`` (saved image limit preset)
         """
-        self.name=name
+        super().setup(name=name,gui_values=gui_values,gui_values_path=gui_values_path,no_margins=True)
         self.save_values=save_values
-        self.setObjectName(self.name)
-        self.hLayout=QtWidgets.QHBoxLayout(self)
-        self.hLayout.setContentsMargins(0,0,0,0)
-        self.hLayout.setObjectName("hLayout")
+        self.setMaximumWidth(200)
         self.plotter=plotter
         self.plotter._attach_controller(self)
-        self.settings_table=ParamTable(self)
-        self.settings_table.setObjectName("settings_table")
-        self.hLayout.addWidget(self.settings_table)
+        self.params=ParamTable(self)
+        self.add_child("params",self.params)
+        self.params.setup(add_indicator=False)
         self.img_lim=(0,65536)
-        self.settings_table.setupUi("img_settings",add_indicator=False,gui_values=gui_values,gui_values_root=gui_values_root)
-        self.settings_table.add_text_label("size",label="Image size:")
-        self.settings_table.add_check_box("flip_x","Flip X",value=False)
-        self.settings_table.add_check_box("flip_y","Flip Y",value=False,location=(-1,1))
-        self.settings_table.add_check_box("transpose","Transpose",value=True)
-        self.settings_table.add_check_box("normalize","Normalize",value=False)
-        self.settings_table.add_num_edit("minlim",value=self.img_lim[0],limiter=self.img_lim+("coerce","int"),formatter=("int"),label="Minimal intensity:",add_indicator=True)
-        self.settings_table.add_num_edit("maxlim",value=self.img_lim[1],limiter=self.img_lim+("coerce","int"),formatter=("int"),label="Maximal intensity:",add_indicator=True)
-        self._preset_layout=QtWidgets.QHBoxLayout()
-        _,row_loc=self.settings_table._normalize_location((None,0,1,self.settings_table.layout().columnCount()))
-        self.settings_table.layout().addLayout(self._preset_layout,*row_loc)
-        hbtn=self.settings_table.add_button("save_preset","Save preset")
-        hbtn.get_value_changed_signal().connect(self._save_img_lim_preset)
-        self._preset_layout.addWidget(hbtn.widget)
-        hbtn=self.settings_table.add_button("load_preset","Load preset")
-        hbtn.get_value_changed_signal().connect(self._load_img_lim_preset)
-        self._preset_layout.addWidget(hbtn.widget)
-        self.img_lim_preset=self.img_lim
-        self.settings_table.add_check_box("show_histogram","Show histogram",value=True).get_value_changed_signal().connect(self._setup_gui_state)
-        self.settings_table.add_check_box("auto_histogram_range","Auto histogram range",value=True)
-        self.settings_table.add_check_box("show_lines","Show lines",value=True).get_value_changed_signal().connect(self._setup_gui_state)
-        self.settings_table.add_num_edit("vlinepos",value=0,limiter=(0,None,"coerce","float"),formatter=("float","auto",1,True),label="X line:")
-        self.settings_table.add_num_edit("hlinepos",value=0,limiter=(0,None,"coerce","float"),formatter=("float","auto",1,True),label="Y line:")
-        self.settings_table.add_check_box("show_linecuts","Show line cuts",value=False).get_value_changed_signal().connect(self._setup_gui_state)
-        self.settings_table.add_num_edit("linecut_width",value=1,limiter=(1,None,"coerce","int"),formatter="int",label="Line cut width:")
-        self.settings_table.add_button("center_lines","Center lines").get_value_changed_signal().connect(plotter.center_lines)
-        self.settings_table.value_changed.connect(lambda n: self.plotter.update_image(update_controls=(n=="normalize"),do_redraw=True),QtCore.Qt.DirectConnection)
-        self.settings_table.add_spacer(10)
-        self.settings_table.add_toggle_button("update_image","Updating").get_value_changed_signal().connect(plotter._set_image_update)
+        self.params.add_text_label("size",label="Image size:")
+        self.params.add_check_box("flip_x","Flip X",value=False)
+        self.params.add_check_box("flip_y","Flip Y",value=False,location=(-1,1))
+        self.params.add_check_box("transpose","Transpose",value=True)
+        self.params.add_check_box("normalize","Normalize",value=False)
+        with self.params.using_new_sublayout("minmaxlim","grid"):
+            self.params.add_num_edit("minlim",value=self.img_lim[0],limiter=self.img_lim+("coerce","int"),formatter=("int"),label="Minimal intensity:",add_indicator=True)
+            self.params.add_num_edit("maxlim",value=self.img_lim[1],limiter=self.img_lim+("coerce","int"),formatter=("int"),label="Maximal intensity:",add_indicator=True)
+            self.params.add_spacer(width=30,location=(0,2))
+        with self.params.using_new_sublayout("presets","hbox"):
+            self.params.add_button("save_preset","Save preset")
+            self.params.add_button("load_preset","Load preset")
+            self.params.vs["save_preset"].connect(self._save_img_lim_preset)
+            self.params.vs["load_preset"].connect(self._load_img_lim_preset)
+            self.img_lim_preset=self.img_lim
+        self.params.add_check_box("show_histogram","Show histogram",value=True).get_value_changed_signal().connect(self._setup_gui_state)
+        self.params.add_check_box("auto_histogram_range","Auto histogram range",value=True)
+        self.params.add_check_box("show_lines","Show lines",value=True).get_value_changed_signal().connect(self._setup_gui_state)
+        self.params.add_num_edit("vlinepos",value=0,limiter=(0,None,"coerce","float"),formatter=("float","auto",1,True),label="X line:")
+        self.params.add_num_edit("hlinepos",value=0,limiter=(0,None,"coerce","float"),formatter=("float","auto",1,True),label="Y line:")
+        self.params.add_check_box("show_linecuts","Show line cuts",value=False).get_value_changed_signal().connect(self._setup_gui_state)
+        self.params.add_num_edit("linecut_width",value=1,limiter=(1,None,"coerce","int"),formatter="int",label="Line cut width:")
+        self.params.add_button("center_lines","Center lines").get_value_changed_signal().connect(plotter.center_lines)
+        self.params.value_changed.connect(lambda n: self.plotter.update_image(update_controls=(n=="normalize"),do_redraw=True),QtCore.Qt.DirectConnection)
+        self.params.add_spacer(10)
+        self.params.add_toggle_button("update_image","Updating").get_value_changed_signal().connect(plotter._set_image_update)
         def arm_single():
-            self.settings_table.v["update_image"]=False
+            self.params.v["update_image"]=False
             self.plotter.arm_single()
-        self.settings_table.add_button("single","Single").get_value_changed_signal().connect(arm_single)
-        self.settings_table.add_padding()
+        self.params.add_button("single","Single").get_value_changed_signal().connect(arm_single)
+        self.params.add_padding()
 
     def set_img_lim(self, *args):
         """
@@ -116,45 +109,37 @@ class ImagePlotterCtl(QtWidgets.QWidget):
         else:
             return
         minl,maxl=self.img_lim
-        self.settings_table.w["minlim"].set_limiter((minl,maxl,"coerce","int"))
-        self.settings_table.w["maxlim"].set_limiter((minl,maxl,"coerce","int"))
+        self.params.w["minlim"].set_limiter((minl,maxl,"coerce","int"))
+        self.params.w["maxlim"].set_limiter((minl,maxl,"coerce","int"))
     @controller.exsafeSlot()
     def _save_img_lim_preset(self):
-        self.img_lim_preset=self.settings_table.v["minlim"],self.settings_table.v["maxlim"]
+        self.img_lim_preset=self.v["minlim"],self.v["maxlim"]
     @controller.exsafeSlot()
     def _load_img_lim_preset(self):
-        self.settings_table.v["minlim"],self.settings_table.v["maxlim"]=self.img_lim_preset
+        self.v["minlim"],self.v["maxlim"]=self.img_lim_preset
     @controller.exsafeSlot()
     def _setup_gui_state(self):
         """Enable or disable controls based on which actions are enabled"""
-        show_histogram=self.settings_table.v["show_histogram"]
-        self.settings_table.set_enabled("auto_histogram_range",show_histogram)
-        show_lines=self.settings_table.v["show_lines"]
-        for n in ["vlinepos","hlinepos","show_linecuts"]:
-            self.settings_table.set_enabled(n,show_lines)
-        show_linecuts=self.settings_table.v["show_linecuts"]
-        self.settings_table.set_enabled("linecut_width",show_lines and show_linecuts)
+        self.params.set_enabled("auto_histogram_range",self.v["show_histogram"])
+        show_lines=self.v["show_lines"]
+        self.params.set_enabled(["vlinepos","hlinepos","show_linecuts"],show_lines)
+        self.params.set_enabled("linecut_width",show_lines and self.v["show_linecuts"])
 
     def get_all_values(self):
-        """Get all control values"""
-        values=self.settings_table.get_all_values()
+        values=super().get_all_values()
         if "img_lim_preset" in self.save_values:
             values["img_lim_preset"]=self.img_lim_preset
         if "colormap" in self.save_values:
-            values["colormap"]=self.plotter.imageWindow.getHistogramWidget().gradient.saveState()
+            values["colormap"]=self.plotter.image_window.getHistogramWidget().gradient.saveState()
         return values
     def set_all_values(self, values):
-        """Set all control values"""
-        self.settings_table.set_all_values(values)
+        super().set_all_values(values)
         if "img_lim_preset" in values:
             self.img_lim_preset=values["img_lim_preset"]
         if "colormap" in values:
             colormap=dictionary.as_dict(values["colormap"],style="nested")
-            self.plotter.imageWindow.getHistogramWidget().gradient.restoreState(colormap)
+            self.plotter.image_window.getHistogramWidget().gradient.restoreState(colormap)
         self._setup_gui_state()
-    def get_all_indicators(self):
-        """Get all GUI indicators as a dictionary"""
-        return self.settings_table.get_all_indicators()
 
 
 
@@ -196,7 +181,7 @@ try:
         pyqtgraph.graphicsItems.GradientEditorItem.Gradients[cm]={"ticks":ticks,"mode":"rgb"}
 except (TypeError,AttributeError):  # sphinx autodoc Mock can't handle assignment
     pass
-class ImagePlotter(QtWidgets.QWidget):
+class ImagePlotter(QLayoutManagedWidget):
     """
     Image plotter object.
 
@@ -207,7 +192,9 @@ class ImagePlotter(QtWidgets.QWidget):
     """
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.name=None
         self.ctl=None
+        self._virtual_values=self._make_virtual_values()
 
     class Rectangle:
         def __init__(self, rect, center=None, size=None):
@@ -219,7 +206,7 @@ class ImagePlotter(QtWidgets.QWidget):
                 self.center=center
             if size:
                 self.size=size
-    def setupUi(self, name, img_size=(1024,1024), min_size=None):
+    def setup(self, name=None, img_size=(1024,1024), min_size=None):
         """
         Setup the image plotter.
 
@@ -228,13 +215,10 @@ class ImagePlotter(QtWidgets.QWidget):
             img_size (tuple): default image size (used only until actual image is supplied)
             min_size (tuple): minimal widget size (``None`` mean no minimal size)
         """
+        super().setup(layout="vbox",no_margins=True)
         self.name=name
-        self.setObjectName(self.name)
         self.single_armed=False
         self.single_acquired=False
-        self.hLayout=QtWidgets.QVBoxLayout(self)
-        self.hLayout.setContentsMargins(0,0,0,0)
-        self.hLayout.setObjectName(self.name+"hLayout")
         self.img=np.zeros(img_size)
         self.do_image_update=False
         self.xbin=1
@@ -246,53 +230,51 @@ class ImagePlotter(QtWidgets.QWidget):
         self._last_curve_paint_cnt=[None,None]
         if min_size:
             self.setMinimumSize(QtCore.QSize(*min_size))
-        self.imageWindow=pyqtgraph.ImageView(self,imageItem=ImageItem())
-        self.imageWindow.setObjectName("imageWindow")
-        self.hLayout.addWidget(self.imageWindow)
-        self.hLayout.setStretch(0,4)
+        self.image_window=pyqtgraph.ImageView(self,imageItem=ImageItem())
+        self.add_to_layout(self.image_window)
+        self.main_layout.setStretch(0,4)
         self.set_colormap("hot_sat")
-        self.imageWindow.ui.roiBtn.hide()
-        self.imageWindow.ui.menuBtn.hide()
-        self.imageWindow.getView().setMenuEnabled(False)
-        self.imageWindow.getView().setMouseEnabled(x=False,y=False)
-        self.imageWindow.getHistogramWidget().item.vb.setMenuEnabled(False)
-        self.imgVLine=pyqtgraph.InfiniteLine(angle=90,movable=True,bounds=[0,None])
-        self.imgHLine=pyqtgraph.InfiniteLine(angle=0,movable=True,bounds=[0,None])
-        self.imageWindow.getView().addItem(self.imgVLine)
-        self.imageWindow.getView().addItem(self.imgHLine)
+        self.image_window.ui.roiBtn.hide()
+        self.image_window.ui.menuBtn.hide()
+        self.image_window.getView().setMenuEnabled(False)
+        self.image_window.getView().setMouseEnabled(x=False,y=False)
+        self.image_window.getHistogramWidget().item.vb.setMenuEnabled(False)
+        self.vline=pyqtgraph.InfiniteLine(angle=90,movable=True,bounds=[0,None])
+        self.hline=pyqtgraph.InfiniteLine(angle=0,movable=True,bounds=[0,None])
+        self.image_window.getView().addItem(self.vline)
+        self.image_window.getView().addItem(self.hline)
         self.linecut_boundary_pen=pyqtgraph.mkPen("#008000",style=pyqtgraph.QtCore.Qt.DashLine)
-        self.imgHBLines=[pyqtgraph.InfiniteLine(angle=0,movable=False,bounds=[0,None],pen=self.linecut_boundary_pen) for _ in range(2)]
-        self.imgVBLines=[pyqtgraph.InfiniteLine(angle=90,movable=False,bounds=[0,None],pen=self.linecut_boundary_pen) for _ in range(2)]
-        self.imageWindow.getView().addItem(self.imgHBLines[0])
-        self.imageWindow.getView().addItem(self.imgHBLines[1])
-        self.imageWindow.getView().addItem(self.imgVBLines[0])
-        self.imageWindow.getView().addItem(self.imgVBLines[1])
-        self.plotWindow=pyqtgraph.PlotWidget(self)
-        self.plotWindow.addLegend()
-        self.plotWindow.setLabel("left","Image cut")
-        self.plotWindow.showGrid(True,True,0.7)
+        self.hblines=[pyqtgraph.InfiniteLine(angle=0,movable=False,bounds=[0,None],pen=self.linecut_boundary_pen) for _ in range(2)]
+        self.vblines=[pyqtgraph.InfiniteLine(angle=90,movable=False,bounds=[0,None],pen=self.linecut_boundary_pen) for _ in range(2)]
+        self.image_window.getView().addItem(self.hblines[0])
+        self.image_window.getView().addItem(self.hblines[1])
+        self.image_window.getView().addItem(self.vblines[0])
+        self.image_window.getView().addItem(self.vblines[1])
+        self.cut_plot_window=pyqtgraph.PlotWidget(self)
+        self.cut_plot_window.addLegend()
+        self.cut_plot_window.setLabel("left","Image cut")
+        self.cut_plot_window.showGrid(True,True,0.7)
         self.cut_lines=[PlotCurveItem(pen="#B0B000",name="Horizontal"), PlotCurveItem(pen="#B000B0",name="Vertical")]
         for c in self.cut_lines:
-            self.plotWindow.addItem(c)
-        self.hLayout.addWidget(self.plotWindow)
-        self.hLayout.setStretch(1,1)
-        self.plotWindow.setVisible(False)
-        self.imgVLine.sigPositionChanged.connect(self.update_image_controls,QtCore.Qt.DirectConnection)
-        self.imgHLine.sigPositionChanged.connect(self.update_image_controls,QtCore.Qt.DirectConnection)
-        self.imageWindow.getHistogramWidget().sigLevelsChanged.connect(lambda: self.update_image_controls(levels=self.imageWindow.getHistogramWidget().getLevels()),QtCore.Qt.DirectConnection)
+            self.cut_plot_window.addItem(c)
+        self.add_to_layout(self.cut_plot_window)
+        self.main_layout.setStretch(1,1)
+        self.cut_plot_window.setVisible(False)
+        self.vline.sigPositionChanged.connect(self.update_image_controls,QtCore.Qt.DirectConnection)
+        self.hline.sigPositionChanged.connect(self.update_image_controls,QtCore.Qt.DirectConnection)
+        self.image_window.getHistogramWidget().sigLevelsChanged.connect(lambda: self.update_image_controls(levels=self.image_window.getHistogramWidget().getLevels()),QtCore.Qt.DirectConnection)
         self.rectangles={}
 
     def _attach_controller(self, ctl):
         """
         Attach :class:`ImagePlotterCtl` object.
 
-        Called automatically in :meth:`ImagePlotterCtl.setupUi`
+        Called automatically in :meth:`ImagePlotterCtl.setup`
         """
         self.ctl=ctl
-    def _get_values(self):
-        if self.ctl is not None:
-            return self.ctl.settings_table
-        return create_virtual_values(**{"transpose":False,
+    def _make_virtual_values(self):
+        return virtual_gui_values(**{
+                "transpose":False,
                 "flip_x":False,
                 "flip_y":False,
                 "normalize":True,
@@ -304,6 +286,9 @@ class ImagePlotter(QtWidgets.QWidget):
                 "hlinepos":0,
                 "linecut_width":0,
                 "update_image":True})
+    def _get_values(self):
+        return self.ctl or self._virtual_values
+        
     @controller.exsafeSlot(object)
     def _set_image_update(self, do_update):
         self.do_image_update=do_update
@@ -326,7 +311,7 @@ class ImagePlotter(QtWidgets.QWidget):
         a list specifying PyQtGraph colormap or a :class:`pyqtgraph.ColorMap` instance.
         """
         if cmap in pyqtgraph.graphicsItems.GradientEditorItem.Gradients:
-            self.imageWindow.setPredefinedGradient(cmap)
+            self.image_window.setPredefinedGradient(cmap)
         else:
             cmap=builtin_cmaps.get(cmap,cmap)
             if isinstance(cmap,tuple):
@@ -334,7 +319,7 @@ class ImagePlotter(QtWidgets.QWidget):
                     cols=[tuple([int(v*255) for v in c]) for c in cmap[1]]
                     cmap=cmap[0],cols
                 cmap=pyqtgraph.ColorMap(*cmap)
-            self.imageWindow.setColorMap(cmap)
+            self.image_window.setColorMap(cmap)
     def set_binning(self, xbin=1, ybin=1, mode="mean", update_image=True):
         """
         Set image binning (useful for showing large images).
@@ -354,6 +339,9 @@ class ImagePlotter(QtWidgets.QWidget):
         although race conditions on simultaneous calls from multiple threads still might happen).
         """
         if self.do_image_update or self.single_armed:
+            img=np.asarray(img)
+            if img.ndim!=2 or (img.ndim==3 and img.shape[2] not in (3,4)):
+                raise ValueError("only 2D images or 3D images with 3 or 4 color channels are allowed; got image with the shape {}".format(img.shape))
             self.img=img
             self.single_armed=False
             self.single_acquired=True
@@ -363,9 +351,9 @@ class ImagePlotter(QtWidgets.QWidget):
 
     def _show_histogram(self, show=True):
         if show:
-            self.imageWindow.ui.histogram.show()
+            self.image_window.ui.histogram.show()
         else:
-            self.imageWindow.ui.histogram.hide()
+            self.image_window.ui.histogram.hide()
     def set_rectangle(self, name, center=None, size=None):
         """
         Add or change parameters of a rectangle with a given name.
@@ -375,7 +363,7 @@ class ImagePlotter(QtWidgets.QWidget):
         """
         if name not in self.rectangles:
             pqrect=pyqtgraph.ROI((0,0),(0,0),movable=False,pen="#FF00FF")
-            self.imageWindow.getView().addItem(pqrect)
+            self.image_window.getView().addItem(pqrect)
             self.rectangles[name]=self.Rectangle(pqrect)
         rect=self.rectangles[name]
         rect.update_parameters(center,size)
@@ -403,14 +391,14 @@ class ImagePlotter(QtWidgets.QWidget):
         """Delete a rectangle with a given name"""
         if name in self.rectangles:
             rect=self.rectangles.pop(name)
-            self.imageWindow.getView().removeItem(rect)
+            self.image_window.getView().removeItem(rect)
     def show_rectangles(self, show=True, names=None):
         """
         Toggle showing rectangles on or off
         
         If `names` is given, it specifies names of rectangles to show or hide (by default, all rectangles).
         """
-        imgview=self.imageWindow.getView()
+        imgview=self.image_window.getView()
         if names is None:
             names=self.rectangles
         else:
@@ -426,20 +414,20 @@ class ImagePlotter(QtWidgets.QWidget):
     def center_lines(self):
         """Center coordinate lines"""
         imshape=self.img.shape[::-1] if self._get_values().v["transpose"] else self.img.shape
-        self.imgVLine.setPos(imshape[0]/2)
-        self.imgHLine.setPos(imshape[1]/2)
+        self.vline.setPos(imshape[0]/2)
+        self.hline.setPos(imshape[1]/2)
     def _update_linecut_boundaries(self, values):
-        vpos=self.imgVLine.getPos()[0]
-        hpos=self.imgHLine.getPos()[1]
+        vpos=self.vline.getPos()[0]
+        hpos=self.hline.getPos()[1]
         cut_width=values.v["linecut_width"]
         show_boundary_lines=values.v["show_lines"] and values.v["show_linecuts"] and cut_width>1
-        for ln in self.imgVBLines+self.imgHBLines:
+        for ln in self.vblines+self.hblines:
             ln.setPen(self.linecut_boundary_pen if show_boundary_lines else None)
         if show_boundary_lines:
-            self.imgVBLines[0].setPos(vpos-cut_width/2)
-            self.imgVBLines[1].setPos(vpos+cut_width/2)
-            self.imgHBLines[0].setPos(hpos-cut_width/2)
-            self.imgHBLines[1].setPos(hpos+cut_width/2)
+            self.vblines[0].setPos(vpos-cut_width/2)
+            self.vblines[1].setPos(vpos+cut_width/2)
+            self.hblines[0].setPos(hpos-cut_width/2)
+            self.hblines[1].setPos(hpos+cut_width/2)
 
     # Update image controls based on PyQtGraph image window
     @controller.exsafeSlot()
@@ -450,8 +438,8 @@ class ImagePlotter(QtWidgets.QWidget):
         values=self._get_values()
         if levels is not None:
             values.v["minlim"],values.v["maxlim"]=levels
-        values.v["vlinepos"]=self.imgVLine.getPos()[0]
-        values.v["hlinepos"]=self.imgHLine.getPos()[1]
+        values.v["vlinepos"]=self.vline.getPos()[0]
+        values.v["hlinepos"]=self.hline.getPos()[1]
         self._update_linecut_boundaries(values)
     def _get_min_nonzero(self, img, default=0):
         img=img[img!=0]
@@ -469,9 +457,9 @@ class ImagePlotter(QtWidgets.QWidget):
             img[0,0]+=1
         return img
     def _check_paint_done(self, dt=0):
-        items=[self.imageWindow.imageItem]+self.cut_lines
+        items=[self.image_window.imageItem]+self.cut_lines
         counters=[self._last_img_paint_cnt]+self._last_curve_paint_cnt
-        if self._last_img_paint_cnt==self.imageWindow.imageItem.paint_cnt:
+        if self._last_img_paint_cnt==self.image_window.imageItem.paint_cnt:
             return False
         for itm,cnt in zip(items,counters):
             if itm.paint_cnt==cnt:
@@ -522,13 +510,13 @@ class ImagePlotter(QtWidgets.QWidget):
             draw_img=self._sanitize_img(draw_img)
             levels=img_levels if autoscale else (values.v["minlim"],values.v["maxlim"])
             if self.isVisible():
-                self.imageWindow.setImage(draw_img,levels=levels,autoHistogramRange=False)
+                self.image_window.setImage(draw_img,levels=levels,autoHistogramRange=False)
                 if values.v["auto_histogram_range"]:
                     hist_range=min(img_levels[0],levels[0]),max(img_levels[1],levels[1])
                     if hist_range[0]==hist_range[1]:
                         hist_range=hist_range[0]-.5,hist_range[1]+.5
-                    self.imageWindow.ui.histogram.setHistogramRange(*hist_range)
-                self._last_img_paint_cnt=self.imageWindow.imageItem.paint_cnt
+                    self.image_window.ui.histogram.setHistogramRange(*hist_range)
+                self._last_img_paint_cnt=self.image_window.imageItem.paint_cnt
             if update_controls:
                 with self._while_updating(False):
                     self.update_image_controls(levels=levels if autoscale else None)
@@ -537,16 +525,16 @@ class ImagePlotter(QtWidgets.QWidget):
             values.i["maxlim"]=img_levels[1]
             values.v["size"]="{} x {}".format(*img_shape)
             show_lines=values.v["show_lines"]
-            for ln in [self.imgVLine,self.imgHLine]:
+            for ln in [self.vline,self.hline]:
                 ln.setPen("g" if show_lines else None)
                 ln.setHoverPen("y" if show_lines else None)
                 ln.setMovable(show_lines)
-            for ln in [self.imgVLine]+self.imgVBLines:
+            for ln in [self.vline]+self.vblines:
                 ln.setBounds([0,draw_img.shape[0]])
-            for ln in [self.imgHLine]+self.imgHBLines:
+            for ln in [self.hline]+self.hblines:
                 ln.setBounds([0,draw_img.shape[1]])
-            self.imgVLine.setPos(values.v["vlinepos"])
-            self.imgHLine.setPos(values.v["hlinepos"])
+            self.vline.setPos(values.v["vlinepos"])
+            self.hline.setPos(values.v["hlinepos"])
             self._update_linecut_boundaries(values)
             if values.v["show_lines"] and values.v["show_linecuts"]:
                 cut_width=values.v["linecut_width"]
@@ -568,16 +556,46 @@ class ImagePlotter(QtWidgets.QWidget):
                         hmin-=1
                 x_cut=draw_img[:,hmin:hmax].mean(axis=1)
                 y_cut=draw_img[vmin:vmax,:].mean(axis=0)
-                autorange=self.plotWindow.getViewBox().autoRangeEnabled()
-                self.plotWindow.disableAutoRange()
+                autorange=self.cut_plot_window.getViewBox().autoRangeEnabled()
+                self.cut_plot_window.disableAutoRange()
                 self.cut_lines[0].setData(np.arange(len(x_cut)),x_cut)
                 self.cut_lines[1].setData(np.arange(len(y_cut)),y_cut)
                 self._last_img_paint_cnt=[cl.paint_cnt for cl in self.cut_lines]
                 if any(autorange):
-                    self.plotWindow.enableAutoRange(x=autorange[0],y=autorange[1])
-                self.plotWindow.setVisible(True)
+                    self.cut_plot_window.enableAutoRange(x=autorange[0],y=autorange[1])
+                self.cut_plot_window.setVisible(True)
             else:
-                self.plotWindow.setVisible(False)
+                self.cut_plot_window.setVisible(False)
             self.update_rectangles()
             self._last_paint_time=time.time()
             return values
+
+
+
+
+
+
+class ImagePlotterCombined(QWidgetContainer):
+    """
+    A combined panel which includes :class:`ImagePlotter` and :class:`ImagePlotterCtl` in the sidebar.
+
+    The :meth:`setup` method takes parameters both for plotter and controller setup.
+    In addition, it takes ``ctl_caption`` argument, which, if not ``None``, sets the caption of a group box made around the controller panel.
+    The plotter can be accessed as ``.plt`` attribute, and the controller as ``.ctl`` attribute.
+    The ``"sidebar"`` sublayout can be used to add additional elements if necessary.
+    """
+    def setup(self, img_size=(1024,1024), min_size=None, ctl_caption=None, name=None, gui_values=None, gui_values_path=None, save_values=("colormap","img_lim_preset")):
+        super().setup(layout="hbox",name=name,gui_values=gui_values,gui_values_path=gui_values_path)
+        self.plt=ImagePlotter(self)
+        self.add_to_layout(self.plt)
+        self.plt.setup(name="plt",img_size=img_size,min_size=min_size)
+        with self.using_new_sublayout("sidebar","vbox"):
+            self.ctl=ImagePlotterCtl(self)
+            if ctl_caption is None:
+                self.add_child("ctl",self.ctl)
+            else:
+                self.add_group_box("ctl_box",caption=ctl_caption).add_child("ctl",self.ctl)
+                self.c["ctl_box"].setMaximumWidth(200)
+            self.ctl.setup(self.plt,save_values=save_values)
+            self.add_padding()
+        self.get_sublayout().setStretch(0,1)

@@ -4,34 +4,32 @@ PyQtGraph-based trace plotter.
 Has 2 parts: :class:`TracePlotter` which displays the plots,
 and :class:`TracePlotterCtl` which controls the channels (X-axis, enabled channels) and the plotting (buffer size, updating, etc.)
 :class:`TracePlotter` can also operate alone without a controller.
-When both are used, :class:`TracePlotter` is created and set up first, and then supplied to :meth:`TracePlotterCtl.setupUi` method.
+When both are used, :class:`TracePlotter` is created and set up first, and then supplied to :meth:`TracePlotterCtl.setup` method.
 """
 
 from ....core.gui.widgets.param_table import ParamTable
+from ....core.gui.widgets.container import QWidgetContainer
+from ....core.gui.widgets.layout_manager import QLayoutManagedWidget
 from ....core.thread import controller
-from ....core.gui import value_handling
 from ....core.dataproc import utils as trace_utils
 from ....thread.stream.table_accum import TableAccumulator, TableAccumulatorThread
 
 import pyqtgraph
 
-from ....core.gui import QtWidgets, QtCore, Signal
+from ....core.gui import QtCore, Signal
 import numpy as np
 
 
-class TracePlotterCtl(QtWidgets.QWidget):
+class TracePlotterCtl(QWidgetContainer):
     """
     Class for controlling traces inside :class:`TracePlotter`.
 
-    Like most widgets, requires calling :meth:`setupUi` to set up before usage.
+    Like most widgets, requires calling :meth:`setup` to set up before usage.
 
     Args:
         parent: parent widget
     """
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-    def setupUi(self, name, plotter, gui_values=None, gui_values_root=None):
+    def setup(self, plotter, name=None, gui_values=None, gui_values_path=None):
         """
         Setup the trace plotter controller.
 
@@ -39,60 +37,25 @@ class TracePlotterCtl(QtWidgets.QWidget):
             name (str): widget name
             plotter (TracePlotter): controlled image plotter
             gui_values (bool): as :class:`.GUIValues` object used to access table values; by default, create one internally
-            gui_values_root (str): if not ``None``, specify root (i.e., path prefix) for values inside the table.
+            gui_values_path (str): if not ``None``, specifies the path prefix for values inside the control
         """
-        self.gui_values=gui_values or value_handling.GUIValues()
-        self.gui_values_root=gui_values_root or ""
+        super().setup(name=name,gui_values=gui_values,gui_values_path=gui_values_path,no_margins=True)
         self.plotter=plotter
         self.plotter._attach_controller(self)
-
-        self.name=name
-        self.setObjectName(self.name)
-        self.hLayout=QtWidgets.QVBoxLayout(self)
-        self.hLayout.setContentsMargins(0,0,0,0)
-        self.hLayout.setObjectName("hLayout")
-        self.channelsGroupBox=QtWidgets.QGroupBox(self)
-        self.channelsGroupBox.setObjectName("channelsGroupBox")
-        self.channelsGroupBox.setTitle("Channels")
-        self.channelsGroupLayout=QtWidgets.QVBoxLayout(self.channelsGroupBox)
-        self.channelsGroupLayout.setContentsMargins(0, 0, 0, -1)
-        self.channelsGroupLayout.setObjectName("channelsGroupLayout")
-        self.channels_table=ParamTable(self.channelsGroupBox)
-        self.channels_table.setMinimumSize(QtCore.QSize(20, 20))
-        self.channels_table.setObjectName("channels_table")
-        self.channelsGroupLayout.addWidget(self.channels_table)
-        self.hLayout.addWidget(self.channelsGroupBox)
-        self.plottingGroupBox=QtWidgets.QGroupBox(self)
-        self.plottingGroupBox.setObjectName("plottingGroupBox")
-        self.plottingGroupBox.setTitle("Plotting")
-        self.plottingGroupLayout=QtWidgets.QHBoxLayout(self.plottingGroupBox)
-        self.plottingGroupLayout.setContentsMargins(0, 0, 0, -1)
-        self.plottingGroupLayout.setObjectName("plottingGroupLayout")
-        self.plot_params_table=ParamTable(self.plottingGroupBox)
-        self.plot_params_table.setMinimumSize(QtCore.QSize(20, 20))
-        self.plot_params_table.setObjectName("plot_params_table")
-        self.plottingGroupLayout.addWidget(self.plot_params_table)
-        self.hLayout.addWidget(self.plottingGroupBox)
-        spacerItem=QtWidgets.QSpacerItem(0, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-        self.hLayout.addItem(spacerItem)
-        self.hLayout.setStretch(2, 1)
-
-        self.channels_table.setupUi("channels",add_indicator=False,gui_values=self.gui_values,gui_values_root=self.gui_values_root+"/channels")
+        self.channels_table=ParamTable(self)
+        self.add_group_box("channels_box",caption="Channels").add_child("channels",self.channels_table,gui_values_path="channels")
+        self.channels_table.setMinimumSize(QtCore.QSize(20,20))
+        self.channels_table.setup(add_indicator=False)
         self.setup_channels()
-        self.plot_params_table.setupUi("plotting_params",add_indicator=False,gui_values=self.gui_values,gui_values_root=self.gui_values_root+"/plotting")
+        self.plot_params_table=ParamTable(self)
+        self.add_group_box("plotting_box",caption="Plotting").add_child("plotting",self.plot_params_table,gui_values_path="plotting")
+        self.plot_params_table.setMinimumSize(QtCore.QSize(20,20))
+        self.plot_params_table.setup(add_indicator=False)
         self.plot_params_table.add_toggle_button("update_plot","Updating")
         self.plot_params_table.add_num_edit("disp_last",1,limiter=(1,None,"coerce","int"),formatter=("int"),label="Display last: ")
         self.plot_params_table.add_button("reset_history","Reset").get_value_changed_signal().connect(self.plotter.reset_history)
-
-    def get_all_values(self):
-        """Get all control values"""
-        return self.gui_values.get_all_values(root=self.gui_values_root)
-    def set_all_values(self, values):
-        """Set all control values"""
-        self.gui_values.set_all_values(values,root=self.gui_values_root)
-    def get_all_indicators(self):
-        """Get all GUI indicators as a dictionary"""
-        return self.gui_values.get_all_indicators(root=self.gui_values_root)
+        self.add_padding()
+        self.main_layout.setStretch(2,1)
 
     def setup_channels(self):
         """
@@ -114,7 +77,7 @@ class TracePlotterCtl(QtWidgets.QWidget):
         return [idx for idx in self.plotter.channel_indices if self.channels_table.v[idx+"_enabled"]]
 
 
-class TracePlotter(QtWidgets.QWidget):
+class TracePlotter(QLayoutManagedWidget):
     """
     Trace plotter object.
 
@@ -128,8 +91,9 @@ class TracePlotter(QtWidgets.QWidget):
     """
     def __init__(self, parent=None):
         super().__init__(parent)
-
-    def setupUi(self, name, add_end_marker=False, update_only_on_visible=True):
+        self.name=None
+        self.ctl=None
+    def setup(self, name=None, add_end_marker=False, update_only_on_visible=True):
         """
         Setup the image view.
 
@@ -139,16 +103,12 @@ class TracePlotter(QtWidgets.QWidget):
             update_only_on_visible (bool): if ``True``, only update plot if the widget is visible.
         """
         self.name=name
-        self.setObjectName(self.name)
-        self.hLayout=QtWidgets.QVBoxLayout(self)
-        self.hLayout.setContentsMargins(0,0,0,0)
-        self.hLayout.setObjectName("layout")
-        self.plotWidget=pyqtgraph.PlotWidget(self)
-        self.plotWidget.setObjectName("plotWidget")
-        self.hLayout.addWidget(self.plotWidget)
-        self.plotWidget.addLegend()
-        self.plotWidget.setLabel("left","Signal")
-        self.plotWidget.showGrid(True,True,0.7)
+        super().setup(layout="vbox",no_margins=True)
+        self.plot_widget=pyqtgraph.PlotWidget(self)
+        self.add_to_layout(self.plot_widget)
+        self.plot_widget.addLegend()
+        self.plot_widget.setLabel("left","Signal")
+        self.plot_widget.showGrid(True,True,0.7)
 
         self.ctl=None
         self.channels={}
@@ -165,7 +125,7 @@ class TracePlotter(QtWidgets.QWidget):
         """
         Attach :class:`TracePlotterCtl` object.
 
-        Called automatically in :meth:`TracePlotterCtl.setupUi`, doesn't need to be called explicitly.
+        Called automatically in :meth:`TracePlotterCtl.setup`, doesn't need to be called explicitly.
         """
         self.ctl=ctl
 
@@ -180,7 +140,7 @@ class TracePlotter(QtWidgets.QWidget):
         ``"factor"`` - rescaling factor applied before plotting.
         """
         self.channels=channels.copy()
-        self.channel_indices=channel_indices or sorted(channels.keys())
+        self.channel_indices=channel_indices or list(channels.keys())
         mpl_colors=['#1f77b4','#ff7f0e','#2ca02c','#d62728','#9467bd','#8c564b','#e377c2','#bcbd22','#17becf']
         old_style_colors=['#40FF40','#4040FF','#FF4040','#FFFF00','#00FFFF','#FF00FF','#C0C0C0','#404040']
         colors=(mpl_colors+old_style_colors)*len(channels)
@@ -218,16 +178,16 @@ class TracePlotter(QtWidgets.QWidget):
         """
         for el in self.vlines+self.vmarks:
             if el is not None:
-                self.plotWidget.plotItem.legend.removeItem(el.name())
-                self.plotWidget.removeItem(el)
+                self.plot_widget.plotItem.legend.removeItem(el.name())
+                self.plot_widget.removeItem(el)
         self.vlines=[]
         self.vmarks=[]
         for idx in self.displayed:
             ch=self.channels[idx]
-            vl=self.plotWidget.plot([],[],pen=ch["color"],name=ch["legend_name"])
+            vl=self.plot_widget.plot([],[],pen=ch["color"],name=ch["legend_name"])
             self.vlines.append(vl)
             if ch.get("end_marker",self.add_end_marker):
-                vm=self.plotWidget.plot([],[],symbolBrush=ch["color"],symbol="o",symbolSize=5,pxMode=True)
+                vm=self.plot_widget.plot([],[],symbolBrush=ch["color"],symbol="o",symbolSize=5,pxMode=True)
                 self.vmarks.append(vm)
             else:
                 self.vmarks.append(None)
@@ -265,7 +225,7 @@ class TracePlotter(QtWidgets.QWidget):
         """
         channels=self.get_required_channels()
         maxlen=self.ctl.plot_params_table.v["disp_last"] if self.ctl else None
-        return table_accum_thread.get_data_sync(channels,maxlen=maxlen,fmt="dict")
+        return table_accum_thread.csi.get_data(channels,maxlen=maxlen,fmt="dict")
 
 
     def setup_data_source(self, src=None):
@@ -334,8 +294,8 @@ class TracePlotter(QtWidgets.QWidget):
                 norm_data=np.column_stack(norm_data)
                 norm_data=trace_utils.sort_by(norm_data,x_column=1,stable=True)
                 norm_data=[norm_data[:,c] for c in range(norm_data.shape[1])]
-            autorange=self.plotWidget.plotItem.getViewBox().autoRangeEnabled()
-            self.plotWidget.plotItem.disableAutoRange()
+            autorange=self.plot_widget.plotItem.getViewBox().autoRangeEnabled()
+            self.plot_widget.plotItem.disableAutoRange()
             for vl,col in zip(self.vlines,norm_data[2:]):
                 vl.setData(norm_data[0],col)
             if last_pts:
@@ -343,5 +303,30 @@ class TracePlotter(QtWidgets.QWidget):
                     if vm is not None:
                         vm.setData([last_pts[0]],[pt])
             if any(autorange):
-                self.plotWidget.plotItem.enableAutoRange(x=autorange[0],y=autorange[1])
-            self.plotWidget.setLabel("bottom",self.channels[xaxis]["legend_name"])
+                self.plot_widget.plotItem.enableAutoRange(x=autorange[0],y=autorange[1])
+            self.plot_widget.setLabel("bottom",self.channels[xaxis]["legend_name"])
+
+
+
+
+
+
+class TracePlotterCombined(QWidgetContainer):
+    """
+    A combined panel which includes :class:`TracePlotter` and :class:`TracePlotterCtl` in the sidebar.
+
+    The :meth:`setup` method takes parameters both for plotter and controller setup.
+    The plotter can be accessed as ``.plt`` attribute, and the controller as ``.ctl`` attribute.
+    The ``"sidebar"`` sublayout can be used to add additional elements if necessary.
+    """
+    def setup(self, add_end_marker=False, update_only_on_visible=True, name=None, gui_values=None, gui_values_path=None):
+        super().setup(layout="hbox",no_margins=True,name=name,gui_values=gui_values,gui_values_path=gui_values_path)
+        self.plt=TracePlotter(self)
+        self.add_to_layout(self.plt)
+        self.plt.setup(name="plt",add_end_marker=add_end_marker,update_only_on_visible=update_only_on_visible)
+        with self.using_new_sublayout("sidebar","vbox"):
+            self.ctl=TracePlotterCtl(self)
+            self.add_child("ctl",self.ctl)
+            self.ctl.setup(self.plt)
+            self.add_padding()
+        self.get_sublayout().setStretch(0,1)

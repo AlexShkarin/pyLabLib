@@ -6,6 +6,9 @@ import threading
 import time
 import collections
 
+
+### Remote call results ###
+
 class QCallResultSynchronizer(QThreadNotifier):
     def get_progress(self):
         """
@@ -66,6 +69,7 @@ class QDummyResultSynchronizer:
     """Dummy result synchronizer for call which don't require result synchronization (e.g., multicasts)"""
     def notify(self, value):
         pass
+dummy_synchronizer=QDummyResultSynchronizer()
 
 class QDirectResultSynchronizer:
     """
@@ -115,9 +119,16 @@ class QDirectResultSynchronizer:
     def notifying_state(self):
         return "done"
 
+
+
+
+### Remote call ###
+
 class QScheduledCall:
     """
     Object representing a scheduled remote call.
+
+    Can be executed, skipped, or failed in the target thread, in which case it notifies the result synchronizer (if supplied).
 
     Args:
         func: callable to be invoked in the destination thread
@@ -126,25 +137,27 @@ class QScheduledCall:
         result_synchronizer: result synchronizer object; can be ``None`` (create new :class:`QCallResultSynchronizer`),
             ``"async"`` (no result synchronization), or a :class:`QCallResultSynchronizer` object. 
     """
-    Callback=collections.namedtuple("Callback",["func","pass_result","call_on_fail"])
+    Callback=collections.namedtuple("Callback",["func","pass_result","call_on_exception","call_on_unschedule"])
     def __init__(self, func, args=None, kwargs=None, result_synchronizer=None):
         self.func=func
         self.args=args or []
         self.kwargs=kwargs or {}
         if result_synchronizer=="async":
-            result_synchronizer=QDummyResultSynchronizer()
+            result_synchronizer=dummy_synchronizer
         elif result_synchronizer is None:
             result_synchronizer=QCallResultSynchronizer()
         self.result_synchronizer=result_synchronizer
         self.callbacks=[]
         self._notified=[0] # hack to avoid use of locks ([0] is False, [] is True, use .pop() to atomically check and change)
+        self.state="wait"
     def _check_notified(self):
         try:
             self._notified.pop()
             return False
         except IndexError:
             return True
-    def __call__(self):
+    def execute(self):
+        """Execute the call and notify the result synchronizer (invoked by the destination thread)"""
         if self._check_notified():
             return
         try:
@@ -154,36 +167,46 @@ class QScheduledCall:
             res=("exception",e)
             raise
         finally:
+            self.state=res[0]
             for c in self.callbacks:
-                if c.call_on_fail or res[0]=="result":
+                if c.call_on_exception or c.call_on_unschedule or res[0]=="result":
                     if c.pass_result:
                         c.func(res[1] if res[0]=="result" else None)
                     else:
                         c.func()
             self.result_synchronizer.notify(res)
-    def add_callback(self, callback, pass_result=True, call_on_fail=False, position=None):
+    def add_callback(self, callback, pass_result=True, call_on_exception=False, call_on_unschedule=False, front=False):
         """
         Set the callback to be executed after the main call is done.
         
-        Callback is not provided with any arguments.
         If ``pass_result==True``, pass function result to the callback (or ``None`` if call failed); otherwise, pass no arguments.
-        If ``callback_on_fail==True``, call it even if the original call raised an exception.
-        `position` specifies callback position in the call list (by default, end of the list).
+        If ``call_on_exception==True``, call it even if the original call raised an exception.
+        If ``call_on_unschedule==True``, call it for any call unscheduling event, including using :meth:`skip` or :meth:`fail` methods
+        (this effectively ignores `call_on_exception`, since the callback is called regardless of the exception).
+        If ``front==True``, add the callback in the front of the line (executes first).
         """
-        cb=self.Callback(callback,pass_result,call_on_fail)
-        if position is None:
-            self.callbacks.append(cb)
+        cb=self.Callback(callback,pass_result,call_on_exception,call_on_unschedule)
+        if front:
+            self.callbacks.insert(0,cb)
         else:
-            self.callbacks.insert(position,cb)
+            self.callbacks.append(cb)
     def fail(self):
         """Notify that the call is failed (invoked by the destination thread)"""
         if self._check_notified():
             return
+        self.state="fail"
+        for c in self.callbacks:
+            if c.call_on_unschedule:
+                c.func()
         self.result_synchronizer.notify(("fail",None))
     def skip(self):
         """Notify that the call is skipped (invoked by the destination thread)"""
         if self._check_notified():
             return
+        self.state="skip"
+        for c in self.callbacks:
+            if c.call_on_unschedule:
+                c.func()
         self.result_synchronizer.notify(("skip",None))
 
 
@@ -209,7 +232,7 @@ class QScheduler:
     def build_call_info(self):
         """Build call info tuple which can be passed to scheduled calls"""
         return TDefaultCallInfo(time.time())
-    def build_call(self, func, args=None, kwargs=None, callback=None, pass_result=True, callback_on_fail=True, sync_result=True):
+    def build_call(self, func, args=None, kwargs=None, callback=None, pass_result=True, callback_on_exception=True, sync_result=True):
         """
         Build :class:`QScheduledCall` for subsequent scheduling.
 
@@ -219,7 +242,7 @@ class QScheduler:
             kwargs: keyword arguments to be passed to `func`
             callback: optional callback to be called when `func` is done
             pass_result (bool): if ``True``, pass `func` result as a single argument to the callback; otherwise, give no arguments
-            callback_on_fail (bool): if ``True``, execute the callback on call fail or skip (if it requires an argument, ``None`` is supplied);
+            callback_on_exception (bool): if ``True``, execute the callback on call fail or skip (if it requires an argument, ``None`` is supplied);
                 otherwise, only execute it if the call was successful
             sync_result: if ``True``, the call has a default result synchronizer; otherwise, no synchronization is made.
         """
@@ -228,7 +251,7 @@ class QScheduler:
         if self.call_info_argname:
             scheduled_call.kwargs[self.call_info_argname]=self.build_call_info()
         if callback is not None:
-            scheduled_call.add_callback(callback,pass_result=pass_result,call_on_fail=callback_on_fail)
+            scheduled_call.add_callback(callback,pass_result=pass_result,call_on_exception=callback_on_exception)
         return scheduled_call
     def schedule(self, call):  # pylint: disable=unused-argument
         """Schedule the call"""
@@ -247,11 +270,11 @@ class QDirectCallScheduler(QScheduler):
         call_info_argname: if not ``None``, supplies a name of a keyword argument
             via which call info (generated by :meth:`QScheduler.build_call_info`) is passed on function call
     """
-    def build_call(self, func, args=None, kwargs=None, callback=None, pass_result=True, callback_on_fail=True, sync_result=False):
+    def build_call(self, func, args=None, kwargs=None, callback=None, pass_result=True, callback_on_exception=True, sync_result=False):
         return QScheduler.build_call(self,func,args=args,kwargs=kwargs,
-            callback=callback,pass_result=pass_result,callback_on_fail=callback_on_fail,sync_result=sync_result)
+            callback=callback,pass_result=pass_result,callback_on_exception=callback_on_exception,sync_result=sync_result)
     def schedule(self, call):
-        call()
+        call.execute()
         return True
 
 
@@ -266,11 +289,14 @@ class QQueueScheduler(QScheduler):
     Used as a default command scheduler.
 
     Args:
-        on_full_queue: action to be taken if the call can't be scheduled (i.e., :meth:`can_schedule` returns ``False``);
-            can be ``"skip_current"`` (skip the call which is being scheduled), ``"skip_newest"`` (skip the most recent call; place the current)
+        on_full_queue: action to be taken if the call can't be scheduled (i.e., :meth:`can_schedule` returns ``False``); can be
+            ``"skip_current"`` (skip the call which is being scheduled),
+            ``"skip_newest"`` (skip the most recent call; place the current)
             ``"skip_oldest"`` (skip the oldest call in the queue; place the current),
-            ``"wait"`` (wait until the call can be scheduled, which is checked after every call removal from the queue; place the call),
-            or ``"call"`` (execute the call directly in the calling thread; should be used with caution).
+            ``"call_current"`` (execute the call which is being scheduled immediately in the caller thread),
+            ``"call_newest"`` (execute the most recent call immediately in the caller thread), 
+            ``"call_oldest"`` (execute the oldest call in the queue immediately in the caller thread), or
+            ``"wait"`` (wait until the call can be scheduled, which is checked after every call removal from the queue; place the call)
         call_info_argname: if not ``None``, supplies a name of a keyword argument
             via which call info (generated by :meth:`QScheduler.build_call_info`) is passed on function call
 
@@ -279,42 +305,36 @@ class QQueueScheduler(QScheduler):
         - :meth:`call_added`: called when a new call has been added to the queue
         - :meth:`call_popped`: called when a call has been removed from the queue (either for execution, or for skipping)
     """
-    def __init__(self, on_full_queue="current", call_info_argname=None):
+    def __init__(self, on_full_queue="skip_current", call_info_argname=None):
         QScheduler.__init__(self,call_info_argname=call_info_argname)
         self.call_queue=collections.deque()
-        funcargparse.check_parameter_range(on_full_queue,"on_full_queue",{"skip_current","skip_newest","skip_oldest","call","wait"})
+        funcargparse.check_parameter_range(on_full_queue,"on_full_queue",{"skip_current","skip_newest","skip_oldest","call_current","call_newest","call_oldest","wait"})
         self.on_full_queue=on_full_queue
         self.lock=threading.Lock()
         self.call_popped_notifier=QMultiThreadNotifier() if on_full_queue=="wait" else None
         self.working=True
-        # self._call_add_notifiers=[]
-        # self._call_pop_notifiers=[]
+        self._last_popped=[None]
     def can_schedule(self, call):  # pylint: disable=unused-argument
         """Check if the call can be scheduled"""
         return True
     def call_added(self, call):
         """Called whenever `call` has been added to the queue"""
-        pass
-    def call_popped(self, call, head):
+    def call_popped(self, call, idx):
         """
         Called whenever `call` has been removed from the queue
         
-        `head` determines whether the call has been removed from the queue head, or from the queue tail.
+        `idx` determines the call position within the queue.
         """
-        pass
     def _add_call(self, call):
         self.call_queue.append(call)
         self.call_added(call)
-        # for f in self._call_add_notifiers:
-        #     f(call)
     def _pop_call(self, head=False):
         try:
             call=self.call_queue.popleft() if head else self.call_queue.pop()
             if self.call_popped_notifier is not None:
                 self.call_popped_notifier.notify()
-            self.call_popped(call,head)
-            # for f in self._call_pop_notifiers:
-            #     f(call,head)
+            self.call_popped(call,0 if head else -1)
+            self._last_popped=[self._last_popped[-1],call]
             return call
         except IndexError:
             return None
@@ -335,6 +355,7 @@ class QQueueScheduler(QScheduler):
                 self.call_popped_notifier.wait(wait_n)
         scheduled=True
         skipped_call=None
+        execute_call=None
         with self.lock:
             if self.can_schedule(call):
                 self._add_call(call)
@@ -347,13 +368,20 @@ class QQueueScheduler(QScheduler):
             elif self.on_full_queue=="skip_current":
                 skipped_call=call
                 scheduled=False
+            elif self.on_full_queue=="call_newest":
+                execute_call=self._pop_call()
+                self._add_call(call)
+            elif self.on_full_queue=="call_oldest":
+                execute_call=self._pop_call(head=True)
+                self._add_call(call)
+            elif self.on_full_queue=="call_current":
+                execute_call=call
             else:
                 scheduled=False
         if skipped_call is not None:
             skipped_call.skip()
-        if self.on_full_queue=="call" and not scheduled:
-            call()
-            scheduled=True
+        if execute_call is not None:
+            execute_call.execute()
         return scheduled
     def pop_call(self):
         """
@@ -363,6 +391,24 @@ class QQueueScheduler(QScheduler):
         """
         with self.lock:
             return self._pop_call(head=True)
+    def unschedule(self, call):
+        """
+        Unschedule a given call.
+
+        Designed for joint queue operation, so the call is not notified (assume that it has been already notified elsewhere).
+        """
+        if call in self._last_popped:
+            return False
+        with self.lock:
+            try:
+                idx=self.call_queue.index(call)
+                del self.call_queue[idx]
+                if self.call_popped_notifier is not None:
+                    self.call_popped_notifier.notify()
+                self.call_popped(call,idx)
+                return True
+            except ValueError:
+                return False
     def has_calls(self):
         """Check if there are queued calls"""
         return bool(self.call_queue)
@@ -395,10 +441,14 @@ class QQueueLengthLimitScheduler(QQueueScheduler):
 
     Args:
         max_len: maximal queue length; non-positive values are interpreted as no limit
-        on_full_queue: action to be taken if the call can't be scheduled (the queue is full);
-            can be ``"skip_current"`` (skip the call which is being scheduled), ``"skip_newest"`` (skip the most recent call; place the current)
-            ``"skip_oldest"`` (skip the oldest call in the queue; place the current), ``"wait"`` (wait until the queue has space; place the call),
-            or ``"call"`` (execute the call directly in the calling thread; should be used with caution).
+        on_full_queue: action to be taken if the call can't be scheduled (the queue is full); can be
+            ``"skip_current"`` (skip the call which is being scheduled),
+            ``"skip_newest"`` (skip the most recent call; place the current)
+            ``"skip_oldest"`` (skip the oldest call in the queue; place the current),
+            ``"call_current"`` (execute the call which is being scheduled immediately in the caller thread),
+            ``"call_newest"`` (execute the most recent call immediately in the caller thread), 
+            ``"call_oldest"`` (execute the oldest call in the queue immediately in the caller thread), or
+            ``"wait"`` (wait until the call can be scheduled, which is checked after every call removal from the queue; place the call)
         call_info_argname: if not ``None``, supplies a name of a keyword argument
             via which call info (generated by :meth:`QScheduler.build_call_info`) is passed on function call
     """
@@ -425,10 +475,14 @@ class QQueueSizeLimitScheduler(QQueueScheduler):
         size_calc: function that takes a single argument (call to be placed) and returns its size; can be either a single number,
             or a tuple (if several different size metrics are involved);
             by default, simply returns 1, which makes the scheduler behavior identical to :class:`QQueueLengthLimitScheduler`
-        on_full_queue: action to be taken if the call can't be scheduled (the queue is full);
-            can be ``"skip_current"`` (skip the call which is being scheduled), ``"skip_newest"`` (skip the most recent call; place the current)
-            ``"skip_oldest"`` (skip the oldest call in the queue; place the current), ``"wait"`` (wait until the queue has space; place the call),
-            or ``"call"`` (execute the call directly in the calling thread; should be used with caution).
+        on_full_queue: action to be taken if the call can't be scheduled (the queue is full); can be
+            ``"skip_current"`` (skip the call which is being scheduled),
+            ``"skip_newest"`` (skip the most recent call; place the current)
+            ``"skip_oldest"`` (skip the oldest call in the queue; place the current),
+            ``"call_current"`` (execute the call which is being scheduled immediately in the caller thread),
+            ``"call_newest"`` (execute the most recent call immediately in the caller thread), 
+            ``"call_oldest"`` (execute the oldest call in the queue immediately in the caller thread), or
+            ``"wait"`` (wait until the call can be scheduled, which is checked after every call removal from the queue; place the call)
         call_info_argname: if not ``None``, supplies a name of a keyword argument
             via which call info (generated by :meth:`QScheduler.build_call_info`) is passed on function call
     """
@@ -451,9 +505,9 @@ class QQueueSizeLimitScheduler(QQueueScheduler):
         size=funcargparse.as_sequence(self._get_size(call))
         for s,q in zip(size,self.size_queues):
             q.append(s)
-    def call_popped(self, call, head):
+    def call_popped(self, call, idx):
         for q in self.size_queues:
-            q.pop(0 if head else -1)
+            q.pop(idx)
     def can_schedule(self, call):
         for ms,q in zip(self.max_size,self.size_queues):
             if ms>0 and sum(q)>=ms:
@@ -461,6 +515,53 @@ class QQueueSizeLimitScheduler(QQueueScheduler):
         return True
 
 
+
+def schedule_multiple_queues(call, queues):
+    """
+    Schedule the call simultaneously in several queues.
+
+    Go through queues in the given order and schedule call in every one of them.
+    If one of the schedules failed or the call has been executed there, unschedule it from all the previous queues
+    and return ``False``; otherwise, return ``True``.
+    """
+    if len(queues)==0:
+        return True
+    if len(queues)==1:
+        return queues[0].schedule(call) and call.state=="wait"
+    def queue_unscheduler(queue):
+        return lambda: queue.unschedule(call)
+    added=[]
+    complete=False
+    try:
+        for q in queues:
+            call.add_callback(queue_unscheduler(q),pass_result=False,call_on_unschedule=True,front=True)
+            q.schedule(call)
+            if call.state!="wait": # skipped or executed
+                return False
+            added.append(q)
+        complete=True
+        return True
+    finally:
+        if not complete and added:
+            added[-1].unschedule(call) # the previous ones should be unscheduled via the callback
+
+
+class QMultiQueueScheduler:
+    """
+    Wrapper around :func:`schedule_multiple_queues` which acts as a single scheduler.
+
+    Support additional notifiers, which are called if the scheduling is successful
+    (e.g., to notify and wake up the destination thread).
+    """
+    def __init__(self, schedulers, notifiers):
+        self.schedulers=schedulers
+        self.notifiers=notifiers
+    def build_call(self, *args, **kwargs):
+        return self.schedulers[0].build_call(*args,**kwargs)
+    def schedule(self, call):
+        if schedule_multiple_queues(call,self.schedulers):
+            for n in self.notifiers:
+                n()
 
 
 class QThreadCallScheduler(QScheduler):
@@ -510,7 +611,7 @@ class QMulticastThreadCallScheduler(QThreadCallScheduler):
         if self.limit_queue<=0 or self.queue_cnt<self.limit_queue:
             with self.queue_cnt_lock:
                 self.queue_cnt+=1
-            call.add_callback(self._call_done,pass_result=False,call_on_fail=True,position=0)
+            call.add_callback(self._call_done,pass_result=False,call_on_exception=True,front=True)
             return QThreadCallScheduler.schedule(self,call)
         else:
             call.skip()

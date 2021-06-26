@@ -27,6 +27,7 @@ class TestArcusPerformax(DeviceTester):
     """Testing class for Arcus Performax stage interface"""
     devname="arcus_performax"
     devcls=Arcus.Performax4EXStage
+    open_retry=3
 
     get_set_all_exclude=["analog_input"]
     @pytest.fixture(scope="class")
@@ -38,6 +39,7 @@ class TestSmarActSCUPerformax(DeviceTester):
     """Testing class for SmarAct SCU stage interface"""
     devname="smaract_scu3d"
     devcls=SmarAct.SCU3D
+    open_retry=3
 
     @pytest.fixture(scope="class")
     def library_parameters(self):
@@ -48,9 +50,11 @@ class TestTrinamicTMCM1110(DeviceTester):
     """Testing class for Trinamic TMCM1110 stage interface"""
     devname="trinamic_tmcm1110"
     devcls=Trinamic.TMCM1110
+    open_retry=3
 
 
 class TestKinesisMotor(DeviceTester):
     """Testing class for Thorlabs Kinesis stage interface"""
     devname="thorlabs_kinesis_motor"
     devcls=Thorlabs.KinesisMotor
+    open_retry=3

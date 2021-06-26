@@ -10,7 +10,7 @@ from .niimaq_defs import define_functions
 from .niimaq_attrtypes import IMG_ATTR_DOUBLE, IMG_ATTR_UINT64, IMG_ATTR_NA  # pylint: disable=unused-import
 
 from ...core.utils import ctypes_wrap, py3
-from ...core.devio import DeviceError
+from ...core.devio.comm_backend import DeviceError
 from ..utils import load_lib
 
 import ctypes

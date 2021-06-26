@@ -7,7 +7,8 @@ import pytest
 class GenericAWGTester(DeviceTester):
     """Testing a generic AWG"""
     @pytest.mark.devchange(5)
-    def test_output(self, device):
+    def test_output(self, devopener):
+        device=devopener()
         for ch in range(1,device.get_channels_number()+1):
             device.enable_output(True,channel=ch)
             assert device.is_output_enabled(channel=ch)
@@ -16,7 +17,8 @@ class GenericAWGTester(DeviceTester):
     
     devfunctions=["sine"]
     @pytest.mark.devchange(5)
-    def test_functions(self, device):
+    def test_functions(self, devopener):
+        device=devopener()
         for ch in range(1,device.get_channels_number()+1):
             for f in self.devfunctions:
                 device.set_function(f,channel=ch)

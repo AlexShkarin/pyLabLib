@@ -33,7 +33,6 @@ class MulticastPool:
     """
     def __init__(self):
         self._pool=observer_pool.ObserverPool()
-        self._schedulers={}
 
     def subscribe_direct(self, callback, srcs="any", dsts="any", tags=None, filt=None, priority=0, scheduler=None, sid=None):
         """
@@ -84,8 +83,6 @@ class MulticastPool:
                 scheduler.schedule(call)
             callback=schedule_call
         sid=self._pool.add_observer(callback,name=sid,filt=full_filt,priority=priority,cacheable=(filt is None))
-        if scheduler is not None:
-            self._schedulers[sid]=scheduler
         return sid
     def subscribe_sync(self, callback, srcs="any", dsts="any", tags=None, filt=None, priority=0, limit_queue=1, dest_controller=None, call_tag=None, call_interrupt=True, add_call_info=False, sid=None):
         """
@@ -123,9 +120,6 @@ class MulticastPool:
     def unsubscribe(self, sid):
         """Unsubscribe from a subscription with a given ID"""
         self._pool.remove_observer(sid)
-        if sid in self._schedulers:
-            scheduler=self._schedulers.pop(sid)
-            scheduler.clear()
 
     def send(self, src, dst="any", tag=None, value=None):
         """

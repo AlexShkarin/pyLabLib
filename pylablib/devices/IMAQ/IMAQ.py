@@ -38,22 +38,26 @@ def get_cameras_number():
 
 
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["serial_number","interface"])
-class IMAQCamera(camera.IROICamera):
+class IMAQFrameGrabber(camera.IROICamera):
     """
-    Generic IMAQ camera interface.
+    Generic IMAQ frame grabber interface.
+
+    Compared to :class:`IMAQCamera`, has more permissive initialization arguments,
+    which simplifies its use as a base class for expanded cameras.
 
     Args:
-        name: interface name (can be learned by :func:`list_cameras`; usually, but not always, starts with ``"cam"`` or ``"img"``)
+        imaq_name: interface name (can be learned by :func:`list_cameras`; usually, but not always, starts with ``"cam"`` or ``"img"``)
+        do_open: if ``False``, skip the last step of opening the device (should be opened in a subclass)
     """
     Error=IMAQError
     TimeoutError=IMAQTimeoutError
-    def __init__(self, name="img0"):
-        super().__init__()
+    def __init__(self, imaq_name="img0", do_open=True, **kwargs):
+        super().__init__(**kwargs)
         lib.initlib()
-        self.name=name
+        self.imaq_name=imaq_name
         self.ifid=None
         self.sid=None
-        self._buffer_mgr=BufferManager()
+        self._buffer_mgr=camera.ChunkBufferManager()
         self._max_nbuff=None
         self._start_acq_count=None
         self._triggers_in={}
@@ -61,20 +65,23 @@ class IMAQCamera(camera.IROICamera):
         self._serial_term_write=""
         self._serial_datatype="bytes"
 
-        self.open()
-
         self._add_info_variable("device_info",self.get_device_info)
         self._add_info_variable("grabber_attributes",self.get_all_grabber_attribute_values,priority=-5)
+        self._add_settings_variable("serial_params",self.get_serial_params,self.setup_serial_params)
         self._add_settings_variable("triggers_in_cfg",self._get_triggers_in_cfg,self._set_triggers_in_cfg)
         self._add_settings_variable("triggers_out_cfg",self._get_triggers_out_cfg,self._set_triggers_out_cfg)
 
+        if do_open:
+            self.open()
+
 
     def _get_connection_parameters(self):
-        return self.name
+        return self.imaq_name
     def open(self):
         """Open connection to the camera"""
+        super().open()
         if self.sid is None:
-            self.ifid=lib.imgInterfaceOpen(self.name)
+            self.ifid=lib.imgInterfaceOpen(self.imaq_name)
             self.sid=lib.imgSessionOpen(self.ifid)
             self._check_grabber_attributes()
     def close(self):
@@ -85,6 +92,7 @@ class IMAQCamera(camera.IROICamera):
             self.sid=None
             lib.imgClose(self.ifid,1)
             self.ifid=None
+        super().close()
     def reset(self):
         """Reset connection to the camera"""
         if self.ifid is not None:
@@ -193,9 +201,11 @@ class IMAQCamera(camera.IROICamera):
     def get_detector_size(self):
         _,_,mw,mh=lib.imgSessionFitROI(self.sid,0,0,0,2**31-1,2**31-1)
         return mw,mh
+    get_grabber_detector_size=get_detector_size
     def get_roi(self):
         t,l,h,w=lib.imgSessionGetROI(self.sid)
         return l,l+w,t,t+h
+    get_grabber_roi=get_roi
     @camera.acqcleared
     def set_roi(self, hstart=0, hend=None, vstart=0, vend=None):
         det_size=self.get_detector_size()
@@ -207,12 +217,14 @@ class IMAQCamera(camera.IROICamera):
         if lib.imgSessionGetROI(self.sid)!=fit_roi:
             lib.imgSessionConfigureROI(self.sid,*fit_roi)
         return self.get_roi()
+    set_grabber_roi=set_roi
     def get_roi_limits(self, hbin=1, vbin=1):
         minp=lib.imgSessionFitROI(self.sid,0,0,0,1,1)
         detsize=self.get_detector_size()
         hlim=camera.TAxisROILimit(minp[2],detsize[0],1,1,1)
         vlim=camera.TAxisROILimit(minp[3],detsize[1],1,1,1)
         return hlim,vlim
+    get_grabber_roi_limits=get_roi_limits
 
     _trig_pol={ "high":niimaq_lib.IMG_TRIG_POL.IMG_TRIG_POLAR_ACTIVEH,
                 "low":niimaq_lib.IMG_TRIG_POL.IMG_TRIG_POLAR_ACTIVEL}
@@ -330,6 +342,9 @@ class IMAQCamera(camera.IROICamera):
         """
         self._serial_term_write=write_term
         self._serial_datatype=datatype
+    def get_serial_params(self):
+        """Return serial parameters as a tuple ``(write_term, datatype)``"""
+        return self._serial_term_write,self._serial_datatype
     def serial_write(self, msg, timeout=3., term=None):
         """
         Write message into CameraLink serial port.
@@ -444,7 +459,7 @@ class IMAQCamera(camera.IROICamera):
             self._max_nbuff=self._find_max_nbuff()
         nframes=min(nframes,self._max_nbuff)
         self._buffer_mgr.allocate(nframes,self._get_buffer_size())
-        cbuffs=self._buffer_mgr.get_ctypes_frames_list()
+        cbuffs=self._buffer_mgr.get_ctypes_frames_list(ctype=ctypes.c_char_p)
         self._set_triggers_in_cfg(self._get_triggers_in_cfg()) # reapply trigger settings
         if mode=="sequence":
             lib.imgRingSetup(self.sid,len(cbuffs),cbuffs,0,0)
@@ -535,7 +550,7 @@ class IMAQCamera(camera.IROICamera):
             self._frame_counter.advance_read_frames(rng)
         return rng[0],skipped_frames,raw_frames
     
-    def read_multiple_images(self, rng=None, peek=False, missing_frame="skip", return_info=None, fastbuff=False):
+    def read_multiple_images(self, rng=None, peek=False, missing_frame="skip", return_info=False, fastbuff=False):
         """
         Read multiple images specified by `rng` (by default, all un-read images).
 
@@ -567,7 +582,8 @@ class IMAQCamera(camera.IROICamera):
                 frame_info=[]
                 idx=first_frame
                 for d in parsed_data:
-                    frame_info.append(self._convert_frame_info(self._TFrameInfo(idx)))
+                    idx_data=np.arange(len(d))+idx if return_info=="all" else idx
+                    frame_info.append(self._convert_frame_info(self._TFrameInfo(idx_data)))
                     idx+=len(d)
             else:
                 frame_info=[self._TFrameInfo(first_frame+n) for n in range(len(parsed_data))]
@@ -596,74 +612,12 @@ class IMAQCamera(camera.IROICamera):
 
 
 
-
-
-class BufferManager:
+class IMAQCamera(IMAQFrameGrabber):
     """
-    Buffer manager, which takes care of creating and removing the buffer chunks, and reading out some parts of them.
-    
+    Generic IMAQ camera interface.
+
     Args:
-        chunk_size: the minimal size of a single buffer chunk (continuous memory segment potentially containing several frames).
+        name: interface name (can be learned by :func:`list_cameras`; usually, but not always, starts with ``"cam"`` or ``"img"``)
     """
-    def __init__(self, chunk_size=2**20):
-        self.chunks=None
-        self.nframes=None
-        self.frame_size=None
-        self.frames_per_chunk=None
-        self.chunk_size=chunk_size
-
-    def __bool__(self):
-        return self.chunks is not None
-    def get_ctypes_frames_list(self):
-        """Get stored buffers as a ctypes array for pointers"""
-        if self.chunks:
-            cbuffs=(ctypes.c_char_p*self.nframes)()
-            for i,b in enumerate(self.chunks):
-                for j in range(self.frames_per_chunk):
-                    nb=i*self.frames_per_chunk+j
-                    if nb<self.nframes:
-                        cbuffs[nb]=ctypes.addressof(b)+j*self.frame_size
-                    else:
-                        break
-            return cbuffs
-        else:
-            return None
-    def get_frames_data(self, idx, nframes=1):
-        """
-        Get frames data starting from `idx` and spanning `nframes` frames.
-
-        Return a list of tuples ``(nread, chunk_data)``, where ``nread`` is the number of frames in the chunk,
-        and ``chunk_data`` is the raw buffer pointer as a ``ctypes.c_char_p`` object.
-        """
-        idx%=self.nframes
-        ibuff=idx//self.frames_per_chunk
-        jbuff=idx%self.frames_per_chunk
-        read_chunks=[]
-        while nframes>0:
-            ch=self.chunks[ibuff]
-            chunk_frames=self.frames_per_chunk if ibuff<len(self.chunks)-1 else self.frames_per_chunk_last
-            nread=min(nframes,chunk_frames-jbuff)
-            chunk_data=ctypes.c_char_p(ctypes.addressof(ch)+jbuff*self.frame_size)
-            read_chunks.append((nread,chunk_data))
-            nframes-=nread
-            jbuff=0
-            ibuff=(ibuff+1)%len(self.chunks)
-        return read_chunks
-    def allocate(self, nframes, frame_size):
-        """Allocate buffers for the given number of frames and frame size (in bytes)"""
-        self.deallocate()
-        self.nframes=nframes
-        self.frame_size=frame_size
-        self.frames_per_chunk=max(self.chunk_size//frame_size,1)
-        nchunks=(nframes-1)//self.frames_per_chunk+1
-        if nchunks==1:
-            self.frames_per_chunk=nframes
-        self.chunks=[ctypes.create_string_buffer(self.frames_per_chunk*frame_size) for _ in range(nchunks)]
-        self.frames_per_chunk_last=nframes-self.frames_per_chunk*(nchunks-1)
-    def deallocate(self):
-        """Deallocate the buffers"""
-        self.chunks=None
-        self.frame_size=None
-        self.nframes=None
-        self.frames_per_chunk=None
-        self.frames_per_chunk_last=None
+    def __init__(self, name="img0"):
+        super().__init__(imaq_name=name)

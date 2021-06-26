@@ -6,12 +6,15 @@ class DeviceTester:
 
     Takes device class and creation arguments and implements some basic tests.
     """
-    open_rep=0
     test_open_rep=2
     include=-10
     get_set_all_exclude=()
 
-    def test_open_close(self, device):
+    @classmethod
+    def post_open(cls, device):
+        pass
+    def test_open_close(self, devopener):
+        device=devopener()
         assert device.is_opened()
         for _ in range(self.test_open_rep):
             device.close()
@@ -19,20 +22,24 @@ class DeviceTester:
             device.close()
             assert not device.is_opened()
             device.open()
+            self.post_open(device)
             assert device.is_opened()
             device.open()
             assert device.is_opened()
-    def test_opened(self, device):
+    def test_opened(self, devopener):
         """Test opening and closing errors"""
+        device=devopener()
         assert device.is_opened()
 
-    def test_get_full_info(self, device):
+    def test_get_full_info(self, devopener):
         """Test info getting errors"""
+        device=devopener()
         info=device.get_full_info(self.include)
         print(device,info)
     @pytest.mark.devchange(2)
-    def test_get_set_all(self, device):
+    def test_get_set_all(self, devopener):
         """Test getting and re-applying settings error"""
+        device=devopener()
         settings=device.get_settings(self.include)
         print(device,settings)
         for k in self.get_set_all_exclude:

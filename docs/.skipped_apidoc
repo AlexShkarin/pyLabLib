@@ -26,6 +26,9 @@
 ..\pylablib\devices\PCO\sc2_sdkstructures_defs.py
 ..\pylablib\devices\PhotonFocus\pfcam_defs.py
 ..\pylablib\devices\PhotonFocus\pfcam_lib.py
+..\pylablib\devices\SiliconSoftware\fgrab_define_defs.py
+..\pylablib\devices\SiliconSoftware\fgrab_prototyp_defs.py
+..\pylablib\devices\SiliconSoftware\fgrab_prototyp_lib.py
 ..\pylablib\devices\SmarAct\SCU3DControl_defs.py
 ..\pylablib\devices\SmarAct\SCU3DControl_lib.py
 ..\pylablib\devices\Thorlabs\tl_camera_sdk_defs.py

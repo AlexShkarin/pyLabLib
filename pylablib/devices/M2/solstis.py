@@ -1,5 +1,5 @@
 from ...core.utils import net, general
-from ...core.devio import interface, DeviceError, DeviceBackendError
+from ...core.devio import interface, comm_backend
 from ...core.devio.comm_backend import reraise
 
 try:
@@ -20,9 +20,9 @@ def _check_websocket():
 
 c=299792458.
 
-class M2Error(DeviceError):
+class M2Error(comm_backend.DeviceError):
     """Generic M2 error"""
-class M2CommunicationError(M2Error,DeviceBackendError):
+class M2CommunicationError(M2Error,comm_backend.DeviceBackendError):
     """M2 network communication error"""
 
 class Solstis(interface.IDevice):
@@ -48,9 +48,8 @@ class Solstis(interface.IDevice):
         self.timeout=timeout
         self.socket=None
         self._operation_cooldown=0.02
+        self._start_link_on_open=start_link
         self.open()
-        if start_link:
-            self.start_link()
         self._last_status={}
         self.use_websocket=(websocket is not None) if use_websocket=="auto" else use_websocket
         self._websocket_lock=threading.Lock()
@@ -78,6 +77,9 @@ class Solstis(interface.IDevice):
             self.socket.close()
             raise
         self._last_status={}
+        if self._start_link_on_open:
+            self.start_link()
+        self._start_link_on_open=True
     @reraise
     def close(self):
         if self.socket is not None:
@@ -181,8 +183,9 @@ class Solstis(interface.IDevice):
             with self.socket.using_timeout(timeout):
                 preport=self._recv_reply()
                 raise M2Error("received reply while waiting for a report: '{}'".format(preport[0]))
-        except net.SocketTimeout:
-            pass
+        except M2CommunicationError as err:
+            if not isinstance(err.backend_exc,net.SocketTimeout):
+                raise
     def get_last_report(self, op):
         """Get the latest report for the given operation"""
         rep=self._last_status.get(op,None)

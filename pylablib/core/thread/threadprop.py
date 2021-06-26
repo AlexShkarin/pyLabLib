@@ -13,45 +13,45 @@ class ThreadError(RuntimeError):
     """Generic thread error"""
     def __init__(self, msg=None):
         msg=msg or "thread error"
-        RuntimeError.__init__(self, msg)
+        super().__init__(msg)
         
 class NoControllerThreadError(ThreadError):
     """Thread error for a case of thread having no controllers"""
     def __init__(self, msg=None):
         msg=msg or "thread has no controller"
-        ThreadError.__init__(self, msg)
+        super().__init__(msg)
 class DuplicateControllerThreadError(ThreadError):
     """Thread error for a case of a duplicate thread controller"""
     def __init__(self, msg=None):
         msg=msg or "trying to create a duplicate thread controller"
-        ThreadError.__init__(self, msg)
-class TimeoutThreadError(ThreadError):
+        super().__init__(msg)
+class TimeoutThreadError(ThreadError,TimeoutError):
     """Thread error for a case of a wait timeout"""
     def __init__(self, msg=None):
         msg=msg or "waiting has timed out"
-        ThreadError.__init__(self, msg)
+        super().__init__(msg)
 class NoMessageThreadError(ThreadError):
     """Thread error for a case of trying to get a non-existing message"""
     def __init__(self, msg=None):
         msg=msg or "no message available"
-        ThreadError.__init__(self, msg)
+        super().__init__(msg)
 class SkippedCallError(ThreadError):
     """Thread error for a case of external call getting skipped (unscheduled)"""
     def __init__(self, msg=None):
         msg=msg or "call has been skipped"
-        ThreadError.__init__(self, msg)
+        super().__init__(msg)
 
 ### Interrupts ###
 class InterruptException(Exception):
     """Generic interrupt exception (raised by some function to signal interrupts from other threads)"""
     def __init__(self, msg=None):
         msg=msg or "thread interrupt"
-        Exception.__init__(self, msg)
+        super().__init__(msg)
 class InterruptExceptionStop(InterruptException):
     """Interrupt exception denoting thread stop request"""
     def __init__(self, msg=None):
         msg=msg or "thread interrupt: stop"
-        InterruptException.__init__(self, msg)
+        super().__init__(msg)
 
 
 def get_app():

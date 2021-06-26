@@ -20,10 +20,12 @@ class CameraTester(DeviceTester):
     In addition to the basic device tests, also performs basic camera testing.
     """
     grab_size=10
+    default_roi=()
     @pytest.mark.devchange(2)
-    def test_snap_grab(self, device):
+    def test_snap_grab(self, devopener):
         """Test snapping and grabbing functions"""
-        device.set_roi()
+        device=devopener()
+        device.set_roi(*self.default_roi)
         img=device.snap()
         assert isinstance(img,np.ndarray)
         assert img.ndim==2
@@ -34,17 +36,22 @@ class CameraTester(DeviceTester):
         assert isinstance(imgs[0],np.ndarray)
         assert imgs[0].ndim==2
         assert imgs[0].shape==device.get_data_dimensions()
-    def test_multisnap(self, device, stress_factor):
+    def test_multisnap(self, devopener, stress_factor):
         """Test snapping and grabbing functions"""
+        device=devopener()
         for _ in range(5*stress_factor):
             device.snap()
-    def test_multigrab(self, device, stress_factor):
+    def test_multigrab(self, devopener, stress_factor):
         """Test snapping and grabbing functions"""
+        device=devopener()
+        device.set_roi(*self.default_roi)
         for _ in range(stress_factor):
             device.grab(self.grab_size)
     @pytest.mark.devchange(2)
-    def test_get_full_info_acq(self, device):
+    def test_get_full_info_acq(self, devopener):
         """Test info getting errors during acquisition"""
+        device=devopener()
+        device.set_roi(*self.default_roi)
         device.start_acquisition()
         try:
             info=device.get_full_info(self.include)
@@ -52,8 +59,9 @@ class CameraTester(DeviceTester):
         finally:
             device.stop_acquisition()
     # @pytest.mark.devchange(3)
-    # def test_get_set_all_acq(self, device):
+    # def test_get_set_all_acq(self, devopener):
     #     """Test getting and re-applying settings error during acquisition"""
+    #     device=devopener()
     #     stopped_settings=device.get_settings(self.include)
     #     print(device,stopped_settings)
     #     for k in self.get_set_all_exclude:
@@ -71,8 +79,10 @@ class CameraTester(DeviceTester):
     #         device.stop_acquisition()
 
     @pytest.mark.devchange(1)
-    def test_frame_info(self, device):
+    def test_frame_info(self, devopener):
         """Test frame info consistency"""
+        device=devopener()
+        device.set_roi(*self.default_roi)
         frames,infos=device.grab(self.grab_size,return_info=True)
         assert len(frames)==self.grab_size
         assert len(frames)==len(infos)
@@ -84,8 +94,9 @@ class CameraTester(DeviceTester):
         assert device.acquisition_in_progress()==running
         assert (device.get_new_images_range() is not None)==new_images
     @pytest.mark.devchange(3)
-    def test_acq_info(self, device):
+    def test_acq_info(self, devopener):
         """Test getting acquisition info"""
+        device=devopener()
         device.set_roi()
         device.clear_acquisition()
         self.check_acq_params(device,False,False)
@@ -100,8 +111,9 @@ class CameraTester(DeviceTester):
         self.check_acq_params(device,False,False)
     
     @pytest.mark.devchange(3)
-    def test_frame_size(self, device):
+    def test_frame_size(self, devopener):
         """Test data dimensions and detector size relations"""
+        device=devopener()
         for idx in ["rct","rcb","xyt","xyb"]:
             self.check_get_set(device,"image_indexing",idx)
         device.set_image_indexing("rct")
@@ -122,12 +134,13 @@ class ROICameraTester(CameraTester):
     # a list of 2-tuples ``(roi_set, roi_get)``, where the first is the ROI supplied to the camera,
     # and the second is the expected resulting ROI (can also be ``"same"``)
     @pytest.mark.devchange(3)
-    def test_roi(self, device):
+    def test_roi(self, devopener):
         """
         Test ROI functions.
 
         Also test that the frame shape and size obeys the specified ROI.
         """
+        device=devopener()
         # basic full ROI
         device.set_roi()
         rr=device.get_roi()

@@ -223,7 +223,6 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
                 t.reraise()
             error_msg="read raises IOError; waiting {0} sec before trying to recover".format(self._retry_delay)
             warnings.warn(error_msg)
-            # log.default_log.info(error_msg,origin="devices/SCPI",level="warning")
             self.sleep(self._retry_delay)
             self._try_recover(t.try_number)
     def _write_retry(self, msg="", flush=False):
@@ -241,7 +240,6 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
                         return sent
                 error_msg="write raises IOError; waiting {0} sec before trying to recover".format(self._retry_delay)
                 warnings.warn(error_msg)
-                # log.default_log.info(error_msg,origin="devices/SCPI",level="warning")
                 self.sleep(self._retry_delay)
                 self._try_recover(t.try_number)
     def _ask_retry(self, msg, delay=0., raw=False, size=None, timeout=None, wait_callback=None, retry=None):
@@ -258,7 +256,6 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
                 t.reraise()
             error_msg="ask raises IOError; waiting {0} sec before trying to recover".format(self._retry_delay)
             warnings.warn(error_msg)
-            # log.default_log.info(error_msg,origin="devices/SCPI",level="warning")
             self.sleep(self._retry_delay)
             self._try_recover(t.try_number)
                 
@@ -510,7 +507,6 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
                 t.reraise()
             error_msg="ask error in instrument {} returned {}".format(self.instr,reply)
             warnings.warn(error_msg)
-            # log.default_log.info(error_msg,origin="devices/SCPI",level="warning")
             self.sleep(0.5)
             self.flush()
             self._try_recover(t.try_number)

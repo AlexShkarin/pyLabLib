@@ -479,10 +479,13 @@ def find_discrete_step(trace, min_fraction=1E-8, tolerance=1E-5):
     if len(trace)<2:
         raise ValueError('trace length should be at least 2')
     diffs=trace[1:]-trace[:-1]
-    q=diffs[0]
+    diffs=diffs[np.abs(diffs)!=0]
+    if len(diffs)==0:
+        return 0
+    q=abs(diffs[0])
     for d in diffs[1:]:
         if d!=0:
-            q=numerical.gcd_approx(q, abs(d), min_fraction, tolerance)
+            q=numerical.gcd_approx(q,abs(d),min_fraction,tolerance)
     return q
 
 def unwrap_mod_data(trace, wrap_range):

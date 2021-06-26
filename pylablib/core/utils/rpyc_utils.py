@@ -14,6 +14,7 @@ import importlib
 import pickle
 import warnings
 import socket
+import re
 
 
 _default_packers={"numpy":np.ndarray.tostring,"pickle":pickle.dumps}
@@ -219,6 +220,7 @@ def connect_device_service(addr, port=18812, timeout=3, attempts=2, error_on_fai
     (RPyC default is 3 seconds timeout and 6 attempts).
     If ``error_on_fail==True``, raise error if the connection failed; otherwise, return ``None``
     """
+    addr,port=net.as_addr_port(addr,port)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         try:

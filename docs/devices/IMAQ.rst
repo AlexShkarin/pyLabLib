@@ -28,7 +28,7 @@ The cameras are identified by their name, which usually looks like ``"img0"``. T
 
     >> from pylablib.devices import IMAQ
     >> IMAQ.list_cameras()
-    [`img0`, `img1`]
+    ['img0', 'img1']
     >> cam1 = IMAQ.IMAQCamera('img0')
     >> cam2 = IMAQ.IMAQCamera('img1')
     >> cam1.close()
@@ -74,4 +74,4 @@ Known issues
 - If you are unable to access full camera sensor size, check the camera file (it can be opened in the text editor). ``MaxImageSize`` parameter defines the maximal allowed image size, and it should be equal to the camera sensor size.
 - Same goes for bitness. If the camera bitness is higher than set up in the frame grabber, a single camera pixel gets treated as several pixels by the frame grabber, typically resulting in 1px-wide vertical stripes on the image. In the opposite case, the frame grabber expects more bytes than the camera sends, it never receives the full frame, and the acquisition times out.
 - Keep in mind that as long as the frame grabber is accessed in NI MAX, it is blocked from use in any other software. Hence, you need to close NI MAX before running your code.
-- As mentioned above, ROI is defined within a frame transferred by the camera. Hence, if it includes pixels with positions outside of the transferred frame, the acquisition will time out. For example, suppose the camera sensor is 1024x1024px, and the *camera* ROI is selected to be central 512x512 region. As far as the frame grabber is concerned, now the camera sensor size is 512x512px. Hence, if you try to set the same *frame grabber* ROI in the (i.e., 512x512 starting at 256,256), it will expect 768x768px frame. Since the frame is, actually, 512x512px, the acquisition will time out. The correct solution is to set frame grabber ROI from 0 to 512px on both axes. In general, it is a good idea to always follow this pattern: control ROI only on camera, and always set frame grabber ROI to cover the whole transfer frame.
+- As mentioned above, ROI is defined within a frame transferred by the camera. Hence, if it includes pixels with positions outside of the transferred frame, the acquisition will time out. For example, suppose the camera sensor is 1024x1024px, and the *camera* ROI is selected to be central 512x512 region. As far as the frame grabber is concerned, now the camera sensor size is 512x512px. Hence, if you try to set the same *frame grabber* ROI (i.e., 512x512 starting at 256,256), it will expect 768x768px frame. Since the frame is, actually, 512x512px, the acquisition will time out. The correct solution is to set frame grabber ROI from 0 to 512px on both axes. In general, it is a good idea to always follow this pattern: control ROI only on camera, and always set frame grabber ROI to cover the whole transfer frame.

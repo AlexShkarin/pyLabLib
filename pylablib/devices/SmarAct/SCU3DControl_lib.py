@@ -5,7 +5,7 @@ from .SCU3DControl_defs import Error, drError
 from .SCU3DControl_defs import EConfiguration  # pylint: disable=unused-import
 from .SCU3DControl_defs import define_functions
 
-from ...core.devio import DeviceError
+from ...core.devio.comm_backend import DeviceError
 from ..utils import load_lib
 
 import ctypes

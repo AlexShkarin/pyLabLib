@@ -1,12 +1,12 @@
-from ...core.devio import comm_backend, DeviceError, DeviceBackendError
+from ...core.devio import comm_backend
 
 import struct
 import collections
 
 
-class ConradError(DeviceError):
+class ConradError(comm_backend.DeviceError):
     """Generic Conrad devices error"""
-class ConradBackendError(ConradError,DeviceBackendError):
+class ConradBackendError(ConradError,comm_backend.DeviceBackendError):
     """Generic Conrad backend communication error"""
 
 

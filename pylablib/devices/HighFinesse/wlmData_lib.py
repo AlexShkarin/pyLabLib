@@ -1,7 +1,7 @@
 # pylint: disable=wrong-spelling-in-comment
 
 from ...core.utils import ctypes_wrap, files
-from ...core.devio import DeviceError
+from ...core.devio.comm_backend import DeviceError
 from .wlmData_defs import EGetError, ESetError, drEGetError, drESetError  # pylint: disable=unused-import
 from .wlmData_defs import EInst, ECtrlMode, EBaseOperation, EAddOperation  # pylint: disable=unused-import
 from .wlmData_defs import EMeasUnit, ECalibration, EAutocalibration, EEvent  # pylint: disable=unused-import

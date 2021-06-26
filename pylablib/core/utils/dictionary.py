@@ -29,7 +29,7 @@ def split_path(path, omit_empty=True, sep=None):
     if sep is None:
         path=[e for t in path for e in str(t).split("/")]
     else:
-        path=[e for t in path for e in re.split(sep,t)]
+        path=[e for t in path for e in re.split(sep,str(t))]
     if omit_empty:
         path=[p for p in path if p!=""]
     return path
@@ -978,10 +978,10 @@ def _load_dictionary(v, loadf):
     d,case_normalization=v
     return Dictionary(loadf(d),case_normalization=case_normalization,copy=False)
 strdump.dumper.add_class(Dictionary,_dump_dictionary,_load_dictionary,"dict",recursive=True)
-                 
-    
-    
-    
+
+
+
+
 class DictionaryPointer(Dictionary):
     """
     Similar to :class:`Dictionary`, but can point at one of the branches instead of the full dictionary.
@@ -1400,11 +1400,11 @@ class ItemAccessor:
         contains_checker: method for checking if variable is present
             (``None`` means none is supplied, so checking containment raises an error; ``"auto"`` means that getter raising :exc:`KeyError` is used for checking)
         normalize_names: if ``True``, normalize a supplied path using the standard :class:`Dictionary` rules and join it into a single string using the supplied separator
-        path_separator: path separator used for splitting and joining the supplied paths
+        path_separator: path separator regex used for splitting and joining the supplied paths (by default, the standard ``"/"`` separator)
         missing_error: if not ``None``, specifies the error raised on the missing value;
             used in ``__contains__``, :meth:`get` and :meth:`setdefault` to determine if the value is missing
     """
-    def __init__(self, getter=None, setter=None, deleter=None, contains_checker="auto", normalize_names=True, path_separator="/", missing_error=None):
+    def __init__(self, getter=None, setter=None, deleter=None, contains_checker="auto", normalize_names=True, path_separator=None, missing_error=None):
         self.getter=getter
         self.setter=setter
         self.deleter=deleter

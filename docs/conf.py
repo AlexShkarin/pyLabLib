@@ -29,7 +29,7 @@ author = 'Alexey Shkarin'
 # The short X.Y version
 version = ''
 # The full version, including alpha/beta/rc tags
-release = '1.0.0'
+release = '1.1.0'
 
 
 # -- General configuration ---------------------------------------------------
@@ -57,6 +57,9 @@ autodoc_mock_imports = ['nidaqmx', 'pyvisa', 'serial', 'ft232', 'PyQt5', 'pywinu
 sys.modules['pyvisa']=mock.Mock(VisaIOError=object, __version__='1.9.0')
 sys.modules['serial']=mock.Mock(SerialException=object)
 sys.modules['ft232']=mock.Mock(Ft232Exception=object)
+sys.modules['PyQt5.QtCore']=mock.Mock(QObject=object,QThread=object)
+sys.modules['PyQt5.QtWidgets']=mock.Mock(QWidget=object,QFrame=object,QGroupBox=object,QTabWidget=object,QPushButton=object,QComboBox=object,QLineEdit=object,QLabel=object)
+sys.modules['PyQt5']=mock.Mock(QtCore=sys.modules['PyQt5.QtCore'],QtWidgets=sys.modules['PyQt5.QtWidgets'])
 if os.path.exists(".skipped_apidoc"):
     with open(".skipped_apidoc","r") as f:
         for ln in f.readlines():
@@ -82,7 +85,7 @@ intersphinx_mapping = {'python': ('https://docs.python.org/3', None),
                        'rpyc': ('https://rpyc.readthedocs.io/en/latest/', None),
                        'pyqtgraph': ("https://pyqtgraph.readthedocs.io/en/latest/", None),
                        'pySerial': ("https://pythonhosted.org/pyserial/", None),
-                       'PyVISA': ("https://pyvisa.readthedocs.io/en/master/", None),
+                       'PyVISA': ("https://pyvisa.readthedocs.io/en/latest/", None),
                        'nidaqmx': ("https://nidaqmx-python.readthedocs.io/en/latest/", None),}
 
 
@@ -210,7 +213,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'pylablib', 'pylablib Documentation',
-     author, 'pylablib', 'One line description of project.',
+     author, 'pylablib', 'Code for use in lab environment: experiment automation, data acquisition, device communication.',
      'Miscellaneous'),
 ]
 

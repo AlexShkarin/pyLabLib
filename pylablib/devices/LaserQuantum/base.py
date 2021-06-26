@@ -1,13 +1,13 @@
-from ...core.devio import comm_backend, DeviceError, DeviceBackendError
+from ...core.devio import comm_backend
 from ...core.utils import py3
 
 import re
 import collections
 
 
-class LaserQuantumError(DeviceError):
+class LaserQuantumError(comm_backend.DeviceError):
     """Generic Laser Quantum devices error"""
-class LaserQuantumBackendError(LaserQuantumError,DeviceBackendError):
+class LaserQuantumBackendError(LaserQuantumError,comm_backend.DeviceBackendError):
     """Generic Laser Quantum backend communication error"""
 
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["serial","software_version","cal_date"])

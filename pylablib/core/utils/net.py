@@ -3,7 +3,7 @@ A wrapper for built-in TCP/IP routines.
 """
 
 
-import socket, json, contextlib
+import socket, json, contextlib, re
 from . import funcargparse, strpack, general, py3
 
 
@@ -39,6 +39,21 @@ def get_all_local_addr():
 def get_local_hostname():
     """Get a local host name"""
     return socket.gethostbyname_ex(socket.gethostname())[0]
+
+def as_addr_port(addr, port):
+    """
+    Parse the given address and port combination.
+
+    `addr` can be a host address, a tuple ``(addr, port)``, or a string ``"addr:port"``;
+    in the first case the given `port` is used, while in the other two it is ignore.
+    Return tuple ``(addr, port)``.
+    """
+    if isinstance(addr, tuple):
+        return addr[:2]
+    m=re.match(r"^([\w.]+):(\d+)$",addr)
+    if m:
+        return m[1],int(m[2])
+    return addr,port
 
 class ClientSocket:
     """

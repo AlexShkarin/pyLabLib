@@ -12,7 +12,7 @@ class MPLFigureCanvas(FigureCanvasQTAgg):
     Simple widget wrapper for MPL plotting canvas.
     """
     def __init__(self, parent=None):
-        FigureCanvasQTAgg.__init__(self,mpl.Figure())
+        super().__init__(mpl.Figure())
         if parent:
             self.setParent(parent)
         self.redraw_period=0.01
@@ -31,18 +31,18 @@ class MPLFigureCanvas(FigureCanvasQTAgg):
 
 
 
-class MPLFigureToolbarCanvas(QtWidgets.QWidget):
+class MPLFigureToolbarCanvas(QtWidgets.QFrame):
     """
     Simple widget wrapper for MPL plotting canvas with the toolbar (for plot zooming/panning)
     """
     def __init__(self, parent=None):
-        QtWidgets.QFrame.__init__(self,parent)
-        self.layout=QtWidgets.QVBoxLayout(self)
+        super().__init__(parent)
+        self.main_layout=QtWidgets.QVBoxLayout(self)
         self.canvas=MPLFigureCanvas(self)
-        self.layout.addWidget(self.canvas)
+        self.main_layout.addWidget(self.canvas)
         self.figure=self.canvas.figure
         self.toolbar=NavigationToolbar(self.canvas,self)
-        self.layout.addWidget(self.toolbar)
+        self.main_layout.addWidget(self.toolbar)
     @property
     def redraw_period(self):
         """Set redraw period"""
