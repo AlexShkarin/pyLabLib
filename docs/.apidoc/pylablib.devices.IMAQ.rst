@@ -13,15 +13,6 @@ pylablib.devices.IMAQ.IMAQ module
     :undoc-members:
     :show-inheritance:
 
-pylablib.devices.IMAQ.camfile module
-------------------------------------
-
-.. automodule:: pylablib.devices.IMAQ.camfile
-    :members:
-    :inherited-members:
-    :undoc-members:
-    :show-inheritance:
-
 pylablib.devices.IMAQ.niimaq\_attrtypes module
 ----------------------------------------------
 

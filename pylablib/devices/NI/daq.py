@@ -214,11 +214,14 @@ class NIDAQ(interface.IDevice):
         term=self.ai_task.export_signals.samp_clk_output_term
         return self._strip_channel_name(term) if term else None
 
-    _voltage_input_terminal_cfgs={  "default":nidaqmx.constants.TerminalConfiguration.DEFAULT,
-                                    "rse":nidaqmx.constants.TerminalConfiguration.RSE,
-                                    "nrse":nidaqmx.constants.TerminalConfiguration.NRSE,
-                                    "diff":nidaqmx.constants.TerminalConfiguration.DIFFERENTIAL,
-                                    "pseudodiff":nidaqmx.constants.TerminalConfiguration.PSEUDODIFFERENTIAL}
+    if nidaqmx is not None:
+        _voltage_input_terminal_cfgs={  "default":nidaqmx.constants.TerminalConfiguration.DEFAULT,
+                                        "rse":nidaqmx.constants.TerminalConfiguration.RSE,
+                                        "nrse":nidaqmx.constants.TerminalConfiguration.NRSE,
+                                        "diff":nidaqmx.constants.TerminalConfiguration.DIFFERENTIAL,
+                                        "pseudodiff":nidaqmx.constants.TerminalConfiguration.PSEUDODIFFERENTIAL}
+    else:
+        _voltage_input_terminal_cfgs={}
     _p_voltage_input_terminal_cfg=interface.EnumParameterClass("voltage_input_terminal_cfg",_voltage_input_terminal_cfgs)
     @reraise
     @interface.use_parameters(terminal_cfg="voltage_input_terminal_cfg")

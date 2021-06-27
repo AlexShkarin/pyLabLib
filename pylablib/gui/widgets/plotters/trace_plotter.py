@@ -12,7 +12,6 @@ from ....core.gui.widgets.container import QWidgetContainer
 from ....core.gui.widgets.layout_manager import QLayoutManagedWidget
 from ....core.thread import controller
 from ....core.dataproc import utils as trace_utils
-from ....thread.stream.table_accum import TableAccumulator, TableAccumulatorThread
 
 import pyqtgraph
 
@@ -236,11 +235,7 @@ class TracePlotter(QLayoutManagedWidget):
         The source is used to automatically grab channel data and receive reset commands.
         Not necessary, if the data is provided explicitly to :meth:`update_plot`.
         """
-        if isinstance(src,TableAccumulator):
-            self.data_src_kind="accum"
-        elif isinstance(src,TableAccumulatorThread):
-            self.data_src_kind="accum_thread"
-        elif src is None:
+        if src is None:
             self.data_src_kind=None
         else:
             raise ValueError("unrecognized data source: {}".format(src))

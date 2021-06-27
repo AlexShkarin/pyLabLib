@@ -13,15 +13,6 @@ pylablib.devices.interface.camera module
     :undoc-members:
     :show-inheritance:
 
-pylablib.devices.interface.pixel\_format module
------------------------------------------------
-
-.. automodule:: pylablib.devices.interface.pixel_format
-    :members:
-    :inherited-members:
-    :undoc-members:
-    :show-inheritance:
-
 pylablib.devices.interface.stage module
 ---------------------------------------
 
