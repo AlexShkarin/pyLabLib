@@ -1,8 +1,9 @@
 from ..core.thread import controller
-from ..core.utils import rpyc_utils, module as module_utils
+from ..core.utils import rpyc_utils, module as module_utils, dictionary
 
 import importlib
 import contextlib
+import gc
 
 
 class DeviceThread(controller.QTaskThread):
@@ -18,7 +19,7 @@ class DeviceThread(controller.QTaskThread):
             ``ctl.csd.method(*args,**kwarg)`` is equivalent to ``ctl.device.method(args,kwargs)`` called as a synchronous command in the device thread
         csdi: device query accessor, ignores and silences any exceptions (including missing /stopped controller); similar to ``.csi`` accessor for synchronous commands
         device_reconnect_tries: number of attempts to connect to the device before when calling :meth:`open` before giving up and declaring it unavailable
-        settings_variables: list of variables to list when requesting full info (e.g., using ``get_settings`` command);
+        parameter_variables: list of variables to list when requesting full info (e.g., using ``update_parameters`` command);
             by default, read all variables, but if it takes too long, some can be omitted
         full_info_variables: list of variables to list when requesting full info (e.g., using ``get_full_info`` command);
             by default, read all variables, but if it takes too long, some can be omitted
@@ -41,18 +42,20 @@ class DeviceThread(controller.QTaskThread):
         - ``get_settings``: get device settings
         - ``get_full_info``: get full info of the device
     """
+    parameter_variables="settings"
+    default_parameter_values=None
+    full_info_variables=None
     def __init__(self, name=None, args=None, kwargs=None, multicast_pool=None):
         super().__init__(name=name,multicast_pool=multicast_pool,args=args,kwargs=kwargs)
         self.device=None
-        self.add_command("open",self.open)
-        self.add_command("close",self.close)
-        self.add_command("get_settings",self.get_settings)
-        self.add_command("get_full_info",self.get_full_info)
-        self.add_command("_device_method",self._device_method)
+        self.add_command("open")
+        self.add_command("close")
+        self.add_command("update_parameters")
+        self.add_command("apply_parameters")
+        self.add_command("get_full_info")
+        self.add_command("_device_method")
         self._full_info_job=False
-        self.settings_variables=None
-        self.full_info_variables=None
-        self.device_reconnect_tries=0
+        self.device_reconnect_tries=2
         self._tried_device_connect=0
         self.rpyc_serv=None
         self.remote=None
@@ -61,14 +64,9 @@ class DeviceThread(controller.QTaskThread):
         
     def finalize_task(self):
         self.close()
-        rpyc_serv=self.rpyc_serv
         self.device=None
         self.rpyc_serv=None
-        if rpyc_serv is not None:
-            try:
-                rpyc_serv.getconn().close()
-            except EOFError:
-                pass
+        gc.collect()
 
     def connect_device(self):
         """
@@ -84,6 +82,13 @@ class DeviceThread(controller.QTaskThread):
         By default, call ``.open`` method of the device.
         """
         self.device.open()
+    def setup_open_device(self):
+        """
+        Set up the device after opening.
+
+        Called both after initial connection and after reopening.
+        By default, do nothing.
+        """
     def close_device(self):
         """
         Close the device which is currently opened.
@@ -150,6 +155,8 @@ class DeviceThread(controller.QTaskThread):
             cls=self.rpyc_devclass(cls,host=host,timeout=timeout,attempts=attempts)
         except IOError:
             raise self.ConnectionFailError
+        if cls is None:
+            raise self.ConnectionFailError
         try:
             yield cls
         except cls.Error:
@@ -170,11 +177,14 @@ class DeviceThread(controller.QTaskThread):
         if self.device is None:
             try:
                 self.connect_device()
+                self.setup_open_device()
             except self.ConnectionFailError:
                 pass
         if self.device is not None:
             if not self.device.is_opened():
                 self.open_device()
+                if self.device.is_opened():
+                    self.setup_open_device()
             if self.device.is_opened():
                 self.update_status("connection","opened","Connected")
                 self._tried_device_connect=0
@@ -193,9 +203,34 @@ class DeviceThread(controller.QTaskThread):
             self.close_device()
             self.update_status("connection","closed","Disconnected")
 
-    def get_settings(self):
-        """Get device settings"""
-        return self.rpyc_obtain(self.device.get_settings(include=self.settings_variables)) if self.device is not None else {}
+    def _get_device_parameters_dictionary(self, include=None):
+        if not self.device:
+            return dictionary.Dictionary()
+        if include=="settings":
+            par=self.device.get_settings()
+        else:
+            par=self.device.get_full_info(include=include)
+        return dictionary.Dictionary(self.rpyc_obtain(par))
+    def _get_parameters(self):
+        """Get device parameters (can be overloaded in subclasses)"""
+        return self._get_device_parameters_dictionary(include=self.parameter_variables)
+    def _get_disconnected_parameters(self):
+        """Get default device parameters if it is disconnected (can be overloaded in subclasses)"""
+        return self.default_parameter_values
+    def update_parameters(self):
+        """Get device parameters and update their value in the thread variables"""
+        if self.open():
+            parameters=self._get_parameters()
+        else:
+            parameters=self._get_disconnected_parameters()
+        self.set_variable("parameters",parameters,update=True)
+        return parameters
+    def apply_parameters(self, parameters, update=True):
+        """Apply device parameters"""
+        if self.open():
+            self.device.apply_settings(parameters)
+            if update:
+                self.update_parameters()
     
     def setup_full_info_job(self, period=2.):
         """
@@ -215,7 +250,7 @@ class DeviceThread(controller.QTaskThread):
 
         A function for a job which is setup in :meth:`DeviceThread.setup_full_info_job`. Normally doesn't need to be called explicitly.
         """
-        self.v["full_info"]=self.rpyc_obtain(self.device.get_full_info(include=self.full_info_variables))
+        self.v["full_info"]=self._get_device_parameters_dictionary(self.full_info_variables)
     def get_full_info(self):
         """
         Get full device info.
@@ -224,9 +259,28 @@ class DeviceThread(controller.QTaskThread):
         otherwise, request a new version from the device.
         """
         if self.device:
-            return self.v["full_info"] if self._full_info_job else self.rpyc_obtain(self.device.get_full_info(include=self.full_info_variables))
+            return self.v["full_info"] if self._full_info_job else self._get_device_parameters_dictionary(include=self.full_info_variables)
         else:
-            return {}
+            return dictionary.Dictionary()
+
+    def add_device_command(self, name, command_name=None, post_update="update_parameters", limit_queue=None, on_full_queue="skip_current", priority=0):
+        """
+        Add command which calls a specified device method.
+        
+        `command_name` specifies the device method to call; by default, same as `name`.
+        `post_update` is a string or a list of strings which specifies which update methods to call after the command.
+        Check if the devices is opened, do nothing if it is not.
+        """
+        if not isinstance(post_update,list):
+            post_update=[post_update]
+        command_name=command_name or name
+        def command(*args, **kwargs):
+            if self.open():
+                meth=getattr(self.device,command_name)
+                meth(*args,**kwargs)
+                for pm in post_update:
+                    getattr(self,pm)()
+        self.add_command(name,command,limit_queue=limit_queue,on_full_queue=on_full_queue,priority=priority)
     def _device_method(self, name, args, kwargs):
         """Call a device method"""
         if self.open_device():

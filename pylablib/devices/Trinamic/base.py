@@ -1,4 +1,4 @@
-from ...core.devio import comm_backend, interface, comm_backend
+from ...core.devio import comm_backend, interface
 
 from ..interface import stage
 
