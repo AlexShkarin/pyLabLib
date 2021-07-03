@@ -97,7 +97,7 @@ class SIFgrabLib:
         self.Fg_FreeLibraries=wrapper(lib.Fg_FreeLibraries)
 
         #  ctypes.c_int Fg_getAppletIterator(ctypes.c_int boardIndex, ctypes.c_int src, ctypes.POINTER(Fg_AppletIteratorType) iter, ctypes.c_int flags)
-        self.Fg_getAppletIterator=wrapper_rgez(lib.Fg_getAppletIterator, rvals=[None,"iter"])
+        self.Fg_getAppletIterator=wrapper_init_rgez(lib.Fg_getAppletIterator, rvals=[None,"iter"])
         #  ctypes.c_int Fg_freeAppletIterator(Fg_AppletIteratorType iter)
         self.Fg_freeAppletIterator=wrapper_rz(lib.Fg_freeAppletIterator)
         #  Fg_AppletIteratorItem Fg_getAppletIteratorItem(Fg_AppletIteratorType iter, ctypes.c_int index)

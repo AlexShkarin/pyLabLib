@@ -598,10 +598,10 @@ def get_status_lines(frames, check_transposed=True, drop_magic=True):
         s=1 if drop_magic else 0
         lines=_extract_line(frames,True)
         if _check_magic(lines):
-            return lines[:,s:]
+            return lines[...,s:]
         lines=_extract_line(frames,False)
         if _check_magic(lines):
-            return lines[:,s:]
+            return lines[...,s:]
     if check_transposed:
         tframes=frames.T if frames.ndim==2 else frames.transpose((0,2,1))
         return get_status_lines(tframes,check_transposed=False,drop_magic=drop_magic)

@@ -13,7 +13,7 @@ In principle, pfcam can work with any frame grabber. Because of that, there are 
 Software requirements
 -----------------------
 
-These cameras require ``pfcam.dll``, which is installed with `PFInstaller <https://www.photonfocus.com/support/software/>`__, which is freely available, but requires a registration. After installation, the path to the DLL (located by default in ``Photonfocus/PFRemote/bin`` folder in ``Program Files``) is automatically added to system ``PATH`` variable, which is one of the places where pylablib looks for it by default. If the DLL is located elsewhere, the path can be specified using the library parameter ``devices/dlls/pfcam``::
+These cameras require ``pfcam.dll``, which is installed with freely available (upon registration) `PFInstaller <https://www.photonfocus.com/support/software/>`__. In addition, this DLL requires ``comdll.dll`` and the DLLs referring to a particular camera, e.g., ``mv_d1024e_160``. After installation, the path to the DLLs (all located by default in ``Photonfocus/PFRemote/bin`` folder in ``Program Files``) is automatically added to system ``PATH`` variable, which is one of the places where pylablib looks for it by default. If the DLLs are located elsewhere, the path can be specified using the library parameter ``devices/dlls/pfcam``::
 
     import pylablib as pll
     pll.par["devices/dlls/pfcam"] = "path/to/dlls"

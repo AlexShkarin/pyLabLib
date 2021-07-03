@@ -39,6 +39,7 @@ class ICamera(interface.IDevice):
         self._frame_counter=FrameCounter()
         self._image_indexing=self._default_image_indexing
         self._frameinfo_format=self._default_frameinfo_format
+        self._frameinfo_period=1
         self._add_status_variable("buffer_size",lambda: self.get_frames_status().buffer_size)
         self._add_status_variable("acquired_frames",lambda: self.get_frames_status().acquired)
         self._add_status_variable("acquisition_in_progress",self.acquisition_in_progress)
@@ -47,6 +48,8 @@ class ICamera(interface.IDevice):
         self._add_info_variable("detector_size",self.get_detector_size)
         self._add_settings_variable("image_indexing",self.get_image_indexing,self.set_image_indexing)
         self._add_settings_variable("frame_info_format",self.get_frame_info_format,self.set_frame_info_format)
+        self._add_settings_variable("frame_info_period",self.get_frame_info_period,self.set_frame_info_period)
+        self._add_info_variable("frame_info_fields",self.get_frame_info_fields)
 
 
     ### Acquisition control ###
@@ -290,6 +293,26 @@ class ICamera(interface.IDevice):
         """
         self._frameinfo_format=fmt
         return self._frameinfo_format
+    def get_frame_info_period(self):
+        """
+        Get period of frame info acquisition.
+
+        Frame info might be skipped (set to ``None``) except for frames which indices are divisible by `period`.
+        Useful for certain cameras where acquiring frame info takes a lot of time and can reduce performance at higher frame rates.
+        Note that this parameter can still be ignored (i.e., always set to 1) if the performance is not an issue for a given camera class.
+        """
+        return self._frameinfo_period
+    def set_frame_info_period(self, period=1):
+        """
+        Set period of frame info acquisition.
+
+        Frame info might be skipped (set to ``None``) except for frames which indices are divisible by `period`.
+        Useful for certain cameras where acquiring frame info takes a lot of time and can reduce performance at higher frame rates.
+        Note that this parameter can still be ignored (i.e., always set to 1) if the performance is not an issue for a given camera class.
+        """
+        if self._adjust_frameinfo_period:
+            self._frameinfo_period=period
+        return self._frameinfo_period
     def get_frame_info_fields(self):
         """
         Get the names of frame info fields.
@@ -298,10 +321,10 @@ class ICamera(interface.IDevice):
         """
         return list(self._frameinfo_fields)
     def _convert_frame_info(self, info, fmt=None):
-        if info is None:
-            return None
         if fmt is None:
             fmt=self._frameinfo_format
+        if info is None or info[0]<0:
+            return np.zeros(len(self._frameinfo_fields))-1 if fmt=="array" else None
         if fmt=="namedtuple":
             return info
         if fmt=="list":
@@ -354,6 +377,7 @@ class ICamera(interface.IDevice):
         return np.zeros((n,)+self.get_data_dimensions(),dtype=self._default_image_dtype)
     _TFrameInfo=TFrameInfo
     _frameinfo_fields=TFrameInfo._fields
+    _adjust_frameinfo_period=False
     _p_missing_frame=interface.EnumParameterClass("missing_frame",["none","zero","skip"])
     @interface.use_parameters
     def read_multiple_images(self, rng=None, peek=False, missing_frame="skip", return_info=False):

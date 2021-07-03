@@ -265,6 +265,8 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
     Error=SiliconSoftwareError
     TimeoutError=SiliconSoftwareTimeoutError
     _TFrameInfo=TFrameInfo
+    _frameinfo_fields=TFrameInfo._fields
+    _adjust_frameinfo_period=True
     def __init__(self, siso_board=0, siso_applet="DualAreaGray16", siso_port=0, siso_detector_size=None, do_open=True, **kwargs):
         super().__init__(**kwargs)
         lib.initlib()
@@ -595,17 +597,15 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
             frame_info=[]
             chn=[n for n,_ in raw_frames]
             chidx=np.cumsum([rng[0]]+chn[:-1])
-            if return_info in ["full","chunks"]:
-                frng=range(rng[0]//self._frame_merge,rng[1]//self._frame_merge)
-            else:
-                frng=chidx
-            frame_info.append(np.array(frng)*self._frame_merge)
+            frng=range(rng[0]//self._frame_merge,rng[1]//self._frame_merge)
+            frame_info=[np.array(frng)*self._frame_merge]
             for p in params:
                 try:
-                    frame_info.append([lib.Fg_getParameterEx_auto(self.fg,p,self.siso_port,self._buffer_head,i+1) for i in frng])
+                    frame_info.append([lib.Fg_getParameterEx_auto(self.fg,p,self.siso_port,self._buffer_head,i+1) if i%self._frameinfo_period==0 else 0 for i in frng])
                 except SIFgrabLibError:
                     frame_info.append([0]*len(frng))
             frame_info=np.array(frame_info)
+            frame_info[:,frame_info[0]%self._frameinfo_period!=0]=-1
             if return_info=="chunks":
                 frame_info=[frame_info[:,i:i+n].T for i,n in zip(chidx-chidx[0],chn)]
             else:
@@ -628,20 +628,17 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
         If ``return_info==True``, return tuple ``(frames, infos)``, where ``infos`` is a list of ``TFrameInfo`` instances
         describing frame index, framestamp, and two timestamps (lower and higher precision);
         if some frames are missing and ``missing_frame!="skip"``, the corresponding frame info is ``None``.
-        Note that obtaining frame info takes about 100us, so ``return_info="all"`` should be avoided fro rates above 5-10kFPS.
         If ``fastbuff==False``, return a list of individual frames (2D numpy arrays).
         Otherwise, return a list of 'chunks', which are 3D numpy arrays containing several frames;
-        in this case, if `return_info` is ``True``, then ``frame_info`` will only have one entry per chunk corresponding to the first frame in the chunk,
-        and if `return_info` is ``"all"``, it will return info for each frame in the chunk, also in chunk form.
+        in this case, if `return_info` is ``True``, then ``frame_info`` will automatically be in an ``"array"`` format, with the rows corresponding to the frames
+        within the chunks, and the columns corresponding to the frames.
         Using ``fastbuff`` results in faster operation at high frame rates (>~1kFPS), at the expense of a more complicated frame processing in the following code.
         """
         funcargparse.check_parameter_range(missing_frame,"missing_frame",["none","zero","skip"])
         if fastbuff and missing_frame=="none":
             raise ValueError("'none' missing frames mode is not supported if fastbuff==True")
-        if return_info and not fastbuff:
-            return_info="full"
-        elif return_info=="all":
-            return_info="chunks"
+        if return_info:
+            return_info="chunks" if fastbuff else "full"
         _,skipped_frames,raw_data,frame_info=self._read_multiple_images_raw(rng=rng,peek=peek,return_info=return_info)
         if raw_data is None:
             return (None,None) if return_info else None
@@ -650,20 +647,20 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
         parsed_data=[self._parse_buffer(b,nframes=n) for n,b in raw_data]
         if not fastbuff:
             parsed_data=[f for chunk in parsed_data for f in chunk]
-        if return_info=="chunks":
-            frame_info=[self._convert_frame_info(self._TFrameInfo(*list(fi.T))) for fi in frame_info]
-        elif return_info:
+        if return_info and not fastbuff:
             frame_info=[self._convert_frame_info(self._TFrameInfo(*fi)) for fi in frame_info]
         if skipped_frames and missing_frame!="skip":
             if fastbuff: # only missing_frame=="zero" is possible
                 parsed_data=[np.zeros((skipped_frames,)+dim,dtype=dt)]+parsed_data
+                if return_info:
+                    frame_info=[np.zeros((skipped_frames,len(self._frameinfo_fields)))]+frame_info
             else:
                 if missing_frame=="zero":
                     parsed_data=list(np.zeros((skipped_frames,)+dim,dtype=dt))+parsed_data
                 else:
                     parsed_data=[None]*skipped_frames+parsed_data
-            if return_info:
-                frame_info=[None]*(1 if fastbuff else skipped_frames)+frame_info
+                if return_info:
+                    frame_info=[None]*skipped_frames+frame_info
         parsed_data=self._convert_indexing(parsed_data,"rct",axes=(-2,-1))
         return (parsed_data,frame_info) if return_info else parsed_data
 

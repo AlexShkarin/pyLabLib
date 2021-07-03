@@ -62,6 +62,7 @@ class IMAQLib:
             return
         error_message="The library is automatically supplied with National Instruments NI-IMAQ software\n"+load_lib.par_error_message.format("niimaq")
         self.lib=load_lib.load_lib("imaq.dll",locations=("parameter/niimaq","global"),error_message=error_message,call_conv="stdcall")
+        self.clib=load_lib.load_lib("imaq.dll",locations=("parameter/niimaq","global"),error_message=error_message,call_conv="cdecl")
         lib=self.lib
         define_functions(lib)
 
@@ -125,10 +126,9 @@ class IMAQLib:
         #  Int32 imgDisposeBufList(BUFLIST_ID bid, uInt32 freeResources)
         self.imgDisposeBufList=wrapper(lib.imgDisposeBufList)
         #  Int32 imgGetBufferElement(BUFLIST_ID bid, uInt32 element, uInt32 itemType, ctypes.c_void_p itemValue)
-        self.imgGetBufferElement=lib.imgGetBufferElement
-        self.imgGetBufferElement.errcheck=errcheck(lib=self)
+        self.imgGetBufferElement=wrapper(lib.imgGetBufferElement)
         #  Int32 imgSetBufferElement2(BUFLIST_ID bid, uInt32 element, uInt32 itemType, ...)
-        self.imgSetBufferElement2=lib.imgSetBufferElement2
+        self.imgSetBufferElement2=self.clib.imgSetBufferElement2
         self.imgSetBufferElement2.errcheck=errcheck(lib=self)
 
         #  Int32 imgRingSetup(SESSION_ID sid, uInt32 numberBuffer, ctypes.POINTER(ctypes.c_void_p) bufferList, uInt32 skipCount, uInt32 startnow)
@@ -154,10 +154,9 @@ class IMAQLib:
         self.imgSessionReleaseBuffer=wrapper(lib.imgSessionReleaseBuffer)
 
         #  Int32 imgGetAttribute(uInt32 void_id, uInt32 attribute, ctypes.c_void_p value)
-        self.imgGetAttribute=lib.imgGetAttribute
-        self.imgGetAttribute.errcheck=errcheck(lib=self)
+        self.imgGetAttribute=wrapper(lib.imgGetAttribute)
         #  Int32 imgSetAttribute2(uInt32 void_id, uInt32 attribute, ...)
-        self.imgSetAttribute2=self.lib.imgSetAttribute2
+        self.imgSetAttribute2=self.clib.imgSetAttribute2
         self.imgSetAttribute2.errcheck=errcheck(lib=self)
         #  Int32 imgSetAttributeFromVoidPtr(uInt32 void_id, uInt32 attribute, ctypes.c_void_p valuePtr)
         self.imgSetAttributeFromVoidPtr=wrapper(lib.imgSetAttributeFromVoidPtr)
@@ -213,7 +212,6 @@ class IMAQLib:
 
         self._initialized=True
 
-
     def imgGetAttribute_buff(self, sid, attr, size=32):
         buff=ctypes.create_string_buffer(size)
         self.imgGetAttribute(sid,attr,ctypes.addressof(buff))
@@ -229,11 +227,13 @@ class IMAQLib:
         value=self.imgGetAttribute_buff(sid,attr)
         return struct.unpack("d",value[:8])[0]
     def imgSetAttribute2_uint32(self, sid, attr, value):
-        self.imgSetAttribute2(sid,attr,ctypes.c_uint32(int(value)))
+        self.imgSetAttribute2(ctypes.c_uint(sid),ctypes.c_uint(attr),ctypes.c_uint32(int(value)))
     def imgSetAttribute2_uint64(self, sid, attr, value):
-        self.imgSetAttribute2(sid,attr,ctypes.c_uint64(int(value)))
+        self.imgSetAttribute2(ctypes.c_uint(sid),ctypes.c_uint(attr),ctypes.c_uint64(int(value)))
     def imgSetAttribute2_double(self, sid, attr, value):
-        self.imgSetAttribute2(sid,attr,ctypes.c_double(float(value)))
+        self.imgSetAttribute2(ctypes.c_uint(sid),ctypes.c_uint(attr),ctypes.c_double(float(value)))
+    def imgSetBufferElement2_uint32(self, bid, element, itemType, value):
+        self.imgSetBufferElement2(ctypes.c_uint(bid),ctypes.c_uint(element),ctypes.c_uint(itemType),ctypes.c_uint32(int(value)))
     
     def imgCalculateBayerColorLUT(self, redGain, greenGain, blueGain, bitDepth):
         nel=2**8 if bitDepth<=8 else 2**16

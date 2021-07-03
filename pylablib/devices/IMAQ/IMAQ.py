@@ -563,7 +563,8 @@ class IMAQFrameGrabber(camera.IROICamera):
         containing frame index; if some frames are missing and ``missing_frame!="skip"``, the corresponding frame info is ``None``.
         If ``fastbuff==False``, return a list of individual frames (2D numpy arrays).
         Otherwise, return a list of 'chunks', which are 3D numpy arrays containing several frames;
-        in this case, ``frame_info`` will only have one entry per chunk corresponding to the first frame in the chunk.
+        in this case, if `return_info` is ``True``, then ``frame_info`` will automatically be in an ``"array"`` format, with the rows corresponding to the frames
+        within the chunks, and the columns corresponding to the frames.
         Using ``fastbuff`` results in faster operation at high frame rates (>~1kFPS), at the expense of a more complicated frame processing in the following code.
         """
         funcargparse.check_parameter_range(missing_frame,"missing_frame",["none","zero","skip"])
@@ -582,21 +583,22 @@ class IMAQFrameGrabber(camera.IROICamera):
                 frame_info=[]
                 idx=first_frame
                 for d in parsed_data:
-                    idx_data=np.arange(len(d))+idx if return_info=="all" else idx
-                    frame_info.append(self._convert_frame_info(self._TFrameInfo(idx_data)))
+                    frame_info.append(np.arange(len(d))[:,None]+idx)
                     idx+=len(d)
             else:
                 frame_info=[self._TFrameInfo(first_frame+n) for n in range(len(parsed_data))]
         if skipped_frames and missing_frame!="skip":
             if fastbuff: # only missing_frame=="zero" is possible
                 parsed_data=[np.zeros((skipped_frames,)+dim,dtype=dt)]+parsed_data
+                if return_info:
+                    frame_info=[np.zeros((skipped_frames,len(self._frameinfo_fields)))]+frame_info
             else:
                 if missing_frame=="zero":
                     parsed_data=list(np.zeros((skipped_frames,)+dim,dtype=dt))+parsed_data
                 else:
                     parsed_data=[None]*skipped_frames+parsed_data
-            if return_info:
-                frame_info=[None]*(1 if fastbuff else skipped_frames)+frame_info
+                if return_info:
+                    frame_info=[None]*skipped_frames+frame_info
         parsed_data=self._convert_indexing(parsed_data,"rct",axes=(-2,-1))
         return (parsed_data,frame_info) if return_info else parsed_data
 

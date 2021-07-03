@@ -456,6 +456,11 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         """Enable or disable metadata streaming"""
         self.set_attribute_value("MetadataEnable",enable,error_on_missing=False)
         return self.is_metadata_enabled()
+    def _convert_frame_info(self, info, fmt=None):
+        info=super()._convert_frame_info(info,fmt=fmt)
+        if isinstance(info,np.ndarray) and info[1] is None:
+            info=np.array([info[0]]+[0]*(len(info)-1))
+        return info
     
     ### Frame management ###
     class BufferManager:

@@ -59,6 +59,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
     FrameTransferError=uc480FrameTransferError
     _TFrameInfo=TFrameInfo
     _frameinfo_fields=general.make_flat_namedtuple(TFrameInfo,fields={"timestamp":TTimestamp,"size":camera.TFrameSize})._fields
+    _adjust_frameinfo_period=True
     def __init__(self, cam_id=0, roi_binning_mode="auto", dev_id=None):
         super().__init__()
         lib.initlib()
@@ -599,7 +600,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         return frame,self._convert_frame_info(frame_info)
     def _read_frames(self, rng, return_info=False):
         nchan=self._get_pixel_mode_settings()[1]
-        data=[self._read_buffer(n,return_info=return_info,nchan=nchan) for n in range(rng[0],rng[1])]
+        data=[self._read_buffer(n,return_info=return_info and (n%self._frameinfo_period==0),nchan=nchan) for n in range(rng[0],rng[1])]
         return [d[0] for d in data],[d[1] for d in data]
     def _zero_frame(self, n):
         bpp,nchan=self._get_pixel_mode_settings()

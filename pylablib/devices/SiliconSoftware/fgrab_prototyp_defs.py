@@ -5,6 +5,7 @@
 
 import ctypes
 import enum
+import platform
 from ...core.utils import ctypes_wrap
 
 
@@ -122,7 +123,8 @@ dsiso_board_type={a.name:a.value for a in siso_board_type}
 drsiso_board_type={a.value:a.name for a in siso_board_type}
 
 
-frameindex_t=ctypes.c_int64
+# frameindex_t=ctypes.c_int64
+frameindex_t=ctypes.c_int32 if platform.architecture()[0]=="32bit" else ctypes.c_int64
 class RowFilterModes(enum.IntEnum):
     _NON_TRIGGERED_EOF_CONTROLLED       =_int32(0)
     _NON_TRIGGERED_LINE_COUNT_CONTROLLED=_int32(0x1)
