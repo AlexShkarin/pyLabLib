@@ -3,7 +3,7 @@ from ...core.utils import functions
 import time
 
 import numpy as np
-
+import collections
 
 
 
@@ -282,7 +282,7 @@ class FramesMessage(DataStreamMessage):
         frames: list of frames (2D or 3D numpy arrays for 1 or more frames)
         indices: list of frame indices (if a corresponding array contains several frames, it can be the index of the first frame);
             if ``None``, autofill starting from 0
-        frame_info: list of frame chunk infos (one entry per chunk);
+        frame_info: list of frame chunk infos (one per frame);
             if ``None``, keep as ``None``
         source: frames source, e.g., camera or processor
         tag: extra batch tag
@@ -350,6 +350,13 @@ class FramesMessage(DataStreamMessage):
                         self.indices[i]=np.arange(idx,idx+f.shape[0]*step,step)
                     elif len(f)!=len(idx):
                         raise ValueError("frames and indices array lengths don't agree: {} vs {}".format(len(f),len(idx)))
+            if self.frame_info is not None:
+                for i,f in enumerate(self.frames):
+                    inf=self.frame_info[i]
+                    if np.ndim(inf)!=2:
+                        raise ValueError("frame info should be a 2-dimensional in the chunk mode")
+                    if len(inf)!=len(f):
+                        raise ValueError("frames and indices array lengths don't agree: {} vs {}".format(len(f),len(inf)))
 
     def nframes(self):
         """Get total number of frames (taking into account that 3D array elements contain multiple frames)"""
@@ -375,46 +382,77 @@ class FramesMessage(DataStreamMessage):
             last_frame=li
         return missing
     
-    def get_frames_stack(self, n=None, reverse=False, add_indices=False, copy=True):
+    def get_frames_stack(self, n=None, reverse=False, copy=True):
         """
         Get a list of at most `n` frames from the message (if ``None``, return all frames).
 
         If ``reverse==True``, return last `n` frames (in the reversed order); otherwise, return first `n` frames.
-        If ``add_indices==True``, elements of the list are tuples ``(index, img)``; otherwise, they are just images.
         If ``copy==True``, copy frames (otherwise changing the returned frames can affect the stored frames).
         """
         if n==0:
             return []
-        if n is None:
-            n=self.nframes()
-        frames=[]
-        indices=[]
-        if self.chunks:
-            if reverse:
-                for i,f in zip(self.indices[::-1],self.frames[::-1]):
-                    chunk=f[:-(n-len(frames))-1:-1]
-                    add_frames=list(chunk.copy()) if copy else list(chunk)
-                    frames+=add_frames
-                    if add_indices:
-                        indices+=list(i[:-(n-len(frames))-1:-1])
-                    if len(frames)>=n:
-                        break
-            else:
-                for i,f in zip(self.indices,self.frames):
-                    chunk=f[:n-len(frames)]
-                    add_frames=list(chunk.copy()) if copy else list(chunk)
-                    frames+=add_frames
-                    if add_indices:
-                        indices+=list(i[:n-len(frames)])
-                    if len(frames)>=n:
-                        break
+        if reverse:
+            frames,_,_=self.get_slice((0 if n is None else -n),None,flatten=True,copy=copy)  # pylint: disable=invalid-unary-operand-type
+            frames=frames[::-1]
         else:
-            frames=self.frames[-n:][::-1] if reverse else self.frames[:n]  # pylint: disable=invalid-unary-operand-type
+            frames,_,_=self.get_slice(0,n,flatten=True,copy=copy)
+        return frames
+    def get_slice(self, start=None, end=None, step=1, copy=False, flatten=False):
+        """
+        Take a slice of frames within this message.
+
+        A generalization of :meth:`get_frames_stack`, where both start and stop position can be set, as well as frame period.
+        Return a tuple ``(frames, indices, frame_info)`` for the frames with the corresponding indices.
+        If ``flatten==True`` and the message contains frame chunks (as opposed to individual frames in a list),
+        "flatten" the chunks and return a lists of individual frames and indices; otherwise, these lists would contain chunks.
+        """
+        n=self.nframes()
+        if step<0:
+            raise ValueError("only positive step can be used")
+        if start is None:
+            start=0
+        elif start<0 :
+            start%=n
+        if end is None:
+            end=n
+        elif end<0:
+            end%=n
+        if self.chunks:
+            frames=[]
+            indices=[]
+            frame_info=None if self.frame_info is None else []
+            pos=0
+            for i,ch in enumerate(self.frames):
+                if pos>=end:
+                    break
+                l=len(ch)
+                s=start-pos
+                if s<0:
+                    s%=step
+                e=end-pos
+                if s<l:
+                    frames.append(ch[s:e:step])
+                    indices.append(self.indices[i][s:e:step])
+                    if frame_info is not None:
+                        frame_info.append(self.frame_info[i][s:e:step])
+                pos+=l
             if copy:
                 frames=[f.copy() for f in frames]
-            if add_indices:
-                indices=self.indices[-n:][::-1] if reverse else self.indices[:n]  # pylint: disable=invalid-unary-operand-type
-        return list(zip(indices,frames)) if add_indices else frames
+                indices=[idx.copy() for idx in indices]
+                if frame_info is not None:
+                    frame_info=[inf.copy() for inf in frame_info]
+            if flatten:
+                frames=[f for ch in frames for f in ch]
+                indices=[idx for ch in indices for idx in ch]
+                if frame_info is not None:
+                    frame_info=[inf for ch in frame_info for inf in ch]
+        else:
+            frames=self.frames[start:end:step]
+            indices=self.indices[start:end:step]
+            frame_info=None if self.frame_info is None else self.frame_info[start:end:step]
+            if copy:
+                frames=[f.copy() for f in frames]
+        return frames,indices,frame_info
     def cut_to_size(self, n, from_end=False):
         """
         Cut contained data to contain at most `n` frames.
@@ -423,43 +461,13 @@ class FramesMessage(DataStreamMessage):
         Return ``True`` if there are `n` frames after the cut, and ``False`` if there are less than `n`.
         """
         if n==0:
-            self.data={k:[] for k in self.data}
+            self.frames=[]
+            self.indices=[]
+            self.frame_info=None if self.frame_info is None else []
             return True
-        if self.chunks:
-            end=None
-            size=0
-            d=-1 if from_end else 1
-            frames=self.frames[::d]
-            indices=self.indices[::d]
-            for i,f in enumerate(frames):
-                if size+len(f)>n:
-                    end=i
-                    break
-                size+=len(f)
-            if end is None:
-                return size<n
-            new_frames=frames[:end]
-            new_indices=indices[:end]
-            if size<n:
-                if from_end:
-                    new_frames.append(frames[end][-(n-size):])
-                    new_indices.append(indices[end][-(n-size):])
-                else:
-                    new_frames.append(frames[end][:n-size])
-                    new_indices.append(indices[end][:n-size])
-            self.frames=new_frames[::d]
-            self.indices=new_indices[::d]
-            if self.frame_info is not None:
-                self.frame_info=self.frame_info[::d][:len(new_frames)][::d]
-        else:
-            s=slice(-n,None) if from_end else slice(0,n)
-            self.frames=self.frames[s]
-            if self.indices is not None:
-                self.indices=self.indices[s]
-            if self.frame_info is not None:
-                self.frame_info=self.frame_info[s]
-            return len(self.frames)==n
-        return True
+        start,end=(-n,None) if from_end else (0,n)
+        self.frames,self.indices,self.frame_info=self.get_slice(start,end)
+        return self.nframes()==n
         
     def first_frame_index(self):
         """Get index of the first frame (or ``None`` if there are no frames)"""
@@ -487,9 +495,115 @@ class FramesMessage(DataStreamMessage):
         """Get info of the first frame (or ``None`` if there are no frames)"""
         if not self.frame_info:
             return None
-        return self.frame_info[0]
+        return self.frame_info[0][0] if self.chunks else self.frame_info[0]
     def last_frame_info(self):
         """Get info of the last frame (or ``None`` if there are no frames)"""
         if not self.frame_info:
             return None
-        return self.frame_info[-1]
+        return self.frame_info[-1][-1] if self.chunks else self.frame_info[-1]
+
+
+
+TFramesDataChunk=collections.namedtuple("TFramesDataChunk",["frame","index","info","len","chunks"])
+class FramesAccumulator:
+    """
+    Frames message accumulator.
+
+    Can accumulate results from several consecutive messages and cut/extract frames similar to the messages.
+    """
+    def __init__(self):
+        self.data=[]
+    def add_message(self, msg):
+        """Add a new message to the storage"""
+        frames,indices,frame_info=msg.frames,msg.indices,msg.frame_info
+        if frame_info is None:
+            frame_info=[None]*len(frames)
+        chunks=[TFramesDataChunk(f,idx,inf,(len(f) if msg.chunks else 1),msg.chunks) for (f,idx,inf) in zip(frames,indices,frame_info)]
+        self.data+=chunks
+    def nframes(self):
+        """Get total number of stored frames"""
+        return sum(ch.len for ch in self.data)
+    def _expand_chunk(self, ch, flatten):
+        if ch.chunks and flatten:
+            info=ch.info if ch.info is not None else [None]*len(ch.frame)
+            return zip(ch.frame,ch.index,info)
+        return [(ch.frame,ch.index,ch.info)]
+    def _take_slice_chunks(self, start, end=None, step=1, copy=False):
+        n=self.nframes()
+        if start is None:
+            start=0 if step>0 else n-1
+        elif start<0 and step>0:
+            start%=n
+        if end is None:
+            end=n if step>0 else -1
+        elif end<0 and step>0:
+            end%=n
+        chunks=any(ch.len!=1 for ch in self.data)
+        if any(ch.len!=1 for ch in self.data):
+            data=[]
+            pos=0
+            for ch in self.data:
+                if pos>=end:
+                    break
+                s=start-pos
+                if s<0:
+                    s%=step
+                e=end-pos
+                if s<ch.len:
+                    if ch.chunks:
+                        frame=ch.frame[s:e:step]
+                        index=ch.index[s:e:step]
+                        info=ch.info[s:e:step] if ch.info is not None else None
+                        nlen=len(frame)
+                    else:
+                        frame,index,info=ch.frame,ch.index,ch.info
+                        nlen=1
+                    if copy:
+                        frame=frame.copy()
+                        if ch.chunks:
+                            index=index.copy()
+                            if info is not None:
+                                info=info.copy()
+                    data.append(TFramesDataChunk(frame,index,info,nlen,ch.chunks))
+                pos+=ch.len
+        else:
+            data=self.data[start:end:step]
+        return data,chunks
+    def get_slice(self, start, end=None, step=1, copy=False, flatten=False):
+        """
+        Get a list of at most `n` frames from the message (if ``None``, return all frames).
+
+        If ``reverse==True``, return last `n` frames (in the reversed order); otherwise, return first `n` frames.
+        If ``copy==True``, copy frames (otherwise changing the returned frames can affect the stored frames).
+        """
+        data,chunks=self._take_slice_chunks(start,end,step,copy=copy)
+        if data:
+            if chunks:
+                frames,indices,frame_info=list(zip(*[r for ch in data for r in self._expand_chunk(ch,flatten)]))
+            else:
+                frames,indices,frame_info=list(zip(*[ch[:3] for ch in data]))
+        else:
+            frames,indices,frame_info=[],[],[]
+        if all(inf is None for inf in frame_info):
+            frame_info=None
+        return frames,indices,frame_info
+    def cut_to_slice(self, start, end, step=1):
+        """Cut the accumulator to only contain frames given by the slice"""
+        self.data,_=self._take_slice_chunks(start,end,step,copy=False)
+    def cut_to_size(self, n, from_end=False):
+        """
+        Cut contained data to contain at most `n` frames.
+
+        If ``from_end==True``, leave last `n` frames; otherwise, leave first `n` frames.
+        Return ``True`` if there are `n` frames after the cut, and ``False`` if there are less than `n`.
+        """
+        if n==0:
+            self.data=[]
+        elif from_end:
+            self.cut_to_slice(-n,None)
+        else:
+            self.cut_to_slice(0,n)
+        return self.nframes()==n
+    def clear(self):
+        """Clear the stored frames"""
+        self.data=[]

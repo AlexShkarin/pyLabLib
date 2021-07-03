@@ -39,6 +39,7 @@ class FrameBinningThread(controller.QTaskThread):
         self.v["params/time"]={"bin":1,"mode":"skip"}
         self.v["params/dtype"]=None
         self.v["enabled"]=False
+        self._recv_acc=stream_message.FramesAccumulator()
         self._clear_buffer()
         self.cnt=stream_manager.StreamIDCounter()
         self.add_command("setup_binning")
@@ -68,11 +69,10 @@ class FrameBinningThread(controller.QTaskThread):
         self.v["params/time"]={"bin":time_bin,"mode":time_bin_mode}
         self.v["params/dtype"]=dtype
 
-    def _clear_buffer(self, clear_info=True):
+    def _clear_buffer(self):
         self.acc_frame=None
         self.acc_frame_num=0
-        if clear_info:
-            self.last_frame_info=None
+        self._recv_acc.clear()
     def _bin_spatial(self, frames, n, dec, status_line):
         if n!=(1,1):
             sl=camera_utils.extract_status_line(frames,status_line,copy=False)
@@ -117,7 +117,8 @@ class FrameBinningThread(controller.QTaskThread):
                 if self.acc_frame is not None:
                     chunk=self._decimate_full_with_status_line([self.acc_frame,chunk],time_dec_mode,status_line)
                 binned_frames.append(chunk)
-                self._clear_buffer(clear_info=False)
+                self.acc_frame=None
+                self.acc_frame_num=0
             if len(frames):
                 binned_frames+=list(self._decimate_with_status_line(frames,time_bin,time_dec_mode,status_line)) # decimate all complete chunks
             frames_left=len(frames)%time_bin
@@ -138,33 +139,32 @@ class FrameBinningThread(controller.QTaskThread):
                     frames=camera_utils.insert_status_line(frames,status_line,sl,copy=False)
         frames=frames.astype(dtype)
         return frames
-            
+
     def process_input_frames(self, src, tag, msg):  # direct subscription + command for no-overhead forwarding?
         """Process multicast message with input frames"""
         if not self.v["enabled"]:
             self.send_multicast(dst="any",tag=self.tag_out,value=msg)
             return
-        processed=[]
         if self.cnt.receive_message(msg):
             self._clear_buffer()
-        frame_info_present=msg.frame_info is not None
-        for i,chunk in enumerate(msg.frames):
-            if frame_info_present and self.last_frame_info is None:
-                self.last_frame_info=msg.frame_info[i]
-            frames_in_acc=self.acc_frame_num
+        time_bin=self.v["params/time/bin"]
+        self._recv_acc.add_message(msg)
+        frames=[]
+        for chunk in msg.frames:
             proc_chunk=self._update_buffer(chunk,msg.metainfo.get("status_line"))
-            if len(proc_chunk):
-                if not msg.chunks:
-                    proc_chunk=proc_chunk[0]
-                index=msg.indices[i]-frames_in_acc
-                processed.append((proc_chunk,index,self.last_frame_info)) # actual time bin chunk started `frames_in_acc` before
-                if frame_info_present:
-                    self.last_frame_info=msg.frame_info[i] if self.acc_frame_num else None
-        if processed:
-            frames,indices,frame_info=list(zip(*processed))
-            if msg.frame_info is None:
-                frame_info=None
-            msg=msg.copy(frames=frames,indices=indices,frame_info=frame_info,source=self.name,step=self.v["params/time/bin"])
+            l=len(proc_chunk)
+            if l:
+                frames.append(proc_chunk if msg.chunks else proc_chunk[0])
+        indices=list(range(len(frames)))
+        frame_info=None
+        _,indices,frame_info=self._recv_acc.get_slice(0,(-(time_bin-1) or None),step=time_bin,flatten=True)
+        self._recv_acc.cut_to_size(self.acc_frame_num,from_end=True)
+        if frames:
+            if msg.chunks:
+                frames=np.concatenate(frames,axis=0)
+                indices=np.asarray(indices)
+                frame_info=np.asarray(frame_info) if frame_info is not None else None
+            msg=msg.copy(frames=frames,indices=indices,frame_info=frame_info,source=self.name,step=msg.mi.step*self.v["params/time/bin"])
             self.send_multicast(dst="any",tag=self.tag_out,value=msg)
 
 
