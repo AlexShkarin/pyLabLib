@@ -17,7 +17,7 @@ def upload(production=False):
         subprocess.call(["python","-m","twine","upload","dist/*"])
     else:
         subprocess.call(["python","-m","twine","upload","--repository","testpypi","dist/*"])
-        # pip install --extra-index-url https://testpypi.python.org/pypi pylablib
+        # pip install -U --no-cache-dir --extra-index-url https://testpypi.python.org/pypi pylablib
 
 
 parser=argparse.ArgumentParser()

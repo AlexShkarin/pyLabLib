@@ -1,3 +1,5 @@
+import pylablib
+
 from pylablib.devices import Andor
 from pylablib.devices import DCAM
 from pylablib.devices import IMAQdx
@@ -81,6 +83,10 @@ class TestPhotonFocusIMAQ(ROICameraTester):
         assert slines is not None
         assert np.all(slines[1:,0]-slines[:-1,0]==1)
     
+    @pytest.fixture(scope="class")
+    def library_parameters(self):
+        pylablib.par["devices/dlls/pfcam"]="../dlls/libs/x32"
+    
     @pytest.mark.devchange(5)
     def test_large_acq(self, devopener):
         """Test large fast acquisition"""
@@ -108,6 +114,10 @@ class TestPhotonFocusSiSo(ROICameraTester):
         slines=PhotonFocus.get_status_lines(np.asarray(frames))
         assert slines is not None
         assert np.all(slines[1:,0]-slines[:-1,0]==1)
+    
+    @pytest.fixture(scope="class")
+    def library_parameters(self):
+        pylablib.par["devices/dlls/pfcam"]="../dlls/libs/x32"
     
     @pytest.mark.devchange(5)
     def test_large_acq(self, devopener):
@@ -144,8 +154,8 @@ class TestTLCam(ROICameraTester):
     devname="thorlabs_tlcam"
     devcls=Thorlabs.ThorlabsTLCamera
     grab_size=100
-    rois=gen_rois(128,((1,1),(1,2),(2,2),((0,0),False),((3,3),False),((10,10),False),((100,100),False)))
-    # rois=gen_rois(128,((1,1),))
+    # rois=gen_rois(128,((1,1),(1,2),(2,2),((0,0),False),((3,3),False),((10,10),False),((100,100),False)))
+    rois=gen_rois(128,((1,1),))
 
 
 

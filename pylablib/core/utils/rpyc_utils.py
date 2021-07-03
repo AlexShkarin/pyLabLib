@@ -179,7 +179,7 @@ class DeviceService(SocketTunnelService):
                 pass
         self.devices=[]
         if self.verbose:
-            print("Disconnected client {} from {}".format(self._conn,_get_conn_address(self._conn,peer=True)))
+            print("Disconnected client {}".format(self._conn))
         SocketTunnelService.on_disconnect(self,conn)
     def get_device_class(self, cls):
         """

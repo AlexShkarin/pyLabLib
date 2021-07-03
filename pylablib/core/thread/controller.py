@@ -699,7 +699,7 @@ class QThreadController(QtCore.QObject):
         """
         if simple:
             if update:
-                self._params_val.merge(name,value)
+                self._params_val.merge(value,name)
             else:
                 self._params_val.add_entry(name,value,force=True)
         else:
@@ -709,7 +709,7 @@ class QThreadController(QtCore.QObject):
                 if name in self._params_funcs:
                     del self._params_funcs[name]
                 if update:
-                    self._params_val.merge(name,value)
+                    self._params_val.merge(value,name)
                 else:
                     self._params_val.add_entry(name,value,force=True)
                 for exp_name in self._params_exp:
@@ -1131,6 +1131,7 @@ class QTaskThread(QThreadController):
         self._jobs_list=[]
         self.batch_jobs={}
         self._batch_jobs_args={}
+        self._batch_jobs_stopreq=set()
         self._batch_jobs_namegen=general.NamedUIDGenerator()
         self.args=args or []
         self.kwargs=kwargs or {}
@@ -1314,17 +1315,21 @@ class QTaskThread(QThreadController):
         """
         self.stop_batch_job(name)
         del self.batch_jobs[name]
-    def start_batch_job(self, name, period, *args, **kwargs):
+    def start_batch_job(self, name, period, *args, start_immediate=True, **kwargs):
         """
         Start the batch job with the given name.
 
         `period` specifies suspension period. Optional arguments are passed to the job and the cleanup functions.
+        If ``start_immediate==True``, start the job (i.e., run the first iteration) immediately during the call;
+        otherwise, start it only when it is scheduled, after the currently running call is complete.
         Local call method.
         """
         if name not in self.batch_jobs:
             raise ValueError("job {} doesn't exists".format(name))
         if name in self.jobs:
             self.stop_batch_job(name)
+        if name in self._batch_jobs_stopreq:
+            self._batch_jobs_stopreq.remove(name)
         job,cleanup,min_runtime,priority=self.batch_jobs[name]
         self._batch_jobs_args[name]=(period,args,kwargs,cleanup)
         gen=job(*args,**kwargs)
@@ -1332,6 +1337,9 @@ class QTaskThread(QThreadController):
             cnt=general.Countdown(min_runtime) if min_runtime else None
             try:
                 while True:
+                    if name in self._batch_jobs_stopreq:
+                        self._batch_jobs_stopreq.remove(name)
+                        raise StopIteration
                     p=next(gen)
                     if p is not None:
                         self.change_job_period(name,p)
@@ -1340,7 +1348,7 @@ class QTaskThread(QThreadController):
             except StopIteration:
                 pass
             self.stop_batch_job(name)
-        self.add_job(name,do_step,period,priority=priority,initial_call=False)
+        self.add_job(name,do_step,period,priority=priority,initial_call=start_immediate)
     def is_batch_job_running(self, name):
         """
         Check if a given batch job running.
@@ -1350,11 +1358,13 @@ class QTaskThread(QThreadController):
         if name not in self.batch_jobs:
             raise ValueError("job {} doesn't exists".format(name))
         return name in self.jobs
-    def stop_batch_job(self, name, error_on_stopped=False):
+    def stop_batch_job(self, name, stop_immediate=True, error_on_stopped=False):
         """
         Stop a given batch job.
         
         If ``error_on_stopped==True`` and the job is not currently running, raise an error. Otherwise, do nothing.
+        If ``stop_immediate==True``, stop the job (i.e., unschedule it and run the cleanup code) immediately during the call;
+        otherwise, stop it when its next iteration is called.
         Local call method.
         """
         if name not in self.batch_jobs:
@@ -1363,11 +1373,14 @@ class QTaskThread(QThreadController):
             if error_on_stopped:
                 raise ValueError("job {} is not running".format(name))
             return
+        if not stop_immediate:
+            self._batch_jobs_stopreq.add(name)
+            return
         self.remove_job(name)
         _,args,kwargs,cleanup=self._batch_jobs_args.pop(name)
         if cleanup:
             cleanup(*args,**kwargs)
-    def restart_batch_job(self, name, error_on_stopped=False):
+    def restart_batch_job(self, name, start_immediate=True, error_on_stopped=False):
         """
         Restart the running batch job with its current arguments.
 
@@ -1375,9 +1388,9 @@ class QTaskThread(QThreadController):
         Local call method.
         """
         period,args,kwargs,_=self._batch_jobs_args[name]
-        self.stop_batch_job(name,error_on_stopped=error_on_stopped)
-        self.start_batch_job(name,period,*args,**kwargs)
-    def run_as_batch_job(self, job, period, cleanup=None, name=None, priority=-10, args=None, kwargs=None):
+        self.stop_batch_job(name,stop_immediate=True,error_on_stopped=error_on_stopped)
+        self.start_batch_job(name,period,*args,start_immediate=start_immediate,**kwargs)
+    def run_as_batch_job(self, job, period, cleanup=None, name=None, priority=-10, start_immediate=True, args=None, kwargs=None):
         """
         Create a temporarily batch job and immediately run it.
 
@@ -1400,7 +1413,7 @@ class QTaskThread(QThreadController):
                 cleanup(*args,**kwargs)
                 self.remove_batch_job(name)
         self.add_batch_job(name,job,cleanup=full_cleanup,priority=priority)
-        self.start_batch_job(name,period,*(args or []),**(kwargs or {}))
+        self.start_batch_job(name,period,*(args or []),start_immediate=start_immediate,**(kwargs or {}))
         return name
 
     def _get_priority_queue(self, priority, fast=False):
