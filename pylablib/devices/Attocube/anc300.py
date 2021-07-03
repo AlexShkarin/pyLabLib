@@ -345,6 +345,10 @@ class ANC300(comm_backend.ICommBackendWrapper,stage.IMultiaxisStage):
 
         If the motion is not finished after `timeout` seconds, raise a backend error.
         """
+        if axis=="all":
+            for ax in self.get_all_axes():
+                self.wait_move(ax,timeout=timeout)
+            return
         with self.instr.using_timeout(timeout):
             self.query("stepw {}".format(axis))
     def is_moving(self, axis):

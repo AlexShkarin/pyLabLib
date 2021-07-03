@@ -302,6 +302,10 @@ class Performax4EXStage(GenericPerformaxStage):
         return bool(self.get_status_n(axis)&0x007)
     def wait_move(self, axis, timeout=None, period=0.05):
         """Wait until motion is done"""
+        if axis=="all":
+            for ax in self._axes:
+                self.wait_move(ax,timeout=timeout,period=period)
+            return
         ctd=general.Countdown(timeout)
         while True:
             if not self.is_moving(axis):

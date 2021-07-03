@@ -355,6 +355,10 @@ class ANC350(comm_backend.ICommBackendWrapper,stage.IMultiaxisStage):
         If the motion is not finished after `timeout` seconds, raise a backend error.
         Precision sets the final positioning precision (in m).
         """
+        if axis=="all":
+            for ax in self.get_all_axes():
+                self.wait_move(ax,timeout=timeout)
+            return
         ctd=general.Countdown(timeout)
         while True:
             if (not self.is_moving(axis)) or self.is_target_reached(axis,precision=precision):

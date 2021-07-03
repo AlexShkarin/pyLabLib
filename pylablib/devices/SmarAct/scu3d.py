@@ -179,6 +179,10 @@ class SCU3D(stage.IMultiaxisStage):
             time.sleep(1E-2)
     def wait_move(self, axis, timeout=30.):
         """Wait for a given axis to stop moving"""
+        if axis=="all":
+            for ax in self.get_all_axes():
+                self.wait_move(ax,timeout=timeout)
+            return
         return self.wait_for_status(axis,timeout=timeout)
     @stage.muxaxis
     def is_moving(self, axis="all"):
