@@ -26,6 +26,7 @@ class ICamera(interface.IDevice):
     Provides a consistent common interface for the most frequently encountered camera functions.
     """
     _default_image_indexing="rct"
+    _default_frame_format="list"
     _default_frameinfo_format="namedtuple"
     _default_image_dtype="<u2"
     _clear_pausing_acquisition=False
@@ -38,6 +39,7 @@ class ICamera(interface.IDevice):
         self._default_acq_params=function_utils.funcsig(self.setup_acquisition).defaults
         self._frame_counter=FrameCounter()
         self._image_indexing=self._default_image_indexing
+        self._frame_format=self._default_frame_format
         self._frameinfo_format=self._default_frameinfo_format
         self._frameinfo_period=1
         self._add_status_variable("buffer_size",lambda: self.get_frames_status().buffer_size)
@@ -47,6 +49,7 @@ class ICamera(interface.IDevice):
         self._add_status_variable("data_dimensions",self.get_data_dimensions)
         self._add_info_variable("detector_size",self.get_detector_size)
         self._add_settings_variable("image_indexing",self.get_image_indexing,self.set_image_indexing)
+        self._add_settings_variable("frame_format",self.get_frame_format,self.set_frame_format)
         self._add_settings_variable("frame_info_format",self.get_frame_info_format,self.set_frame_info_format)
         self._add_settings_variable("frame_info_period",self.get_frame_info_period,self.set_frame_info_period)
         self._add_info_variable("frame_info_fields",self.get_frame_info_fields)
@@ -270,6 +273,41 @@ class ICamera(interface.IDevice):
         """Get readout data dimensions (in pixels) as a tuple ``(width, height)``; take indexing mode into account"""
         return image_utils.convert_shape_indexing(self._get_data_dimensions_rc(),"rc",self._image_indexing)
     
+    def get_frame_format(self):
+        """
+        Get format for the returned images.
+
+        Can be ``"list"`` (list of 2D arrays, or 3D array for some ``fastbuff`` cameras), ``"array"`` (a single 3D array).
+        """
+        return self._frame_format
+    _p_frame_format=interface.EnumParameterClass("frame_format",["list","array"])
+    @interface.use_parameters(fmt="frame_format")
+    def set_frame_format(self, fmt):
+        """
+        Set format for the returned images.
+
+        Can be ``"list"`` (list of 2D arrays, or 3D array for some ``fastbuff`` cameras), ``"array"`` (a single 3D array).
+        Note that if the format is set to ``"array"``, the frame info format is also automatically set to ``"array"``.
+        """
+        self._frame_format=fmt
+        if fmt=="array":
+            self.set_frame_info_format("array")
+        return self._frame_format
+    def _convert_frame_format(self, frames, info=None, fmt=None):
+        """Convert frames format from the given form to the resulting format"""
+        if fmt is None:
+            fmt=self._frame_format
+        if info is not None and fmt=="array":
+            if isinstance(info,list):
+                info=np.array(info) if info[0].ndim==1 else np.concatenate(info,axis=0)
+        if isinstance(frames,list):
+            if fmt=="array":
+                frames=np.array(frames) if frames[0].ndim==2 else np.concatenate(frames,axis=0)
+        if isinstance(frames,np.ndarray):
+            if fmt=="list":
+                frames=list(frames)
+        return frames,info
+    
     def get_frame_info_format(self):
         """
         Get format of the frame info.
@@ -291,6 +329,8 @@ class ICamera(interface.IDevice):
         ``"array"`` (same as ``"list"``, but with a numpy array, which is easier to use for ``fastbuff`` readout supported by some cameras),
         or ``"dict"`` (flat dictionary with the same fields as the ``"list"`` format; more resilient to future format changes)
         """
+        if self.get_frame_format()=="array":
+            fmt="array"
         self._frameinfo_format=fmt
         return self._frameinfo_format
     def get_frame_info_period(self):
@@ -405,6 +445,7 @@ class ICamera(interface.IDevice):
                 info=[None]*skipped_frames+info
         if not peek:
             self._frame_counter.advance_read_frames(rng)
+        images,info=self._convert_frame_format(images,info)
         return (images,info) if return_info else images
     def read_oldest_image(self, peek=False, return_info=False):
         """

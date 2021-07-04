@@ -599,6 +599,7 @@ class IMAQFrameGrabber(camera.IROICamera):
                     parsed_data=[None]*skipped_frames+parsed_data
                 if return_info:
                     frame_info=[None]*skipped_frames+frame_info
+        parsed_data,frame_info=self._convert_frame_format(parsed_data,frame_info)
         parsed_data=self._convert_indexing(parsed_data,"rct",axes=(-2,-1))
         return (parsed_data,frame_info) if return_info else parsed_data
 

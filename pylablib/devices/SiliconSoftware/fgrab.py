@@ -56,7 +56,7 @@ _applet_string_props={  "uid":FgAppletStringProperty.FG_AP_STRING_APPLET_UID,
                         "file":FgAppletStringProperty.FG_AP_STRING_APPLET_FILE,}
 _applet_int_props={ "flags":FgAppletIntProperty.FG_AP_INT_FLAGS,
                     "info":FgAppletIntProperty.FG_AP_INT_INFO,}
-TFullAppletInfo=collections.namedtuple("TAppletInfo",["name","uid","desc","category","platform","tags","version","path","file","flags","info"])
+TFullAppletInfo=collections.namedtuple("TFullAppletInfo",["name","uid","desc","category","platform","tags","version","path","file","flags","info"])
 def _get_applet_item_info(item, full_desc=False):
     props=TFullAppletInfo._fields if full_desc else TAppletInfo._fields
     values=[]
@@ -661,6 +661,7 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
                     parsed_data=[None]*skipped_frames+parsed_data
                 if return_info:
                     frame_info=[None]*skipped_frames+frame_info
+        parsed_data,frame_info=self._convert_frame_format(parsed_data,frame_info)
         parsed_data=self._convert_indexing(parsed_data,"rct",axes=(-2,-1))
         return (parsed_data,frame_info) if return_info else parsed_data
 
