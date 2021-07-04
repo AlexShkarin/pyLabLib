@@ -36,9 +36,9 @@ def get_local_addr():
 def get_all_local_addr():
     """Get a list of all local IP addresses"""
     return socket.gethostbyname_ex(socket.gethostname())[2]
-def get_local_hostname():
+def get_local_hostname(full=True):
     """Get a local host name"""
-    return socket.gethostbyname_ex(socket.gethostname())[0]
+    return socket.getfqdn() if full else socket.gethostname()
 
 def as_addr_port(addr, port):
     """

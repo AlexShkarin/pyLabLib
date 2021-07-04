@@ -128,7 +128,7 @@ class RangeCtl(QtWidgets.QWidget):
 ##### ROI control #####
 
 
-TAxisParams=collections.namedtuple("AxisParams",["min","max"])
+TAxisParams=collections.namedtuple("TAxisParams",["min","max"])
 class ROICtl(QtWidgets.QWidget):
     """
     Class for ROI control.

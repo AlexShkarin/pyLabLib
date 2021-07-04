@@ -44,10 +44,10 @@ class ANC300Thread(device_thread.DeviceThread):
 
     def update_measurements(self):
         if self.open():
-            self.v["mode"]=self.device.get_mode()
-            self.v["enabled"]=self.device.is_enabled()
-            self.v["output"]=self.device.get_output()
-            self.v["capacitance"]=self.device.get_capacitance()
+            self.v["mode"]=self.rpyc_obtain(self.device.get_mode())
+            self.v["enabled"]=self.rpyc_obtain(self.device.is_enabled())
+            self.v["output"]=self.rpyc_obtain(self.device.get_output())
+            self.v["capacitance"]=self.rpyc_obtain(self.device.get_capacitance())
     
     def _stop_wait(self, axis="all"):
         axes=self.device.get_all_axes() if axis=="all" else [axis]

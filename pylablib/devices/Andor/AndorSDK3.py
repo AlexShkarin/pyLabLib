@@ -245,6 +245,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         self._opid=libctl.open().opid
         self._update_attributes()
         self._register_events()
+        self.clear_acquisition()
     def close(self):
         """Close connection to the camera"""
         if self.handle is not None:

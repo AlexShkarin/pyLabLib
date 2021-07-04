@@ -354,7 +354,7 @@ class FramesMessage(DataStreamMessage):
                 for i,f in enumerate(self.frames):
                     inf=self.frame_info[i]
                     if np.ndim(inf)!=2:
-                        raise ValueError("frame info should be a 2-dimensional in the chunk mode")
+                        raise ValueError("frame info should be a 2-dimensional array in the chunk mode")
                     if len(inf)!=len(f):
                         raise ValueError("frames and indices array lengths don't agree: {} vs {}".format(len(f),len(inf)))
 

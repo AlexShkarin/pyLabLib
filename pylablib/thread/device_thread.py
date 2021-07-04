@@ -30,16 +30,26 @@ class DeviceThread(controller.QTaskThread):
         - :meth:`connect_device`: create the device class and assign it to ``.device`` attribute; if connection failed, can leave the attribute ``None``
         - :meth:`open_device`: re-open currently closed device (by default, call ``.open`` method of the device)
         - :meth:`close_device`: close currently opened device (by default, call ``.close`` method of the device)
+        - :meth:`setup_open_device`: setup the device after opening (either initial connection, or re-opening)
+        - :meth:`_get_parameter`: return the current device parameters which need to be shown to other threads;
+            by default, get all device variables specified by ``parameter_variables`` class attribute (all settings by default)
+        - :meth:`_get_disconnected_parameters`: return the parameters substitute when the device is disconnected (i.e., the thread is in the dummy mode);
+            by default, return ``default_parameter_values`` class attribute (``None`` by default)
 
     Methods to use:
         - :meth:`setup_full_info_job`: setup recurring job to update full info variables; reduces the lag when getting them from other threads
+        - :meth:`add_device_command`: add a command which simply calls a device method and optionally updates the parameters afterwards
         - :meth:`rpyc_devclass`: get device class on local or remote PC; can be used to transparently implement remote devices
+        - :meth:`using_devclass`: context manager simplifying usage of :meth:`rpyc_devclass`
         - :meth:`rpyc_obtain`: transfer values returned by the remote device to the local Python instance
         
     Commands:
         - ``open``: open the device, if not already opened
         - ``close``: close the device, if opened
-        - ``get_settings``: get device settings
+        - ``update_parameters``: update the stored parameter and return the current value;
+            intended to fit between :meth:`get_full_info`, which returns the full information only upon request,
+            and :meth:`update_measurements`, which frequently updates the most relevant parameters.
+        - ``apply_parameters``: apply the parameters supplied as a dictionary
         - ``get_full_info``: get full info of the device
     """
     parameter_variables="settings"
@@ -125,16 +135,20 @@ class DeviceThread(controller.QTaskThread):
             if not self.rpyc_serv:
                 return None
             return self.rpyc_serv.get_device_class(cls)
-    def rpyc_obtain(self, obj):
+    def rpyc_obtain(self, obj, deep=False, direct=False):
         """
         Obtain (i.e., transfer to the local PC) an object returned by the device.
 
+        If ``deep==True`` and ``obj`` is a container (tuple, list, or dict), run the function recursively for all its sub-elements;
+        otherwise, convert it all at once.
+        If ``direct==True``, directly use RPyC ``obtain`` method; otherwise use the custom method, which works better with large numpy arrays,
+        but worse with composite types (e.g., lists).
         Only required for relatively complicated objects such as numpy arrays or custom classes (e.g., :class:`.Dictionary` objects).
         Most simple objects of built-in classes (numbers, strings, lists, tuples, dicts) don't need to use this method.
         If current device is local, return `obj` as is.
         """
         if self.rpyc_serv is not None:
-            return rpyc_utils.obtain(obj,serv=self.rpyc_serv)
+            return rpyc_utils.obtain(obj,serv=self.rpyc_serv,deep=deep,direct=direct)
         return obj
 
     class ConnectionFailError(Exception):

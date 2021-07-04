@@ -33,24 +33,29 @@ def _obtain_single(proxy, serv):
 
 
 _numpy_block_size=int(2**20)
-def obtain(proxy, serv=None, deep=True):
+def obtain(proxy, serv=None, deep=False, direct=False):
     """
     Obtain a remote netref object by value (i.e., copy it to the local Python instance).
 
     Wrapper around :func:`rpyc.utils.classic.obtain` with some special cases handling.
     `serv` specifies the current remote service. If it is of type :class:`SocketTunnelService`, use its socket tunnel for faster transfer.
     If ``deep==True`` and ``proxy`` is a container (tuple, list, or dict), run the function recursively for all its sub-elements.
+    If ``direct==True``, directly use RPyC ``obtain`` method; otherwise use the custom method, which works better with large numpy arrays,
+    but worse with composite types (e.g., lists).
     """
-    if deep and isinstance(proxy,tuple): # tuples are not passed as netrefs, so they need to be checked first
+    t=type(proxy) # each isinstance call is performed on the server, so getting type once is faster
+    if deep and not direct and issubclass(t,tuple): # tuples are not passed as netrefs, so they need to be checked first
         return tuple([obtain(v,serv=serv) for v in proxy])
-    if not isinstance(proxy,rpyc.BaseNetref):
+    if not issubclass(t,rpyc.BaseNetref):
         return proxy
+    if direct:
+        return rpyc.classic.obtain(proxy)
     if deep:
         if isinstance(proxy,list):
             return [obtain(v,serv=serv) for v in proxy]
         if isinstance(proxy,dict):
             return {obtain(k,serv=serv):obtain(v,serv=serv) for k,v in proxy.items()}
-    if isinstance(proxy,np.ndarray) or (type(proxy).__name__=="numpy.ndarray" and all([hasattr(proxy,a) for a in ["shape","dtype","tostring","flatten"]])):
+    if isinstance(proxy,np.ndarray) or (t.__name__=="numpy.ndarray" and all([hasattr(proxy,a) for a in ["shape","dtype","tostring","flatten"]])):
         elsize=np.prod(proxy.shape,dtype="u8")
         bytesize=proxy.dtype.itemsize*elsize
         if bytesize>_numpy_block_size:

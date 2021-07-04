@@ -3,8 +3,8 @@
 
 # import collections
 
-# TPM100DeviceInfo=collections.namedtuple("TDeviceInfo",["name","serial","firmware"])
-# TPM100SensorInfo=collections.namedtuple("TSensorInfo",["name","serial","calibration","type","subtype","flags"])
+# TPM100DeviceInfo=collections.namedtuple("TPM100DeviceInfo",["name","serial","firmware"])
+# TPM100SensorInfo=collections.namedtuple("TPM100SensorInfo",["name","serial","calibration","type","subtype","flags"])
 # class PM100(SCPI.SCPIDevice):
 #     """
 #     Thorlabs PM100 optical Power Meter.
