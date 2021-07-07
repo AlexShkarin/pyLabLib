@@ -37,11 +37,12 @@ class Solstis(interface.IDevice):
         use_websocket(bool): if ``True``, use websocket interface (same as used by the web interface) for additional functionality
             (wavemeter connection, etalon value, improved operation stopping);
             ``"auto"`` enables it if websocket package is installed, and disables otherwise
+        use_cavity: if ``False`` and any reference cavity methods are used, either ignore them, or use closest available methods instead
     """
     Error=M2Error
     ReraiseError=M2CommunicationError
     BackendError=net.socket.error
-    def __init__(self, addr, port, timeout=5., start_link=True, use_websocket="auto"):
+    def __init__(self, addr, port, timeout=5., start_link=True, use_websocket="auto", use_cavity=True):
         super().__init__()
         self.tx_id=1
         self.conn=(addr,port)
@@ -53,6 +54,7 @@ class Solstis(interface.IDevice):
         self._last_status={}
         self.use_websocket=(websocket is not None) if use_websocket=="auto" else use_websocket
         self._websocket_lock=threading.Lock()
+        self.use_cavity=use_cavity
         self._add_status_variable("web_status",self.get_full_web_status)
         self._add_status_variable("system_status",self.get_system_status)
         self._add_status_variable("fine_tuning_status",self.get_full_fine_tuning_status)
@@ -271,6 +273,9 @@ class Solstis(interface.IDevice):
             raise M2Error("websocket is required to communicate this request")
 
 
+    def _check_option(self, option):
+        if option=="cavity":
+            return self.use_cavity
 
     def _try_connect_wavemeter(self, sync=True):
         self._send_websocket_request('{"message_type":"task_request","task":["start_wavemeter_link"]}')
@@ -517,7 +522,10 @@ class Solstis(interface.IDevice):
         If ``fine==True``, adjust fine tuning; otherwise, adjust coarse tuning.
         Only works if the wavemeter is disconnected.
         If ``sync==True``, wait until the operation is complete.
+        If reference cavity is disabled by setting ``use_cavity=False`` on creation, do nothing.
         """
+        if not self._check_option("cavity"):
+            return
         op_name="fine_tune_cavity" if fine else "tune_cavity"
         op_pfx="fine" if fine else "coarse"
         _,reply=self.query(op_name,{"setting":[value]},report=True)
@@ -533,7 +541,10 @@ class Solstis(interface.IDevice):
         
         Automatically lock etalon first (otherwise the operation fails).
         If ``sync==True``, wait until the operation is complete.
+        If reference cavity is disabled by setting ``use_cavity=False`` on creation, do nothing.
         """
+        if not self._check_option("cavity"):
+            return
         if self.get_reference_cavity_lock_status()=="on":
             return
         self.lock_etalon(sync=True)
@@ -547,7 +558,10 @@ class Solstis(interface.IDevice):
         Unlock the laser from the reference cavity.
         
         If ``sync==True``, wait until the operation is complete.
+        If reference cavity is disabled by setting ``use_cavity=False`` on creation, do nothing.
         """
+        if not self._check_option("cavity"):
+            return
         if self.get_reference_cavity_lock_status()=="off":
             return
         _,reply=self.query("cavity_lock",{"operation":"off"},report=True)
@@ -560,8 +574,11 @@ class Solstis(interface.IDevice):
         Get the reference cavity lock status.
         
         Return either ``"off"`` (lock is off), ``"on"`` (lock is on), ``"debug"`` (lock in debug condition),
-        ``"error"`` (lock had an error), ``"search"`` (lock is searching), or ``"low"`` (lock is off due to low output).
+        ``"error"`` (lock had an error), ``"search"`` (lock is searching), ``"low"`` (lock is off due to low output),
+        or ``"disabled"`` (reference cavity is disabled by setting ``use_cavity=False`` on creation).
         """
+        if not self._check_option("cavity"):
+            return "disabled"
         _,reply=self.query("cavity_lock_status",{})
         if reply["status"][0]==1:
             raise M2Error("could not get etalon status")
@@ -574,6 +591,9 @@ class Solstis(interface.IDevice):
             raise M2Error("unknown terascan type: {}".format(scan_type))
         if scan_type=="coarse":
             raise M2Error("coarse scan is not currently supported by the M2 firmware")
+        if scan_type=="line" and not self._check_option("cavity"):
+            return "fine"
+        return scan_type
     _terascan_rates=[                         50E3,100E3,200E3,500E3,
                         1E6,2E6,5E6,10E6,20E6,50E6,100E6,200E6,500E6,
                         1E9,2E9,5E9,10E9,20E9,50E9,100E9 ]
@@ -592,8 +612,10 @@ class Solstis(interface.IDevice):
             scan_range(tuple): tuple ``(start, stop)`` with the scan range (in Hz).
             rate(float): scan rate (in Hz/s).
             trunc_rate(bool): if ``True``, truncate the scan rate to the nearest available rate (otherwise, incorrect rate would raise an error).
+
+        If reference cavity is disabled by setting ``use_cavity=False`` on creation and `scan_type` is ``"line"``, use ``"fine"`` instead.
         """
-        self._check_terascan_type(scan_type)
+        scan_type=self._check_terascan_type(scan_type)
         if trunc_rate:
             rate=self._trunc_terascan_rate(rate)
         if rate>=1E9:
@@ -619,10 +641,11 @@ class Solstis(interface.IDevice):
         Scan parameters are set up separately using :meth:`setup_terascan`.
         Scan type can be ``"medium"`` (BRF+etalon, rate from 100 GHz/s to 1 GHz/s),
         ``"fine"`` (all elements, rate from 20 GHz/s to 1 MHz/s), or ``"line"`` (all elements, rate from 20 GHz/s to 50 kHz/s).
+        If reference cavity is disabled by setting ``use_cavity=False`` on creation and `scan_type` is ``"line"``, use ``"fine"`` instead.
         If ``sync==True``, wait until the scan is set up (not until the whole scan is complete).
         If ``sync_done==True``, wait until the whole scan is complete (not recommended, as it can take hours).
         """
-        self._check_terascan_type(scan_type)
+        scan_type=self._check_terascan_type(scan_type)
         if sync:
             self.enable_terascan_updates()
         self.lock_wavemeter(False,error_on_fail=False)
@@ -675,9 +698,10 @@ class Solstis(interface.IDevice):
         """
         Stop terascan of the given type.
         
+        If reference cavity is disabled by setting ``use_cavity=False`` on creation and `scan_type` is ``"line"``, use ``"fine"`` instead.
         If ``sync==True``, wait until the operation is complete.
         """
-        self._check_terascan_type(scan_type)
+        scan_type=self._check_terascan_type(scan_type)
         _,reply=self.query("scan_stitch_op",{"scan":scan_type,"operation":"stop"},report=True)
         if reply["status"][0]==1:
             raise M2Error("could not stop TeraScan: operation failed")
@@ -697,8 +721,10 @@ class Solstis(interface.IDevice):
             or ``"stitching"`` (scan is in progress, but currently stitching)
             ``"web"``: whether scan is running in web interface (some failure modes still report ``"scanning"`` through the usual interface);
             only available if the laser web connection is on and if ``web_status==True``.
+        
+        If reference cavity is disabled by setting ``use_cavity=False`` on creation and `scan_type` is ``"line"``, use ``"fine"`` instead.
         """
-        self._check_terascan_type(scan_type)
+        scan_type=self._check_terascan_type(scan_type)
         _,reply=self.query("scan_stitch_status",{"scan":scan_type})
         status={}
         if reply["status"][0]==0:
@@ -728,9 +754,15 @@ class Solstis(interface.IDevice):
                         "resonator_continuous","resonator_single","resonator_ramp","resonator_triangular",
                         "ecd_continuous","ecd_ramp",
                         "fringe_test"}
+    _cavity_scan_substitutes={  "cavity_continuous":"resonator_continuous",
+                                "cavity_single":"resonator_single",
+                                "cavity_triangular":"resonator_triangular"}
     def _check_fast_scan_type(self, scan_type):
         if scan_type not in self._fast_scan_types:
             raise M2Error("unknown fast scan type: {}".format(scan_type))
+        if scan_type in self._cavity_scan_substitutes and not self._check_option("cavity"):
+            return self._cavity_scan_substitutes[scan_type]
+        return scan_type
     def start_fast_scan(self, scan_type, width, period, sync=False, setup_locks=True):
         """
         Setup and start fast scan.
@@ -744,8 +776,10 @@ class Solstis(interface.IDevice):
             period(float): scan time/period (in s).
             sync(bool): if ``True``, wait until the scan is set up (not until the whole scan is complete).
             setup_locks(bool): if ``True``, automatically setup etalon and reference cavity locks in the appropriate states for etalon, cavity, or resonator scans.
+        
+        If reference cavity is disabled by setting ``use_cavity=False`` on creation, use resonator scans instead of cavity scans.
         """
-        self._check_fast_scan_type(scan_type)
+        scan_type=self._check_fast_scan_type(scan_type)
         if setup_locks:
             if scan_type.startswith("cavity"):
                 self.lock_etalon()
@@ -781,10 +815,11 @@ class Solstis(interface.IDevice):
         """
         Stop fast scan of the given type.
         
+        If reference cavity is disabled by setting ``use_cavity=False`` on creation, use resonator scans instead of cavity scans.
         If ``return_to_start==True``, return to the center frequency after stopping; otherwise, stay at the current instantaneous frequency.
         If ``sync==True``, wait until the operation is complete.
         """
-        self._check_fast_scan_type(scan_type)
+        scan_type=self._check_fast_scan_type(scan_type)
         op_name="fast_scan_stop" if return_to_start else "fast_scan_stop_nr"
         _,reply=self.query(op_name,{"scan":scan_type})
         if reply["status"][0]==1:
@@ -804,8 +839,10 @@ class Solstis(interface.IDevice):
         Return dictionary with 2 items:
             ``"status"``: can be ``"stopped"`` (scan is not in progress), ``"scanning"`` (scan is in progress).
             ``"value"``: current tuner value (in percent); does not necessary correspond to the scan progress.
+        
+        If reference cavity is disabled by setting ``use_cavity=False`` on creation, use resonator scans instead of cavity scans.
         """
-        self._check_fast_scan_type(scan_type)
+        scan_type=self._check_fast_scan_type(scan_type)
         _,reply=self.query("fast_scan_poll",{"scan":scan_type})
         status={}
         if reply["status"][0]==0:
@@ -829,16 +866,17 @@ class Solstis(interface.IDevice):
         Stop scan of the current type (terascan or fine scan) using web interface.
 
         More reliable than native programming interface, but requires activated web interface.
+        If reference cavity is disabled by setting ``use_cavity=False`` on creation, use resonator scans instead of cavity scans.
         """
         if not self.use_websocket:
             return
         try:
-            self._check_terascan_type(scan_type)
+            scan_type=self._check_terascan_type(scan_type)
             scan_type=scan_type.replace("line","narrow")
             scan_type=scan_type+"_scan"
             terascan=True
         except M2Error:
-            self._check_fast_scan_type(scan_type)
+            scan_type=self._check_fast_scan_type(scan_type)
             scan_type=scan_type.replace("continuous","cont")
             terascan=False
         scan_task=scan_type+"_stop"
