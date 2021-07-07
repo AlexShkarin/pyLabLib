@@ -142,7 +142,7 @@ class TableAccumulatorThread(controller.QTaskThread):
     def setup_task(self, channels, src, tag, memsize=10**6):
         self.channels=channels
         self.table_accum=TableAccumulator(channels=channels,memsize=memsize)
-        self.subscribe_direct(self._accum_data,srcs=src,tags=tag,dsts="any")
+        self.subscribe_direct(self._accum_data,srcs=src,tags=tag)
         self.cnt=stream_manager.StreamIDCounter()
         self.data_lock=threading.Lock()
         self.add_direct_call_command("get_data")
@@ -181,3 +181,9 @@ class TableAccumulatorThread(controller.QTaskThread):
         """Clear all data in the table"""
         with self.data_lock:
             self.table_accum.reset_data()
+    def set_cutoff(self, sid=None, mid=0, reset=True):
+        """Set incoming stream cutoff"""
+        with self.data_lock:
+            self.cnt.set_cutoff(sid=sid,mid=mid)
+            if reset:
+                self.table_accum.reset_data()

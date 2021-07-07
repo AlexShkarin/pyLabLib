@@ -33,7 +33,7 @@ class FrameBinningThread(controller.QTaskThread):
         - ``setup_binning``: setup binning parameters
     """
     def setup_task(self, src, tag_in, tag_out=None):
-        self.subscribe_commsync(self.process_input_frames,srcs=src,tags=tag_in,dsts="any",limit_queue=2,on_full_queue="wait")
+        self.subscribe_commsync(self.process_input_frames,srcs=src,tags=tag_in,limit_queue=2,on_full_queue="wait")
         self.tag_out=tag_out or tag_in
         self.v["params/spat"]={"bin":(1,1),"mode":"skip"}
         self.v["params/time"]={"bin":1,"mode":"skip"}
@@ -200,7 +200,7 @@ class FrameSlowdownThread(controller.QTaskThread):
         - ``set_output_period``: set the period of output frames generation
     """
     def setup_task(self, src, tag_in, tag_out=None):
-        self.subscribe_commsync(self.process_input_frames,srcs=src,tags=tag_in,dsts="any",limit_queue=10)
+        self.subscribe_commsync(self.process_input_frames,srcs=src,tags=tag_in,limit_queue=10)
         self.tag_out=tag_out or tag_in
         self.frames_buffer=[]
         self.buffer_size=1
@@ -355,7 +355,7 @@ class BackgroundSubtractionThread(controller.QTaskThread):
     TStoredFrame=collections.namedtuple("TStoredFrame",["frame","index","info","status_line"])
     def setup_task(self, src, tag_in, tag_out=None):
         self.frames_src=stream_manager.StreamSource(builder=stream_message.FramesMessage,use_mid=False)
-        self.subscribe_commsync(self.process_input_frames,srcs=src,tags=tag_in,dsts="any",limit_queue=10,on_full_queue="skip_oldest")
+        self.subscribe_commsync(self.process_input_frames,srcs=src,tags=tag_in,limit_queue=10,on_full_queue="skip_oldest")
         self.tag_out=tag_out or tag_in+"/show"
         self.v["enabled"]=False
         self.v["overridden"]=False

@@ -259,21 +259,23 @@ class StreamFormerThread(controller.QTaskThread):
                 self.cnt.receive_message(value,sn=sn)
                 if self.cnt.check_cutoff(value,sn=sn):
                     self._add_data(name,value,src=src,tag=tag,parse=parse)
+            self.cnt.add_counter(sn)
         else:
             def on_multicast(src, tag, value):
                 self._add_data(name,value,src=src,tag=tag,parse=parse)
         self.subscribe_commsync(on_multicast,srcs=srcs,tags=tags,dsts=dsts,filt=filt,limit_queue=None,priority=-5)
-        if sn is not None:
-            self.cnt.add_counter(sn)
     
-    def set_cutoff(self, name, sid=None, mid=0):
+    def set_cutoff(self, name, sid=None, mid=0, sn=True):
         """
         Set cutoffs for session and message IDs.
 
         Any arriving subscribed messages with IDs below the cutoff will be ignored.
-        If `sid` or `mid` are ``None``, it implies no cutoff.
+        if ``sn==False``, assume that the name refers to the subscription source name; otherwise, assume that it refers to the stream name.
+        Note that in either case the cutoff is set for the stream, i.e., it affects all sources using the same stream.
+        If `sid` or `mid` are ``None``, the cutoff stays the same.
         """
-        return self.cnt.set_cutoff(self.source_sns[name],sid=sid,mid=mid)
+        name=name if sn else self.source_sns[name]
+        return self.cnt.set_cutoff(name,sid=sid,mid=mid)
     def _parse_default(self, src, tag, value):
         if isinstance(value,stream_message.DataBlockMessage):
             return value.get_data_dict()
@@ -385,7 +387,7 @@ class StreamFormerThread(controller.QTaskThread):
         for _,ch in self.channels.items():
             ch.clear()
         self._partial_rows=[]
-        self.cnt.next_session(self.sn)
+        return self.cnt.next_session(self.sn)
 
     def configure_channel(self, name, enable=True, required="auto", reset=True):
         """

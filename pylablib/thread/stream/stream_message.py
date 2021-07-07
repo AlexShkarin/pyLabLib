@@ -411,7 +411,7 @@ class FramesMessage(DataStreamMessage):
             raise ValueError("only positive step can be used")
         if start is None:
             start=0
-        elif start<0 :
+        elif start<0:
             start%=n
         if end is None:
             end=n

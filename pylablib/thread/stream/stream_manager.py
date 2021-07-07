@@ -468,7 +468,7 @@ class AccumulatorStreamReceiver(IStreamReceiver):
 
         Any arriving messages with IDs below the cutoff will be ignored,
         and such messages currently in the queue are removed.
-        If `sid` or `mid` are ``None``, it implies no threshold.
+        If `sid` or `mid` are ``None``, the cutoff stays the same.
         """
         self._check_waiting()
         cutoff=self.cnt.set_cutoff(sn=sn,sid=sid,mid=mid)
