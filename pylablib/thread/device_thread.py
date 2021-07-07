@@ -15,9 +15,11 @@ class DeviceThread(controller.QTaskThread):
     Attributes:
         device: managed device. Its opening should be specified in an overloaded :meth:`connect_device` method,
             and it is actually opened by calling :meth:`open_device` method (which also handles status updates and duplicate opening issues)
-        csd: device query accessor, which routes device method call through a command
-            ``ctl.csd.method(*args,**kwarg)`` is equivalent to ``ctl.device.method(args,kwargs)`` called as a synchronous command in the device thread
-        csdi: device query accessor, ignores and silences any exceptions (including missing /stopped controller); similar to ``.csi`` accessor for synchronous commands
+        dca: device query accessor, which routes device method call through an asynchronous command
+            ``ctl.dca.method(*args,**kwarg)`` is equivalent to ``ctl.device.method(args,kwargs)`` called as an asynchronous command in the device thread
+        dcs: device query accessor, which routes device method call through a synchronous command
+            ``ctl.dcs.method(*args,**kwarg)`` is equivalent to ``ctl.device.method(args,kwargs)`` called as a synchronous command in the device thread
+        dcsi: device query accessor, ignores and silences any exceptions (including missing /stopped controller); similar to ``.csi`` accessor for synchronous commands
         device_reconnect_tries: number of attempts to connect to the device before when calling :meth:`open` before giving up and declaring it unavailable
         parameter_variables: list of variables to list when requesting full info (e.g., using ``update_parameters`` command);
             by default, read all variables, but if it takes too long, some can be omitted
@@ -69,8 +71,9 @@ class DeviceThread(controller.QTaskThread):
         self._tried_device_connect=0
         self.rpyc_serv=None
         self.remote=None
-        self.csd=self.DeviceMethodAccessor(self,ignore_errors=False)
-        self.csdi=self.DeviceMethodAccessor(self,ignore_errors=True)
+        self.dca=self.DeviceMethodAccessor(self,sync=False,ignore_errors=True)
+        self.dcs=self.DeviceMethodAccessor(self,sync=True,ignore_errors=False)
+        self.dcsi=self.DeviceMethodAccessor(self,sync=True,ignore_errors=True)
         
     def finalize_task(self):
         self.close()
@@ -191,7 +194,8 @@ class DeviceThread(controller.QTaskThread):
         if self.device is None:
             try:
                 self.connect_device()
-                self.setup_open_device()
+                if self.device is not None:
+                    self.setup_open_device()
             except self.ConnectionFailError:
                 pass
         if self.device is not None:
@@ -306,14 +310,15 @@ class DeviceThread(controller.QTaskThread):
 
         Automatically created by the thread, so doesn't need to be invoked externally.
         """
-        def __init__(self, parent, ignore_errors=False):
+        def __init__(self, parent, sync=True, ignore_errors=False):
             self.parent=parent
+            self.sync=sync
             self.ignore_errors=ignore_errors
             self._calls={}
         def __getattr__(self, name):
             if name not in self._calls:
                 parent=self.parent
                 def remcall(*args, **kwargs):
-                    return parent.call_query("_device_method",[name,args,kwargs],ignore_errors=self.ignore_errors)
+                    return parent.call_command("_device_method",[name,args,kwargs],sync=self.sync,ignore_errors=self.ignore_errors)
                 self._calls[name]=remcall
             return self._calls[name]

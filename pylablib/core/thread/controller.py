@@ -597,7 +597,7 @@ class QThreadController(QtCore.QObject):
 
 
     ### Managing multicast pool interaction ###
-    def subscribe_sync(self, callback, srcs="any", tags=None, dsts=None, filt=None, subscription_priority=0, limit_queue=1, call_interrupt=True, add_call_info=False, sid=None):
+    def subscribe_sync(self, callback, srcs="any", tags=None, dsts="any", filt=None, subscription_priority=0, limit_queue=None, call_interrupt=True, add_call_info=False, sid=None):
         """
         Subscribe a synchronous callback to a multicast.
 
@@ -629,7 +629,7 @@ class QThreadController(QtCore.QObject):
                 limit_queue=limit_queue,add_call_info=add_call_info,dest_controller=self,sid=sid)
             self._multicast_pool_sids.append(sid)
             return sid
-    def subscribe_direct(self, callback, srcs="any", tags=None, dsts=None, filt=None, subscription_priority=0, scheduler=None, sid=None):
+    def subscribe_direct(self, callback, srcs="any", tags=None, dsts="any", filt=None, subscription_priority=0, scheduler=None, sid=None):
         """
         Subscribe asynchronous callback to a multicast.
         
@@ -1142,6 +1142,7 @@ class QTaskThread(QThreadController):
         self._priority_queues_order=[]
         self._priority_queues_lock=threading.Lock()
         self._command_warned=set()
+        self._pause_lock=synchronizing.QLockNotifier()
         self.ca=self.CommandAccess(self,sync=False)
         self.cad=self.CommandAccess(self,sync="delayed")
         self.cs=self.CommandAccess(self,sync=True)
@@ -1434,7 +1435,8 @@ class QTaskThread(QThreadController):
         for scheduler in self._priority_queues_order:
             call=scheduler.pop_call()
             if call is not None:
-                call.execute()
+                with self._pause_lock:
+                    call.execute()
                 return True
         return False
     def _schedule_pending_jobs(self, t=None):
@@ -1642,7 +1644,7 @@ class QTaskThread(QThreadController):
             command=getattr(self,name)
         self._commands[name]=self.TCommand(command,"direct_sync" if error_on_async else "direct",None)
 
-    def subscribe_commsync(self, callback, srcs="any", tags=None, dsts=None, filt=None, subscription_priority=0, scheduler=None, limit_queue=1, on_full_queue="skip_current", priority=0, add_call_info=False, sid=None):
+    def subscribe_commsync(self, callback, srcs="any", tags=None, dsts="any", filt=None, subscription_priority=0, scheduler=None, limit_queue=None, on_full_queue="skip_current", priority=0, add_call_info=False, sid=None):
         """
         Subscribe a callback to a multicast which is synchronized with commands and jobs execution.
 
@@ -1759,6 +1761,9 @@ class QTaskThread(QThreadController):
             return synchronizer
         elif sync:
             return synchronizer.get_value_sync(timeout=timeout,error_on_fail=not ignore_errors,error_on_skip=not ignore_errors,pass_exception=not ignore_errors)
+    def comm_paused(self):
+        """Context manager, which allows to temporarily pause all calls (commands, jobs, etc.)"""
+        return self._pause_lock
 
     class CommandAccess:
         """

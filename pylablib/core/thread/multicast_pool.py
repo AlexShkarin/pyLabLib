@@ -84,7 +84,7 @@ class MulticastPool:
             callback=schedule_call
         sid=self._pool.add_observer(callback,name=sid,filt=full_filt,priority=priority,cacheable=(filt is None))
         return sid
-    def subscribe_sync(self, callback, srcs="any", dsts="any", tags=None, filt=None, priority=0, limit_queue=1, dest_controller=None, call_tag=None, call_interrupt=True, add_call_info=False, sid=None):
+    def subscribe_sync(self, callback, srcs="any", dsts="any", tags=None, filt=None, priority=0, limit_queue=None, dest_controller=None, call_tag=None, call_interrupt=True, add_call_info=False, sid=None):
         """
         Subscribe a synchronous callback to a multicast.
 

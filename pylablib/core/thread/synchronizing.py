@@ -119,3 +119,49 @@ class QMultiThreadNotifier:
             self._notifiers={}
         for n in notifiers:
             n.notify(None)
+
+
+class QLockNotifier:
+    """
+    Resource lock.
+
+    Behaves similarly to the regular lock, but waiting is done in the message loop, which still allows interrupts.
+    """
+    def __init__(self):
+        self.lock=threading.Lock()
+        self._lock_ctl=None
+        self._notifiers=[]
+    def acquire(self, timeout=None):
+        ctl=threadprop.current_controller()
+        with self.lock:
+            if self._lock_ctl is None:
+                self._lock_ctl=ctl
+                return
+            if self._lock_ctl is ctl:
+                raise RuntimeError("attempting to acquire the same lock twice in the same thread")
+            if timeout is not None and timeout<=0:
+                raise threadprop.TimeoutThreadError("synchronizer timed out")
+            notifier=QThreadNotifier()
+            self._notifiers.append(notifier)
+        notifier.wait(timeout=timeout)
+        with self.lock:
+            self._notifiers.pop(self._notifiers.index(notifier))
+            if notifier.get_value():
+                self._lock_ctl=ctl
+            else:
+                raise threadprop.TimeoutThreadError("synchronizer timed out")
+    def release(self):
+        ctl=threadprop.current_controller()
+        with self.lock:
+            if self._lock_ctl is None:
+                raise RuntimeError("can not release non-acquired lock")
+            if self._lock_ctl is not ctl:
+                raise RuntimeError("can not release lock acquired with a different controller")
+            if self._notifiers:
+                self._notifiers[0].notify(True)
+            else:
+                self._lock_ctl=None
+    def __enter__(self):
+        self.acquire()
+    def __exit__(self, etype, error, etrace):
+        self.release()

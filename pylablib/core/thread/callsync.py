@@ -1,6 +1,6 @@
 from . import threadprop
 from .synchronizing import QThreadNotifier, QMultiThreadNotifier
-from ..utils import funcargparse
+from ..utils import funcargparse, functions as func_utils
 
 import threading
 import time
@@ -412,6 +412,8 @@ class QQueueScheduler(QScheduler):
     def has_calls(self):
         """Check if there are queued calls"""
         return bool(self.call_queue)
+    def __len__(self):
+        return len(self.call_queue)
     def clear(self, close=True):
         """
         Clear the call queue.
@@ -441,6 +443,8 @@ class QQueueLengthLimitScheduler(QQueueScheduler):
 
     Args:
         max_len: maximal queue length; non-positive values are interpreted as no limit
+            can also be a tuple ``(arg_name, max_len)``, in which case the length is calculated separately
+            for every value of the parameter ``arg_name`` supplied to the method
         on_full_queue: action to be taken if the call can't be scheduled (the queue is full); can be
             ``"skip_current"`` (skip the call which is being scheduled),
             ``"skip_newest"`` (skip the most recent call; place the current)
@@ -454,15 +458,40 @@ class QQueueLengthLimitScheduler(QQueueScheduler):
     """
     def __init__(self, max_len=1, on_full_queue="skip_current", call_info_argname=None):
         QQueueScheduler.__init__(self,on_full_queue=on_full_queue,call_info_argname=call_info_argname)
-        self.max_len=max_len
+        self.max_len_arg,self.max_len=max_len if isinstance(max_len,tuple) else (None,max_len)
+        self._arg_lens={}
+        self._arg_par=None
     def change_max_len(self, max_len):
         """Change maximal length of the call queue (doesn't affect already scheduled calls)"""
-        self.max_len=max_len
+        self.max_len_arg,self.max_len=max_len if isinstance(max_len,tuple) else (None,max_len)
     def get_current_len(self):
         """Get current number of calls in the queue"""
         return len(self.call_queue)
+    def _get_arg_value(self, call, name):
+        if self._arg_par is None or self._arg_par[0] is not call.func:
+            sig=func_utils.funcsig(call.func)
+            self._arg_par=(call.func,sig)
+        try:
+            return self._arg_par[1].arg_value(name,args=call.args,kwargs=call.kwargs)
+        except TypeError:
+            return None
+    def call_added(self, call):
+        if self.max_len_arg is not None:
+            arg_val=self._get_arg_value(call,self.max_len_arg)
+            self._arg_lens[arg_val]=self._arg_lens.get(arg_val,0)+1
+    def call_popped(self, call, idx):
+        if self.max_len_arg is not None:
+            arg_val=self._get_arg_value(call,self.max_len_arg)
+            self._arg_lens[arg_val]-=1
     def can_schedule(self, call):
-        return self.max_len<=0 or len(self.call_queue)<self.max_len
+        if self.max_len<=0:
+            return True
+        if self.max_len_arg is not None:
+            arg_val=self._get_arg_value(call,self.max_len_arg)
+            l=self._arg_lens.setdefault(arg_val,0)
+        else:
+            l=len(self.call_queue)
+        return l<self.max_len
 
 class QQueueSizeLimitScheduler(QQueueScheduler):
     """
@@ -601,7 +630,7 @@ class QMulticastThreadCallScheduler(QThreadCallScheduler):
     """
     def __init__(self, thread=None, limit_queue=1, tag=None, priority=0, interrupt=True, call_info_argname=None):
         QThreadCallScheduler.__init__(self,thread,tag=tag,priority=priority,interrupt=interrupt,call_info_argname=call_info_argname)
-        self.limit_queue=limit_queue
+        self.limit_queue=limit_queue or 0
         self.queue_cnt=0
         self.queue_cnt_lock=threading.Lock()
     def _call_done(self):
