@@ -20,5 +20,5 @@ from .numerical import gcd, gcd_approx, limit_to_range, infinite_list, unity as 
 from .string import string_equal, find_list_string, find_dict_string
 from .string import get_string_filter, sfglob, sfregex
 from .string import escape_string, extract_escaped_string, unescape_string, to_string, from_string, from_string_partial, from_row_string, add_conversion_class, add_namedtuple_class
-from .net import get_local_addr, get_all_local_addr, get_local_hostname
+from .net import get_local_addr, get_all_local_addr, get_local_hostname, get_remote_hostname, get_all_remote_addr
 from .net import ClientSocket, recv_JSON, listen

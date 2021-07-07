@@ -39,6 +39,17 @@ def get_all_local_addr():
 def get_local_hostname(full=True):
     """Get a local host name"""
     return socket.getfqdn() if full else socket.gethostname()
+def get_all_remote_addr(hostname):
+    """Get a list of all remote addresses of a remote host by name"""
+    return socket.gethostbyname_ex(hostname)[2]
+def get_remote_hostname(addr, error_on_missing=False):
+    """Get a remote host name by its address"""
+    try:
+        return socket.gethostbyaddr(addr)[0]
+    except socket.gaierror:
+        if error_on_missing:
+            raise
+        return None
 
 def as_addr_port(addr, port):
     """

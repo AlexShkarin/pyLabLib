@@ -14,7 +14,6 @@ import importlib
 import pickle
 import warnings
 import socket
-import re
 
 
 _default_packers={"numpy":np.ndarray.tostring,"pickle":pickle.dumps}
@@ -175,7 +174,9 @@ class DeviceService(SocketTunnelService):
         SocketTunnelService.on_connect(self,conn)
         self.devices=[]
         if self.verbose:
-            print("Connected client {} from {}".format(self._conn,_get_conn_address(self._conn,peer=True)))
+            conn_addr=_get_conn_address(self._conn,peer=True)
+            conn_host=net.get_remote_hostname(conn_addr) or "unknown"
+            print("Connected client {} from {}, IP {}".format(self._conn,conn_host,conn_addr))
     def on_disconnect(self, conn):
         for dev in self.devices:
             try:
@@ -215,6 +216,11 @@ class DeviceService(SocketTunnelService):
 
 def run_device_service(port=18812, verbose=False):
     """Start :class:`DeviceService` at the given port"""
+    if verbose:
+        hostips=net.get_all_local_addr()
+        hostnames=net.get_local_hostname(full=False),net.get_local_hostname(full=True)
+        hostips_list=", ".join(["{}:{}".format(ip,port) for ip in hostips])
+        print("Running device service at {} ({}), IP {}".format(hostnames[0],hostnames[1],hostips_list))
     rpyc.ThreadedServer(rpyc.utils.helpers.classpartial(DeviceService,verbose=verbose),port=port).start()
 
 def connect_device_service(addr, port=18812, timeout=3, attempts=2, error_on_fail=True):
