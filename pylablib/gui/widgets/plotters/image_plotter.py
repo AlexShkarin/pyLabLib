@@ -85,7 +85,7 @@ class ImagePlotterCtl(QWidgetContainer):
         self.params.add_check_box("show_linecuts","Show line cuts",value=False).get_value_changed_signal().connect(self._setup_gui_state)
         self.params.add_num_edit("linecut_width",value=1,limiter=(1,None,"coerce","int"),formatter="int",label="Line cut width:")
         self.params.add_button("center_lines","Center lines").get_value_changed_signal().connect(plotter.center_lines)
-        self.params.value_changed.connect(lambda n: self.plotter.update_image(update_controls=(n=="normalize"),do_redraw=True),QtCore.Qt.DirectConnection)
+        self.params.contained_value_changed.connect(lambda n: self.plotter.update_image(update_controls=(n=="normalize"),do_redraw=True),QtCore.Qt.DirectConnection)
         self.params.add_spacer(10)
         self.params.add_toggle_button("update_image","Updating").get_value_changed_signal().connect(plotter._set_image_update)
         def arm_single():
@@ -132,12 +132,12 @@ class ImagePlotterCtl(QWidgetContainer):
         if "colormap" in self.save_values:
             values["colormap"]=self.plotter.image_window.getHistogramWidget().gradient.saveState()
         return values
-    def set_all_values(self, values):
-        super().set_all_values(values)
-        if "img_lim_preset" in values:
-            self.img_lim_preset=values["img_lim_preset"]
-        if "colormap" in values:
-            colormap=dictionary.as_dict(values["colormap"],style="nested")
+    def set_all_values(self, value):
+        super().set_all_values(value)
+        if "img_lim_preset" in value:
+            self.img_lim_preset=value["img_lim_preset"]
+        if "colormap" in value:
+            colormap=dictionary.as_dict(value["colormap"],style="nested")
             self.plotter.image_window.getHistogramWidget().gradient.restoreState(colormap)
         self._setup_gui_state()
 

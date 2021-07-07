@@ -94,7 +94,6 @@ class ParamTable(container.QWidgetContainer):
         self.current_values=dictionary.Dictionary()
         self.v=self.cv if cache_values else self.wv
 
-    value_changed=Signal(object,object)
     @controller.exsafeSlot()
     def _update_cache_values(self, name=None, value=None):  # pylint: disable=unused-argument
         if self.cache_values:
@@ -127,12 +126,6 @@ class ParamTable(container.QWidgetContainer):
     def add_group_box(self, name, caption, layout="vbox", location=("next",0,1,"end"), gui_values_path=True, no_margins=True):
         return super().add_group_box(name,caption,layout=layout,location=location,gui_values_path=gui_values_path,no_margins=no_margins)
 
-    def _normalize_name(self, name):
-        if isinstance(name,tuple):
-            name=dictionary.normalize_path(name)
-        if isinstance(name,(list,tuple)):
-            return "/".join(name)
-        return name
     ParamRow=collections.namedtuple("ParamRow",["widget","label","indicator","value_handler","indicator_handler"])
     def _add_widget(self, name, params, add_change_event=True):
         name=self._normalize_name(name)
@@ -141,10 +134,11 @@ class ParamTable(container.QWidgetContainer):
             self.add_child(name,params.widget,location="skip",gui_values_path=False)
         path=(self.gui_values_path,name)
         self.gui_values.add_handler(path,params.value_handler)
+        self._subpaths_container.add_single(name,path)
         if params.indicator_handler:
             self.gui_values.add_indicator_handler(path,params.indicator_handler)
         if add_change_event:
-            params.value_handler.connect_value_changed_handler(lambda value: self.value_changed.emit(name,value),only_signal=True)
+            params.value_handler.connect_value_changed_handler(lambda value: self.contained_value_changed.emit(name,value),only_signal=True)
         if self.cache_values:
             params.value_handler.connect_value_changed_handler(lambda value: self._update_cache_values(name,value),only_signal=False)
         self._update_cache_values()
@@ -164,7 +158,7 @@ class ParamTable(container.QWidgetContainer):
                 can also be a string ``"skip"``, which means that the widget is added to some other location manually later
                 (this option only works if ``label=None``, and doesn't add any indicator)
             tooltip: widget tooltip (mouseover text)
-            add_change_event (bool): if ``True``, changing of the widget's value emits the table's ``value_changed`` event
+            add_change_event (bool): if ``True``, changing of the widget's value emits the table's ``contained_value_changed`` event
         
         Return the widget's value handler
         """
@@ -231,7 +225,7 @@ class ParamTable(container.QWidgetContainer):
             location (tuple): tuple ``(row, column, rowspan, colspan)`` specifying location of the widget;
                 by default, add to a new row in the end and into the first column, span one row and all table columns
                 can also be a string ``"skip"``, which means that the widget is added to some other location manually later
-            add_change_event (bool): if ``True``, changing of the widget's value emits the table's ``value_changed`` event
+            add_change_event (bool): if ``True``, changing of the widget's value emits the table's ``contained_value_changed`` event
         
         Return the widget's value handler
         """
@@ -251,6 +245,7 @@ class ParamTable(container.QWidgetContainer):
         """Remove the widget and, if applicable, its indicator and label"""
         name=self._normalize_name(name)
         par=self.params.pop(name)
+        self._subpaths_container.remove(name)
         self.gui_values.remove_handler((self.gui_values_path,name),remove_indicator=True)
         if par.widget is not None:
             self.remove_child(name)
@@ -452,22 +447,22 @@ class ParamTable(container.QWidgetContainer):
         widget=combo_box.ComboBox(self)
         widget.setObjectName(self.name+"_"+name)
         if options:
-            widget.addItems(options)
-            if index_values is not None:
-                widget.set_index_values(index_values)
+            widget.set_options(options,index_values=index_values)
             if value is not None:
                 widget.set_value(value)
             else:
                 widget.set_value(index_values[0] if index_values else 0)
         return self.add_simple_widget(name,widget,label=label,add_indicator=add_indicator,location=location,tooltip=tooltip,add_change_event=add_change_event)
 
-    def set_enabled(self, names=None, enabled=True, include_indicator=True, include_label=True):
-        """Enable or disable widgets with the given names (by default, all widgets)"""
+    def _expand_names_list(self, names):
         if isinstance(names,py3.anystring):
             names=[names]
         if names is None:
             names=self.params.keys()
-        for name in names:
+        return names
+    def set_enabled(self, names=None, enabled=True, include_indicator=True, include_label=True):
+        """Enable or disable widgets with the given names (by default, all widgets)"""
+        for name in self._expand_names_list(names):
             name=self._normalize_name(name)
             par=self.params[name]
             if par.widget is not None:
@@ -478,11 +473,7 @@ class ParamTable(container.QWidgetContainer):
                 par.indicator.setEnabled(enabled)
     def set_visible(self, names=None, visible=True, include_indicator=True, include_label=True):
         """Show or hide widgets with the given names (by default, all widgets)"""
-        if isinstance(names,py3.anystring):
-            names=[names]
-        if names is None:
-            names=self.params.keys()
-        for name in names:
+        for name in self._expand_names_list(names):
             name=self._normalize_name(name)
             par=self.params[name]
             if par.widget is not None:
@@ -494,42 +485,51 @@ class ParamTable(container.QWidgetContainer):
 
     @controller.gui_thread_method
     def get_value(self, name=None):
-        """Get value of a widget with the given name"""
-        return self.gui_values.get_value((self.gui_values_path,name or ""),include=self.params)
+        return super().get_value(name=name)
     @controller.gui_thread_method
     def get_all_values(self):
-        """Get value of all widget in the given branch"""
-        return self.gui_values.get_all_values(self.gui_values_path,include=self.params)
+        return super().get_all_values()
     @controller.gui_thread_method
     def set_value(self, name, value, force=False):
         """
-        Set value of a widget with the given name
+        Set value of a widget with the given name.
         
         If ``force==True``, force widget value (e.g., ignoring restriction on not changing values of focused widgets)
         """
+        if not force:
+            return super().set_value(name,value)
         if name is None:
             self.set_all_values(value,force=force)
         name=self._normalize_name(name)
-        par=self.params[name]
-        if force or par.value_handler.can_set_value(allow_focus=self.change_focused_control):
-            return self.gui_values.set_value((self.gui_values_path,name),value)
+        try:
+            par=self.params[name]
+            allow_set=par.value_handler.can_set_value(allow_focus=self.change_focused_control)
+        except KeyError:
+            allow_set=True
+        if allow_set:
+            return super().set_value((self.gui_values_path,name),value)
     @controller.gui_thread_method
     def set_all_values(self, value, force=False):
-        """Set values of all widgets in the table"""
+        """
+        Set values of all widgets in the table.
+        
+        If ``force==True``, force widget value (e.g., ignoring restriction on not changing values of focused widgets)
+        """
+        if not force:
+            return super().set_all_values(value)
         for n,v in dictionary.as_dictionary(value).iternodes(to_visit="all",topdown=True,include_path=True):
             path="/".join(n)
-            if path in self.params:
+            try:
                 self.set_value(path,v,force=force)
+            except KeyError:
+                pass
 
-    def get_handler(self, name):
-        """Get value handler of a widget with the given name"""
-        return self.params[self._normalize_name(name)].value_handler
     def get_widget(self, name):
-        """Get a widget with the given name"""
-        return self.params[self._normalize_name(name)].widget
-    def get_value_changed_signal(self, name):
-        """Get a value-changed signal for a widget with the given name"""
-        return self.params[self._normalize_name(name)].value_handler.get_value_changed_signal()
+        name=self._normalize_name(name)
+        try:
+            return self.params[name].widget
+        except KeyError:
+            return super().get_widget(name)
 
     def get_child(self, name):
         if name in self.params:
@@ -542,33 +542,30 @@ class ParamTable(container.QWidgetContainer):
 
     @controller.gui_thread_method
     def get_indicator(self, name=None):
-        """Get indicator value for a widget with the given name"""
-        return self.gui_values.get_indicator((self.gui_values_path,name or ""),include=self.params)
+        return super().get_indicator(name=name)
     @controller.gui_thread_method
-    def get_all_indicators(self, name=None):
-        """Get indicator values of all widget in the given branch"""
-        return self.gui_values.get_all_indicators((self.gui_values_path,name or ""),include=self.params)
+    def get_all_indicators(self):
+        return super().get_all_indicators()
     @controller.gui_thread_method
     def set_indicator(self, name, value, ignore_missing=False):
-        """Set indicator value for a widget or a branch with the given name"""
-        return self.gui_values.set_indicator((self.gui_values_path,name or ""),value,include=self.params,ignore_missing=ignore_missing)
-    def set_all_indicators(self, name, value, ignore_missing=True):
-        return self.set_indicator(name,value,ignore_missing=ignore_missing)
+        return super().set_indicator(name,value,ignore_missing=ignore_missing)
+    @controller.gui_thread_method
+    def set_all_indicators(self, value, ignore_missing=True):
+        return super().set_all_indicators(value,ignore_missing=ignore_missing)
     @controller.gui_thread_method
     def update_indicators(self):
-        """Update all indicators to represent current values"""
-        return self.gui_values.update_indicators(root=self.gui_values_path,include=self.params)
+        return super().update_indicators()
 
     def clear(self, disconnect=False):
         """
         Clear the table (remove all widgets)
         
-        If ``disconnect==True``, also disconnect all slots connected to the ``value_changed`` signal.
+        If ``disconnect==True``, also disconnect all slots connected to the ``contained_value_changed`` signal.
         """
         if self.params:
             if disconnect:
                 try:
-                    self.value_changed.disconnect()
+                    self.contained_value_changed.disconnect()
                 except (TypeError,RuntimeError): # no signals connected
                     pass
             for name in self.params:
@@ -577,6 +574,8 @@ class ParamTable(container.QWidgetContainer):
             self.params={}
             super().clear()
             self._update_cache_values()
+        else:
+            super().clear()
 
     def __contains__(self, name):
         return name in self.params
@@ -606,4 +605,4 @@ class StatusTable(ParamTable):
             else:
                 text=value
             self.v[name]=text
-        threadprop.current_controller().subscribe_sync(update_text,srcs=srcs,tags=tags,dsts="any",filt=filt,limit_queue=10)
+        threadprop.current_controller().subscribe_sync(update_text,srcs=srcs,tags=tags,filt=filt,limit_queue=10)

@@ -48,7 +48,7 @@ class LinePlotter(pyqtgraph.PlotWidget):
         if caption is not None:
             self.plotItem.legend.removeItem(caption)
 
-    def set_traces(self, data, hide_missing=True):
+    def set_traces(self, data, hide_missing=True, update=True):
         """
         Set data to be plotted.
 
@@ -57,8 +57,9 @@ class LinePlotter(pyqtgraph.PlotWidget):
         If it is a dictionary, the keys are the column names.
         If ``hide_missing==True`` and some traces are missing from the data, hide them (although they still appear in the legend);
         otherwise, the missing traces are left unchanged.
+        If ``update==True``, update the plot after setting the traces.
 
-        This function is thread-safe (i.e., the application state remains consistent if it's called from another thread,
+        If ``update==False``, this function is thread-safe (i.e., the application state remains consistent if it's called from another thread,
         although race conditions on simultaneous calls from multiple threads still might happen).
         """
         if isinstance(data,list):
@@ -70,6 +71,8 @@ class LinePlotter(pyqtgraph.PlotWidget):
                 if n not in self.data:
                     self.data[n]=[]
         self.updated=True
+        if update:
+            self.update_traces()
 
     def update_traces(self, only_new_data=True):
         """

@@ -28,17 +28,32 @@ class ComboBox(QtWidgets.QComboBox):
         if self._index!=index:
             self._index=index
             self.value_changed.emit(self.index_to_value(self._index))
-    def set_index_values(self, values):
+    def set_index_values(self, index_values, value=None):
         """
         Set a list of values corresponding to combo box indices.
 
         Can be either a list of values, whose length must be equal to the number of options, or ``None`` (simply use indices).
         Note: if the number of combo box options changed (e.g., using ``addItem`` or ``insertItem`` methods),
-        the index values need to be manually updated; otherwise, the errors might arise if the index is large than the number of values.
+        the index values need to be manually updated; otherwise, the errors might arise if the index is larger than the number of values.
         """
-        if values is not None and len(values)!=self.count():
-            raise ValueError("number of values {} is different from the number of options {}".format(len(values),self.count()))
-        self._index_values=values
+        if index_values is not None and len(index_values)!=self.count():
+            raise ValueError("number of values {} is different from the number of options {}".format(len(index_values),self.count()))
+        self._index_values=index_values
+        if value is not None:
+            self.set_value(value)
+        else:
+            self._index=-1
+            self.setCurrentIndex(-1)
+    def set_options(self, options, index_values=None, value=None):
+        """
+        Set new set of options.
+
+        If `index_values` is not ``None``, set these as the new index values; otherwise, index values are reset.
+        """
+        while self.count():
+            self.removeItem(0)
+        self.addItems(options)
+        self.set_index_values(index_values,value=value)
 
     value_changed=Signal(object)
     """Signal emitted when value is changed"""

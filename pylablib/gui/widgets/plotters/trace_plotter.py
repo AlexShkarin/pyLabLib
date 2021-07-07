@@ -12,6 +12,7 @@ from ....core.gui.widgets.container import QWidgetContainer
 from ....core.gui.widgets.layout_manager import QLayoutManagedWidget
 from ....core.thread import controller
 from ....core.dataproc import utils as trace_utils
+from ....thread.stream.table_accum import TableAccumulator, TableAccumulatorThread
 
 import pyqtgraph
 
@@ -76,6 +77,9 @@ class TracePlotterCtl(QWidgetContainer):
         return [idx for idx in self.plotter.channel_indices if self.channels_table.v[idx+"_enabled"]]
 
 
+mpl_colors=['#1f77b4','#ff7f0e','#2ca02c','#d62728','#9467bd','#8c564b','#e377c2','#bcbd22','#17becf']
+old_style_colors=['#40FF40','#4040FF','#FF4040','#FFFF00','#00FFFF','#FF00FF','#C0C0C0','#404040']
+all_colors=mpl_colors+old_style_colors
 class TracePlotter(QLayoutManagedWidget):
     """
     Trace plotter object.
@@ -140,9 +144,7 @@ class TracePlotter(QLayoutManagedWidget):
         """
         self.channels=channels.copy()
         self.channel_indices=channel_indices or list(channels.keys())
-        mpl_colors=['#1f77b4','#ff7f0e','#2ca02c','#d62728','#9467bd','#8c564b','#e377c2','#bcbd22','#17becf']
-        old_style_colors=['#40FF40','#4040FF','#FF4040','#FFFF00','#00FFFF','#FF00FF','#C0C0C0','#404040']
-        colors=(mpl_colors+old_style_colors)*len(channels)
+        colors=all_colors*len(channels)
         for idx in self.channel_indices:
             ch=self.channels[idx]
             ch.setdefault("name",idx)
@@ -235,7 +237,11 @@ class TracePlotter(QLayoutManagedWidget):
         The source is used to automatically grab channel data and receive reset commands.
         Not necessary, if the data is provided explicitly to :meth:`update_plot`.
         """
-        if src is None:
+        if isinstance(src,TableAccumulator):
+            self.data_src_kind="accum"
+        elif isinstance(src,TableAccumulatorThread):
+            self.data_src_kind="accum_thread"
+        elif src is None:
             self.data_src_kind=None
         else:
             raise ValueError("unrecognized data source: {}".format(src))

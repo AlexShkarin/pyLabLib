@@ -38,6 +38,7 @@ class ITektronixScope(SCPI.SCPIDevice):
     # or ``"pos_only"`` (use ``"HORizontal:POSition"``, don't set ``"HORizontal:DELay:MODe"`` in case it's not available)
     _hor_offset_method="pos_only"
     _hor_pos_mode="real_center"  # mode of :HORIZONTAL:POS command; can be "real_center", if time position of the sample is specified (0 is centered), or "frac" if fraction to the left is specified (50 is centered)
+    _default_backend_timeout=10.
     Error=TektronixError
     ReraiseError=TektronixBackendError
     def __init__(self, addr, nchannels="auto"):
@@ -46,11 +47,12 @@ class ITektronixScope(SCPI.SCPIDevice):
             if nchannels=="auto":
                 nchannels=self._detect_main_channels_number()
             self._main_channels_idx=list(range(1,nchannels+1))
-        main_channels=[(i,"ch{}".format(i)) for i in self._main_channels_idx]
-        self._add_parameter_class(interface.EnumParameterClass("input_channel",main_channels,value_case="upper"))
-        self._add_parameter_class(interface.EnumParameterClass("channel",main_channels+self._aux_channels,value_case="upper"))
+        self._main_channels=[(i,"ch{}".format(i)) for i in self._main_channels_idx]
+        self._add_parameter_class(interface.EnumParameterClass("input_channel",self._main_channels,value_case="upper"))
+        self._add_parameter_class(interface.EnumParameterClass("channel",self._main_channels+self._aux_channels,value_case="upper"))
         self.default_data_fmt="<i1"
         self._add_info_variable("channels_number",self.get_channels_number)
+        self._add_info_variable("channels",self.get_channels)
         self._add_settings_variable("edge_trigger/source",self.get_edge_trigger_source,self.set_edge_trigger_source)
         self._add_settings_variable("edge_trigger/coupling",self.get_edge_trigger_coupling,self.set_edge_trigger_coupling)
         self._add_settings_variable("edge_trigger/slope",self.get_edge_trigger_slope,self.set_edge_trigger_slope)
@@ -74,6 +76,14 @@ class ITektronixScope(SCPI.SCPIDevice):
     def get_channels_number(self):
         """Get the number of channels"""
         return len(self._main_channels_idx)
+    def get_channels(self, only_main=False):
+        """Get the list of all input channels (if ``only_main==True``) or all available channels (if ``only_main==False``)"""
+        channels=["CH{}".format(i) for i in self._main_channels_idx]
+        return channels if only_main else channels+self._aux_channels
+    @interface.use_parameters
+    def normalize_channel_name(self, channel):
+        """Normalize channel name as represented by the oscilloscope"""
+        return channel
     def grab_single(self, wait=True, software_trigger=False, wait_timeout=None):
         """
         Set single waveform grabbing and wait for acquisition.
@@ -110,7 +120,7 @@ class ITektronixScope(SCPI.SCPIDevice):
         """
         return self.ask(":ACQ:STATE?","bool")
     
-
+    # TODO: set trigger kind (edge, etc.)
     @interface.use_parameters(_returns="channel")
     def get_edge_trigger_source(self):
         """
@@ -522,7 +532,7 @@ class ITektronixScope(SCPI.SCPIDevice):
         if len(trace)!=wfmpre["pts"]:
             raise TektronixError("received data length {0} is not equal to the number of points {1}".format(len(trace),wfmpre["pts"]))
         return self._scale_data(trace,wfmpre)
-    def read_multiple_sweeps(self, channels, wfmpres=None, ensure_fmt=False, timeout=None):
+    def read_multiple_sweeps(self, channels, wfmpres=None, ensure_fmt=False, timeout=None, return_wfmpres=None):
         """
         Read data from a multiple channels channel.
 
@@ -532,6 +542,7 @@ class ITektronixScope(SCPI.SCPIDevice):
                 if it is ``None``, obtain during reading, which slows down the data acquisition a bit
             ensure_fmt: if ``True``, make sure that oscilloscope data format agrees with the one in `wfmpre`
             timeout: read timeout
+            return_wfmpres: if ``True``, return tuple ``(sweeps, wfmpres)``, where ``wfmpres`` can be used for further sweep readouts.
         """
         if not channels:
             return []
@@ -545,7 +556,11 @@ class ITektronixScope(SCPI.SCPIDevice):
             fmt=pre["fmt"] if pre else self.default_data_fmt
             if self.get_data_format()!=data_format.DataFormat.from_desc(fmt).to_desc():
                 self.set_data_format(fmt=fmt)
-        return [self._read_sweep_fast(ch,wfmpres.get(ch,None),timeout=timeout) for ch in channels]
+        for ch in channels:
+            if ch not in wfmpres:
+                wfmpres[ch]=self.get_wfmpre(ch,enable=False)
+        sweeps=[self._read_sweep_fast(ch,wfmpres[ch],timeout=timeout) for ch in channels]
+        return (sweeps,wfmpres) if return_wfmpres else sweeps
     def read_sweep(self, channel, wfmpre=None, ensure_fmt=True, timeout=None):
         """
         Read data from a single channel.
