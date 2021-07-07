@@ -114,7 +114,6 @@ class Lakeshore218(SCPI.SCPIDevice):
         """
         cheader=tuple(self._wap.get_curve_header(index))
         header=[(cv if nv is None else nv) for cv,nv in zip(cheader,[name,serial,fmt,limit,coeff])]
-        print([index]+header)
         self.write("CRVHDR",[index]+header,["int","string","string","int","float","int"])
         return self._wip.get_curve_header(index)
     def get_curve(self, index, trim_zeros=True):

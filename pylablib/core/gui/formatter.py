@@ -119,7 +119,7 @@ def is_integer(n, tolerance=0.):
     Check if `n` is less than `tolerance` away from the nearest integer.
     """
     return abs(n-round(n))<=tolerance
-def float_to_str_SI(n, digits=9, trailing_zeros=False):
+def float_to_str_SI(n, digits=3, trailing_zeros=False):
     """
     Represent float using SI metric prefixes.
 
@@ -132,7 +132,7 @@ def float_to_str_SI(n, digits=9, trailing_zeros=False):
         else:
             return "0"
     order=int(math.floor(math.log10(abs(n))))
-    order_SI=(order/3)*3
+    order_SI=(order//3)*3
     n=n*10**(-order_SI)
     if order_SI in SI_prefixes_print:
         prefix=SI_prefixes_print[order_SI]
@@ -158,15 +158,12 @@ class FloatFormatter:
         leading_zeros (bool): determines the minimal size of the integer part (before the decimal point) of the number; pads with zeros if necessary.
         explicit_sign (bool): if ``True``, always add explicit plus sign.
     """
-    def __init__(self, output_format="auto", digits=9, add_trailing_zeros=True, leading_zeros=0, explicit_sign=False):
+    def __init__(self, output_format="auto", digits=3, add_trailing_zeros=True, leading_zeros=0, explicit_sign=False):
         "If trailing_zeros==True, then digits define precision, rather than number significant digits"
         if not output_format in ["auto", "SI", "sci"]:
             raise ValueError("unrecognized output format: {0}".format(output_format))
         self.output_format=output_format
         self.explicit_sign=explicit_sign
-        #if not output_format in ["significant", "precision"]:
-        #    raise ValueError("unrecognized precision type: {0}".format(precision_type))
-        #self.precision_type=precision_type
         self.digits=digits
         self.add_trailing_zeros=add_trailing_zeros
         self.leading_zeros=leading_zeros

@@ -611,6 +611,7 @@ class NIDAQ(interface.IDevice):
                 val=val[:,:max_out_len]
         elif (not waveform_output) and val.ndim==2:
             val=val[:,0]
+        val=np.require(val,requirements=["C","W"])
         if len(val)==1:
             self.ao_task.write(val[0],auto_start=True if waveform_output else nidaqmx.task.AUTO_START_UNSET)
         else:

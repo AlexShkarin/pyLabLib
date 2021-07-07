@@ -8,7 +8,7 @@ def find_layout_element(layout, element):
     Return item index within the layout.
     If layout is empty or item is not present, return ``None``
     """
-    if layout:
+    if layout is not None:
         for idx in range(layout.count()):
             item=layout.itemAt(idx)
             if item is element or item.widget() is element or item.layout() is element:
@@ -16,7 +16,7 @@ def find_layout_element(layout, element):
 
 def delete_layout_item(layout, idx):
     """Remove and item with the given index (completely delete it)"""
-    if layout:
+    if layout is not None:
         item=layout.takeAt(idx)
         if item.widget():
             clean_layout(item.widget().layout(),delete_layout=True)
@@ -29,7 +29,7 @@ def clean_layout(layout, delete_layout=False):
 
     If ``delete_layout==True``, delete the layout as well.
     """
-    if layout:
+    if layout is not None:
         while layout.count():
             delete_layout_item(layout,0)
         if delete_layout:
@@ -38,7 +38,7 @@ def clean_layout(layout, delete_layout=False):
 
 def is_layout_row_empty(layout, row):
     """Check if the given row in a grid layout is empty"""
-    if layout:
+    if layout is not None:
         if row<layout.rowCount():
             return False
         for c in range(layout.columnCount()):
@@ -72,7 +72,7 @@ def insert_layout_row(layout, row, stretch=0, compress=False):
     If ``compress==True``, try to find an empty row below the inserted position and shit it to the new row's place;
     otherwise, add a completely new row.
     """
-    if layout:
+    if layout is not None:
         free_row=get_first_empty_row(layout,row+1) if compress else layout.rowCount()
         items_to_shift=[]
         for i in range(layout.count()):
@@ -90,7 +90,7 @@ def insert_layout_row(layout, row, stretch=0, compress=False):
 
 def is_layout_column_empty(layout, col):
     """Check if the given column in a grid layout is empty"""
-    if layout:
+    if layout is not None:
         if col<layout.columnCount():
             return False
         for r in range(layout.rowCount()):
@@ -124,7 +124,7 @@ def insert_layout_column(layout, col, stretch=0, compress=False):
     If ``compress==True``, try to find an empty column below the inserted position and shit it to the new column's place;
     otherwise, add a completely new column.
     """
-    if layout:
+    if layout is not None:
         free_col=get_first_empty_column(layout,col+1) if compress else layout.colCount()
         items_to_shift=[]
         for i in range(layout.count()):
@@ -142,7 +142,7 @@ def insert_layout_column(layout, col, stretch=0, compress=False):
 
 def compress_grid_layout(layout):
     """Find all empty rows in a grid layout and shift them to the bottom"""
-    if layout:
+    if layout is not None:
         curr_row=0
         filled_rows=layout.rowCount()
         while curr_row<filled_rows:
