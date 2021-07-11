@@ -166,12 +166,12 @@ class IQContainer:
                 path=path[:-1]
             if _hasattr(widget,"setup_gui_values"):
                 widget.setup_gui_values(self,path)
-                self._subpaths_container.add_container(name,widget)
+                self._subpaths_container.add_container(self._normalize_name(name),widget)
             else:
                 raise ValueError("can not store a non-container widget under an empty path")
         else:
             self.gui_values.add_widget((self.gui_values_path,path),widget)
-            self._subpaths_container.add_single(name,(self.gui_values_path,path))
+            self._subpaths_container.add_single(self._normalize_name(name),(self.gui_values_path,path))
         if add_change_event:
             if _hasattr(widget,"value_changed"):
                 widget.value_changed.connect(lambda value: self.contained_value_changed.emit(self._normalize_name(path),value))
@@ -225,9 +225,30 @@ class IQContainer:
                 return self._children[path].widget.remove_child(subpath)
             ch=self._children.pop(path)
             self._clear_child(ch)
-            self._subpaths_container.remove(path)
+            self._subpaths_container.remove(self._normalize_name(path))
         else:
             raise KeyError("can't find widget {}".format(name))
+    def add_virtual_element(self, name, value=None, multivalued=False, add_indicator=True):
+        """
+        Add a virtual value element.
+
+        Doesn't correspond to any actual widget, but behaves very similarly from the application point of view
+        (its value can be set or read, it has on-change events, it can have indicator).
+        The element value is simply stored on set and retrieved on get.
+        If ``add_indicator==True``, add default indicator handler as well.
+        """
+        self.gui_values.add_virtual_element((self.gui_values_path,name),value=value,multivalued=multivalued,add_indicator=add_indicator)
+        self._subpaths_container.add_single(self._normalize_name(name),(self.gui_values_path,name))
+    def add_property_element(self, name, getter=None, setter=None, add_indicator=True):
+        """
+        Add a property value element.
+
+        Doesn't correspond to any actual widget, but behaves very similarly from the application point of view;
+        each time the value is set or get, the corresponding setter and getter methods are called.
+        If ``add_indicator==True``, add default (stored value) indicator handler as well.
+        """
+        self.gui_values.add_property_element((self.gui_values_path,name),getter=getter,setter=setter,add_indicator=add_indicator)
+        self._subpaths_container.add_single(self._normalize_name(name),(self.gui_values_path,name))
 
     @controller.exsafe
     def start(self):
@@ -269,8 +290,10 @@ class IQContainer:
         """
         if self._running:
             self.stop()
-        for ch in self._children.iternodes():
-            self._clear_child(ch)
+        for ch in self._children.paths():
+            self.remove_child(ch)
+        # for ch in self._children.iternodes():
+        #     self._clear_child(ch)
         self._children=dictionary.Dictionary()
         self._subpaths_container.clear()
 
@@ -364,7 +387,7 @@ class IQContainer:
         """Set indicator value for a widget or a branch with the given name"""
         return self.gui_values.set_indicator((self.gui_values_path,self._normalize_name(name) or ""),value,include=self.get_contained_paths(),ignore_missing=ignore_missing)
     def set_all_indicators(self, value, ignore_missing=True):
-        return self.gui_values.set_all_indicators(self.gui_values_path,value,include=self.get_contained_paths(),ignore_missing=ignore_missing)
+        return self.gui_values.set_all_indicators(value,self.gui_values_path,include=self.get_contained_paths(),ignore_missing=ignore_missing)
     def update_indicators(self):
         """Update all indicators to represent current values"""
         return self.gui_values.update_indicators(root=self.gui_values_path)

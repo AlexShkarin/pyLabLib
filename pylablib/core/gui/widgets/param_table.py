@@ -4,7 +4,7 @@ from ...thread import threadprop, controller
 from .. import value_handling
 from ...utils import py3, dictionary
 
-from .. import QtWidgets, Signal
+from .. import QtWidgets
 
 import collections
 import contextlib
@@ -532,10 +532,12 @@ class ParamTable(container.QWidgetContainer):
             return super().get_widget(name)
 
     def get_child(self, name):
+        name=self._normalize_name(name)
         if name in self.params:
             return self.get_widget(name)
         return super().get_child(name)
     def remove_child(self, name):
+        name=self._normalize_name(name)
         if name in self.params:
             return self.remove_widget(name)
         return super().remove_child(name)
@@ -578,6 +580,7 @@ class ParamTable(container.QWidgetContainer):
             super().clear()
 
     def __contains__(self, name):
+        name=self._normalize_name(name)
         return name in self.params
 
 

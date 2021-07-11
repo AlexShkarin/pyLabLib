@@ -17,7 +17,7 @@ class WLMThread(device_thread.DeviceThread):
     Variables:
         - ``frequency``, ``wavelength``: last measured frequency and wavelength (in vacuum);
             frequency and wavelength of 0 indicates invalid values: over- or underflow, disconnected channel or wavemeter
-        - ``status``: status of the last measurement; can be ``"ok"`` for a valid measurement,
+        - ``measurement_status``: status of the last measurement; can be ``"ok"`` for a valid measurement,
             ``"under"``, ``"over"``, ``"nosig"``, ``"badsig"`` or ``"noval"`` to indicate measurement problems,
             or ``"disconn"`` if the device is disconnected
         - ``parameters``: main wavemeter parameters: exposure and exposure mode, switcher mode, pulse mode, etc.
@@ -43,7 +43,7 @@ class WLMThread(device_thread.DeviceThread):
                 data="ok",freq,M2.c/freq
         else:
             data="disconn",0,0
-        for k,d in zip(["status","frequency","wavelength"],data):
+        for k,d in zip(["measurement_status","frequency","wavelength"],data):
             if branch is None:
                 self.v[k]=d
             else:

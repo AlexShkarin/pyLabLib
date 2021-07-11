@@ -61,7 +61,7 @@ class ImagePlotterCtl(QWidgetContainer):
         self.params=ParamTable(self)
         self.add_child("params",self.params)
         self.params.setup(add_indicator=False)
-        self.img_lim=(0,65536)
+        self.img_lim=(None,None)
         self.params.add_text_label("size",label="Image size:")
         self.params.add_check_box("flip_x","Flip X",value=False)
         self.params.add_check_box("flip_y","Flip Y",value=False,location=(-1,1))
@@ -87,12 +87,20 @@ class ImagePlotterCtl(QWidgetContainer):
         self.params.add_button("center_lines","Center lines").get_value_changed_signal().connect(plotter.center_lines)
         self.params.contained_value_changed.connect(lambda n: self.plotter.update_image(update_controls=(n=="normalize"),do_redraw=True),QtCore.Qt.DirectConnection)
         self.params.add_spacer(10)
-        self.params.add_toggle_button("update_image","Updating").get_value_changed_signal().connect(plotter._set_image_update)
+        self.params.add_toggle_button("update_image","Updating",value=True).get_value_changed_signal().connect(plotter._set_image_update)
         def arm_single():
             self.params.v["update_image"]=False
             self.plotter.arm_single()
         self.params.add_button("single","Single").get_value_changed_signal().connect(arm_single)
         self.params.add_padding()
+        def set_img_lim_preset(value):
+            self.img_lim_preset=value
+        self.add_property_element("img_lim_preset",getter=lambda: self.img_lim_preset,setter=set_img_lim_preset)
+        def set_colormap(value):
+            colormap=dictionary.as_dict(value,style="nested")
+            self.plotter.image_window.getHistogramWidget().gradient.restoreState(colormap)
+        self.add_property_element("colormap",getter=lambda: self.plotter.image_window.getHistogramWidget().gradient.saveState(),setter=set_colormap)
+        self._setup_gui_state()
 
     def set_img_lim(self, *args):
         """
@@ -124,23 +132,6 @@ class ImagePlotterCtl(QWidgetContainer):
         show_lines=self.v["show_lines"]
         self.params.set_enabled(["vlinepos","hlinepos","show_linecuts"],show_lines)
         self.params.set_enabled("linecut_width",show_lines and self.v["show_linecuts"])
-
-    def get_all_values(self):
-        values=super().get_all_values()
-        if "img_lim_preset" in self.save_values:
-            values["img_lim_preset"]=self.img_lim_preset
-        if "colormap" in self.save_values:
-            values["colormap"]=self.plotter.image_window.getHistogramWidget().gradient.saveState()
-        return values
-    def set_all_values(self, value):
-        super().set_all_values(value)
-        if "img_lim_preset" in value:
-            self.img_lim_preset=value["img_lim_preset"]
-        if "colormap" in value:
-            colormap=dictionary.as_dict(value["colormap"],style="nested")
-            self.plotter.image_window.getHistogramWidget().gradient.restoreState(colormap)
-        self._setup_gui_state()
-
 
 
 
@@ -220,7 +211,7 @@ class ImagePlotter(QLayoutManagedWidget):
         self.single_armed=False
         self.single_acquired=False
         self.img=np.zeros(img_size)
-        self.do_image_update=False
+        self.do_image_update=True
         self.xbin=1
         self.ybin=1
         self.dec="mean"
