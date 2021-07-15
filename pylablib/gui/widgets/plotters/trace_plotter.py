@@ -29,17 +29,15 @@ class TracePlotterCtl(QWidgetContainer):
     Args:
         parent: parent widget
     """
-    def setup(self, plotter, name=None, gui_values=None, gui_values_path=None):
+    def setup(self, plotter, name=None):
         """
         Setup the trace plotter controller.
 
         Args:
             name (str): widget name
             plotter (TracePlotter): controlled image plotter
-            gui_values (bool): as :class:`.GUIValues` object used to access table values; by default, create one internally
-            gui_values_path (str): if not ``None``, specifies the path prefix for values inside the control
         """
-        super().setup(name=name,gui_values=gui_values,gui_values_path=gui_values_path,no_margins=True)
+        super().setup(name=name,no_margins=True)
         self.plotter=plotter
         self.plotter._attach_controller(self)
         self.channels_table=ParamTable(self)
@@ -320,8 +318,8 @@ class TracePlotterCombined(QWidgetContainer):
     The plotter can be accessed as ``.plt`` attribute, and the controller as ``.ctl`` attribute.
     The ``"sidebar"`` sublayout can be used to add additional elements if necessary.
     """
-    def setup(self, add_end_marker=False, update_only_on_visible=True, name=None, gui_values=None, gui_values_path=None):
-        super().setup(layout="hbox",no_margins=True,name=name,gui_values=gui_values,gui_values_path=gui_values_path)
+    def setup(self, add_end_marker=False, update_only_on_visible=True, name=None):
+        super().setup(layout="hbox",no_margins=True,name=name)
         self.plt=TracePlotter(self)
         self.add_to_layout(self.plt)
         self.plt.setup(name="plt",add_end_marker=add_end_marker,update_only_on_visible=update_only_on_visible)

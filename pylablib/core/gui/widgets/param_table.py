@@ -61,21 +61,13 @@ class ParamTable(container.QWidgetContainer):
         super()._set_main_layout()
         self.main_layout.setContentsMargins(5,5,5,5)
         self.main_layout.setColumnStretch(1,1)
-    def setup_gui_values(self, gui_values="new", gui_values_path=""):
-        if self.params:
-            raise RuntimeError("can not change gui values after parameter widgets have been added")
-        super().setup_gui_values(gui_values=gui_values,gui_values_path=gui_values_path)
-    def setup(self, name=None, add_indicator=True, gui_values=None, gui_values_path="", gui_thread_safe=False, cache_values=False, change_focused_control=False):
+    def setup(self, name=None, add_indicator=True, gui_thread_safe=False, cache_values=False, change_focused_control=False):
         """
         Setup the table.
 
         Args:
             name (str): table widget name
             add_indicator (bool): if ``True``, add indicators for all added widgets by default.
-            gui_values (bool): as :class:`.GUIValues` object used to access table values; by default, create one internally
-            gui_values_path (str): if not ``None``, specifies the path prefix for values inside the table;
-                if not specified, then there's no additional root for internal table (``gui_values is None``),
-                or it is equal to `name` if there is an external table  (``gui_values is not None``)
             gui_thread_safe (bool): if ``True``, all value-access and indicator-access calls
                 (``get/set_value``, ``get/set_all_values``, ``get/set_indicator``, and ``update_indicators``) are automatically called in the GUI thread.
             cache_values (bool): if ``True`` or ``"update_one"``, store a dictionary with all the current values and update it every time a GUI value is changed;
@@ -86,7 +78,7 @@ class ParamTable(container.QWidgetContainer):
             change_focused_control (bool): if ``False`` and :meth:`set_value` method is called while the widget has user focus, ignore the value;
                 note that :meth:`set_all_values` will still set the widget value.
         """
-        super().setup(name=name,layout="grid",gui_values=gui_values,gui_values_path=gui_values_path)
+        super().setup(name=name,layout="grid")
         self.add_indicator=add_indicator
         self.gui_thread_safe=gui_thread_safe
         self.change_focused_control=change_focused_control
@@ -132,11 +124,9 @@ class ParamTable(container.QWidgetContainer):
         self.params[name]=params
         if params.widget is not None:
             self.add_child(name,params.widget,location="skip",gui_values_path=False)
-        path=(self.gui_values_path,name)
-        self.gui_values.add_handler(path,params.value_handler)
-        self._subpaths_container.add_single(name,path)
+        self.gui_values.add_handler(name,params.value_handler)
         if params.indicator_handler:
-            self.gui_values.add_indicator_handler(path,params.indicator_handler)
+            self.gui_values.add_indicator_handler(name,params.indicator_handler)
         if add_change_event:
             params.value_handler.connect_value_changed_handler(lambda value: self.contained_value_changed.emit(name,value),only_signal=True)
         if self.cache_values:
@@ -245,8 +235,7 @@ class ParamTable(container.QWidgetContainer):
         """Remove the widget and, if applicable, its indicator and label"""
         name=self._normalize_name(name)
         par=self.params.pop(name)
-        self._subpaths_container.remove(name)
-        self.gui_values.remove_handler((self.gui_values_path,name),remove_indicator=True)
+        self.gui_values.remove_handler(name,remove_indicator=True)
         if par.widget is not None:
             self.remove_child(name)
         if par.label is not None:
@@ -507,7 +496,7 @@ class ParamTable(container.QWidgetContainer):
         except KeyError:
             allow_set=True
         if allow_set:
-            return super().set_value((self.gui_values_path,name),value)
+            return super().set_value(name,value)
     @controller.gui_thread_method
     def set_all_values(self, value, force=False):
         """
@@ -571,8 +560,7 @@ class ParamTable(container.QWidgetContainer):
                 except (TypeError,RuntimeError): # no signals connected
                     pass
             for name in self.params:
-                path=(self.gui_values_path,name)
-                self.gui_values.remove_handler(path,remove_indicator=True)
+                self.gui_values.remove_handler(name,remove_indicator=True)
             self.params={}
             super().clear()
             self._update_cache_values()

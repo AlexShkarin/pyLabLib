@@ -66,6 +66,8 @@ def is_gui_running():
     return get_app() is not None
 def is_gui_thread():
     """Check if the current thread is the one running the GUI loop"""
+    if getattr(local_data,"is_gui",False):
+        return True
     app=get_app()
     return (app is not None) and (QtCore.QThread.currentThread() is app.thread())
 def current_controller(require_controller=True):

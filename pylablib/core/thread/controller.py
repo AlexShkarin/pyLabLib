@@ -140,15 +140,20 @@ def call_in_thread(thread_name, interrupt=True):
             return thread.call_in_thread_sync(func,args=args,kwargs=kwargs,sync=True,same_thread_shortcut=True,interrupt=interrupt)
         return rem_func
     return wrapper
-call_in_gui_thread=call_in_thread("gui")
-"""Decorator that turns any function into a remote call in a GUI thread (call from a different thread is passed synchronously)"""
+def call_in_gui_thread(func):
+    """Decorator that turns any function into a remote call in a GUI thread (call from a different thread is passed synchronously)"""
+    @func_utils.getargsfrom(func)
+    def rem_func(*args, **kwargs):
+        if not threadprop.is_gui_thread():
+            return get_gui_controller().call_in_thread_sync(func,args=args,kwargs=kwargs,sync=True,same_thread_shortcut=False)
+        return func(*args,**kwargs)
+    return rem_func
 def gui_thread_method(func):
     """Decorator for an object's method that checks if the object's ``gui_thread_safe`` attribute is true, in which case the call is routed to the GUI thread"""
-    sync_func=call_in_gui_thread(func)
     @func_utils.getargsfrom(func)
     def rem_func(self, *args, **kwargs):
-        if getattr(self,"gui_thread_safe",False):
-            return sync_func(self,*args,**kwargs)
+        if getattr(self,"gui_thread_safe",False) and not threadprop.is_gui_thread():
+            return get_gui_controller().call_in_thread_sync(func,args=(self,)+args,kwargs=kwargs,sync=True,same_thread_shortcut=False)
         return func(self,*args,**kwargs)
     return rem_func
 
@@ -203,6 +208,8 @@ class QThreadController(QtCore.QObject):
             self.thread=threadprop.get_gui_thread()
             self.thread.thread_id=threading.current_thread().ident
             threadprop.local_data.controller=self
+            threadprop.local_data.controller_name=self.name
+            threadprop.local_data.is_gui=True
             _register_controller(self)
         else:
             self.thread=QThreadControllerThread(self)
@@ -319,6 +326,7 @@ class QThreadController(QtCore.QObject):
         try:
             if self.kind!="main":
                 threadprop.local_data.controller=self
+                threadprop.local_data.controller_name=self.name
                 _register_controller(self)
             with self._lifetime_state_lock:
                 self._lifetime_state="starting"
@@ -1483,6 +1491,8 @@ class QTaskThread(QThreadController):
     ### Start/run/stop control (called automatically) ###
 
     def run(self):
+        if not self.is_in_controlled():
+            raise RuntimeError("calling 'run' methods from a non-controlled thread; did you mean 'start' instead?")
         schedule_time=0
         while True:
             ct=time.time()
@@ -1867,6 +1877,8 @@ def get_controller(name=None, sync=True, timeout=None, sync_point=None):
     with _running_threads_lock:
         if (not sync) and (name not in _running_threads):
             raise threadprop.NoControllerThreadError("thread with name {} doesn't exist".format(name))
+        if name in _running_threads and sync_point is None:
+            return _running_threads[name]
     def wait_cond():
         with _running_threads_lock:
             if name in _running_threads:

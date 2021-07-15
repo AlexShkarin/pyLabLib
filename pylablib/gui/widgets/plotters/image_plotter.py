@@ -41,19 +41,17 @@ class ImagePlotterCtl(QWidgetContainer):
     Args:
         parent: parent widget
     """
-    def setup(self, plotter, name=None, gui_values=None, gui_values_path=None, save_values=("colormap","img_lim_preset")):
+    def setup(self, plotter, name=None, save_values=("colormap","img_lim_preset")):
         """
         Setup the image plotter controller.
 
         Args:
             name (str): widget name
             plotter (ImagePlotter): controlled image plotter
-            gui_values (bool): as :class:`.GUIValues` object used to access table values; by default, create one internally
-            gui_values_path (str): if not ``None``, specifies the path prefix for values inside the control
             save_values (tuple): optional parameters to include on :meth:`get_all_values`;
                 can include ``"colormap"`` (colormap defined in the widget), and ``"img_lim_preset"`` (saved image limit preset)
         """
-        super().setup(name=name,gui_values=gui_values,gui_values_path=gui_values_path,no_margins=True)
+        super().setup(name=name,no_margins=True)
         self.save_values=save_values
         self.setMaximumWidth(200)
         self.plotter=plotter
@@ -575,8 +573,8 @@ class ImagePlotterCombined(QWidgetContainer):
     The plotter can be accessed as ``.plt`` attribute, and the controller as ``.ctl`` attribute.
     The ``"sidebar"`` sublayout can be used to add additional elements if necessary.
     """
-    def setup(self, img_size=(1024,1024), min_size=None, ctl_caption=None, name=None, gui_values=None, gui_values_path=None, save_values=("colormap","img_lim_preset")):
-        super().setup(layout="hbox",name=name,gui_values=gui_values,gui_values_path=gui_values_path)
+    def setup(self, img_size=(1024,1024), min_size=None, ctl_caption=None, name=None, save_values=("colormap","img_lim_preset")):
+        super().setup(layout="hbox",name=name)
         self.plt=ImagePlotter(self)
         self.add_to_layout(self.plt)
         self.plt.setup(name="plt",img_size=img_size,min_size=min_size)

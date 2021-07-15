@@ -36,8 +36,7 @@ class IQContainer:
         self._timer_events={}
         self._running=False
         self._children=dictionary.Dictionary()
-        self._subpaths_container=self.PathsContainer()
-        self.setup_gui_values("new")
+        self.gui_values=value_handling.GUIValues()
         self.ctl=None
         self.c=dictionary.ItemAccessor(self.get_child)
         self.w=dictionary.ItemAccessor(self.get_widget)
@@ -47,35 +46,15 @@ class IQContainer:
     _ignore_set_values=[]
     _ignore_get_values=[]
     contained_value_changed=Signal(object,object)
-    def setup_gui_values(self, gui_values="new", gui_values_path=""):
-        """
-        Setup container's GUI values storage.
-
-        `gui_values` is a :class:`.GUIValues` object, an object which has ``gui_values`` attribute,
-        or ``"new"`` (make a new storage; in this case `gui_values_path` is ignored), and
-        `gui_values_path` is the container's path within this storage.
-        """
-        if self._children:
-            raise RuntimeError("can not change gui values after children have been added")
-        if gui_values is not None:
-            self.gui_values,self.gui_values_path=value_handling.get_gui_values(gui_values,gui_values_path)
     def setup_name(self, name):
         """Set the object's name"""
         if name is not None:
             self.name=name
             self.setObjectName(name)  # pylint: disable=no-member
-    def setup(self, name=None, gui_values=None, gui_values_path=""):
-        """
-        Setup the container by initializing its GUI values and setting the ``ctl`` attribute.
-
-        `gui_values` is a :class:`.GUIValues` object, an object which has ``gui_values`` attribute,
-        or ``"new"`` (make a new storage; in this case `gui_values_path` is ignored), and
-        `gui_values_path` is the container's path within this storage.
-        If ``gui_values`` is ``None``, skip the setup (assume that it's already done).
-        """
+    def setup(self, name=None):
+        """Setup the container by initializing its GUI values and setting the ``ctl`` attribute"""
         if self.name is None:
             self.setup_name(name)
-        self.setup_gui_values(gui_values=gui_values,gui_values_path=gui_values_path)
         self.ctl=controller.get_gui_controller()
 
     def add_timer(self, name, period, autostart=True):
@@ -161,20 +140,16 @@ class IQContainer:
         otherwise, simply add it to the GUI values under the given path.
         if ``add_change_event==True``, changing of the widget's value emits the container's ``contained_value_changed`` event
         """
+        path=self._normalize_name(path)
         if path=="" or path=="*" or path.endswith("/*"):
             if path.endswith("*"):
                 path=path[:-1]
-            if _hasattr(widget,"setup_gui_values"):
-                widget.setup_gui_values(self,path)
-                self._subpaths_container.add_container(self._normalize_name(name),widget)
-            else:
-                raise ValueError("can not store a non-container widget under an empty path")
+            self.gui_values.add_widget((path,"."+name),widget)
         else:
-            self.gui_values.add_widget((self.gui_values_path,path),widget)
-            self._subpaths_container.add_single(self._normalize_name(name),(self.gui_values_path,path))
+            self.gui_values.add_widget(path,widget)
         if add_change_event:
             if _hasattr(widget,"value_changed"):
-                widget.value_changed.connect(lambda value: self.contained_value_changed.emit(self._normalize_name(path),value))
+                widget.value_changed.connect(lambda value: self.contained_value_changed.emit(path,value))
             elif _hasattr(widget,"contained_value_changed"):
                 widget.contained_value_changed.connect(lambda name,value: self.contained_value_changed.emit(self._normalize_name((path,name)),value))
     def _setup_child_name(self, widget, name):
@@ -199,8 +174,10 @@ class IQContainer:
             raise ValueError("child {} is already present")
         if gui_values_path!=False and gui_values_path is not None:
             if gui_values_path==True:
-                gui_values_path="" if _hasattr(widget,"setup_gui_values") else name
+                gui_values_path="" if _hasattr(widget,"get_all_values") else name
             self.add_child_values(name,widget,gui_values_path,add_change_event=add_change_event)
+        else:
+            gui_values_path=None
         self._children[name]=TChild(name,widget,gui_values_path)
         return widget
     def get_child(self, name):
@@ -214,7 +191,7 @@ class IQContainer:
             child.widget.clear()
         if child.gui_values_path is not None:
             try:
-                self.gui_values.remove_handler((self.gui_values_path,child.gui_values_path),remove_indicator=True,disconnect=True)
+                self.gui_values.remove_handler(child.gui_values_path,remove_indicator=True,disconnect=True)
             except KeyError:
                 pass
     def remove_child(self, name):
@@ -225,7 +202,6 @@ class IQContainer:
                 return self._children[path].widget.remove_child(subpath)
             ch=self._children.pop(path)
             self._clear_child(ch)
-            self._subpaths_container.remove(self._normalize_name(path))
         else:
             raise KeyError("can't find widget {}".format(name))
     def add_virtual_element(self, name, value=None, multivalued=False, add_indicator=True):
@@ -237,8 +213,7 @@ class IQContainer:
         The element value is simply stored on set and retrieved on get.
         If ``add_indicator==True``, add default indicator handler as well.
         """
-        self.gui_values.add_virtual_element((self.gui_values_path,name),value=value,multivalued=multivalued,add_indicator=add_indicator)
-        self._subpaths_container.add_single(self._normalize_name(name),(self.gui_values_path,name))
+        self.gui_values.add_virtual_element(name,value=value,multivalued=multivalued,add_indicator=add_indicator)
     def add_property_element(self, name, getter=None, setter=None, add_indicator=True):
         """
         Add a property value element.
@@ -247,8 +222,7 @@ class IQContainer:
         each time the value is set or get, the corresponding setter and getter methods are called.
         If ``add_indicator==True``, add default (stored value) indicator handler as well.
         """
-        self.gui_values.add_property_element((self.gui_values_path,name),getter=getter,setter=setter,add_indicator=add_indicator)
-        self._subpaths_container.add_single(self._normalize_name(name),(self.gui_values_path,name))
+        self.gui_values.add_property_element(name,getter=getter,setter=setter,add_indicator=add_indicator)
 
     @controller.exsafe
     def start(self):
@@ -292,61 +266,9 @@ class IQContainer:
             self.stop()
         for ch in self._children.paths():
             self.remove_child(ch)
-        # for ch in self._children.iternodes():
-        #     self._clear_child(ch)
         self._children=dictionary.Dictionary()
-        self._subpaths_container.clear()
 
 
-    class PathsContainer:
-        """Container which keeps track of all the value names contained within a widget"""
-        def __init__(self):
-            self.clear()
-        def add_single(self, name, path):
-            """Add a single widget stored at the given path"""
-            self.single[name]="/".join(dictionary.normalize_path(path))
-            self.updated=True
-        def add_container(self, name, widget):
-            """Add a container widget stored"""
-            self.containers[name]=widget
-            self.containers_cached[name]=set()
-            self.updated=True
-        def remove(self, name):
-            """Remove contained path under the given name"""
-            if name in self.single:
-                del self.single[name]
-                self.updated=True
-            if name in self.containers:
-                del self.containers[name]
-                del self.containers_cached[name]
-                self.updated=True
-        def clear(self):
-            """Clear all stored names"""
-            self.containers={}
-            self.containers_cached={}
-            self.single={}
-            self.updated=False
-            self.cached=set()
-        def get_paths(self, force_update=False):
-            """Get all contained paths"""
-            for n,ch in self.containers.items():
-                cc=self.containers_cached[n]
-                try:
-                    c=ch.get_contained_paths()
-                    if (c or cc) and (c is not cc):
-                        self.containers_cached[n]=c
-                        self.updated=True
-                except (AttributeError,NameError):
-                    pass
-            if self.updated or force_update:
-                self.updated=False
-                self.cached=set(self.single.values())
-                for c in self.containers_cached.values():
-                    self.cached|=c
-            return self.cached
-    def get_contained_paths(self):
-        """Get paths of all values contained in this container, including children"""
-        return self._subpaths_container.get_paths()
 
     def _normalize_name(self, name):
         if isinstance(name,tuple):
@@ -356,41 +278,41 @@ class IQContainer:
         return name
     def get_handler(self, name):
         """Get value handler of a widget with the given name"""
-        return self.gui_values.get_handler((self.gui_values_path,self._normalize_name(name) or ""),include=self.get_contained_paths())
+        return self.gui_values.get_handler(name)
     def get_widget(self, name):
         """Get a widget corresponding to a value with the given name"""
-        return self.gui_values.get_widget((self.gui_values_path,self._normalize_name(name) or ""),include=self.get_contained_paths())
+        return self.gui_values.get_widget(name)
 
     def get_value(self, name=None):
         """Get value of a widget with the given name (``None`` means all values)"""
-        return self.gui_values.get_value((self.gui_values_path,self._normalize_name(name) or ""),include=self.get_contained_paths())
+        return self.gui_values.get_value(name)
     def get_all_values(self):
         """Get values of all widget in the container"""
-        return self.gui_values.get_all_values(self.gui_values_path,include=self.get_contained_paths(),exclude=self._ignore_get_values)
+        return self.gui_values.get_all_values()
     def set_value(self, name, value):
         """Set value of a widget with the given name (``None`` means all values)"""
-        return self.gui_values.set_value((self.gui_values_path,self._normalize_name(name) or ""),value,include=self.get_contained_paths())
+        return self.gui_values.set_value(name,value)
     def set_all_values(self, value):
         """Set values of all widgets in the container"""
-        return self.gui_values.set_all_values(value,self.gui_values_path,include=self.get_contained_paths(),exclude=self._ignore_set_values)
+        return self.gui_values.set_all_values(value)
     def get_value_changed_signal(self, name):
         """Get a value-changed signal for a widget with the given name"""
-        return self.gui_values.get_value_changed_signal((self.gui_values_path,self._normalize_name(name) or ""),include=self.get_contained_paths())
+        return self.gui_values.get_value_changed_signal(name)
 
     def get_indicator(self, name=None):
         """Get indicator value for a widget with the given name (``None`` means all indicators)"""
-        return self.gui_values.get_indicator((self.gui_values_path,self._normalize_name(name) or ""),include=self.get_contained_paths())
+        return self.gui_values.get_indicator(name)
     def get_all_indicators(self):
         """Get indicator values of all widget in the container"""
-        return self.gui_values.get_all_indicators(self.gui_values_path,include=self.get_contained_paths())
+        return self.gui_values.get_all_indicators()
     def set_indicator(self, name, value, ignore_missing=False):
         """Set indicator value for a widget or a branch with the given name"""
-        return self.gui_values.set_indicator((self.gui_values_path,self._normalize_name(name) or ""),value,include=self.get_contained_paths(),ignore_missing=ignore_missing)
+        return self.gui_values.set_indicator(name,value,ignore_missing=ignore_missing)
     def set_all_indicators(self, value, ignore_missing=True):
-        return self.gui_values.set_all_indicators(value,self.gui_values_path,include=self.get_contained_paths(),ignore_missing=ignore_missing)
+        return self.gui_values.set_all_indicators(value,ignore_missing=ignore_missing)
     def update_indicators(self):
         """Update all indicators to represent current values"""
-        return self.gui_values.update_indicators(root=self.gui_values_path)
+        return self.gui_values.update_indicators()
 
 
 class QContainer(IQContainer, QtCore.QObject):
@@ -422,8 +344,8 @@ class IQWidgetContainer(IQLayoutManagedWidget, IQContainer):
     Abstract mix-in class, which needs to be added to a class inheriting from ``QWidget``.
     Alternatively, one can directly use :class:`QWidgetContainer`, which already inherits from ``QWidget``.
     """
-    def setup(self, layout="vbox", no_margins=False, name=None, gui_values=None, gui_values_path=""):
-        IQContainer.setup(self,name=name,gui_values=gui_values,gui_values_path=gui_values_path)
+    def setup(self, layout="vbox", no_margins=False, name=None):
+        IQContainer.setup(self,name=name)
         IQLayoutManagedWidget.setup(self,layout=layout,no_margins=no_margins)
     def add_child(self, name, widget, location=None, gui_values_path=True):
         """
@@ -510,8 +432,8 @@ class QFrameContainer(IQWidgetContainer, QtWidgets.QFrame):
 
 class QGroupBoxContainer(IQWidgetContainer, QtWidgets.QGroupBox):
     """An extension of :class:`IQWidgetContainer` for a ``QGroupBox`` Qt base class"""
-    def setup(self, caption=None, layout="vbox", no_margins=False, name=None, gui_values=None, gui_values_path=""):
-        QWidgetContainer.setup(self,layout=layout,no_margins=no_margins,name=name,gui_values=gui_values,gui_values_path=gui_values_path)
+    def setup(self, caption=None, layout="vbox", no_margins=False, name=None):
+        QWidgetContainer.setup(self,layout=layout,no_margins=no_margins,name=name)
         if caption is not None:
             self.setTitle(caption)
 
