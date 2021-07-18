@@ -573,3 +573,13 @@ class AccumulatorStreamReceiver(IStreamReceiver):
         if n<=0:
             return []
         return self._get_acc_rng(-n,-1,peek=peek,as_event=as_event)
+    def get_all(self, peek=False, as_event=False):
+        """
+        Get all accumulated messages.
+        
+        Equivalent to ``get_oldest(n=None)``.
+        If ``peek==True``, just return the messages; otherwise, pop the from the queue in mark the as read.
+        If ``as_event==True``, each message is represented as a tuple ``(src, tag, msg)`` describing the received event;
+        otherwise, just messages are returned.
+        """
+        return self.get_oldest(n=None,peek=peek,as_event=as_event)
