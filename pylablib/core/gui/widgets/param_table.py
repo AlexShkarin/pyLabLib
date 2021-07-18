@@ -188,7 +188,7 @@ class ParamTable(container.QWidgetContainer):
             windicator=QtWidgets.QLabel(self)
             windicator.setObjectName("{}__indicator".format(name))
             self._insert_layout_element(ilname,windicator,ilocation)
-            indicator_handler=value_handling.LabelIndicatorHandler(windicator,formatter=value_handler)
+            indicator_handler=value_handling.LabelIndicatorHandler(windicator,formatter=value_handler if add_indicator==True else add_indicator)
         else:
             windicator=None
             indicator_handler=None

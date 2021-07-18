@@ -39,6 +39,7 @@ class GenericPerformaxStage(stage.IMultiaxisStage):
         idx(int): stage index
     """
     _default_operation_cooldown=0.01
+    _axis_value_case="upper"
     Error=ArcusError
     def __init__(self, idx=0):
         super().__init__()

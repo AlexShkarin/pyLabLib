@@ -22,11 +22,12 @@ class IMultiaxisStage(IStage):
     """
     _axes=[]
     _axis_parameter_name="axis"
+    _axis_value_case=None
     def __init__(self):
         super().__init__()
         self._original_axis_parameter=None
         self._mapped_axes=list(self._axes)
-        self._add_parameter_class(interface.EnumParameterClass(self._axis_parameter_name,self._axes))
+        self._add_parameter_class(interface.EnumParameterClass(self._axis_parameter_name,self._axes,value_case=self._axis_value_case))
         self._add_info_variable("axes",self.get_all_axes)
     def get_all_axes(self):
         """Get the list of all available axes (taking mapping into account)"""
@@ -35,7 +36,7 @@ class IMultiaxisStage(IStage):
         """Update axes list; also removes the axes mapping"""
         self._axes=axes
         self._mapped_axes=axes
-        self._replace_parameter_class(interface.EnumParameterClass(self._axis_parameter_name,self._axes))
+        self._replace_parameter_class(interface.EnumParameterClass(self._axis_parameter_name,self._axes,value_case=self._axis_value_case))
         self._original_axis_parameter=None
     def remap_axes(self, mapping, accept_original=True):
         """

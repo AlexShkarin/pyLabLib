@@ -13,7 +13,7 @@ class KinesisMotorThread(device_thread.DeviceThread):
 
     Variables:
         - ``position``: last measured motor position
-        - ``status``: last measured motor status (list containing valid status elements such as ``"moving_fw"`` or ``"sw_fw_lim"``)
+        - ``axis_status``: last measured motor axis status (list containing valid status elements such as ``"moving_fw"`` or ``"sw_fw_lim"``)
         - ``moving``: simplified status, which shows whether the device is moving at all
         - ``parameters``: main stage parameters: homing and velocity parameters, etc.
 
@@ -45,11 +45,11 @@ class KinesisMotorThread(device_thread.DeviceThread):
     def update_measurements(self):
         if self.open():
             self.v["position"]=self.device.get_position()
-            self.v["status"]=self.device.get_status()
+            self.v["axis_status"]=self.device.get_status()
             self.v["moving"]=self.device.is_moving()
         else:
             self.v["position"]=0
-            self.v["status"]=[]
+            self.v["axis_status"]=[]
             self.v["moving"]=False
     
     def _stop_wait(self):

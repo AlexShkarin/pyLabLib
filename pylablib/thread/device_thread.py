@@ -94,7 +94,10 @@ class DeviceThread(controller.QTaskThread):
 
         By default, call ``.open`` method of the device.
         """
-        self.device.open()
+        try:
+            self.device.open()
+        except self.device.Error:
+            raise self.ConnectionFailError
     def setup_open_device(self):
         """
         Set up the device after opening.
@@ -200,7 +203,10 @@ class DeviceThread(controller.QTaskThread):
                 pass
         if self.device is not None:
             if not self.device.is_opened():
-                self.open_device()
+                try:
+                    self.open_device()
+                except self.ConnectionFailError:
+                    pass
                 if self.device.is_opened():
                     self.setup_open_device()
             if self.device.is_opened():

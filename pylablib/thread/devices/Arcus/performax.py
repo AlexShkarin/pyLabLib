@@ -15,7 +15,7 @@ class PerformaxThread(device_thread.DeviceThread):
 
     Variables:
         - ``position``: last measured motor position; one per axis
-        - ``status``: last measured motor status (list containing valid status elements such as ``"moving"`` or ``"sw_plus_lim"``); one per axis
+        - ``axis_status``: last measured axis status (list containing valid status elements such as ``"moving"`` or ``"sw_plus_lim"``); one per axis
         - ``speed``: current speed; one per axis
         - ``moving``: simplified status, which shows whether the device is moving at all; one per axis
         - ``parameters``: main stage parameters: homing and velocity parameters, etc.
@@ -29,7 +29,7 @@ class PerformaxThread(device_thread.DeviceThread):
         - ``set_velocity``: set maximal velocity at the given axis
     """
     def connect_device(self):
-        cls_name="Arcus.Performax4EXStage" if self.kind=="4EX" else "Arcus.Performax2EXStage"
+        cls_name="Arcus.Performax4EXStage" if self.stage_kind=="4EX" else "Arcus.Performax2EXStage"
         with self.using_devclass(cls_name,host=self.remote) as cls:
             self.device=cls(idx=self.idx,enable=self.enable)
             self.device.get_position()
@@ -37,7 +37,7 @@ class PerformaxThread(device_thread.DeviceThread):
         funcargparse.check_parameter_range(kind,"kind",["4EX","2EX"])
         self.device_reconnect_tries=5
         self.idx=idx
-        self.kind=kind
+        self.stage_kind=kind
         self.enable=enable
         self.remote=remote
         self.add_job("update_measurements",self.update_measurements,.5)
@@ -49,17 +49,17 @@ class PerformaxThread(device_thread.DeviceThread):
         self.add_command("stop_motion")
         self.add_command("set_velocity")
     def update_measurements(self):
-        axes="XYZU" if self.kind=="4EX" else "XY"
+        axes="xyzu" if self.stage_kind=="4EX" else "xy"
         if self.open():
             for ax in axes:
                 self.v["position",ax]=self.device.get_position(axis=ax)
-                self.v["status",ax]=self.device.get_status(axis=ax)
+                self.v["axis_status",ax]=self.device.get_status(axis=ax)
                 self.v["speed",ax]=self.device.get_current_axis_speed(axis=ax)
                 self.v["moving",ax]=self.device.is_moving(axis=ax)
         else:
             for ax in axes:
                 self.v["position",ax]=0
-                self.v["status",ax]=[]
+                self.v["axis_status",ax]=[]
                 self.v["speed",ax]=0
                 self.v["moving",ax]=False
     

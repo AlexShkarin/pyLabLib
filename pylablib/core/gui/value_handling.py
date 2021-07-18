@@ -580,7 +580,7 @@ class LabelIndicatorHandler(IIndicatorHandler):
         elif _hasattr(formatter,"__call__"):
             self.repr_func=formatter
             self.repr_func_kind=get_method_kind(formatter,add_args=1)
-        elif formatter is not None:
+        elif formatter not in [None,"text"]:
             raise ValueError("can't determine kind of formatter: {}".format(formatter))
     def get_value(self, name=None):
         if name:

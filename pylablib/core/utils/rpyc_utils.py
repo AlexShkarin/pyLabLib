@@ -1,6 +1,6 @@
 """Routines and classes related to RPyC package"""
 
-from . import module as module_utils, net, strpack
+from . import module as module_utils, net
 
 try:
     import rpyc
@@ -11,6 +11,7 @@ except ImportError as err:
 import numpy as np
 
 import importlib
+import struct
 import pickle
 import warnings
 import socket
@@ -123,7 +124,7 @@ class SocketTunnelService(rpyc.SlaveService):
         if packer:
             obj=packer(obj)
         nchunks=(len(obj)-1)//self._tunnel_block_size+1
-        self.tunnel_socket.send_fixedlen(strpack.pack_uint(nchunks,4,">"))
+        self.tunnel_socket.send_fixedlen(struct.pack(">I",nchunks))
         for pos in range(0,len(obj),self._tunnel_block_size):
             self.tunnel_socket.send_decllen(obj[pos:pos+self._tunnel_block_size])
     def tunnel_recv(self, unpacker=None):
@@ -132,7 +133,7 @@ class SocketTunnelService(rpyc.SlaveService):
 
         If `unpacker` is not ``None``, it defines a function to convert the received bytes string into an object.
         """
-        nchunks=strpack.unpack_uint(self.tunnel_socket.recv_fixedlen(4),">")
+        nchunks,=struct.unpack(">I",self.tunnel_socket.recv_fixedlen(4))
         chunks=[]
         for _ in range(nchunks):
             chunks.append(self.tunnel_socket.recv_decllen())

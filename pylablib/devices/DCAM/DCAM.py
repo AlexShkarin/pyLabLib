@@ -9,6 +9,7 @@ from ..utils import load_lib
 import numpy as np
 import collections
 import ctypes
+import warnings
 
 
 class DCAMTimeoutError(DCAMError):
@@ -443,7 +444,9 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribute
             lib.dcamwait_start(self.dcamwait.hwait,eventmask,int(timeout*1000))
             return
         except DCAMLibError as e:
-            if e.code!=dcamapi4_lib.DCAMERR.DCAMERR_TIMEOUT:
+            if e.code==dcamapi4_lib.DCAMERR.DCAMERR_LOSTFRAME: # occasionally comes up; 
+                warnings.warn("lost DCAM frame")
+            elif e.code!=dcamapi4_lib.DCAMERR.DCAMERR_TIMEOUT:
                 raise
     def _get_single_frame(self, buffer):
         """

@@ -246,7 +246,7 @@ class Solstis(interface.IDevice):
                         finally:
                             logging.getLogger("websocket").setLevel(logging.CRITICAL)
                             ws.close()
-                except websocket.WebSocketTimeoutException:
+                except (websocket.WebSocketTimeoutException, ConnectionResetError):
                     if t==4:
                         raise
                     time.sleep(5.)
@@ -265,7 +265,7 @@ class Solstis(interface.IDevice):
                             ws.recv()
                             logging.getLogger("websocket").setLevel(logging.CRITICAL)
                             ws.close()
-                except websocket.WebSocketTimeoutException:
+                except (websocket.WebSocketTimeoutException, ConnectionResetError):
                     if t==4:
                         raise
                     time.sleep(5.)
@@ -912,11 +912,12 @@ class Solstis(interface.IDevice):
                                 time.sleep(6.)
                             except M2Error:
                                 pass
-                            try:
-                                self.start_fast_scan("cavity_single",1E9,2,sync=True)
-                                time.sleep(6.)
-                            except M2Error:
-                                pass
+                            if self.use_cavity:
+                                try:
+                                    self.start_fast_scan("cavity_single",1E9,2,sync=True)
+                                    time.sleep(6.)
+                                except M2Error:
+                                    pass
                             rate=self._default_terascan_rates[scan_type]
                             scan_center=(stat["current"] or 400E12)-(attempt-5)*100E9
                             self.setup_terascan(scan_type,(scan_center,scan_center+100E9),rate)

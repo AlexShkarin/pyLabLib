@@ -15,7 +15,7 @@ class ANC350Thread(device_thread.DeviceThread):
         - ``connected``: indicator of whether axis is connected
         - ``enabled``: indicator of whether axis is enabled
         - ``position``: last measured motor position
-        - ``status``: last measured motor status (list containing valid status elements such as ``"running"`` or ``"limit"``)
+        - ``axis_status``: last measured axis status (list containing valid status elements such as ``"running"`` or ``"limit"``)
         - ``moving``: indicator of whether axis is moving
         - ``capacitance``: last measured capacitance
 
@@ -50,7 +50,7 @@ class ANC350Thread(device_thread.DeviceThread):
                 self.v["connected",ax]=self.device.is_connected(axis=ax)
                 self.v["enabled",ax]=self.device.is_enabled(axis=ax)
                 self.v["position",ax]=self.device.get_position(axis=ax)
-                self.v["status",ax]=self.device.get_status(axis=ax)
+                self.v["axis_status",ax]=self.device.get_status(axis=ax)
                 self.v["moving",ax]=self.device.is_moving(axis=ax)
                 self.v["capacitance",ax]=self.device.get_capacitance(axis=ax)
         else:
@@ -58,7 +58,7 @@ class ANC350Thread(device_thread.DeviceThread):
                 self.v["connected",ax]=False
                 self.v["enabled",ax]=False
                 self.v["position",ax]=0
-                self.v["status",ax]=[]
+                self.v["axis_status",ax]=[]
                 self.v["moving",ax]=False
                 self.v["capacitance",ax]=0
     

@@ -12,7 +12,7 @@ class SCU3DThread(device_thread.DeviceThread):
         - ``remote``: address of the remote host where the device is connected; ``None`` (default) for local device, or ``"disconnect"`` to not connect
 
     Variables:
-        - ``status``: last measured motor status (such as ``"stopped"`` or ``"moving"``); one per axis
+        - ``axis_status``: last measured motor axis status (such as ``"stopped"`` or ``"moving"``); one per axis
         - ``moving``: indicator of whether axis is moving; one per axis
 
     Commands:
@@ -37,11 +37,11 @@ class SCU3DThread(device_thread.DeviceThread):
         axes=["x","y","z"]
         if self.open():
             for ax in axes:
-                self.v["status",ax]=self.device.get_status(axis=ax)
+                self.v["axis_status",ax]=self.device.get_status(axis=ax)
                 self.v["moving",ax]=self.device.is_moving(axis=ax)
         else:
             for ax in axes:
-                self.v["status",ax]="stopped"
+                self.v["axis_status",ax]="stopped"
                 self.v["moving",ax]=False
     
     def _stop_wait(self, axis="all"):

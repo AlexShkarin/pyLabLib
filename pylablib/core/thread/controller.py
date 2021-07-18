@@ -197,10 +197,10 @@ class QThreadController(QtCore.QObject):
         if kind=="main":
             name="gui"
         self.name=name or threadprop.thread_uids(type(self).__name__)
-        self.kind=kind
+        self.thread_kind=kind
         # register thread
         _store_created_controller(self)
-        if self.kind=="main":
+        if self.thread_kind=="main":
             if not threadprop.is_gui_thread():
                 raise threadprop.ThreadError("GUI thread controller can only be created in the main thread")
             if threadprop.current_controller(require_controller=False):
@@ -246,7 +246,7 @@ class QThreadController(QtCore.QObject):
         self._multicast_pool_sids=[]
         self._stop_notifiers=[]
         # set up life control
-        self._stop_requested=(self.kind!="main")
+        self._stop_requested=(self.thread_kind!="main")
         self._suspend_stop_request=False
         self._lifetime_state_lock=threading.Lock()
         self._lifetime_state="stopped"
@@ -255,7 +255,7 @@ class QThreadController(QtCore.QObject):
         self._control_sent.connect(self._recv_control,QtCore.Qt.QueuedConnection)
         self._thread_call_request.connect(self._on_call_in_thread,QtCore.Qt.QueuedConnection)
         self._check_toploop_signals.connect(self._process_toploop_signals,QtCore.Qt.QueuedConnection)
-        if self.kind=="main":
+        if self.thread_kind=="main":
             threadprop.get_app().aboutToQuit.connect(self._on_finish_event,type=QtCore.Qt.DirectConnection)
             threadprop.get_app().lastWindowClosed.connect(self._on_last_window_closed,type=QtCore.Qt.DirectConnection)
             self._recv_started_event.connect(self._on_start_event,type=QtCore.Qt.QueuedConnection) # invoke delayed start event (call in the main loop)
@@ -324,7 +324,7 @@ class QThreadController(QtCore.QObject):
         with self._lifetime_state_lock:
             self._lifetime_state="setup"
         try:
-            if self.kind!="main":
+            if self.thread_kind!="main":
                 threadprop.local_data.controller=self
                 threadprop.local_data.controller_name=self.name
                 _register_controller(self)
@@ -337,7 +337,7 @@ class QThreadController(QtCore.QObject):
             with self._lifetime_state_lock:
                 self._lifetime_state="running"
             self.notify_exec_point("run")
-            if self.kind=="run":
+            if self.thread_kind=="run":
                 try:
                     self._do_run()
                 finally:
@@ -367,7 +367,7 @@ class QThreadController(QtCore.QObject):
                 self.on_finish()
                 self.check_messages()
         finally:
-            if self.kind=="main":
+            if self.thread_kind=="main":
                 stop_all_controllers(stop_self=False)
             with self._lifetime_state_lock:
                 self._lifetime_state="cleanup"
@@ -907,7 +907,7 @@ class QThreadController(QtCore.QObject):
         If ``sync==True`` and the thread is not main or current, wait until it is completely stopped.
         Universal call method.
         """
-        if self.kind=="main":
+        if self.thread_kind=="main":
             def exit_main():
                 threadprop.get_app().exit(code)
                 self.request_stop()
@@ -916,7 +916,7 @@ class QThreadController(QtCore.QObject):
             self.thread.quit_sync()
         if self.is_in_controlled():
             raise threadprop.InterruptExceptionStop
-        elif sync and self.kind!="main":
+        elif sync and self.thread_kind!="main":
             self.sync_stop()
     def sync_stop(self):
         """

@@ -1,4 +1,4 @@
-from ..utils import string
+from ..utils import string, files as file_utils
 
 import time
 import os
@@ -57,7 +57,7 @@ class TableStreamFile:
             with open(path,"a") as f:
                 f.write("\n"+"\n".join(lines))
         else:
-            os.makedirs(os.path.split(path)[0],exist_ok=True)
+            file_utils.ensure_dir(os.path.split(path)[0])
             with open(path,"a") as f:
                 header=self._get_header()
                 if header:

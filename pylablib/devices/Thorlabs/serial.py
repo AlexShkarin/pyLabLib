@@ -58,6 +58,9 @@ class FW(ThorlabsSerialInterface):
         self.respect_bound=respect_bound
 
     _id_comm="*idn?"
+    def ask(self, msg, data_type="string", delay=0., timeout=None, read_echo=False):
+        self.flush()
+        return super().ask(msg,data_type=data_type,delay=delay,timeout=timeout,read_echo=read_echo)
     def get_position(self):
         """Get the wheel position (starting from 1)"""
         return self.ask("pos?","int")

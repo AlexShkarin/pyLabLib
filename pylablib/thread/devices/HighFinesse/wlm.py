@@ -47,7 +47,7 @@ class WLMThread(device_thread.DeviceThread):
             if branch is None:
                 self.v[k]=d
             else:
-                self.v[branch,k]=d
+                self.v[k,branch]=d
     def update_measurements(self):
         """Update current measurements"""
         if isinstance(self.channel,list):
