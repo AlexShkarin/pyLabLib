@@ -269,7 +269,13 @@ class IQContainer:
         self._children=dictionary.Dictionary()
 
 
-
+    def _filter_values(self, values, exclude):
+        if exclude and any(k in values for k in exclude):
+            values=values.copy()
+            for v in exclude:
+                if v in values:
+                    del values[exclude]
+        return values
     def _normalize_name(self, name):
         if isinstance(name,tuple):
             name=dictionary.normalize_path(name)
@@ -288,13 +294,13 @@ class IQContainer:
         return self.gui_values.get_value(name)
     def get_all_values(self):
         """Get values of all widget in the container"""
-        return self.gui_values.get_all_values()
+        return self._filter_values(self.gui_values.get_all_values(),self._ignore_get_values)
     def set_value(self, name, value):
         """Set value of a widget with the given name (``None`` means all values)"""
         return self.gui_values.set_value(name,value)
     def set_all_values(self, value):
         """Set values of all widgets in the container"""
-        return self.gui_values.set_all_values(value)
+        return self.gui_values.set_all_values(self._filter_values(value,self._ignore_set_values))
     def get_value_changed_signal(self, name):
         """Get a value-changed signal for a widget with the given name"""
         return self.gui_values.get_value_changed_signal(name)

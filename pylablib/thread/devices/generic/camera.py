@@ -154,7 +154,6 @@ class GenericCameraThread(device_thread.DeviceThread):
             if k not in parameters:
                 parameters.add_entry(k,v,force=True)
         self._last_obtained_parameters={k:parameters[k] for k in self.parameter_freeze_running if k in parameters}
-        return parameters
     def _update_additional_parameter(self, parameters):
         pass
     def _get_parameters(self, pause=False):
@@ -169,7 +168,8 @@ class GenericCameraThread(device_thread.DeviceThread):
                 parameters=self.device.get_full_info(include=include)
             parameters=dictionary.Dictionary(self.rpyc_obtain(parameters))
             parameters.filter_self(lambda x: x is not None)
-            parameters=self._update_frozen_parameters(parameters)
+            self._update_frozen_parameters(parameters)
+            self._update_additional_parameter(parameters)
             return parameters
         else:
             return dictionary.Dictionary()

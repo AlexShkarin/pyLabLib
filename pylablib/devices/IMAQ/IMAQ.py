@@ -578,6 +578,7 @@ class IMAQFrameGrabber(camera.IROICamera):
         parsed_data=[self._parse_buffer(b,nframes=n) for n,b in raw_data]
         if not fastbuff:
             parsed_data=[f for chunk in parsed_data for f in chunk]
+        frame_info=None
         if return_info:
             if fastbuff:
                 frame_info=[]
