@@ -89,11 +89,17 @@ class IQLayoutManagedWidget:
             row,rowspan=0,1
             row_cnt,col_cnt=1,layout.count()
         if lkind in {"grid","vbox"}:
-            row=row_cnt if row=="next" else (row%max(row_cnt,1) if row<0 else row)
+            if row=="next":
+                row=row_cnt if layout.count() else 0
+            else:
+                row=(row%max(row_cnt,1) if row<0 else row)
             if rowspan=="end":
                 rowspan=max(row_cnt-row,1)
         if lkind in {"grid","hbox"}:
-            col=col_cnt if col=="next" else (col%max(col_cnt,1) if col<0 else col)
+            if col=="next":
+                col=col_cnt if layout.count() else 0
+            else:
+                col=(col%max(col_cnt,1) if col<0 else col)
             if colspan=="end":
                 colspan=max(col_cnt-col,1)
         return lname,(row,col,rowspan,colspan)

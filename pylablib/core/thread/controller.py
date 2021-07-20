@@ -243,7 +243,7 @@ class QThreadController(QtCore.QObject):
         self._exec_notes={}
         self._exec_notes_lock=threading.Lock()
         self._multicast_pool=multicast_pool or _default_multicast_pool
-        self._multicast_pool_sids=[]
+        self._multicast_pool_sids=set()
         self._stop_notifiers=[]
         # set up life control
         self._stop_requested=(self.thread_kind!="main")
@@ -635,7 +635,7 @@ class QThreadController(QtCore.QObject):
         if self._multicast_pool:
             sid=self._multicast_pool.subscribe_sync(callback,srcs=srcs,dsts=dsts or self.name,tags=tags,filt=filt,priority=subscription_priority,call_interrupt=call_interrupt,
                 limit_queue=limit_queue,add_call_info=add_call_info,dest_controller=self,sid=sid)
-            self._multicast_pool_sids.append(sid)
+            self._multicast_pool_sids.add(sid)
             return sid
     def subscribe_direct(self, callback, srcs="any", tags=None, dsts="any", filt=None, subscription_priority=0, scheduler=None, sid=None):
         """
@@ -662,7 +662,7 @@ class QThreadController(QtCore.QObject):
         """
         if self._multicast_pool:
             sid=self._multicast_pool.subscribe_direct(callback,srcs=srcs,dsts=dsts or self.name,tags=tags,filt=filt,priority=subscription_priority,scheduler=scheduler,sid=sid)
-            self._multicast_pool_sids.append(sid)
+            self._multicast_pool_sids.add(sid)
             return sid
     def unsubscribe(self, sid):
         """
@@ -672,7 +672,7 @@ class QThreadController(QtCore.QObject):
         if they need to be ignored, it should be handled explicitly.
         Local call method.
         """
-        self._multicast_pool_sids.pop(sid)
+        self._multicast_pool_sids.remove(sid)
         self._multicast_pool.unsubscribe(sid)
     def send_multicast(self, dst="any", tag=None, value=None, src=None):
         """
@@ -1524,6 +1524,7 @@ class QTaskThread(QThreadController):
         self.add_command("run_as_batch_job",priority=10)
         self.add_command("add_command",priority=10)
         self.add_command("subscribe_commsync",priority=10)
+        self.add_command("unsubscribe",priority=10)
         self.setup_task(*self.args,**self.kwargs)
     def on_finish(self):
         super().on_finish()
@@ -1726,6 +1727,8 @@ class QTaskThread(QThreadController):
         Universal call method.
         """
         sch=self._commands[name].scheduler
+        if self.is_in_controlled():
+            sch="direct"
         if sch in ["direct","direct_sync"]:
             if sch=="direct_sync" and not sync:
                 raise RuntimeError("direct call command {} can only be called synchronously".format(name))
