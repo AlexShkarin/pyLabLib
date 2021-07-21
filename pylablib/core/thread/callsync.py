@@ -134,14 +134,17 @@ class QScheduledCall:
         func: callable to be invoked in the destination thread
         args: arguments to be passed to `func`
         kwargs: keyword arguments to be passed to `func`
+        silent: if ``True``, silence the exception in the execution thread and simply pass it to the caller thread;
+            otherwise, the exception is raised in both threads
         result_synchronizer: result synchronizer object; can be ``None`` (create new :class:`QCallResultSynchronizer`),
             ``"async"`` (no result synchronization), or a :class:`QCallResultSynchronizer` object. 
     """
     Callback=collections.namedtuple("Callback",["func","pass_result","call_on_exception","call_on_unschedule"])
-    def __init__(self, func, args=None, kwargs=None, result_synchronizer=None):
+    def __init__(self, func, args=None, kwargs=None, silent=False, result_synchronizer=None):
         self.func=func
         self.args=args or []
         self.kwargs=kwargs or {}
+        self.silent=silent
         if result_synchronizer=="async":
             result_synchronizer=dummy_synchronizer
         elif result_synchronizer is None:
@@ -156,7 +159,7 @@ class QScheduledCall:
             return False
         except IndexError:
             return True
-    def execute(self):
+    def execute(self, silent=None):
         """Execute the call and notify the result synchronizer (invoked by the destination thread)"""
         if self._check_notified():
             return
@@ -165,7 +168,8 @@ class QScheduledCall:
             res=("result",self.func(*self.args,**self.kwargs))
         except Exception as e:
             res=("exception",e)
-            raise
+            if not (self.silent if silent is None else silent):
+                raise
         finally:
             self.state=res[0]
             for c in self.callbacks:

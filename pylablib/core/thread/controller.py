@@ -131,17 +131,19 @@ def remote_call(func):
         return self.call_in_thread_sync(func,args=(self,)+args,kwargs=kwargs,sync=True,same_thread_shortcut=True)
     return rem_func
 
-def call_in_thread(thread_name, interrupt=True):
+def call_in_thread(thread_name, interrupt=True, pass_exception=True, silent=False):
     """Decorator that turns any function into a remote call in a thread with a given name (call from a different thread is passed synchronously)"""
     def wrapper(func):
         @func_utils.getargsfrom(func)
         def rem_func(*args, **kwargs):
             thread=get_controller(thread_name)
-            return thread.call_in_thread_sync(func,args=args,kwargs=kwargs,sync=True,same_thread_shortcut=True,interrupt=interrupt)
+            return thread.call_in_thread_sync(func,args=args,kwargs=kwargs,sync=True,same_thread_shortcut=True,interrupt=interrupt,pass_exception=pass_exception,silent=silent)
         return rem_func
     return wrapper
-def call_in_gui_thread(func):
+def call_in_gui_thread(func=None, pass_exception=True, silent=False):
     """Decorator that turns any function into a remote call in a GUI thread (call from a different thread is passed synchronously)"""
+    if func is None:
+        return lambda func: call_in_gui_thread(func,pass_exception=pass_exception,silent=silent)
     @func_utils.getargsfrom(func)
     def rem_func(*args, **kwargs):
         if not threadprop.is_gui_thread():
@@ -1049,7 +1051,7 @@ class QThreadController(QtCore.QObject):
         if callback:
             call.add_callback(callback,pass_result=True,call_on_exception=False)
         self._place_call(call,tag=tag,priority=priority,interrupt=interrupt)
-    def call_in_thread_sync(self, func, args=None, kwargs=None, sync=True, callback=None, timeout=None, default_result=None, pass_exception=True, tag=None, priority=0, interrupt=True, error_on_stopped=True, same_thread_shortcut=True):
+    def call_in_thread_sync(self, func, args=None, kwargs=None, sync=True, callback=None, timeout=None, default_result=None, pass_exception=True, silent=False, tag=None, priority=0, interrupt=True, error_on_stopped=True, same_thread_shortcut=True):
         """
         Call a function in this thread with the given arguments.
 
@@ -1058,7 +1060,9 @@ class QThreadController(QtCore.QObject):
         Otherwise, exit call immediately, and return a synchronizer object (:class:`.QCallResultSynchronizer`),
         which can be used to check if the call is done (method `is_done`) and obtain the result (method :meth:`.QCallResultSynchronizer.get_value_sync`).
         If `callback` is not ``None``, call it after the function is successfully executed (from the target thread), with a single parameter being function result.
-        If ``pass_exception==True`` and `func` raises and exception, re-raise it in the caller thread (applies only if ``sync==True``).
+        If ``pass_exception==True`` and `func` raises an exception, re-raise it in the caller thread (applies only if ``sync==True``).
+        If ``silent==True`` and `func` raises an exception, silence it in the execution thread and only re-raise it in the caller thread;
+        note that if ``pass_exception==False`` and ``silent==True``, the exception is ignored in both threads.
         If `tag` is supplied, send the call in a message with the given tag and priority; otherwise, use the interrupt call (generally, higher priority method).
         If ``interrupt==True``, method can be called inside any control loop (either main loop, or during waiting); otherwise, only call it in the top loop.
         If ``error_on_stopped==True`` and the controlled thread is stopped before it executed the call, raise :exc:`.threadprop.NoControllerThreadError`; otherwise, return `default_result`.
@@ -1070,7 +1074,7 @@ class QThreadController(QtCore.QObject):
             if callback:
                 callback(res)
             return res
-        call=callsync.QScheduledCall(func,args,kwargs)
+        call=callsync.QScheduledCall(func,args,kwargs,silent=silent)
         if callback:
             call.add_callback(callback,pass_result=True,call_on_exception=False)
         if self.add_stop_notifier(call.fail):
@@ -1429,8 +1433,7 @@ class QTaskThread(QThreadController):
         """Get the queue with the given priority, creating one if it does not exist"""
         if priority not in self._priority_queues:
             with self._priority_queues_lock:
-                # q=callsync.QQueueScheduler()
-                q=callsync.QFastQueueScheduler() if fast else callsync.QQueueScheduler()
+                q=callsync.QQueueScheduler()
                 self._priority_queues[priority]=q
                 self._priority_queues_order=[self._priority_queues[p] for p in sorted(self._priority_queues,reverse=True)]
         return self._priority_queues[priority]

@@ -530,14 +530,16 @@ class FramesAccumulator:
         return [(ch.frame,ch.index,ch.info)]
     def _take_slice_chunks(self, start, end=None, step=1, copy=False):
         n=self.nframes()
+        if not n:
+            return [],False
         if start is None:
             start=0 if step>0 else n-1
         elif start<0 and step>0:
-            start%=n
+            start=max(start+n,0)
         if end is None:
             end=n if step>0 else -1
         elif end<0 and step>0:
-            end%=n
+            end=max(end+n,0)
         chunks=any(ch.len!=1 for ch in self.data)
         if any(ch.len!=1 for ch in self.data):
             data=[]

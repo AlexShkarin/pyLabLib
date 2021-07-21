@@ -48,10 +48,11 @@ class ComboBox(QtWidgets.QComboBox):
         Note: if the number of combo box options changed (e.g., using ``addItem`` or ``insertItem`` methods),
         the index values need to be manually updated; otherwise, the errors might arise if the index is larger than the number of values.
         """
-        if index_values is not None and len(index_values)!=self.count():
-            raise ValueError("number of values {} is different from the number of options {}".format(len(index_values),self.count()))
-        if -1 in index_values:
-            raise ValueError("index values {} contain -1, which is reserved to represent no selection".format(index_values))
+        if index_values is not None:
+            if len(index_values)!=self.count():
+                raise ValueError("number of values {} is different from the number of options {}".format(len(index_values),self.count()))
+            if -1 in index_values:
+                raise ValueError("index values {} contain -1, which is reserved to represent no selection".format(index_values))
         curr_value=self.get_value()
         self._index_values=index_values
         if value is not None:
@@ -59,8 +60,10 @@ class ComboBox(QtWidgets.QComboBox):
         else:
             self._index=-1
             self.setCurrentIndex(-1)
-            if curr_value in self._index_values:
+            try:
                 self.set_value(curr_value)
+            except ValueError:
+                pass
     def set_options(self, options, index_values=None, value=None):
         """
         Set new set of options.
