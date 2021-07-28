@@ -7,6 +7,8 @@ import threading
 import os, signal
 import functools
 import collections
+import contextlib
+import cProfile
 from . import functions
 
 
@@ -850,7 +852,35 @@ def setbp():
         import pdb
         return pdb.set_trace
 
-
+@contextlib.contextmanager
+def timing(n=1, name=None, profile=False):
+    """
+    Context manager for timing a piece of code.
+    
+    Measures the time it takes to execute the wrapped code and prints the result.
+    
+    Args:
+        n: can specify the number of repetitions, which is used to show time per single repetition.
+        name: name which is printed alongside the time
+        profile: if ``True``, use ``cProfile`` and print its output instead of a simple timing
+    """
+    if profile:
+        p=cProfile.Profile()
+        p.enable()
+    n=max(n,1)
+    t0=time.time()
+    yield n
+    dt=(time.time()-t0)/n
+    if dt>1:
+        ts="{:.4}s".format(dt)
+    elif dt>1E-3:
+        ts="{:.4}ms".format(dt*1E3)
+    else:
+        ts="{:.4}us".format(dt*1E6)
+    print("{}: {}".format(name or "none",ts))
+    if profile:
+        p.disable()
+        p.print_stats(sort=2)
 
 ### Iterators ###
 

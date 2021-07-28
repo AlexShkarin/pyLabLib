@@ -55,11 +55,17 @@ def list_cameras(only_supported=True):
     if only_supported:
         ports=[p for p in ports if query_camera_name(p) is not None]
     infos=[lib.pfPortInfo(p) for p in ports]
-    infos=[TCameraInfo(py3.as_str(manu),py3.as_str(name),version,typ) for manu,name,version,typ in infos]
+    infos=[TCameraInfo(py3.as_str(manu),py3.as_str(port),version,typ) for manu,port,version,typ in infos]
     return list(zip(ports,infos))
 def get_cameras_number(only_supported=True):
     """Get the total number of connected PFCam cameras"""
     return len(list_cameras(only_supported=only_supported))
+def get_port_index(manufacturer, port):
+    """Find PhotonFocus port index based on the manufacturer and port"""
+    cams=list_cameras(only_supported=False)
+    for p,d in cams:
+        if d.manufacturer==manufacturer and d.port==port:
+            return p
 
 
 
@@ -190,11 +196,14 @@ class IPhotonFocusCamera(camera.IAttributeCamera): # pylint: disable=abstract-me
 
     Args:
         pfcam_port: port number for pfcam interface (can be learned by :func:`list_cameras`; port number is the first element of the camera data tuple)
+            can also be a tuple ``(manufacturer, port)``, e.g., ``("National Instruments", "port0")``.
         kwargs: keyword arguments passed to the frame grabber initialization
     """
     Error=DeviceError
     GrabberClass=None
     def __init__(self, pfcam_port=0, **kwargs):
+        if isinstance(pfcam_port,tuple):
+            pfcam_port=get_port_index(*pfcam_port)
         self.pfcam_port=pfcam_port
         self.pfcam_opened=False
         self.ucav=dictionary.ItemAccessor(self.get_attribute_value,self.update_attribute_value)
@@ -512,6 +521,7 @@ class PhotonFocusIMAQCamera(IPhotonFocusCamera,IMAQFrameGrabber):
     Args:
         imaq_name: IMAQ interface name (can be learned by :func:`.IMAQ.list_cameras`; usually, but not always, starts with ``"img"``)
         pfcam_port: port number for pfcam interface (can be learned by :func:`list_cameras`; port number is the first element of the camera data tuple)
+            can also be a tuple ``(manufacturer, port)``, e.g., ``("National Instruments", "port0")``.
     """
     Error=DeviceError
     GrabberClass=IMAQFrameGrabber
@@ -544,6 +554,7 @@ class PhotonFocusSiSoCamera(IPhotonFocusCamera,SiliconSoftwareFrameGrabber):
             can be either an applet name, or a direct path to the applet DLL
         siso_port: Silicon Software port number, if several ports are supported by the camera and the applet
         pfcam_port: port number for pfcam interface (can be learned by :func:`list_cameras`; port number is the first element of the camera data tuple)
+            can also be a tuple ``(manufacturer, port)``, e.g., ``("National Instruments", "port0")``.
     """
     Error=DeviceError
     GrabberClass=SiliconSoftwareFrameGrabber
@@ -558,6 +569,39 @@ class PhotonFocusSiSoCamera(IPhotonFocusCamera,SiliconSoftwareFrameGrabber):
         ppbpp=self._get_camera_bytepp()
         if ppbpp is not None:
             self.setup_camlink_pixel_format(ppbpp,2)
+
+
+
+def check_grabber_association(cam):
+    """
+    Check if PhotonFocus camera has correct association between the frame grabber and the PFRemote interface.
+    
+    `cam` should be an opened instance of :class:`PhotonFocusIMAQCamera` or :class:`PhotonFocusSiSoCamera`.
+    Note that this function changes camera parameters such as exposure, frame period, ROI, trigger source, and status line.
+    """
+    try:
+        if hasattr(cam,"gav") and "CAMSTATUS" in cam.gav and not cam.gav["CAMSTATUS"]:
+            return False
+        cam.clear_acquisition()
+        cam.set_exposure(0)
+        cam.set_frame_period(0)
+        try:
+            cam.clear_all_triggers()
+        except AttributeError:
+            pass
+        cam.cav["Trigger/Source"]=0
+        cam.set_roi(0,64,0,64)
+        cam.enable_status_line()
+        img=cam.snap(timeout=1)
+        if get_status_lines(img) is None:
+            return False
+        cam.enable_status_line(False)
+        img=cam.snap(timeout=1)
+        if get_status_lines(img) is not None:
+            return False
+        return True
+    except cam.Error:
+        return False
 
 ##### Dealing with status line #####
 

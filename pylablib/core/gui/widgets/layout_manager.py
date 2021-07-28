@@ -174,6 +174,9 @@ class IQLayoutManagedWidget:
     def get_sublayout(self, name=None):
         """Get the previously added sublayout"""
         return self._sublayouts[name or self._default_layout][0]
+    def get_sublayout_kind(self, name=None):
+        """Get the kind of the previously added sublayout"""
+        return self._sublayouts[name or self._default_layout][1]
     
     def add_spacer(self, height=0, width=0, stretch_height=False, stretch_width=False, stretch=0, location="next"):
         """

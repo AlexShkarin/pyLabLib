@@ -70,6 +70,7 @@ def list_applets(board, full_desc=False, valid=True, on_board=False):
     """
     List all applets available for this board.
 
+    `board` is the board index (starting from 0) given by its position in the list returned by :func:`list_boards`.
     If ``full_desc==True``, return full description for each applet; otherwise, return only name and file name.
     If ``valid==True``, list only valid and compatible applets; otherwise, list all applets.
     If ``on_board==True``, list applets running on board; otherwise, list all applets contained in the system.

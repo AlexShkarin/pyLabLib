@@ -92,7 +92,8 @@ class WlmDataLib:
             elif not isinstance(location,tuple):
                 location=(location,)
             all_locations=location+all_locations
-        self.lib,_,path=load_lib.load_lib("wlmData.dll",locations=all_locations,call_conv="stdcall",return_location=True)
+        error_message="The library is located in the folder with HighFinesse wavemeter software"
+        self.lib,_,path=load_lib.load_lib("wlmData.dll",locations=all_locations,call_conv="stdcall",return_location=True,error_message=error_message)
         self.setup_app_path(path)
 
         lib=self.lib

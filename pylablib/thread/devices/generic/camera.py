@@ -154,7 +154,7 @@ class GenericCameraThread(device_thread.DeviceThread):
             if k not in parameters:
                 parameters.add_entry(k,v,force=True)
         self._last_obtained_parameters={k:parameters[k] for k in self.parameter_freeze_running if k in parameters}
-    def _update_additional_parameter(self, parameters):
+    def _update_additional_parameters(self, parameters):
         pass
     def _get_parameters(self, pause=False):
         if self.device:
@@ -169,7 +169,7 @@ class GenericCameraThread(device_thread.DeviceThread):
             parameters=dictionary.Dictionary(self.rpyc_obtain(parameters))
             parameters.filter_self(lambda x: x is not None)
             self._update_frozen_parameters(parameters)
-            self._update_additional_parameter(parameters)
+            self._update_additional_parameters(parameters)
             return parameters
         else:
             return dictionary.Dictionary()
@@ -190,6 +190,8 @@ class GenericCameraThread(device_thread.DeviceThread):
             n_rate=self.min_buffer_size[0]/self.device.get_frame_period()
             return int(max(n_fixed,n_rate))
         return None
+    def _prepare_applied_parameters(self, parameter):
+        pass
     def _apply_additional_parameters(self, parameters):
         for k in ["fastbuff","add_info"]:
             if k in parameters:
@@ -204,13 +206,14 @@ class GenericCameraThread(device_thread.DeviceThread):
             status=self.sv["status/acquisition"]
             self._set_acquisition_status("setup")
             with self._pausing_acq() as (_,acq_params):
+                self._prepare_applied_parameters(parameters)
                 super().apply_parameters(parameters,update=False)
                 self._apply_additional_parameters(parameters)
                 nframes=self._estimate_buffers_num()
                 acq_nframes=acq_params.get("nframes") if acq_params else None
                 if nframes and (acq_nframes is None or acq_nframes<nframes*0.9 or acq_nframes>nframes*2):
                     self.setup_acquisition(nframes=nframes,force_setup=True)
-            self.update_parameters()
+                self.update_parameters()
             self._set_acquisition_status(status)
 
     def _get_metainfo(self, frames, indices, infos):

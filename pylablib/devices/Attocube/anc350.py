@@ -49,7 +49,7 @@ class ANC350(comm_backend.ICommBackendWrapper,stage.IMultiaxisStage):
         self._add_status_variable("positions",self.get_position)
         self._add_status_variable("target_positions",self.get_target_position)
         self._add_status_variable("sensor_voltage",self.get_sensor_voltage)
-        self._add_status_variable("capacitance",lambda: self.get_capacitance(measure=True),priority=-5)
+        self._add_status_variable("capacitance",lambda: self.get_capacitance(measure=False),priority=-5)
     def _make_telegram(self, opcode, address, index=0, data=b"", add_corr=True):
         data=data[:(len(data)//4)*4]
         l=16+len(data)

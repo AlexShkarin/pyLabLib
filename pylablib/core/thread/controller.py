@@ -142,14 +142,16 @@ def call_in_thread(thread_name, interrupt=True, pass_exception=True, silent=Fals
     return wrapper
 def call_in_gui_thread(func=None, pass_exception=True, silent=False):
     """Decorator that turns any function into a remote call in a GUI thread (call from a different thread is passed synchronously)"""
-    if func is None:
-        return lambda func: call_in_gui_thread(func,pass_exception=pass_exception,silent=silent)
-    @func_utils.getargsfrom(func)
-    def rem_func(*args, **kwargs):
-        if not threadprop.is_gui_thread():
-            return get_gui_controller().call_in_thread_sync(func,args=args,kwargs=kwargs,sync=True,same_thread_shortcut=False)
-        return func(*args,**kwargs)
-    return rem_func
+    if func is not None:
+        return call_in_gui_thread(pass_exception=pass_exception,silent=silent)(func)
+    def wrapper(func):
+        @func_utils.getargsfrom(func)
+        def rem_func(*args, **kwargs):
+            if not threadprop.is_gui_thread():
+                return get_gui_controller().call_in_thread_sync(func,args=args,kwargs=kwargs,sync=True,same_thread_shortcut=False)
+            return func(*args,**kwargs)
+        return rem_func
+    return wrapper
 def gui_thread_method(func):
     """Decorator for an object's method that checks if the object's ``gui_thread_safe`` attribute is true, in which case the call is routed to the GUI thread"""
     @func_utils.getargsfrom(func)

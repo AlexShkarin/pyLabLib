@@ -30,7 +30,10 @@ class ANC350Thread(device_thread.DeviceThread):
         with self.using_devclass("Attocube.ANC350",host=self.remote) as cls:
             self.device=cls(conn=self.conn,**self.dev_kwargs)
             self.device.is_enabled()
-    def setup_task(self, conn, remote=None, **kwargs):
+    def setup_open_device(self):
+        self.device.get_capacitance(measure=True)
+        return super().setup_open_device()
+    def setup_task(self, conn=0, remote=None, **kwargs):
         self.device_reconnect_tries=5
         self.conn=conn
         self.remote=remote
@@ -40,6 +43,7 @@ class ANC350Thread(device_thread.DeviceThread):
         self.add_command("enable")
         self.add_command("move_to")
         self.add_command("move_by_steps")
+        self.add_command("jog")
         self.add_command("stop_motion")
         self.add_command("set_axis_parameters")
 
@@ -86,6 +90,12 @@ class ANC350Thread(device_thread.DeviceThread):
         if self.open():
             self._stop_wait(axis=axis)
             self.device.move_by_steps(axis,steps)
+            self.update_measurements()
+    def jog(self, axis, direction):
+        """Start moving in a given direction (``"+"`` or ``"-"``)"""
+        if self.open():
+            self._stop_wait(axis=axis)
+            self.device.jog(axis,direction)
             self.update_measurements()
     def stop_motion(self, axis):
         """Stop motion at a given axis"""

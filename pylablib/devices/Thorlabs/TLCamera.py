@@ -31,7 +31,7 @@ libctl=LibraryController(lib)
 
 
 def list_cameras():
-    """Get number of connected TLCamera cameras"""
+    """List connected TLCamera cameras"""
     with libctl.temp_open():
         try:
             return py3.as_str(lib.tl_camera_discover_available_cameras()).split()

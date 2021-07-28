@@ -112,13 +112,17 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribute
         self._opid=None
         self.dcamwait=None
         self._alloc_nframes=0
+        self._readout_speeds={}
+        self._trigger_modes={}
         self.open()
 
         self._add_camera_parameters()
         self._add_info_variable("device_info",self.get_device_info)
-        self._add_settings_variable("trigger_mode",self.get_trigger_mode,self.set_trigger_mode)
+        self._add_settings_variable("trigger_mode",self.get_trigger_mode,self.set_trigger_mode,ignore_error=ValueError)
+        self._add_info_variable("all_trigger_modes",self.get_all_trigger_modes)
         self._add_settings_variable("ext_trigger",self.get_ext_trigger_parameters,self.setup_ext_trigger)
-        self._add_settings_variable("readout_speed",self.get_readout_speed,self.set_readout_speed)
+        self._add_settings_variable("readout_speed",self.get_readout_speed,self.set_readout_speed,ignore_error=ValueError)
+        self._add_info_variable("all_readout_speeds",self.get_all_readout_speeds)
         self._add_status_variable("readout_time",self.get_frame_readout_time)
         self._add_status_variable("acq_status",self.get_status)
         self._add_status_variable("transfer_info",self.get_transfer_info)
@@ -160,16 +164,18 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribute
         rspar=interface.RangeParameterClass("readout_speed",1,None)
         if rsprop is not None:
             if rsprop.max==1:
-                rspar=interface.EnumParameterClass("readout_speed",{"fast":1})
+                self._readout_speeds={"fast":1}
             if rsprop.max==2:
-                rspar=interface.EnumParameterClass("readout_speed",{"slow":1,"fast":2})
+                self._readout_speeds={"slow":1,"fast":2}
             elif rsprop.max==3:
-                rspar=interface.EnumParameterClass("readout_speed",{"slow":1,"normal":2,"fast":3})
+                self._readout_speeds={"slow":1,"normal":2,"fast":3}
+            rspar=interface.EnumParameterClass("readout_speed",self._readout_speeds)
         self._add_parameter_class(rspar)
         tsprop=self.get_attribute("TRIGGER SOURCE",error_on_missing=False)
         tspar=interface.RangeParameterClass("trigger_mode",1,None)
         if tsprop is not None and tsprop.max<=4:
-            tspar=interface.EnumParameterClass("trigger_mode",{"int":1,"ext":2,"software":3,"master_pulse":4})
+            self._trigger_modes={"int":1,"ext":2,"software":3,"master_pulse":4}
+            tspar=interface.EnumParameterClass("trigger_mode",self._trigger_modes)
         self._add_parameter_class(tspar)
                 
         
@@ -238,6 +244,9 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribute
         Can be ``"int"`` (internal), ``"ext"`` (external), or ``"software"`` (software trigger).
         """
         return int(self.cav["TRIGGER SOURCE"])
+    def get_all_trigger_modes(self):
+        """Return the list of all available trigger modes"""
+        return list(self._trigger_modes)
     def setup_ext_trigger(self, invert=False, delay=0.):
         """Setup external trigger (inversion and delay)"""
         self.cav["TRIGGER POLARITY"]=2 if invert else 1
@@ -268,6 +277,9 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribute
     def get_readout_speed(self):
         """Set current readout speed"""
         return self.get_attribute_value("READOUT SPEED",default=1)
+    def get_all_readout_speeds(self):
+        """Return the list of all available readout speeds"""
+        return list(self._readout_speeds)
     def get_frame_readout_time(self):
         """Set current frame readout time"""
         return self.cav["TIMING READOUT TIME"]
