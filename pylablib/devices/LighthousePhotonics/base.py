@@ -27,7 +27,7 @@ class SproutG(comm_backend.ICommBackendWrapper):
         self._add_status_variable("hours",self.get_work_hours)
         self._add_status_variable("warning",self.get_warning_status)
         self._add_status_variable("interlock",self.get_interlock_status)
-        self._add_status_variable("shutter",self.get_shutter_status)
+        self._add_status_variable("shutter_status",self.get_shutter_status)
         self._add_status_variable("output_mode",self.get_output_mode)
         self._add_settings_variable("enabled",self.is_enabled,self.enable)
         self._add_settings_variable("output_setpoint",self.get_output_setpoint,self.set_output_power)

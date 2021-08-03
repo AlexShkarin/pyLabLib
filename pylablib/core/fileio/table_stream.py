@@ -18,13 +18,15 @@ class TableStreamFile:
         fmt (str): If not ``None``, it's a list of format strings for the line entries (e.g., ``".3f"``);
             instead of format string one can also be ``None``, which means using the standard :func:`.to_string` conversion function
         add_timestamp (bool): If ``True``, add the UNIX timestamp in the beginning of each line (columns and format are expanded accordingly)
+        header_prepend: the string to prepend to the header line; by default, a comment symbol, which is best compatibly with :func:`.loadfile.load_csv` function
     """
-    def __init__(self, path, columns=None, delimiter="\t", fmt=None, add_timestamp=False):
+    def __init__(self, path, columns=None, delimiter="\t", fmt=None, add_timestamp=False, header_prepend="# "):
         self.path=path
         self.delimiter=delimiter
         self.columns=columns
         self.add_timestamp=add_timestamp
         self.fmt=fmt
+        self.header_prepend=header_prepend
         
     def _get_path(self, line, timestamp):  # pylint: disable=unused-argument
         """
@@ -47,7 +49,7 @@ class TableStreamFile:
             columns=self.columns
             if self.add_timestamp:
                 columns=["Timestamp"]+columns
-            return "# "+self.delimiter.join(columns)+"\n"
+            return self.header_prepend+self.delimiter.join(columns)+"\n"
         else:
             return None
 

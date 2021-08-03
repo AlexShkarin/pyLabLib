@@ -393,6 +393,7 @@ class ImagePlotter(QLayoutManagedWidget):
             names=self.rectangles
         else:
             names=funcargparse.as_sequence(names)
+            names=[n for n in names if n in self.rectangles]
         for n in names:
             rect=self.rectangles[n]
             if show and rect.rect not in imgview.addedItems:

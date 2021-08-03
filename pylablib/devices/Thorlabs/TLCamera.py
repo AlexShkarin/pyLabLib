@@ -61,7 +61,7 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
     _frameinfo_fields=TFrameInfo._fields
     def __init__(self, serial=None):
         super().__init__()
-        self.serial=serial
+        self.serial=str(serial)
         self.handle=None
         self._buffer=self.RingBuffer()
         self._new_frame_cb=None

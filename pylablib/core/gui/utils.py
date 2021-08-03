@@ -39,8 +39,8 @@ def clean_layout(layout, delete_layout=False):
 def is_layout_row_empty(layout, row):
     """Check if the given row in a grid layout is empty"""
     if layout is not None:
-        if row<layout.rowCount():
-            return False
+        if row>=layout.rowCount():
+            return True
         for c in range(layout.columnCount()):
             if layout.itemAtPosition(row,c):
                 return False
@@ -91,8 +91,8 @@ def insert_layout_row(layout, row, stretch=0, compress=False):
 def is_layout_column_empty(layout, col):
     """Check if the given column in a grid layout is empty"""
     if layout is not None:
-        if col<layout.columnCount():
-            return False
+        if col>=layout.columnCount():
+            return True
         for r in range(layout.rowCount()):
             if layout.itemAtPosition(r,col):
                 return False

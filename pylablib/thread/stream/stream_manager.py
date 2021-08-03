@@ -384,7 +384,7 @@ class IStreamReceiver:
     
     def recv_message(self, src, tag, msg):
         """Process the reception of the new message"""
-    def subscribe(self, srcs, tags, dsts=None, filt=None):
+    def subscribe(self, srcs, tags, dsts="any", filt=None):
         """Subscribe to the data stream with the given source, tag, destination, and filter function"""
         if self.subid is not None:
             raise ValueError("stream is already subscribed")
@@ -572,7 +572,7 @@ class AccumulatorStreamReceiver(IStreamReceiver):
             self._check_waiting()
         if n<=0:
             return []
-        return self._get_acc_rng(-n,-1,peek=peek,as_event=as_event)
+        return self._get_acc_rng(-n,None,peek=peek,as_event=as_event)
     def get_all(self, peek=False, as_event=False):
         """
         Get all accumulated messages.

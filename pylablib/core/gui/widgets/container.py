@@ -254,6 +254,9 @@ class IQContainer:
         for ch in self._children.iternodes():
             if _hasattr(ch.widget,"stop"):
                 ch.widget.stop()
+    def is_running(self):
+        """Check if the container is running (started and not yet stopped)"""
+        return self._running
 
     def clear(self):
         """

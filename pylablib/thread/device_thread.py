@@ -1,5 +1,6 @@
 from ..core.thread import controller
 from ..core.utils import rpyc_utils, module as module_utils, dictionary
+from ..core.devio.base import DeviceError
 
 import importlib
 import contextlib
@@ -71,6 +72,7 @@ class DeviceThread(controller.QTaskThread):
         self._tried_device_connect=0
         self.rpyc_serv=None
         self.remote=None
+        self.DeviceError=DeviceError
         self.dca=self.DeviceMethodAccessor(self,sync=False,ignore_errors=True)
         self.dcs=self.DeviceMethodAccessor(self,sync=True,ignore_errors=False)
         self.dcsi=self.DeviceMethodAccessor(self,sync=True,ignore_errors=True)
@@ -96,7 +98,7 @@ class DeviceThread(controller.QTaskThread):
         """
         try:
             self.device.open()
-        except self.device.Error:
+        except (OSError, self.DeviceError):  # type: ignore
             raise self.ConnectionFailError
     def setup_open_device(self):
         """
@@ -135,12 +137,14 @@ class DeviceThread(controller.QTaskThread):
                 module=importlib.import_module(module)
             except ImportError:
                 module=importlib.import_module(module_utils.get_library_name()+".devices."+module)
-            return getattr(module,cls)
+            cls=getattr(module,cls)
         else:
             self.rpyc_serv=rpyc_utils.connect_device_service(host,port=port,timeout=timeout,attempts=attempts,error_on_fail=False)
             if not self.rpyc_serv:
                 return None
-            return self.rpyc_serv.get_device_class(cls)
+            cls=self.rpyc_serv.get_device_class(cls)
+        self.DeviceError=self.rpyc_obtain(cls.Error)
+        return cls
     def rpyc_obtain(self, obj, deep=False, direct=False):
         """
         Obtain (i.e., transfer to the local PC) an object returned by the device.
@@ -169,7 +173,7 @@ class DeviceThread(controller.QTaskThread):
         and automatically closes device and sets it to ``None`` if that happens.
         If `host` is ``"disconnect"``, skip device connection (can be used for e.g., temporarily unavailable or buggy device).
         """
-        if cls=="disconnect":
+        if host=="disconnect":
             raise self.ConnectionFailError
         try:
             cls=self.rpyc_devclass(cls,host=host,timeout=timeout,attempts=attempts)
@@ -179,7 +183,7 @@ class DeviceThread(controller.QTaskThread):
             raise self.ConnectionFailError
         try:
             yield cls
-        except cls.Error:
+        except (OSError, self.DeviceError):  # type: ignore
             if self.device is not None:
                 self.device.close()
                 self.device=None
@@ -216,6 +220,9 @@ class DeviceThread(controller.QTaskThread):
         self._tried_device_connect+=1
         self.update_status("connection","closed","Disconnected")
         return False
+    def is_opened(self):
+        """Check if the device is connected and opened"""
+        return self.device is not None and self.device.is_opened()
     def close(self):
         """
         Close the device.
@@ -296,7 +303,7 @@ class DeviceThread(controller.QTaskThread):
         Check if the devices is opened, do nothing if it is not.
         """
         if not isinstance(post_update,list):
-            post_update=[post_update]
+            post_update=[] if post_update is None else [post_update]
         command_name=command_name or name
         def command(*args, **kwargs):
             if self.open():
