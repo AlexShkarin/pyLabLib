@@ -8,10 +8,10 @@ def clear_build():
     shutil.rmtree("_build",ignore_errors=True)
 
 
-def make(apidoc=True):
+def make(apidoc=True, builder="html"):
     if apidoc:
         subprocess.call(["python","apidoc_noautogen.py"])
-    subprocess.call(["make.bat","html"])
+    subprocess.call(["sphinx-build","-M",builder,".","_build"])
 
 
 parser=argparse.ArgumentParser()
