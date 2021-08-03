@@ -41,6 +41,8 @@ class ICamera(interface.IDevice):
         self._image_indexing=self._default_image_indexing
         self._frame_format=self._default_frame_format
         self._frameinfo_format=self._default_frameinfo_format
+        self._frameinfo_include_fields=None
+        self._frameinfo_fields_mask=None
         self._frameinfo_period=1
         self._add_status_variable("buffer_size",lambda: self.get_frames_status().buffer_size)
         self._add_status_variable("acquired_frames",lambda: self.get_frames_status().acquired)
@@ -320,7 +322,7 @@ class ICamera(interface.IDevice):
         return self._frameinfo_format
     _p_frameinfo_format=interface.EnumParameterClass("frame_info_format",["namedtuple","list","array","dict"])
     @interface.use_parameters(fmt="frame_info_format")
-    def set_frame_info_format(self, fmt):
+    def set_frame_info_format(self, fmt, include_fields=None):
         """
         Set format of the frame info.
 
@@ -328,10 +330,20 @@ class ICamera(interface.IDevice):
         ``"list"`` (flat list of values, with field names are given by :meth:`get_frame_info_fields`; convenient for building a table),
         ``"array"`` (same as ``"list"``, but with a numpy array, which is easier to use for ``fastbuff`` readout supported by some cameras),
         or ``"dict"`` (flat dictionary with the same fields as the ``"list"`` format; more resilient to future format changes)
+        If `include_fields` is not ``None``, it specifies the fields included for non-``"tuple"`` formats.
         """
         if self.get_frame_format()=="array":
             fmt="array"
         self._frameinfo_format=fmt
+        if include_fields is not None:
+            for f in include_fields:
+                if f not in self._frameinfo_fields:
+                    raise ValueError("included field {} is not present among camera fields {}".format(f,self._frameinfo_fields))
+            self._frameinfo_include_fields=[f for f in self._frameinfo_fields if f in include_fields]
+            self._frameinfo_fields_mask=[(f in include_fields) for f in self._frameinfo_fields]
+        else:
+            self._frameinfo_include_fields=None
+            self._frameinfo_fields_mask=None
         return self._frameinfo_format
     def get_frame_info_period(self):
         """
@@ -350,31 +362,37 @@ class ICamera(interface.IDevice):
         Useful for certain cameras where acquiring frame info takes a lot of time and can reduce performance at higher frame rates.
         Note that this parameter can still be ignored (i.e., always set to 1) if the performance is not an issue for a given camera class.
         """
-        if self._adjust_frameinfo_period:
+        if self._adjustable_frameinfo_period:
             self._frameinfo_period=period
         return self._frameinfo_period
     def get_frame_info_fields(self):
         """
         Get the names of frame info fields.
 
-        Applicable when frame info format (set by :meth:`set_frame_info_format`) is ``"list"``.
+        Applicable when frame info format (set by :meth:`set_frame_info_format`) is ``"list"`` or ``"array"``.
         """
+        if self._frameinfo_include_fields is not None:
+            return list(self._frameinfo_include_fields)
         return list(self._frameinfo_fields)
     def _convert_frame_info(self, info, fmt=None):
         if fmt is None:
             fmt=self._frameinfo_format
+        fields=self._frameinfo_fields if self._frameinfo_include_fields is None else self._frameinfo_include_fields
         if info is None or info[0]<0:
-            return np.zeros(len(self._frameinfo_fields))-1 if fmt=="array" else None
+            return np.zeros(len(fields))-1 if fmt=="array" else None
         if fmt=="namedtuple":
             return info
+        info=general_utils.flatten_list(info)
+        if self._frameinfo_include_fields is not None:
+            info=[v for v,inc in zip(info,self._frameinfo_fields_mask) if inc]
         if fmt=="list":
-            return list(general_utils.flatten_list(info))
+            return list(info)
         if fmt=="array":
-            arr=np.array(list(general_utils.flatten_list(info)))
+            arr=np.array(list(info))
             if arr.ndim==2:
                 arr=arr.T
             return arr
-        return dict(zip(self._frameinfo_fields,general_utils.flatten_list(info)))
+        return dict(zip(fields,info))
 
     def get_new_images_range(self):
         """
@@ -417,7 +435,7 @@ class ICamera(interface.IDevice):
         return np.zeros((n,)+self.get_data_dimensions(),dtype=self._default_image_dtype)
     _TFrameInfo=TFrameInfo
     _frameinfo_fields=TFrameInfo._fields
-    _adjust_frameinfo_period=False
+    _adjustable_frameinfo_period=False
     _p_missing_frame=interface.EnumParameterClass("missing_frame",["none","zero","skip"])
     @interface.use_parameters
     def read_multiple_images(self, rng=None, peek=False, missing_frame="skip", return_info=False):

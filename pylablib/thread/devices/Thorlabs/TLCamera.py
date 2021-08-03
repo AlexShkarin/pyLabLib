@@ -11,6 +11,7 @@ class ThorlabsTLCameraThread(camera.GenericCameraThread):
     parameter_variables=camera.GenericCameraThread.parameter_variables|{
             "exposure","frame_period","detector_size","buffer_size","acq_status","roi_limits","roi","trigger_mode"}
     parameter_freeze_running={"exposure","detector_size","roi_limits","roi","trigger_mode"}
+    _frameinfo_include_fields={"frame_index","framestamp","pixelclock"}
     def connect_device(self):
         with self.using_devclass("Thorlabs.ThorlabsTLCamera",host=self.remote) as cls:
             self.device=cls(serial=self.serial)

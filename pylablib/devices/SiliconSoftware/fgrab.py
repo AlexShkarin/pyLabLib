@@ -267,7 +267,7 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
     TimeoutError=SiliconSoftwareTimeoutError
     _TFrameInfo=TFrameInfo
     _frameinfo_fields=TFrameInfo._fields
-    _adjust_frameinfo_period=True
+    _adjustable_frameinfo_period=True
     def __init__(self, siso_board=0, siso_applet="DualAreaGray16", siso_port=0, siso_detector_size=None, do_open=True, **kwargs):
         super().__init__(**kwargs)
         lib.initlib()

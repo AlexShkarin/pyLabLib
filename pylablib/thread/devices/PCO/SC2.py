@@ -9,6 +9,7 @@ class PCOSC2CameraThread(camera.GenericCameraThread):
     """
     parameter_variables=camera.GenericCameraThread.parameter_variables|{
             "exposure","frame_period","pixel_rate","all_pixel_rates","trigger_mode","detector_size","roi_limits","roi","buffer_size"}
+    _frameinfo_include_fields={"frame_index"}
     def connect_device(self):
         with self.using_devclass("PCO.PCOSC2Camera",host=self.remote) as cls:
             self.device=cls(idx=self.idx,cam_interface=self.cam_interface,reboot_on_fail=self.reboot_on_fail)

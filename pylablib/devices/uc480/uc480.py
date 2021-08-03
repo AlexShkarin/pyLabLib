@@ -59,7 +59,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
     FrameTransferError=uc480FrameTransferError
     _TFrameInfo=TFrameInfo
     _frameinfo_fields=general.make_flat_namedtuple(TFrameInfo,fields={"timestamp":TTimestamp,"size":camera.TFrameSize})._fields
-    _adjust_frameinfo_period=True
+    _adjustable_frameinfo_period=True
     def __init__(self, cam_id=0, roi_binning_mode="auto", dev_id=None):
         super().__init__()
         lib.initlib()

@@ -85,6 +85,7 @@ class GenericCameraThread(device_thread.DeviceThread):
     TAcqLoop=collections.namedtuple("TAcqLoop",["loop","finalize"])
     _default_min_buffer_size=(1.,100)
     _default_min_poll_period=0.1
+    _frameinfo_include_fields=None
     TimeoutError=cam_utils.ICamera.TimeoutError
     FrameTransferError=cam_utils.ICamera.FrameTransferError
     def setup_task(self, remote=None, misc=None, sn=None):
@@ -219,7 +220,8 @@ class GenericCameraThread(device_thread.DeviceThread):
     def _get_metainfo(self, frames, indices, infos):
         metainfo={}
         if self.v["parameters/add_info"]:
-            metainfo["frame_info_fields"]=self.v["parameters/frame_info_fields"]
+            fields=self.v["parameters/frame_info_fields"]
+            metainfo["frame_info_fields"]=fields[:1]+["acq_timestamp_ms","width","height"]+fields[1:]
         return metainfo
     def _build_chunks(self, frames, infos, max_size=None):
         if infos is not None and not all(isinstance(inf,np.ndarray) for inf in infos):
@@ -244,6 +246,13 @@ class GenericCameraThread(device_thread.DeviceThread):
         if infos is not None:
             infos=[np.asarray(infos[s:e]) for s,e in chunks]
         return frames,infos
+    def _expand_frame_infos(self, frames, indices, infos):
+        if infos is None:
+            return None
+        timestamp=int(time.time()*1E3)
+        infos=[np.column_stack([i[:,0],[timestamp]*len(i),[f.shape[-1]]*len(i),[f.shape[-2]]*len(i),i[:,1:]]) for i,f in zip(infos,frames)]
+        infos=[i[0] if f.ndim==2 else i for i,f in zip(infos,frames)]
+        return infos
     def _read_send_images(self):
         """Read and send new available images"""
         rng=self.device.get_new_images_range()
@@ -273,6 +282,7 @@ class GenericCameraThread(device_thread.DeviceThread):
             else:
                 nread=len(frames)
                 indices=list(range(rng[1]-nread,rng[1]))
+            infos=self._expand_frame_infos(frames,indices,infos)
             self.v["frames/acquired"]=rng[1]
             self.v["frames/read"]+=nread
             self.v["frames/buffer_filled"]=rng[1]-rng[0]
@@ -325,8 +335,9 @@ class GenericCameraThread(device_thread.DeviceThread):
         self.update_parameters()
         if self.rpyc_serv is not None:
             self.device.set_frame_format("array")
-        self.device.set_frame_info_format("array")
+        self.device.set_frame_info_format("array",include_fields=self._frameinfo_include_fields)
         self._use_fastbuff=self.v["parameters/fastbuff"] and ("fastbuff" in func_utils.funcsig(self.device.read_multiple_images).arg_names)
+        self.update_parameters()
         self.device.start_acquisition()
         self._set_acquisition_status("acquiring")
         yield
