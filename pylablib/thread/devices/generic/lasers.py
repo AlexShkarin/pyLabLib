@@ -27,7 +27,7 @@ class IPumpLaserThread(device_thread.DeviceThread):
         self.conn=conn
         self.remote=remote
         self.add_job("update_measurements",self.update_measurements,1.)
-        self.add_command("enable")
+        self.add_device_command("enable",post_update=None)
 
     def update_measurements(self):
         if self.open():
@@ -36,8 +36,3 @@ class IPumpLaserThread(device_thread.DeviceThread):
         else:
             self.v["power"]=-1
             self.v["enabled"]=False
-
-    def enable(self, state):
-        """Enable or disable the laser output"""
-        if self.open():            
-            self.device.enable(enabled=state)
