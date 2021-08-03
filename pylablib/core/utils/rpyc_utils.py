@@ -179,6 +179,8 @@ class DeviceService(SocketTunnelService):
             conn_host=net.get_remote_hostname(conn_addr) or "unknown"
             print("Connected client {} from {}, IP {}".format(self._conn,conn_host,conn_addr))
     def on_disconnect(self, conn):
+        if self.verbose and self.devices:
+            print("Closing devices {} from client {}".format(self.devices,self._conn))
         for dev in self.devices:
             try:
                 dev.close()
@@ -195,6 +197,8 @@ class DeviceService(SocketTunnelService):
         `cls` is the full class name, including the module within ``pylablib.devices``
         (e.g., ``Attocube.ANC300``).
         """
+        if self.verbose:
+            print("Requesting device class {} from client {}".format(cls,self._conn))
         module,cls=cls.rsplit(".",maxsplit=1)
         try:
             module=importlib.import_module(module)

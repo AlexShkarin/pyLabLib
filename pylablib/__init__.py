@@ -1,6 +1,7 @@
 import os
 from .core.utils import module as module_utils
 from .core.utils import library_parameters
+from .core.fileio import loadfile
 par=library_parameters.library_parameters
 temp_par=library_parameters.temp_library_parameters
 
@@ -40,3 +41,9 @@ def unload_all():
     Reload all loaded modules.
     """
     module_utils.unload_package_modules(__name__)
+
+def load_par(path):
+    """Load library parameters from a file"""
+    lpar=loadfile.load_dict(path)
+    for k,v in lpar.items():
+        par[k]=v
