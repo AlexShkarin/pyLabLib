@@ -66,8 +66,8 @@ class ImagePlotterCtl(QWidgetContainer):
         self.params.add_check_box("transpose","Transpose",value=True)
         self.params.add_check_box("normalize","Normalize",value=False)
         with self.params.using_new_sublayout("minmaxlim","grid"):
-            self.params.add_num_edit("minlim",value=self.img_lim[0],limiter=self.img_lim+("coerce","int"),formatter=("int"),label="Minimal intensity:",add_indicator=True)
-            self.params.add_num_edit("maxlim",value=self.img_lim[1],limiter=self.img_lim+("coerce","int"),formatter=("int"),label="Maximal intensity:",add_indicator=True)
+            self.params.add_num_edit("minlim",value=self.img_lim[0],limiter=self.img_lim+("coerce",),formatter=("int"),label="Minimal intensity:",add_indicator=True)
+            self.params.add_num_edit("maxlim",value=self.img_lim[1],limiter=self.img_lim+("coerce",),formatter=("int"),label="Maximal intensity:",add_indicator=True)
             self.params.add_spacer(width=30,location=(0,2))
         with self.params.using_new_sublayout("presets","hbox"):
             self.params.add_button("save_preset","Save preset")
@@ -93,11 +93,11 @@ class ImagePlotterCtl(QWidgetContainer):
         self.params.add_padding()
         def set_img_lim_preset(value):
             self.img_lim_preset=value
-        self.add_property_element("img_lim_preset",getter=lambda: self.img_lim_preset,setter=set_img_lim_preset)
+        self.add_property_element("img_lim_preset",getter=lambda: self.img_lim_preset,setter=set_img_lim_preset, add_indicator=False)
         def set_colormap(value):
             colormap=dictionary.as_dict(value,style="nested")
             self.plotter.image_window.getHistogramWidget().gradient.restoreState(colormap)
-        self.add_property_element("colormap",getter=lambda: self.plotter.image_window.getHistogramWidget().gradient.saveState(),setter=set_colormap)
+        self.add_property_element("colormap",getter=lambda: self.plotter.image_window.getHistogramWidget().gradient.saveState(),setter=set_colormap, add_indicator=False)
         self._setup_gui_state()
 
     def set_img_lim(self, *args):
@@ -115,8 +115,8 @@ class ImagePlotterCtl(QWidgetContainer):
         else:
             return
         minl,maxl=self.img_lim
-        self.params.w["minlim"].set_limiter((minl,maxl,"coerce","int"))
-        self.params.w["maxlim"].set_limiter((minl,maxl,"coerce","int"))
+        self.params.w["minlim"].set_limiter((minl,maxl,"coerce"))
+        self.params.w["maxlim"].set_limiter((minl,maxl,"coerce"))
     @controller.exsafeSlot()
     def _save_img_lim_preset(self):
         self.img_lim_preset=self.v["minlim"],self.v["maxlim"]

@@ -277,7 +277,7 @@ class GenericCameraThread(device_thread.DeviceThread):
                 frames,infos=self._build_chunks(frames,infos)
             if frames and frames[0].ndim==3:
                 lch=np.array([len(f) for f in frames])
-                nread=sum(lch)
+                nread=int(sum(lch))
                 indices=[rng[1]-nread]+list(np.cumsum(lch[:-1])+rng[1]-nread)
             else:
                 nread=len(frames)

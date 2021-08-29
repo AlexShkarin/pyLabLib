@@ -18,7 +18,7 @@ def delete_layout_item(layout, idx):
     """Remove and item with the given index (completely delete it)"""
     if layout is not None:
         item=layout.takeAt(idx)
-        if item.widget():
+        if item.widget() is not None:
             clean_layout(item.widget().layout(),delete_layout=True)
             item.widget().deleteLater()
         elif item.layout():

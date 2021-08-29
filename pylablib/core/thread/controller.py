@@ -24,6 +24,7 @@ _running_threads_stopping=False
 _exception_print_lock=threading.Lock()
 
 _debug_mode=False
+_debug_threads=[]
 
 @contextlib.contextmanager
 def exint(error_msg_template="{}:"):
@@ -46,7 +47,7 @@ def exint(error_msg_template="{}:"):
                 print("\nRunning threads: {}\n\n".format(running_threads),file=sys.stderr)
                 for thread_id,frame in sys._current_frames().items():
                     ctl=_find_controller_by_id(thread_id)
-                    if ctl and ctl.name!=ctl_name:
+                    if ctl and ctl.name!=ctl_name and (not _debug_threads or ctl.name in _debug_threads):
                         print("\n\n\nStack trace of thread '{}':".format(ctl.name),file=sys.stderr)
                         traceback.print_stack(frame,file=sys.stderr)
             sys.stderr.flush()
@@ -944,6 +945,13 @@ class QThreadController(QtCore.QObject):
     def finishing(self):
         """Check if the thread is finishing"""
         return self._lifetime_state in {"finishing"}
+    def _check_running(self, error=True):
+        """Check if the thread is running, raise an exception if it is not"""
+        if not self.running():
+            if error:
+                raise threadprop.NoControllerThreadError("thread {} is not running".format(self.name))
+            return False
+        return True
 
 
     ### Notifier access ###
@@ -1536,9 +1544,11 @@ class QTaskThread(QThreadController):
         for n in self.batch_jobs:
             if n in self.jobs:
                 self.stop_batch_job(n)
-        self.finalize_task()
-        for q in self._priority_queues.values():
-            q.clear()
+        try:
+            self.finalize_task()
+        finally:
+            for q in self._priority_queues.values():
+                q.clear()
 
 
     ### Command call methods ###
@@ -1717,6 +1727,7 @@ class QTaskThread(QThreadController):
 
         Universal call method.
         """
+        self._check_running()
         comm=self._commands[name].command
         return comm(*(args or []),**(kwargs or {}))
     def call_command(self, name, args=None, kwargs=None, sync=False, callback=None, timeout=None, ignore_errors=False):
@@ -1731,6 +1742,8 @@ class QTaskThread(QThreadController):
         and return ``None`` instead; otherwise, these problems raise exceptions in the caller thread.
         Universal call method.
         """
+        if not self._check_running(error=not ignore_errors):
+            return
         sch=self._commands[name].scheduler
         if self.is_in_controlled():
             sch="direct"
@@ -1764,6 +1777,8 @@ class QTaskThread(QThreadController):
         If ``same_thread_shortcut==True`` (default) and the caller thread is the same as the controlled thread, call the function directly.
         Universal call method.
         """
+        if not self._check_running(error=not ignore_errors):
+            return
         if same_thread_shortcut and self.is_in_controlled():
             value=func(*(args or []),**(kwargs or {}))
             if sync=="delayed":
