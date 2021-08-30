@@ -1,3 +1,4 @@
+# pylint: disable-all
 from .utils import is_ascending, is_descending, is_ordered, is_linear
 from .utils import get_x_column, get_y_column
 from .utils import sort_by, filter_by, unique_slices

@@ -24,9 +24,6 @@ class RangeCtl(QtWidgets.QWidget):
     Signals:
         - ``value_changed``: emitted when the value is changed
     """
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
     def setup(self, lim=(None,None), order=True, formatter=".1f", labels=("Min","Max","Center","Span","Step"), elements=("minmax","cspan","step")):
         """
         Setup the range control.

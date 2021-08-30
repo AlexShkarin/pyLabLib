@@ -22,7 +22,6 @@ class AndorSDK2IXONThread(AndorSDK2CameraThread):
 
     See :class:`.camera.GenericCameraThread`.
     """
-    
     parameter_variables=AndorSDK2CameraThread.parameter_variables|{"EMCCD_gain","fan_mode","cooler","shutter","temperature","temperature_status","temperature_monitor",
             "hsspeed","vsspeed","preamp","frame_transfer"}
 

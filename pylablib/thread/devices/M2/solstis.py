@@ -174,7 +174,7 @@ class M2Thread(device_thread.DeviceThread):
         """
         Start fine tuning routine.
 
-        If ``freq_precision>0`` and wavemeter thread name is suppled on setup, invoke early tuning termination.
+        If ``freq_precision>0`` and wavemeter thread name is supplied on setup, invoke early tuning termination.
         In this regime, if the laser frequency is within `freq_precision` of the target frequency for `freq_timeout` seconds, abort the tuning (i.e., assume that it is done). 
         Otherwise, the tuning is done as normal (the laser controller decides when the tuning is done)
         """
@@ -246,7 +246,7 @@ class M2Thread(device_thread.DeviceThread):
         Args:
             scan_type(str): scan type. Can be ``"medium"`` (BRF+etalon, rate from 100 GHz/s to 1 GHz/s),
                 ``"fine"`` (all elements, rate from 20 GHz/s to 1 MHz/s), ``"line"`` (all elements, rate from 20 GHz/s to 50 kHz/s),
-                or ``"auto"`` (autoselect based on rate: ``"line"`` below 1GHz/s, ``"fine"`` below 10GHz/s, ``"medium"`` otherwise)
+                or ``"auto"`` (auto-select based on rate: ``"line"`` below 1GHz/s, ``"fine"`` below 10GHz/s, ``"medium"`` otherwise)
             scan_range(tuple): tuple ``(start,stop)`` with the scan range (in Hz).
             rate(float): scan rate (in Hz/s).
         """
@@ -265,7 +265,7 @@ class M2Thread(device_thread.DeviceThread):
             self.update_progress(0)
             self.start_batch_job("terascan",0.2,scan_type,scan_range,rate,failsafe=failsafe)
     def terascan_stop(self):
-        """Stop terscan routine"""
+        """Stop terascan routine"""
         self.stop_batch_job("terascan")
     def terascan_loop(self, scan_type, scan_range, rate, failsafe):
         while True:

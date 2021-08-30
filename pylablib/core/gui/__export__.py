@@ -1,3 +1,4 @@
+# pylint: disable-all
 from . import qt_present
 
 if qt_present:

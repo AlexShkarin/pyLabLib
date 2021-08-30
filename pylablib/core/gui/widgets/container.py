@@ -136,7 +136,7 @@ class IQContainer:
         Add child's values to the container's table.
 
         If `widget` is a container and ``path==""`` or ends in ``"/*"`` (e.g., ``"subpath/*"``),
-        use its :meth:`setup_gui_values` to make it share the same GUI values;
+        use its ``setup_gui_values`` to make it share the same GUI values;
         otherwise, simply add it to the GUI values under the given path.
         if ``add_change_event==True``, changing of the widget's value emits the container's ``contained_value_changed`` event
         """

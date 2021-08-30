@@ -11,7 +11,7 @@ class VegaPowerMeterThread(device_thread.DeviceThread):
 
     Variables:
         - ``power``: last measured power
-        - ``parameters``: device parameters: range informaton, filter and diffuser state, wavelength
+        - ``parameters``: device parameters: range information, filter and diffuser state, wavelength
 
     Commands:
         - ``configure``: configure filter and range index

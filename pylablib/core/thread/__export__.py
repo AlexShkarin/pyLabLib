@@ -1,3 +1,4 @@
+# pylint: disable-all
 from ..gui import qt_present
 if qt_present:
     from .threadprop import ThreadError, NoControllerThreadError, DuplicateControllerThreadError, TimeoutThreadError, NoMessageThreadError, SkippedCallError, InterruptExceptionStop

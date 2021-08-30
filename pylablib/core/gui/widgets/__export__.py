@@ -1,3 +1,4 @@
+# pylint: disable-all
 from .edit import NumEdit, TextEdit
 from .label import NumLabel
 from .combo_box import ComboBox
