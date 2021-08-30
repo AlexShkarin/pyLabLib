@@ -639,14 +639,29 @@ class Countdown:
     
     Args:
         timeout (float): Countdown timeout; if ``None``, assumed to be infinite.
+        start (bool): if ``True``, automatically start the countdown; otherwise, wait until :meth:`trigger` is called explicitly
     """
-    def __init__(self, timeout):
+    def __init__(self, timeout, start=True):
         self.timeout=timeout
-        self.reset()
-    def reset(self):
+        self.reset(start=start)
+    def reset(self, start=True):
         """Restart the countdown from the current moment"""
-        self.start=time.time()
+        self.start=time.time() if start else None
         self.set_timeout(self.timeout)
+    def trigger(self, restart=True):
+        """
+        Trigger the countdown.
+
+        If ``restart==True``, restart the countdown if it's running; otherwise, do nothing in that situation.
+        """
+        if restart or self.start is None:
+            self.reset()
+    def running(self):
+        """Check if the countdown is running"""
+        return self.start is not None
+    def stop(self):
+        """Stop the timer if currently running"""
+        self.reset(start=False)
     def time_left(self, t=None, bound_below=True):
         """
         Return the amount of time left. For infinite timeout, return ``None``.
@@ -654,6 +669,8 @@ class Countdown:
         If ``bound_below==True``, instead of negative time return zero.
         If `t` is supplied, it indicates the current time; otherwise, use ``time.time()``.
         """
+        if self.start is None:
+            return None
         if self.timeout==0 or self.timeout is None:
             return self.timeout
         t=t or time.time()
@@ -668,6 +685,8 @@ class Countdown:
         If ``bound_below==True``, do not let the end time (start time plus timeout) to get below the current time.
         If `t` is supplied, it indicates the current time; otherwise, use ``time.time()``.
         """
+        if self.start is None:
+            return
         self.start+=dt
         if self.end is not None:
             self.end+=dt
@@ -677,16 +696,16 @@ class Countdown:
     def set_timeout(self, timeout):
         """Change the timer timeout"""
         self.timeout=timeout
-        if self.timeout is None:
+        if self.timeout is None or self.start is None:
             self.end=None
         else:
             self.end=self.timeout+self.start
     def time_passed(self):
-        """Return the amount of time passed since the countdown start/reset"""
-        return time.time()-self.start
+        """Return the amount of time passed since the countdown start/reset, or ``None`` if it is not started"""
+        return None if self.start is None else time.time()-self.start
     def passed(self):
         """Check if the timeout has passed"""
-        if self.timeout is None:
+        if self.timeout is None or self.start is None:
             return False
         elif self.timeout==0:
             return True

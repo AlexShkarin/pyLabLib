@@ -689,9 +689,9 @@ class AndorSDK2Lib:
 
         Return tuple ``(gain, advanced)``.
         """
-        advanced=self.GetEMAdvanced()
         gain=self.GetEMCCDGain()
-        return advanced, gain
+        advanced=self.GetEMAdvanced()
+        return gain,advanced
     def set_EMCCD_gain(self, gain, advanced=None):
         """
         Set EMCCD gain.

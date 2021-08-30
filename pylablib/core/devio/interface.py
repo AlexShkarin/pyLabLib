@@ -105,8 +105,13 @@ class IDevice:
             else:
                 return [func(ch) for ch in choices]
         return func_mux
-    def _update_device_variable_order(self, path, kind):
+    def _update_device_variable_order(self, path, kind=None):
         """Shift the order of the device variable to the current position"""
+        if kind is None:
+            for k,v in self._device_vars.items():
+                if path in v:
+                    kind=k
+                    break
         if kind not in self._device_vars:
             raise ValueError("unrecognized device variable kind: {}".format(kind))
         if path not in self._device_vars[kind]:

@@ -250,8 +250,8 @@ class ImagePlotter(QLayoutManagedWidget):
         self.add_to_layout(self.cut_plot_window)
         self.main_layout.setStretch(1,1)
         self.cut_plot_window.setVisible(False)
-        self.vline.sigPositionChanged.connect(self.update_image_controls,QtCore.Qt.DirectConnection)
-        self.hline.sigPositionChanged.connect(self.update_image_controls,QtCore.Qt.DirectConnection)
+        self.vline.sigPositionChanged.connect(lambda: self.update_image_controls(),QtCore.Qt.DirectConnection)
+        self.hline.sigPositionChanged.connect(lambda :self.update_image_controls(),QtCore.Qt.DirectConnection)
         self.image_window.getHistogramWidget().sigLevelsChanged.connect(lambda: self.update_image_controls(levels=self.image_window.getHistogramWidget().getLevels()),QtCore.Qt.DirectConnection)
         self.rectangles={}
 

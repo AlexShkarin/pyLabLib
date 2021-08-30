@@ -126,6 +126,7 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribute
         self._add_status_variable("readout_time",self.get_frame_readout_time)
         self._add_status_variable("acq_status",self.get_status)
         self._add_status_variable("transfer_info",self.get_transfer_info)
+        self._update_device_variable_order("exposure")
         self._add_status_variable("frame_period",self.get_frame_period)
         
     def _get_connection_parameters(self):

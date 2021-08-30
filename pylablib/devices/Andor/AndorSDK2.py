@@ -144,7 +144,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         self._add_settings_variable("read_parameters/random_track",self.get_random_track_mode_parameters,self.setup_random_track_mode)
         self._add_settings_variable("read_parameters/image",self.get_image_mode_parameters,self.setup_image_mode)
         self._add_settings_variable("read_mode",self.get_read_mode,self.set_read_mode)
-        self._update_device_variable_order("exposure","settings")
+        self._update_device_variable_order("exposure")
         self._add_settings_variable("frame_period",self.get_frame_period,self.set_frame_period)
         
     def _initial_setup_temperature(self):
