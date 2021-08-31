@@ -412,11 +412,11 @@ class FramesMessage(DataStreamMessage):
         if start is None:
             start=0
         elif start<0:
-            start%=n
+            start=max(start+n,0)
         if end is None:
             end=n
         elif end<0:
-            end%=n
+            end=max(end+n,0)
         if self.chunks:
             frames=[]
             indices=[]

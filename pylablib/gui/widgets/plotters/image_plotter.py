@@ -78,8 +78,14 @@ class ImagePlotterCtl(QWidgetContainer):
         self.params.add_check_box("show_histogram","Show histogram",value=True).get_value_changed_signal().connect(self._setup_gui_state)
         self.params.add_check_box("auto_histogram_range","Auto histogram range",value=True)
         self.params.add_check_box("show_lines","Show lines",value=True).get_value_changed_signal().connect(self._setup_gui_state)
-        self.params.add_num_edit("vlinepos",value=0,limiter=(0,None,"coerce","float"),formatter=("float","auto",1,True),label="X line:")
-        self.params.add_num_edit("hlinepos",value=0,limiter=(0,None,"coerce","float"),formatter=("float","auto",1,True),label="Y line:")
+        with self.params.using_new_sublayout("vline","hbox"):
+            self.params.add_spacer(width=20)
+            self.params.add_check_box("vlineon","X  ",value=True).get_value_changed_signal().connect(self._setup_gui_state)
+            self.params.add_num_edit("vlinepos",value=0,limiter=(0,None,"coerce","float"),formatter=("float","auto",1,True))
+        with self.params.using_new_sublayout("hline","hbox"):
+            self.params.add_spacer(width=20)
+            self.params.add_check_box("hlineon","Y  ",value=True).get_value_changed_signal().connect(self._setup_gui_state)
+            self.params.add_num_edit("hlinepos",value=0,limiter=(0,None,"coerce","float"),formatter=("float","auto",1,True))
         self.params.add_check_box("show_linecuts","Show line cuts",value=False).get_value_changed_signal().connect(self._setup_gui_state)
         self.params.add_num_edit("linecut_width",value=1,limiter=(1,None,"coerce","int"),formatter="int",label="Line cut width:")
         self.params.add_button("center_lines","Center lines").get_value_changed_signal().connect(plotter.center_lines)
@@ -128,7 +134,9 @@ class ImagePlotterCtl(QWidgetContainer):
         """Enable or disable controls based on which actions are enabled"""
         self.params.set_enabled("auto_histogram_range",self.v["show_histogram"])
         show_lines=self.v["show_lines"]
-        self.params.set_enabled(["vlinepos","hlinepos","show_linecuts"],show_lines)
+        self.params.set_enabled(["vlineon","hlineon","show_linecuts"],show_lines)
+        self.params.set_enabled("vlinepos",show_lines and self.v["vlineon"])
+        self.params.set_enabled("hlinepos",show_lines and self.v["hlineon"])
         self.params.set_enabled("linecut_width",show_lines and self.v["show_linecuts"])
 
 
@@ -269,6 +277,8 @@ class ImagePlotter(QLayoutManagedWidget):
                 "flip_y":False,
                 "normalize":True,
                 "show_lines":False,
+                "vlineon":False,
+                "hlineon":False,
                 "show_histogram":True,
                 "auto_histogram_range":True,
                 "show_linecuts":False,
@@ -412,8 +422,10 @@ class ImagePlotter(QLayoutManagedWidget):
         hpos=self.hline.getPos()[1]
         cut_width=values.v["linecut_width"]
         show_boundary_lines=values.v["show_lines"] and values.v["show_linecuts"] and cut_width>1
-        for ln in self.vblines+self.hblines:
-            ln.setPen(self.linecut_boundary_pen if show_boundary_lines else None)
+        for ln in self.vblines:
+            ln.setPen(self.linecut_boundary_pen if show_boundary_lines and values.v["vlineon"] else None)
+        for ln in self.hblines:
+            ln.setPen(self.linecut_boundary_pen if show_boundary_lines and values.v["hlineon"] else None)
         if show_boundary_lines:
             self.vblines[0].setPos(vpos-cut_width/2)
             self.vblines[1].setPos(vpos+cut_width/2)
@@ -516,10 +528,11 @@ class ImagePlotter(QLayoutManagedWidget):
             values.i["maxlim"]=img_levels[1]
             values.v["size"]="{} x {}".format(*img_shape)
             show_lines=values.v["show_lines"]
-            for ln in [self.vline,self.hline]:
-                ln.setPen("g" if show_lines else None)
-                ln.setHoverPen("y" if show_lines else None)
-                ln.setMovable(show_lines)
+            vlineon,hlineon=values.v["vlineon"],values.v["hlineon"]
+            for ln,lnena in zip([self.vline,self.hline],[vlineon,hlineon]):
+                ln.setPen("g" if show_lines and lnena else None)
+                ln.setHoverPen("y" if show_lines and lnena else None)
+                ln.setMovable(show_lines and lnena)
             for ln in [self.vline]+self.vblines:
                 ln.setBounds([0,draw_img.shape[0]])
             for ln in [self.hline]+self.hblines:
@@ -545,8 +558,8 @@ class ImagePlotter(QLayoutManagedWidget):
                         hmax+=1
                     else:
                         hmin-=1
-                x_cut=draw_img[:,hmin:hmax].mean(axis=1)
-                y_cut=draw_img[vmin:vmax,:].mean(axis=0)
+                x_cut=draw_img[:,hmin:hmax].mean(axis=1) if hlineon else []
+                y_cut=draw_img[vmin:vmax,:].mean(axis=0) if vlineon else []
                 autorange=self.cut_plot_window.getViewBox().autoRangeEnabled()
                 self.cut_plot_window.disableAutoRange()
                 self.cut_lines[0].setData(np.arange(len(x_cut)),x_cut)

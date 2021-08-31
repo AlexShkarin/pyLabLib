@@ -355,7 +355,7 @@ class BackgroundSubtractionThread(controller.QTaskThread):
     TStoredFrame=collections.namedtuple("TStoredFrame",["frame","index","info","status_line"])
     def setup_task(self, src, tag_in, tag_out=None):
         self.frames_src=stream_manager.StreamSource(builder=stream_message.FramesMessage,use_mid=False)
-        self.subscribe_commsync(self.process_input_frames,srcs=src,tags=tag_in,limit_queue=10,on_full_queue="skip_oldest")
+        self.subscribe_commsync(self.process_input_frames,srcs=src,tags=tag_in,limit_queue=20,on_full_queue="skip_oldest")
         self.tag_out=tag_out or tag_in+"/show"
         self.v["enabled"]=False
         self.v["overridden"]=False

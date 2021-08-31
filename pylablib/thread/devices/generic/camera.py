@@ -84,7 +84,7 @@ class GenericCameraThread(device_thread.DeviceThread):
     parameter_freeze_running={} # list of settings which do not need to be updated when running
     TAcqLoop=collections.namedtuple("TAcqLoop",["loop","finalize"])
     _default_min_buffer_size=(1.,100)
-    _default_min_poll_period=0.1
+    _default_min_poll_period=0.05
     _frameinfo_include_fields=None
     TimeoutError=cam_utils.ICamera.TimeoutError
     FrameTransferError=cam_utils.ICamera.FrameTransferError
