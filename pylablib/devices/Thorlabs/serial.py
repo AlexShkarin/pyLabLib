@@ -1,4 +1,5 @@
 from ...core.devio import SCPI, interface
+from ...core.utils import py3
 from .base import ThorlabsError, ThorlabsBackendError
 
 
@@ -13,6 +14,9 @@ class ThorlabsSerialInterface(SCPI.SCPIDevice):
     _allow_concatenate_write=False
     Error=ThorlabsError
     ReraiseError=ThorlabsBackendError
+    _validate_echo=False  # if true; check if the echo matches the written command and raise an error (and re-run the command) if it does not
+    _default_failsafe=True
+    _default_retry_delay=0.5
     def __init__(self, conn):
         SCPI.SCPIDevice.__init__(self,conn,backend="serial",term_read=["\r","\n"],term_write="\r",timeout=5.,backend_defaults={"serial":("COM1",115200)})
 
@@ -24,7 +28,13 @@ class ThorlabsSerialInterface(SCPI.SCPIDevice):
         return reply.find(b"CMD_")<0 and reply.find(b"Error")<0
     def _instr_write(self, msg):
         self.instr.flush_read()
-        return self.instr.write(msg,read_echo=True)
+        if self._validate_echo:
+            self.instr.write(msg)
+            res=self._instr_read()
+            if res.strip()==py3.as_bytes(msg.strip()):
+                return
+            raise self.Error("request {} returned unexpected echo: {}".format(py3.as_bytes(msg.strip()),res))
+        self.instr.write(msg,read_echo=True)
     def _instr_read(self, raw=False, size=None):
         if size:
             data=self.instr.read(size=size)
@@ -47,6 +57,7 @@ class FW(ThorlabsSerialInterface):
         conn: serial connection parameters (usually port or a tuple containing port and baudrate)
         respect_bound(bool): if ``True``, avoid crossing the boundary between the first and the last position in the wheel
     """
+    _validate_echo=True
     def __init__(self, conn, respect_bound=True):
         ThorlabsSerialInterface.__init__(self,conn)
         self._add_settings_variable("pos",self.get_position,self.set_position)

@@ -32,7 +32,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
     """
     # All of the following _default_* parameters can be redefined in subclasses
     # Most of these parameters are used to define object attributes, which can be altered individually for different objects (i.e., connections)
-    _default_failsafe_operation_timeout=5. # timeout for an operation (read/write/ask) in the failsafe mode
+    _default_failsafe_operation_timeout=3. # timeout for an operation (read/write/ask) in the failsafe mode
     _default_backend_timeout=3. # timeout for a single backend operation attempt in the failsafe mode (one operation can be attempted several times)
     _default_retry_delay=5. # delay between retrying an operation (in seconds)
     _default_retry_times=5 # maximal number of operation attempts
@@ -42,6 +42,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
     _default_write_sync=False # default setting for ``wait_sync`` in ``write`` method
     _default_wait_callback_timeout=.3 # callback call period during wait operations (keeps the thread from complete halting)
     _default_failsafe=False # running in the failsafe mode by default
+    _failsafe_warnings=False # whether invocation of failsafe emits a warning
     _allow_concatenate_write=False # allow automatic concatenation of several write operations (see :meth:`using_write_buffer`)
     _concatenate_write_separator=";\n" # separator to join different commands in concatenated write operation (with :meth:`using_write_buffer`)
     Error=DeviceError
@@ -53,7 +54,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
         self._failsafe=failsafe
         if failsafe:
             self._operation_timeout=self._default_failsafe_operation_timeout if timeout is None else timeout
-            self._backend_timeout=self._default_backend_timeout
+            self._backend_timeout=min(self._default_backend_timeout,self._operation_timeout) if self._operation_timeout is not None else self._default_backend_timeout
             self._retry_delay=self._default_retry_delay
             self._retry_times=self._default_retry_times
         else:
@@ -63,7 +64,8 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
             self._retry_times=0
         self._wait_callback=wait_callback
         self._wait_callback_timeout=self._default_wait_callback_timeout
-        instr=comm_backend.new_backend(conn,backend=backend,term_write=term_write,term_read=term_read,timeout=self._backend_timeout,defaults=backend_defaults,reraise_error=self.ReraiseError,**(backend_params or {}))
+        instr=comm_backend.new_backend(conn,backend=backend,term_write=term_write,term_read=term_read,
+                timeout=self._backend_timeout,defaults=backend_defaults,reraise_error=self.ReraiseError,**(backend_params or {}))
         self.BackendError=instr.Error
         instr.setup_cooldown(**self._default_operation_cooldown)
         comm_backend.ICommBackendWrapper.__init__(self,instr)
@@ -145,18 +147,21 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
         if result:
             return self._get_scpi_parameter(name)
     
-    def reconnect(self, new_instrument=True):
+    def reconnect(self, new_instrument=True, ignore_error=True):
         """
         Remake the connection.
         
         If ``new_instrument==True``, create a new backend instance.
+        If ``ignore_error==True``, ignore errors on closing.
         """
         try:
             self.close()
-        except self.instr.Error:
-            pass
+        except self.Error:
+            if not ignore_error:
+                raise
         if new_instrument:
-            self.instr=comm_backend.new_backend(self.conn,backend=self.backend,term_write=self.term_write,term_read=self.term_read,timeout=self._backend_timeout,backend_defaults=self.backend_defaults,**self.backend_params)
+            self.instr=comm_backend.new_backend(self.conn,backend=self.backend,term_write=self.term_write,term_read=self.term_read,
+                timeout=self._backend_timeout,defaults=self.backend_defaults,reraise_error=self.ReraiseError,**self.backend_params)
         else:
             self.instr.open()
         
@@ -183,17 +188,18 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
                 
     _flush_comm=None
     def _flush_retry(self):
-        for t in general_utils.RetryOnException(self._retry_times,exceptions=self.instr.Error):
+        for t in general_utils.RetryOnException(self._retry_times,exceptions=self.Error):
             with t:
-                response=self.instr.ask(self._flush_comm or self._id_comm)
-                self.flush()
-                return response
+                if self._flush_comm is not None:
+                    self._instr_write(self._flush_comm)
+                    self._instr_read()
+                return self.instr.flush_read()
     def _try_recover(self, cnt, silent=True):
         try:
-            if cnt%2==0:
-                self.reconnect()
+            if (cnt+1)%3==0:
+                self.reconnect(ignore_error=False)
             self._flush_retry()
-        except self.instr.Error:
+        except self.Error:
             if not silent:
                 raise
     def _read_one_try(self, raw=False, size=None, timeout=None, wait_callback=None):
@@ -204,7 +210,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
             backend_timeout=min(self._backend_timeout,timeout) if self._failsafe else timeout
         start_time=time.time()
         with self.instr.using_timeout(backend_timeout):
-            for t in general_utils.RetryOnException(exceptions=self.instr.Error):
+            for t in general_utils.RetryOnException(exceptions=self.Error):
                 with t:
                     return self._instr_read(raw=raw,size=size)
                 if wait_callback is not None:
@@ -215,14 +221,15 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
         self._write_retry(flush=True)
         retry=(timeout is None) if (retry is None) else retry
         locking_timeout=self._operation_timeout if timeout is None else timeout
-        for t in general_utils.RetryOnException(self._retry_times,exceptions=self.instr.Error):
+        for t in general_utils.RetryOnException(self._retry_times,exceptions=self.Error):
             with t:
                 with self.instr.locking(timeout=locking_timeout):
                     return self._read_one_try(raw=raw,size=size,timeout=timeout,wait_callback=wait_callback)
             if not retry:
                 t.reraise()
-            error_msg="read raises IOError; waiting {0} sec before trying to recover".format(self._retry_delay)
-            warnings.warn(error_msg)
+            error_msg="read raises error '{}'; waiting {} sec before trying to recover".format(t.error,self._retry_delay)
+            if self._failsafe_warnings:
+                warnings.warn(error_msg)
             self.sleep(self._retry_delay)
             self._try_recover(t.try_number)
     def _write_retry(self, msg="", flush=False):
@@ -233,20 +240,21 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
             msg=self._write_buffer+self._concatenate_write_separator+msg if msg else self._write_buffer
             self._write_buffer=""
         if msg:
-            for t in general_utils.RetryOnException(self._retry_times,exceptions=self.instr.Error):
+            for t in general_utils.RetryOnException(self._retry_times,exceptions=self.Error):
                 with t:
                     with self.instr.locking(timeout=self._operation_timeout):
                         sent=self._instr_write(msg)
                         return sent
-                error_msg="write raises IOError; waiting {0} sec before trying to recover".format(self._retry_delay)
-                warnings.warn(error_msg)
+                error_msg="write raises error '{}'; waiting {} sec before trying to recover".format(t.error,self._retry_delay)
+                if self._failsafe_warnings:
+                    warnings.warn(error_msg)
                 self.sleep(self._retry_delay)
                 self._try_recover(t.try_number)
     def _ask_retry(self, msg, delay=0., raw=False, size=None, timeout=None, wait_callback=None, retry=None):
         self._write_retry(flush=True)
         retry=(timeout is None) if (retry is None) else retry
         locking_timeout=self._operation_timeout if timeout is None else timeout
-        for t in general_utils.RetryOnException(self._retry_times,exceptions=self.instr.Error):
+        for t in general_utils.RetryOnException(self._retry_times,exceptions=self.Error):
             with t:
                 with self.instr.locking(timeout=locking_timeout):
                     self._instr_write(msg)
@@ -254,8 +262,9 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
                     return self._read_one_try(raw=raw,size=size,timeout=timeout,wait_callback=wait_callback)
             if not retry:
                 t.reraise()
-            error_msg="ask raises IOError; waiting {0} sec before trying to recover".format(self._retry_delay)
-            warnings.warn(error_msg)
+            error_msg="ask raises error '{}'; waiting {} sec before trying to recover".format(t.error,self._retry_delay)
+            if self._failsafe_warnings:
+                warnings.warn(error_msg)
             self.sleep(self._retry_delay)
             self._try_recover(t.try_number)
                 
@@ -301,7 +310,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
                         if res==idn_res:
                             break
                         result=True
-                except self.instr.Error:
+                except self.Error:
                     pass
             if cached:
                 self._command_validity_cache[comm]=result
@@ -416,7 +425,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
             try:
                 self.sleep(read_echo_delay)
                 self._read_one_try()
-            except self.instr.Error:
+            except self.Error:
                 pass
         if wait_sync:
             sync_msg=self.read()
@@ -506,7 +515,8 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
             if not self._failsafe:
                 t.reraise()
             error_msg="ask error in instrument {} returned {}".format(self.instr,reply)
-            warnings.warn(error_msg)
+            if self._failsafe_warnings:
+                warnings.warn(error_msg)
             self.sleep(0.5)
             self.flush()
             self._try_recover(t.try_number)
@@ -522,7 +532,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
                 l=l+len(self._read_one_try(raw=True,timeout=1E-3))
                 if one_line:
                     return l
-        except self.instr.Error:
+        except self.Error:
             return l
 
     def read_binary_array_data(self, include_header=False, timeout=None, flush_term=True):
