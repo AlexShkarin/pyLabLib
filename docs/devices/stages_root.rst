@@ -17,6 +17,7 @@ Currently supported stages:
     stages_basics
     Attocube
     Thorlabs_kinesis
+    Newport_picomotor
     Arcus_performax
     Trinamic
     SmarAct

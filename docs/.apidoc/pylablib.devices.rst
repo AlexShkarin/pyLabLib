@@ -22,6 +22,7 @@ Subpackages
     pylablib.devices.LighthousePhotonics
     pylablib.devices.M2
     pylablib.devices.NI
+    pylablib.devices.Newport
     pylablib.devices.OZOptics
     pylablib.devices.Ophir
     pylablib.devices.PCO
