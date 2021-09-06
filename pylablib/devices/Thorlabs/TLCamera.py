@@ -70,8 +70,8 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
         
         self._add_info_variable("device_info",self.get_device_info)
         self._add_settings_variable("trigger_mode",self.get_trigger_mode,self.set_trigger_mode)
-        self._add_settings_variable("ext_trigger",self.get_ext_trigger_parameters,self.setup_ext_trigger)
-        self._add_settings_variable("hotpixel_correction",self.get_pixel_correction_parameters,self.setup_pixel_correction)
+        self._add_settings_variable("ext_trigger",self.get_ext_trigger_parameters,self.setup_ext_trigger,ignore_error=self.Error)
+        self._add_settings_variable("hotpixel_correction",self.get_pixel_correction_parameters,self.setup_pixel_correction,ignore_error=(self.Error,OSError))  # sometimes raises OSError; DLL issues?
         self._add_info_variable("timestamp_clock_frequency",self.get_timestamp_clock_frequency)
         self._add_status_variable("frame_period",self.get_frame_period)
         

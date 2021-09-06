@@ -55,8 +55,12 @@ class ThorlabsTLCameraLib:
             return
         thorcam_path=load_lib.get_program_files_folder("Thorlabs/Scientific Imaging/ThorCam")
         error_message="The library is automatically supplied with Thorcam software\n"+load_lib.par_error_message.format("thorlabs_tlcam")
-        depends=["thorlabs_unified_sdk_kernel.dll","thorlabs_unified_sdk_main.dll","thorlabs_tsi_usb_driver.dll","thorlabs_tsi_usb_hotplug_monitor.dll","thorlabs_tsi_cs_camera_device.dll","tsi_sdk.dll","tsi_usb.dll"]
-        self.lib=load_lib.load_lib("thorlabs_tsi_camera_sdk.dll",locations=("parameter/thorlabs_tlcam",thorcam_path,"global"),depends=depends,error_message=error_message,call_conv="cdecl")
+        depends=["thorlabs_unified_sdk_kernel.dll","thorlabs_unified_sdk_main.dll",
+            "thorlabs_tsi_usb_driver.dll","thorlabs_tsi_usb_driver_libusb.dll","thorlabs_tsi_libusb.dll","thorlabs_tsi_zelux_camera_device.dll",
+            "thorlabs_tsi_usb_hotplug_monitor.dll","thorlabs_tsi_cs_camera_device.dll",
+            "tsi_sdk.dll","tsi_usb.dll"]
+        self.lib=load_lib.load_lib("thorlabs_tsi_camera_sdk.dll",locations=("parameter/thorlabs_tlcam",thorcam_path,"global"),
+            depends=depends,depends_required=False,error_message=error_message,call_conv="cdecl")
         lib=self.lib
         define_functions(lib)
 

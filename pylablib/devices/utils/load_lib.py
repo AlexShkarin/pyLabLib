@@ -69,7 +69,7 @@ def _load_dll(path, kind, add_environ_paths=True):
                 d.close()
     else:
         return ctypes.cdll.LoadLibrary(path) if kind=="cdecl" else ctypes.windll.LoadLibrary(path)
-def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, depends=None, error_message=None, check_order="location", return_location=False):
+def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, depends=None, depends_required=True, error_message=None, check_order="location", return_location=False):
     """
     Load DLL.
 
@@ -80,6 +80,7 @@ def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, depe
             ``"parameter/*"`` (the remaining part is a subpath inside ``"devices/dlls"`` library parameters; if this parameter is defined, it names folder or file for the dll),
             or ``"global"`` (load path as is; also searches in the standard OS specified locations determined by ``PATH`` variable, e.g., ``System32`` folder).
         depends: if specified, it is a list of dependency libraries which need to be loaded first before the main DLL; they are assumed to be in the same location as the main file
+        depends_required: if ``False``, ignore errors during dependency loads
         locally(bool): if ``True``, prepend path to the DLL containing folder to the environment ``PATH`` folders;
             this is usually required, if the loaded DLL imports other DLLs in the same folder
         call_conv(str): DLL call convention; can be either ``"cdecl"`` (corresponds to ``ctypes.cdll``) or ``"stdcall"`` (corresponds to ``ctypes.windll``)
@@ -134,7 +135,11 @@ def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, depe
                 add_environ_paths=library_parameters.library_parameters.get("devices/dlls/add_environ_paths",True)
                 for p in paths:
                     if call_conv in ["cdecl","stdcall"]:
-                        dlls.append(_load_dll(p,call_conv,add_environ_paths=add_environ_paths))
+                        try:
+                            dlls.append(_load_dll(p,call_conv,add_environ_paths=add_environ_paths))
+                        except OSError:
+                            if depends_required or p==paths[-1]:
+                                raise
                     else:
                         raise ValueError("unrecognized call convention: {}".format(call_conv))
                 return (dlls[-1],loc,paths[-1]) if return_location else dlls[-1]
