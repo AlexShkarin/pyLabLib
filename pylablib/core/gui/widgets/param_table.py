@@ -418,7 +418,7 @@ class ParamTable(container.QWidgetContainer):
         if value is not None:
             widget.setValue(value)
         return self.add_simple_widget(name,widget,label=label,location=location,tooltip=tooltip,add_change_event=add_change_event)
-    def add_combo_box(self, name, value=None, options=None, index_values=None, label=None, add_indicator=None, location=None, tooltip=None, add_change_event=True, virtual=False):
+    def add_combo_box(self, name, value=None, options=None, index_values=None, out_of_range="reset", label=None, add_indicator=None, location=None, tooltip=None, add_change_event=True, virtual=False):
         """
         Add a combo box to the table.
 
@@ -427,6 +427,8 @@ class ParamTable(container.QWidgetContainer):
             value (bool): specifies initial value
             options (list): list of string specifying box options
             index_values (list): list of values corresponding to box options; if supplies, these number are used when setting/getting values or sending signals.
+            out_of_range (str): behavior when out-of-range value is applied; c
+                an be ``"error"`` (raise error), ``"reset"`` (reset to no-value position), or ``"ignore"`` (keep current value).
             virtual (bool): if ``True``, the widget is not added, and a virtual handler is added instead
             
         Rest of the arguments and the return value are the same as :meth:`add_simple_widget`.
@@ -435,6 +437,7 @@ class ParamTable(container.QWidgetContainer):
             return self.add_virtual_element(name,value=value,add_indicator=add_indicator)
         widget=combo_box.ComboBox(self)
         widget.setObjectName(self.name+"_"+name)
+        widget.set_out_of_range(action=out_of_range)
         if options:
             widget.set_options(options,index_values=index_values)
             if value is not None:

@@ -4,6 +4,7 @@ from pylablib.devices import Ophir
 from pylablib.devices import Lakeshore
 from pylablib.devices import Pfeiffer
 from pylablib.devices import HighFinesse
+from pylablib.devices import Cryomagnetics
 
 
 class TestOphirVega(DeviceTester):
@@ -17,6 +18,13 @@ class TestLakeshore218(DeviceTester):
     """Testing class for Lakeshore 218 temperature sensor"""
     devname="lakeshore218"
     devcls=Lakeshore.Lakeshore218
+    open_retry=3
+
+
+class TestCryomagneticsLM500(DeviceTester):
+    """Testing class for Cryomagnetics LM500 level meter"""
+    devname="cryomagnetics_lm500"
+    devcls=Cryomagnetics.LM500
     open_retry=3
 
 
