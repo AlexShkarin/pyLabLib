@@ -22,5 +22,6 @@ Currently supported devices:
     generic_awgs
     Thorlabs_misc
     OZOptics
+    Toptica
     M2
     misc_devices

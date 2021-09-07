@@ -32,6 +32,7 @@ Subpackages
     pylablib.devices.SmarAct
     pylablib.devices.Tektronix
     pylablib.devices.Thorlabs
+    pylablib.devices.Toptica
     pylablib.devices.Trinamic
     pylablib.devices.interface
     pylablib.devices.uc480
