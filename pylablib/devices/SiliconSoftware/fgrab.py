@@ -629,6 +629,7 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
         If ``return_info==True``, return tuple ``(frames, infos)``, where ``infos`` is a list of ``TFrameInfo`` instances
         describing frame index, framestamp, and two timestamps (lower and higher precision);
         if some frames are missing and ``missing_frame!="skip"``, the corresponding frame info is ``None``.
+        Note that obtaining frame info takes about 100us, so ``return_info="all"`` should be avoided fro rates above 5-10kFPS.
         If ``fastbuff==False``, return a list of individual frames (2D numpy arrays).
         Otherwise, return a list of 'chunks', which are 3D numpy arrays containing several frames;
         in this case, if `return_info` is ``True``, then ``frame_info`` will automatically be in an ``"array"`` format, with the rows corresponding to the frames

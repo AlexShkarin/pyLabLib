@@ -28,7 +28,7 @@ Network
 
 There is a simple wrapper class :class:`.utils.net.ClientSocket`, which simplifies some operations with the built-in :mod:`socket` module. In addition, it also implements a couple of higher-level ways to send the data: either fixed length (as in the usual socket), with the length prepended (in case the total length is initially unknown at the receiving end), or using a delimiter to mark the end of the message.
 
-In addition, there are several methods for gaining local host information (:func:`.utils.net.get_local_addr`, :func:`.utils.net.get_all_local_addr`, :func:`.utils.net.get_local_hostname`), receiving JSON-formatted values (:func:`.utils.net.recv_JSON`), and listening on a given port (:func:`.utils.net.listen`).
+In addition, there are several methods for gaining local or remote host information (:func:`.utils.net.get_local_addr`, :func:`.utils.net.get_all_local_addr`, :func:`.utils.net.get_local_hostname`, :func:`.utils.net.get_all_remote_addr`, :func:`.utils.net.get_remote_hostname`), receiving JSON-formatted values (:func:`.utils.net.recv_JSON`), and listening on a given port (:func:`.utils.net.listen`).
 
 
 .. _misc_utils_string:

@@ -323,7 +323,7 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
         if hend-hstart==hlim.min and vend-vstart==vlim.min: # seems to not work for the absolute minimal roi
             if vend<vlim.max:
                 vend+=1
-            else:
+            elif vstart>0:
                 vstart-=1
         lib.tl_camera_set_roi(self.handle,hstart,vstart,hend-1,vend-1)
         return self.get_roi()
