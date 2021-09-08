@@ -138,6 +138,72 @@ class FW(ThorlabsSerialInterface):
         self.write("save")
 
 
+class FWv1(ThorlabsSerialInterface):
+    """
+    Thorlabs FW102/212 v1.0 (older version) motorized filter wheels.
+
+    Args:
+        conn: serial connection parameters (usually port or a tuple containing port and baudrate)
+        pcount: number of positions in the wheel
+        respect_bound(bool): if ``True``, avoid crossing the boundary between the first and the last position in the wheel
+    """
+    _validate_echo=True
+    def __init__(self, conn, pcount=6, respect_bound=True):
+        ThorlabsSerialInterface.__init__(self,conn)
+        self.pcount=pcount
+        self._add_settings_variable("pos",self.get_position,self.set_position)
+        self._add_info_variable("pcount",self.get_pcount)
+        self._add_settings_variable("trigger_mode",self.get_trigger_mode,self.set_trigger_mode)
+        self.respect_bound=respect_bound
+
+    def _instr_write(self, msg):
+        self.instr.flush_read()
+        self.instr.write(">")
+        try:
+            self._instr_read()
+        except self.Error:
+            pass
+        super()._instr_write(msg)
+
+    _id_comm="*idn?"
+    def ask(self, msg, data_type="string", delay=0., timeout=None, read_echo=False):
+        self.flush()
+        return super().ask(msg,data_type=data_type,delay=delay,timeout=timeout,read_echo=read_echo)
+    def get_position(self):
+        """Get the wheel position (starting from 1)"""
+        return self.ask("pos?","int")
+    def set_position(self, pos):
+        """Set the wheel position (starting from 1)"""
+        if self.respect_bound: # check if the wheel could go through zero; if so, manually go around instead
+            cur_pos=self.get_position()
+            if abs(pos-cur_pos)>=self.pcount//2: # could switch by going through zero
+                medp1=(2*cur_pos+pos)//3
+                medp2=(cur_pos+2*pos)//3
+                self.write("pos={}".format(medp1))
+                self.write("pos={}".format(medp2))
+                self.write("pos={}".format(pos))
+            else:
+                self.write("pos={}".format(pos))
+        else:
+            self.write("pos={}".format(pos))
+        return self.get_position()
+
+    def get_pcount(self):
+        """Get the number of wheel positions (6 or 12)"""
+        return self.pcount
+
+    _p_trigger_mode=interface.EnumParameterClass("trigger_mode",{"in":0,"out":1})
+    @interface.use_parameters(_returns="trigger_mode")
+    def get_trigger_mode(self):
+        """Get the trigger mode (``"in"`` to input external trigger, ``"out"`` to output trigger)"""
+        return self.ask("trig?","int")
+    @interface.use_parameters
+    def set_trigger_mode(self, trigger_mode):
+        """Set the trigger mode (``"in"`` to input external trigger, ``"out"`` to output trigger)"""
+        self.write("trig={}".format(trigger_mode))
+        return self.get_trigger_mode()
+
+
 
 
 

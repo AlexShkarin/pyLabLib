@@ -8,7 +8,9 @@ class FWThread(device_thread.DeviceThread):
 
     Device args:
         - ``conn``: device connection (usually, COM-port address)
-        - ``**kwargs``: additional arguments supplied on the device creation (e.g., ``respect_bounds``)
+        - ``version``: filter wheel version; can be either ``None`` (newer version with USB connection),
+            or ``"v1"`` (older version, which has fewer commands and different communication strategy; also requires ``pcount`` set, if it is different from 6)
+        - ``**kwargs``: additional arguments supplied on the device creation (e.g., ``respect_bounds`` or ``pcount`` for ``"v1"`` version)
         - ``remote``: address of the remote host where the device is connected; ``None`` (default) for local device, or ``"disconnect"`` to not connect
 
     Variables:
@@ -19,12 +21,14 @@ class FWThread(device_thread.DeviceThread):
         - ``set_position``: set new filter position
     """
     def connect_device(self):
-        with self.using_devclass("Thorlabs.FW",host=self.remote) as cls:
+        devclass="Thorlabs.FWv1" if self.version=="v1" else "Thorlabs.FW"
+        with self.using_devclass(devclass,host=self.remote) as cls:
             self.device=cls(conn=self.conn,**self.dev_kwargs)
             self.device.get_position()
-    def setup_task(self, conn, remote=None, **kwargs):
+    def setup_task(self, conn, version=None, remote=None, **kwargs):
         self.device_reconnect_tries=5
         self.conn=conn
+        self.version=version
         self.remote=remote
         self.dev_kwargs=kwargs
         self.add_job("update_measurements",self.update_measurements,.2)
