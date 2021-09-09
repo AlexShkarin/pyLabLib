@@ -27,8 +27,14 @@ class Picomotor8742(comm_backend.ICommBackendWrapper,stage.IMultiaxisStage):
     Picomotor 8742 4-axis controller.
 
     Args:
-        conn: connection parameters - index of the Attocube ANC350 in the system (for a single controller leave 0)
+        conn: connection parameters; can be an index (starting from 0) for USB devices,
+            or an IP address (e.g., ``"192.168.0.2"``) or host name (e.g., ``"8742-12345"``) for Etherned devices
+        backend: communication backend; by default, try to determine from the communication parameters
         timeout(float): default operation timeout
+        multiaddr: if ``True``, assume that there are several daisy-chained devices connected to the current one;
+            in this case, ``get_device_info`` and related methods return dictionaries ``{addr: value}`` for all connected controllers
+            instead of simply values for the given controller
+        scan: if ``True`` and ``multiaddr==True``, scan for all connected devices (call :meth:`scan_devices`) upon connection
     """
     Error=NewportError
     _axes=[1,2,3,4]
@@ -242,9 +248,9 @@ class Picomotor8742(comm_backend.ICommBackendWrapper,stage.IMultiaxisStage):
         return int(self.query("TP?",axis=axis,addr=addr))
     @muxaddr
     @stage.muxaxis
-    def set_position_reference(self, axis, pos=0, addr=None):
+    def set_position_reference(self, axis, position=0, addr=None):
         """Set the current axis position as a reference (the actual motor position stays the same)"""
-        self.query("DH{}".format(pos),axis=axis,addr=addr)
+        self.query("DH{}".format(position),axis=axis,addr=addr)
         return self.get_position(axis=axis,addr=addr)
     @muxaddr
     @stage.muxaxis
@@ -254,7 +260,7 @@ class Picomotor8742(comm_backend.ICommBackendWrapper,stage.IMultiaxisStage):
         Jog a given axis in a given direction.
         
         `direction` can be either ``"-"`` (negative) or ``"+"`` (positive).
-        The motion continues until it is explicitly stopped, or until a limit is hit.
+        The motion continues until it is explicitly stopped.
         """
         self.query("MV{}".format("+" if direction else "-"),axis=axis,addr=addr)
     @muxaddr
@@ -272,7 +278,6 @@ class Picomotor8742(comm_backend.ICommBackendWrapper,stage.IMultiaxisStage):
     def _stop_axis(self, axis, addr=None):
         self.query("ST",axis=axis,addr=addr)
     @muxaddr
-    @stage.muxaxis
     def stop(self, axis="all", immediate=False, addr=None):
         """
         Stop motion of a given axis.

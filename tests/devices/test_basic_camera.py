@@ -149,6 +149,8 @@ class ROICameraTester(CameraTester):
         assert rr[:4]==(0,ds[0],0,ds[1])
         # ROI limits
         rlim=device.get_roi_limits()
+        if rlim[0].min==rlim[0].max and rlim[1].min==rlim[1].max:
+            return
         print(rlim)
         assert len(rlim)==2 and all([len(rl)==5 for rl in rlim])
         assert rlim[0].max==ds[0],rlim[1].max==ds[1]

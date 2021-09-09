@@ -1,5 +1,6 @@
 from pylablib.devices import Attocube
 from pylablib.devices import Arcus
+from pylablib.devices import Newport
 from pylablib.devices import SmarAct
 from pylablib.devices import Trinamic
 from pylablib.devices import Thorlabs
@@ -33,6 +34,13 @@ class TestArcusPerformax(DeviceTester):
     @pytest.fixture(scope="class")
     def library_parameters(self):
         pylablib.par["devices/dlls/arcus_performax"]="../dlls"
+
+
+class TestNewportPicomotor8742(DeviceTester):
+    """Testing class for Newport Picomotor 8742 controller interface"""
+    devname="newport_picomotor8742"
+    devcls=Newport.Picomotor8742
+    open_retry=3
 
 
 class TestSmarActSCUPerformax(DeviceTester):

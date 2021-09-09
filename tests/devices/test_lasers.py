@@ -2,6 +2,7 @@ from .test_basic import DeviceTester
 
 from pylablib.devices import LighthousePhotonics
 from pylablib.devices import LaserQuantum
+from pylablib.devices import Toptica
 from pylablib.devices import M2
 
 
@@ -16,6 +17,13 @@ class TestLQFinesse(DeviceTester):
     """Testing class for LaserQuantum Finesse laser"""
     devname="lq_finesse"
     devcls=LaserQuantum.Finesse
+    open_retry=3
+
+
+class TestTopticaIBeam(DeviceTester):
+    """Testing class for Toptica iBeam Smar laser"""
+    devname="toptica_ibeam"
+    devcls=Toptica.TopticaIBeam
     open_retry=3
 
 
