@@ -431,6 +431,19 @@ class ImagePlotter(QLayoutManagedWidget):
             self.vblines[1].setPos(vpos+cut_width/2)
             self.hblines[0].setPos(hpos-cut_width/2)
             self.hblines[1].setPos(hpos+cut_width/2)
+    def get_line_positions(self):
+        """Return lines positions reference to the original image, taking into account flip/transpose"""
+        values=self._get_values()
+        if not values.v["show_lines"]:
+            return None
+        ipos,jpos=values.v["vlinepos"]*self.xbin,values.v["hlinepos"]*self.ybin
+        if values.v["flip_x"]:
+            ipos=-ipos
+        if values.v["flip_y"]:
+            jpos=-jpos
+        if values.v["transpose"]:
+            ipos,jpos=jpos,ipos
+        return ipos,jpos
 
     # Update image controls based on PyQtGraph image window
     @controller.exsafeSlot()
