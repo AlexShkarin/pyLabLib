@@ -372,3 +372,7 @@ hasattr
 dca
 dcs
 dcsi
+picomotor
+toptica
+multiaddr
+pcount

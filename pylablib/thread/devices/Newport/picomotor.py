@@ -8,7 +8,7 @@ class Picomotor8742Thread(device_thread.DeviceThread):
 
     Device args:
         - ``conn``: connection parameters; can be an index (starting from 0) for USB devices,
-            or an IP address (e.g., ``"192.168.0.2"``) or host name (e.g., ``"8742-12345"``) for Etherned devices
+            or an IP address (e.g., ``"192.168.0.2"``) or host name (e.g., ``"8742-12345"``) for Ethernet devices
         - ``backend``: communication backend; by default, try to determine from the communication parameters
         - ``multiaddr``: if ``True``, assume that there are several daisy-chained devices connected to the current one;
             in this case, ``get_device_info`` and related methods return dictionaries ``{addr: value}`` for all connected controllers

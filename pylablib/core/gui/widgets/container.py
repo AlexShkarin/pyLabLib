@@ -171,7 +171,7 @@ class IQContainer:
         """
         name=self._setup_child_name(widget,name)
         if name in self._children:
-            raise ValueError("child {} is already present")
+            raise ValueError("child {} is already present".format(name))
         if gui_values_path!=False and gui_values_path is not None:
             if gui_values_path==True:
                 gui_values_path="" if _hasattr(widget,"get_all_values") else name
