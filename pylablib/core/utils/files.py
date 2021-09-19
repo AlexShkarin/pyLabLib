@@ -5,6 +5,7 @@ Utilities for working with the file system: creating/removing/listing folders, c
 from . import general, string, funcargparse
 
 import os
+import sys
 import errno
 import stat
 import filecmp
@@ -13,6 +14,7 @@ import datetime
 import time
 import zipfile
 import collections
+import pathlib
 
 
 
@@ -143,6 +145,21 @@ def relative_path(a, b, check_paths=True):
     if len(a_split)==blen:
         return ""
     return os.path.join(*a_split[blen:])  # pylint: disable=no-value-for-parameter
+def is_path_valid(p):
+    """
+    Check if the string is a valid path.
+
+    Not guaranteed to have complete success rate, but catches most likely errors (invalid characters, reserved file names, too long, etc.)
+    Does not check if the path actually exists or if it can be written into.
+    """
+    try:
+        pathlib.Path(os.path.join(p,"file")).resolve()
+        absp=os.path.splitdrive(pathlib.Path(os.path.abspath(p)).resolve())[1].lstrip(os.path.sep)
+        if sys.platform=="win32" and len(absp)>256:
+            return False
+        return True
+    except (ValueError,OSError):
+        return False
     
 
 

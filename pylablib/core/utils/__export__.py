@@ -1,6 +1,6 @@
 # pylint: disable-all
 from .dictionary import Dictionary, PrefixShortcutTree, PrefixTree, is_dictionary, as_dictionary, as_dict
-from .files import get_file_creation_time, get_file_modification_time, touch
+from .files import get_file_creation_time, get_file_modification_time, is_path_valid, touch
 from .files import generate_indexed_filename, generate_prefixed_filename
 from .files import copy_file, move_file
 from .files import retry_copy, retry_move, retry_remove
