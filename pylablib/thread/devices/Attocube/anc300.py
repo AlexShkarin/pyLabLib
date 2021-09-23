@@ -22,6 +22,7 @@ class ANC300Thread(device_thread.DeviceThread):
     Commands:
         - ``enable``: enable or disable the given axis
         - ``move_by``: move the given axis by a given number of steps
+        - ``jog``: continuously jog the given axis in the given direction
         - ``stop_motion``: stop motion at the given axis
         - ``set_axis_parameters``: set parameters (voltage, frequency, offset) for a given axis
     """
@@ -39,6 +40,7 @@ class ANC300Thread(device_thread.DeviceThread):
         self.add_job("update_parameters",self.update_parameters,2)
         self.add_command("enable")
         self.add_command("move_by")
+        self.add_command("jog")
         self.add_command("stop_motion")
         self.add_command("set_axis_parameters")
 
@@ -67,6 +69,12 @@ class ANC300Thread(device_thread.DeviceThread):
         if self.open():
             self._stop_wait(axis=axis)
             self.device.move_by(axis,steps)
+            self.update_measurements()
+    def jog(self, axis, direction):
+        """Start moving in a given direction (``"+"`` or ``"-"``)"""
+        if self.open():
+            self._stop_wait(axis=axis)
+            self.device.jog(axis,direction)
             self.update_measurements()
     def stop_motion(self, axis):
         """Stop motion at a given axis"""

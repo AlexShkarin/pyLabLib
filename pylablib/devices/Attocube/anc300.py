@@ -327,7 +327,7 @@ class ANC300(comm_backend.ICommBackendWrapper,stage.IMultiaxisStage):
         The motion will continue until another move or stop command is called.
         """
         comm="stepu" if direction else "stepd"
-        self.query("{} {}".format(comm,axis))
+        self.query("{} {} c".format(comm,axis))
     @interface.use_parameters
     def move_by(self, axis, steps=1):
         """Move a given axis for a given number of steps"""

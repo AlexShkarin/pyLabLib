@@ -202,7 +202,7 @@ class IMAQdxLib:
 
     def to_API_string(self, value):
         return ctypes.create_string_buffer(py3.as_builtin_bytes(value),IMAQdxAPIStringLength)
-    numeric_attr_types=[IMAQdxAttributeType.IMAQdxAttributeTypeU32, IMAQdxAttributeType.IMAQdxAttributeTypeI64, IMAQdxAttributeType.IMAQdxAttributeTypeBool]
+    numeric_attr_types=[IMAQdxAttributeType.IMAQdxAttributeTypeU32, IMAQdxAttributeType.IMAQdxAttributeTypeI64, IMAQdxAttributeType.IMAQdxAttributeTypeF64, IMAQdxAttributeType.IMAQdxAttributeTypeBool]
     def _new_attr_value(self, attr_type):
         if attr_type==IMAQdxAttributeType.IMAQdxAttributeTypeU32:
             return ctypes.c_uint32()

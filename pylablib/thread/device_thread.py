@@ -70,6 +70,7 @@ class DeviceThread(controller.QTaskThread):
         self._full_info_job=False
         self.device_reconnect_tries=2
         self._tried_device_connect=0
+        self._keep_closed=False
         self.rpyc_serv=None
         self.remote=None
         self.DeviceError=DeviceError
@@ -187,14 +188,21 @@ class DeviceThread(controller.QTaskThread):
             if self.device is not None:
                 self.device.close()
                 self.device=None
-    def open(self):
+    def open(self, reopen=False):
         """
         Open the device by calling :meth:`connect_device`.
 
+        If ``reopen==False`` and the device was explicitly closed using :meth:`close` with ``keep_closed=True``, skip reopening it;
+        in effect, this method then becomes a "soft" opening, which tries to open intially closed or previously failed device, but not an explicitly closed one.
         Return ``True`` if connection was a success (or the device is already connected) and ``False`` otherwise.
         """
         if self.device is not None and self.device.is_opened():
             return True
+        if self._keep_closed:
+            if reopen:
+                self._keep_closed=False
+            else:
+                return False
         if self.device is None and (self.device_reconnect_tries>=0 and self._tried_device_connect>self.device_reconnect_tries):
             return False
         self.update_status("connection","opening","Connecting...")
@@ -223,16 +231,18 @@ class DeviceThread(controller.QTaskThread):
     def is_opened(self):
         """Check if the device is connected and opened"""
         return self.device is not None and self.device.is_opened()
-    def close(self):
+    def close(self, keep_closed=False):
         """
         Close the device.
 
+        If ``keep_closed==True``, then a latter call to :meth:`open` will not reopen the device incless ``reopen=True`` is supplied explicitly.
         Automatically called on the thread finalization, usually shouldn't be called explicitly.
         """
         if self.device is not None and self.device.is_opened():
             self.update_status("connection","closing","Disconnecting...")
             self.close_device()
             self.update_status("connection","closed","Disconnected")
+        self._keep_closed=self._keep_closed or keep_closed
 
     def _get_device_parameters_dictionary(self, include=None):
         if not self.device:
