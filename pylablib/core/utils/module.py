@@ -173,7 +173,7 @@ def get_library_name():
     return ".".join(module_name.split(".")[:-3])
 
 
-def pip_install(pkg, upgrade=True):
+def pip_install(pkg, upgrade=False):
     """
     Call ``pip install`` for a given package.
     
@@ -188,7 +188,10 @@ def install_if_older(pkg, min_ver=""):
     """
     Install `pkg` from the default PyPI repository if its version is lower that `min_ver`
     
-    If `min_ver` is ``None``, upgrade to the newest version regardless; if ``min_ver==""``, install only if no version is installed
+    If `min_ver` is ``None``, upgrade to the newest version regardless; if ``min_ver==""``, install only if no version is installed.
+    Return ``True`` if the package was installed.
     """
     if get_package_version(pkg) is None or cmp_package_version(pkg,min_ver)=="<":
         pip_install(pkg,upgrade=True)
+        return True
+    return False

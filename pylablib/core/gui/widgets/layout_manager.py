@@ -35,7 +35,7 @@ class IQLayoutManagedWidget:
         raise ValueError("unrecognized layout kind: {}".format(kind))
     def _set_main_layout(self):
         self.main_layout=self._make_new_layout(self.main_layout_kind,self)
-        name=getattr(self,"name")
+        name=getattr(self,"name",None)
         self.main_layout.setObjectName(name+"_main_layout" if name else "main_layout")
         if self.no_margins:
             self.main_layout.setContentsMargins(0,0,0,0)

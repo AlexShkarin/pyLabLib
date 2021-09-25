@@ -230,7 +230,6 @@ class ImagePlotter(QLayoutManagedWidget):
             self.setMinimumSize(QtCore.QSize(*min_size))
         self.image_window=pyqtgraph.ImageView(self,imageItem=ImageItem())
         self.add_to_layout(self.image_window)
-        self.main_layout.setStretch(0,4)
         self.set_colormap("hot_sat")
         self.image_window.ui.roiBtn.hide()
         self.image_window.ui.menuBtn.hide()
@@ -248,16 +247,19 @@ class ImagePlotter(QLayoutManagedWidget):
         self.image_window.getView().addItem(self.hblines[1])
         self.image_window.getView().addItem(self.vblines[0])
         self.image_window.getView().addItem(self.vblines[1])
-        self.cut_plot_window=pyqtgraph.PlotWidget(self)
+        self.cut_plot_panel=QLayoutManagedWidget(self)
+        self.add_to_layout(self.cut_plot_panel)
+        self.cut_plot_panel.setup(layout="vbox",no_margins=True)
+        self.cut_plot_window=pyqtgraph.PlotWidget(self.cut_plot_panel)
+        self.cut_plot_panel.add_to_layout(self.cut_plot_window)
         self.cut_plot_window.addLegend()
         self.cut_plot_window.setLabel("left","Image cut")
         self.cut_plot_window.showGrid(True,True,0.7)
         self.cut_lines=[PlotCurveItem(pen="#B0B000",name="Horizontal"), PlotCurveItem(pen="#B000B0",name="Vertical")]
         for c in self.cut_lines:
             self.cut_plot_window.addItem(c)
-        self.add_to_layout(self.cut_plot_window)
-        self.main_layout.setStretch(1,1)
-        self.cut_plot_window.setVisible(False)
+        self.cut_plot_panel.setVisible(False)
+        self.set_row_stretch([4,1])
         self.vline.sigPositionChanged.connect(lambda: self.update_image_controls(),QtCore.Qt.DirectConnection)
         self.hline.sigPositionChanged.connect(lambda :self.update_image_controls(),QtCore.Qt.DirectConnection)
         self.image_window.getHistogramWidget().sigLevelsChanged.connect(lambda: self.update_image_controls(levels=self.image_window.getHistogramWidget().getLevels()),QtCore.Qt.DirectConnection)
@@ -580,9 +582,9 @@ class ImagePlotter(QLayoutManagedWidget):
                 self._last_img_paint_cnt=[cl.paint_cnt for cl in self.cut_lines]
                 if any(autorange):
                     self.cut_plot_window.enableAutoRange(x=autorange[0],y=autorange[1])
-                self.cut_plot_window.setVisible(True)
+                self.cut_plot_panel.setVisible(True)
             else:
-                self.cut_plot_window.setVisible(False)
+                self.cut_plot_panel.setVisible(False)
             self.update_rectangles()
             self._last_paint_time=time.time()
             return values
