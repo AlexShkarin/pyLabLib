@@ -23,6 +23,41 @@ you can write
     import pylablib.legacy as pll
     from pylablib.legacy.aux_libs.devices import Lakeshore
 
+1.2.0
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- General
+
+    * Added ``timing`` context manager for simple code timing checks.
+    * Improved RPyC wrapper logging and reliability.
+    * Added Anaconda support.
+    * Added minor network and file functions.
+
+- Devices
+
+    * Added Newport Picomotor 8742 motor controller, Toptica iBeam Smart laser, older version of Thorlabs FW motorized filter wheel.
+    * Added camera frame output format (list or array).
+    * Added ``use_cavity`` option to M2 Solstis laser.
+    * Added method for auto-detecting associations between PhotonFocus cameras and frame grabbers.
+    * Updated some generic classes (DCAM cameras, Thorlabs TLCamera cameras).
+    * Updated SCPI failsafe operation, improved Thorlabs FW reliability.
+    * Fixed several minor bugs.
+
+- GUI
+
+    * Rewritten GUI values handling to pass calls in a hierarchical manner. This makes the operation more predictable and overloading the behavior a bit easier.
+    * Added out-of-range value action for combo boxes.
+    * Fixed ``ImagePlotter`` incompatibility with the newer pyqtgraph versions, added separate x and y axis line cuts selection.
+    * Minor layout handling bugfixes.
+
+- Threading
+
+    * Released advanced threading functionality: table/frame streaming, device threads, basic frame processing.
+    * Task thread additions: delayed batch job stopping, context manager for task loop pausing.
+    * Added argument-dependent call queue limit.
+    * Improved threading speed and stability.
+
+
 1.1.0
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -34,8 +69,8 @@ you can write
 - Devices
     
     * Added Silicon Software frame grabbers interface and rearranged PhotonFocus code to include both IMAQ and SiliconSoftware frame grabbers.
-    * Fixed various compatibility bugs arising for specific versions of Python or dependency modules: Kinesis error with specific pyft232 versions, some DLL-dependent devices errors with Python 3.8+, DLL types in 32-bit Python
-    * Addressed issue with occasional uc480 acquisition restarts, fixed M2 communication report errors,
+    * Fixed various compatibility bugs arising for specific versions of Python or dependency modules: Kinesis error with specific pyft232 versions, some DLL-dependent devices errors with Python 3.8+, DLL types in 32-bit Python.
+    * Addressed issue with occasional uc480 acquisition restarts, fixed M2 communication report errors.
 
 - GUI and threading
 

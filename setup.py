@@ -18,21 +18,22 @@ dep_base=['numpy','scipy','pandas']
 dep_extra=['rpyc','numba']
 dep_devio=['pyft232','pyvisa>=1.6','pyserial','pyusb']
 dep_devio_extra=['nidaqmx','websocket-client']
-dep_pyqt5=['pyqt5>5.10','pyqtgraph']
+dep_pyqt5=['pyqt5>=5.9','pyqtgraph']
 dep_pyside2=['pyside2','shiboken2','pyqtgraph>0.10']
 setup(
     name='pylablib',
     # name='pylablib-lightweight',
-    version='1.1.0',
+    version='1.2.0',
     description='Code for use in lab environment: experiment automation, data acquisition, device communication',
     long_description=long_description,
     long_description_content_type="text/x-rst",
     url='https://github.com/AlexShkarin/pyLabLib',
     author='Alexey Shkarin',
     author_email='pylablib@gmail.com',
+    license="GPLv3",
     classifiers=[
-    'Development Status :: 3 - Alpha',
-    'Operating System :: Microsoft :: Windows ',
+    'Development Status :: 4 - Beta',
+    'Operating System :: Microsoft :: Windows',
     'Intended Audience :: Developers',
     'Intended Audience :: Science/Research',
     'Topic :: Scientific/Engineering',
@@ -42,17 +43,16 @@ setup(
     'Programming Language :: Python :: 3.7',
     'Programming Language :: Python :: 3.8',
     'Programming Language :: Python :: 3.9',
-    'Operating System :: Microsoft :: Windows'
     ],
     project_urls={
     'Documentation': 'https://pylablib.readthedocs.io',
     'Source': 'https://github.com/AlexShkarin/pyLabLib/',
     'Tracker': 'https://github.com/AlexShkarin/pyLabLib/issues'
     },
-    packages=find_packages(include=['pylablib*'],exclude=['pylablib.thread*']),
-    install_requires=dep_base+dep_extra+dep_devio+dep_devio_extra+dep_pyqt5,
+    packages=find_packages(include=['pylablib*']),
+    install_requires=dep_base+dep_extra+dep_devio+dep_pyqt5,
     extras_require={
-        'devio-full':['nidaqmx','websocket-client'],
+        'devio-full':dep_devio_extra,
     }
     # install_requires=dep_base,
     # extras_require={
