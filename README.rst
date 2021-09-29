@@ -51,3 +51,9 @@ You can install the library from PyPi::
     pip install pylablib
 
 More options are described in the `documentation <https://pylablib.readthedocs.io/en/latest/install.html>`__.
+
+
+Related projects
+-------------------------
+
+`Pylablib cam-control <https://github.com/AlexShkarin/pylablib-cam-control>` - software for universal camera control and frames acquisition.

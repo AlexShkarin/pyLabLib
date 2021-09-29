@@ -50,6 +50,12 @@ The library only works on Python 3, and has been most extensively tested on Wind
 
 
 
+Related projects
+-------------------------
+
+`Pylablib cam-control <https://github.com/AlexShkarin/pylablib-cam-control>` - software for universal camera control and camera data acquisition.
+
+
 Indices and tables
 ==================
 

@@ -53,6 +53,23 @@ The options can be combined. For example,
 
 installs the dependencies as the usual pylablib distribution, but with PySide2 Qt5 backend instead of PyQt5.
 
+.. _install-anaconda:
+
+Anaconda install
+-------------------------
+
+The package is also available on Anaconda via ``conda-forge`` channel. To install it, run
+
+.. code-block:: none
+
+    conda install -c conda-forge pylablib
+
+in the Anaconda prompt.
+
+The Anaconda version of pylablib comes with all the standard dependencies except for ``pyft232`` , ``nidaqmx`` and ``websocket-client``, which are not available on ``conda-forge`` channel. This means, that :ref:`Thorlabs APT/Kinesis <stages_thorlabs_kinesis>`, :ref:`NI DAQs <daqs_nidaq>`, and some functionality of :ref:`M2 Solstis laser <lasers_m2>` are not accessible. To use those, it is recommended to either install those packages explicitly via ``pip`` (keep in mind that it can break Anaconda environment), or use standalone Python distribution.
+
+
+
 .. _install-usage:
 
 Usage
@@ -82,7 +99,7 @@ The basic package dependencies are `NumPy <https://docs.scipy.org/doc/numpy/>`_ 
 
 The main device communication packages are `PyVISA <https://pyvisa.readthedocs.io/en/master/>`_ and `pySerial <https://pythonhosted.org/pyserial/>`_, which cover the majority of devices. Several devices (e.g., :ref:`Thorlabs Kinesis <stages_thorlabs_kinesis>` and :ref:`Attocube ANC 350 <stages_attocube_anc350>`) require additional communication packages: `pyft232 <https://github.com/lsgunth/pyft232>`_ and `PyUSB <https://pyusb.github.io/pyusb/>`_. Finally, some particular devices completely or partially rely on specific packages: `NI-DAQmx <https://nidaqmx-python.readthedocs.io/en/latest/>`_ for :ref:`NIDAQ <daqs_nidaq>` and `websocket-client <https://websocket-client.readthedocs.io/en/latest/>`_ for additional :ref:`M2 Solstis <lasers_m2>` functionality.
 
-Finally, GUI and advanced multi-threading relies on Qt5, which has two possible options. The first (default) option is `PyQt5 <https://www.riverbankcomputing.com/software/pyqt/>`_ with `sip <https://www.riverbankcomputing.com/software/sip/>`_ for some memory management functionality (newer PyQt5 versions ``>=5.11`` already come with ``PyQt5-sip``, but if you use an older version, you need to install ``sip`` separately). The second possible option is `PySide2 <https://www.pyside.org/>`_ with `shiboken <https://wiki.qt.io/Qt_for_Python/Shiboken>`_. Both options should work equally well, and the choice mostly depends on what is already installed (since having both PyQt5 and PySide2 installed might lead to conflicts). Finally, plotting relies on `pyqtgraph <http://www.pyqtgraph.org/>`_, which (starting with 0.11) is compatible with both PySide2 and PyQt5.
+Finally, GUI and advanced multi-threading relies on Qt5, which has two possible options. The first (default) option is `PyQt5 <https://www.riverbankcomputing.com/software/pyqt/>`_ with `sip <https://www.riverbankcomputing.com/software/sip/>`_ for some memory management functionality (newer PyQt5 versions ``>=5.11`` already come with ``PyQt5-sip``, but if you use an older version, you need to install ``sip`` separately). The second possible option is `PySide2 <https://www.pyside.org/>`_ with `shiboken2 <https://wiki.qt.io/Qt_for_Python/Shiboken>`_. Both options should work equally well, and the choice mostly depends on what is already installed (since having both PyQt5 and PySide2 installed might lead to conflicts). Finally, plotting relies on `pyqtgraph <http://www.pyqtgraph.org/>`_, which (starting with 0.11) is compatible with both PySide2 and PyQt5.
 
 The package has been tested with Python 3.6 through 3.9, and is incompatible with Python 2. The last version officially supporting Python 2.7 is 0.4.0. Furthermore, testing has been mostly performed on 64-bit Python. This is the recommended option, as 32-bit version limitations (most notably, limited amount of accessible RAM) mean that it should only be used when absolutely necessary, e.g., when some required packages or libraries are only available in 32-bit version.
 

@@ -251,6 +251,12 @@ There are several slightly different metainfo formats, which can be set using :m
 Keep in mind, that for some camera interfaces (e.g., :ref:`Uc480 <cameras_uc480>` or :ref:`Silicon Software <cameras_siso>`) obtaining the additional information might take relatively long, even longer than the proper frame readout. Hence, at higher frame rates it might become a bottleneck, and would need to be turned off.
 
 
+Related projects
+-------------------------
+
+`Pylablib cam-control <https://github.com/AlexShkarin/pylablib-cam-control>` is a standalone software package which builds on camera classes included in pylablib. It provides an easy way to detect and control many different cameras and acquire their data. In addition, it supports custom on-line image processing, flexible data acquisition, and control by external software using a TCP/IP server.
+
+
 Currently supported cameras
 -------------------------------------------
 .. include:: cameras_list.txt
