@@ -287,10 +287,11 @@ class GenericCameraThread(device_thread.DeviceThread):
             self.v["frames/read"]+=nread
             self.v["frames/buffer_filled"]=rng[1]-rng[0]
             self.v["frames/last_idx"]=rng[1]-1
-            msg=self.frames_src.build_message(frames,indices,infos,source="camera",metainfo=self._get_metainfo(frames,indices,infos),sn=self.name)
-            self.send_multicast("any","frames/new",msg)
             nsent=len(frames)
-            self.v["frames/last_frame"]=frames[-1] if frames[-1].ndim==2 else frames[-1][-1]
+            if frames:
+                msg=self.frames_src.build_message(frames,indices,infos,source="camera",metainfo=self._get_metainfo(frames,indices,infos),sn=self.name)
+                self.send_multicast("any","frames/new",msg)
+                self.v["frames/last_frame"]=frames[-1] if frames[-1].ndim==2 else frames[-1][-1]
         return nsent
 
     def add_acq_loop(self, name, loop, finalize=None):

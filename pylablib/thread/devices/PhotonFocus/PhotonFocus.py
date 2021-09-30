@@ -12,8 +12,6 @@ class GenericPhotonFocusCameraThread(camera.GenericCameraThread):
     """
     parameter_variables=camera.GenericCameraThread.parameter_variables|{"exposure","frame_period","cfr","trigger_interleave",
         "status_line","bl_offset","buffer_status","buffer_size","detector_size","roi_limits","roi"}
-    def setup_open_device(self):
-        super().setup_open_device()
     def _get_metainfo(self, frames, indices, infos):
         metainfo=super()._get_metainfo(frames,indices,infos)
         sline_pos=PhotonFocus.get_status_line_position(frames[0][0] if frames[0].ndim==3 else frames[0])
