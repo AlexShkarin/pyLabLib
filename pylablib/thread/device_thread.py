@@ -193,7 +193,7 @@ class DeviceThread(controller.QTaskThread):
         Open the device by calling :meth:`connect_device`.
 
         If ``reopen==False`` and the device was explicitly closed using :meth:`close` with ``keep_closed=True``, skip reopening it;
-        in effect, this method then becomes a "soft" opening, which tries to open intially closed or previously failed device, but not an explicitly closed one.
+        in effect, this method then becomes a "soft" opening, which tries to open initially closed or previously failed device, but not an explicitly closed one.
         Return ``True`` if connection was a success (or the device is already connected) and ``False`` otherwise.
         """
         if self.device is not None and self.device.is_opened():
@@ -235,7 +235,7 @@ class DeviceThread(controller.QTaskThread):
         """
         Close the device.
 
-        If ``keep_closed==True``, then a latter call to :meth:`open` will not reopen the device incless ``reopen=True`` is supplied explicitly.
+        If ``keep_closed==True``, then a latter call to :meth:`open` will not reopen the device unless ``reopen=True`` is supplied explicitly.
         Automatically called on the thread finalization, usually shouldn't be called explicitly.
         """
         if self.device is not None and self.device.is_opened():

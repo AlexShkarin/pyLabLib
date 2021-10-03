@@ -230,7 +230,7 @@ class ImagePlotter(QLayoutManagedWidget):
             self.setMinimumSize(QtCore.QSize(*min_size))
         self.image_window=pyqtgraph.ImageView(self,imageItem=ImageItem())
         self.add_to_layout(self.image_window)
-        self.set_colormap("hot_sat")
+        self.set_colormap("gray_sat")
         self.image_window.ui.roiBtn.hide()
         self.image_window.ui.menuBtn.hide()
         self.image_window.getView().setMenuEnabled(False)
@@ -308,7 +308,7 @@ class ImagePlotter(QLayoutManagedWidget):
         """
         Setup colormap.
 
-        Can be name of one built-in colormaps (``"gray"``, ``"gray_sat"``, ``"hot"``, ``"hot_sat"``),
+        Can be name of one built-in colormaps (``"gray"``, ``"gray_sat"``, ``"gray_doublesat"``, ``"hot"``, ``"hot_sat"``),
         one of PyQtGraph built-in cmaps (e.g., ``"flame"`` or ``"bipolar"``),
         a list specifying PyQtGraph colormap or a :class:`pyqtgraph.ColorMap` instance.
         """
