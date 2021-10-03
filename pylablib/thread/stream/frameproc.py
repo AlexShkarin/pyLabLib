@@ -155,8 +155,6 @@ class FrameBinningThread(controller.QTaskThread):
             l=len(proc_chunk)
             if l:
                 frames.append(proc_chunk if msg.chunks else proc_chunk[0])
-        indices=list(range(len(frames)))
-        frame_info=None
         _,indices,frame_info=self._recv_acc.get_slice(0,(-(time_bin-1) or None),step=time_bin,flatten=True)
         self._recv_acc.cut_to_size(self.acc_frame_num,from_end=True)
         if frames:

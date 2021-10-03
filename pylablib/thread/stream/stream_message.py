@@ -340,18 +340,17 @@ class FramesMessage(DataStreamMessage):
             self.frames=[f[None] if f.ndim==2 else f for f in frames]
         if self.indices is None:
             if self.chunks:
-                self.indices=[0]+list(np.cumsum([len(f) for f in self.frames]))
+                self.indices=[0]+list(np.cumsum([len(f) for f in self.frames]))[:-1]
             else:
                 self.indices=list(range(len(self.frames)))
         elif self.chunks:
-            if self.indices is not None:
-                step=self.mi.step
-                for i,f in enumerate(self.frames):
-                    idx=self.indices[i]
-                    if np.ndim(idx)==0:
-                        self.indices[i]=np.arange(idx,idx+f.shape[0]*step,step)
-                    elif len(f)!=len(idx):
-                        raise ValueError("frames and indices array lengths don't agree: {} vs {}".format(len(f),len(idx)))
+            step=self.mi.step
+            for i,f in enumerate(self.frames):
+                idx=self.indices[i]
+                if np.ndim(idx)==0:
+                    self.indices[i]=np.arange(idx,idx+f.shape[0]*step,step)
+                elif len(f)!=len(idx):
+                    raise ValueError("frames and indices array lengths don't agree: {} vs {}".format(len(f),len(idx)))
             if self.frame_info is not None:
                 for i,f in enumerate(self.frames):
                     inf=self.frame_info[i]
@@ -542,8 +541,8 @@ class FramesAccumulator:
             end=n if step>0 else -1
         elif end<0 and step>0:
             end=max(end+n,0)
-        chunks=any(ch.len!=1 for ch in self.data)
-        if any(ch.len!=1 for ch in self.data):
+        chunks=any(ch.chunks for ch in self.data)
+        if chunks:
             data=[]
             pos=0
             for ch in self.data:
