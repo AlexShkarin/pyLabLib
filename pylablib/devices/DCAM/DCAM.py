@@ -370,6 +370,7 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribute
         hstart,hend,hbin=self._truncate_roi_axis((hstart,hend,hbin),hlim)
         vstart,vend,vbin=self._truncate_roi_axis((vstart,vend,hbin),vlim)
         chstart,_,cvstart,_=self.get_roi()[:4]
+        self.cav["BINNING"]=1
         if hstart<=chstart:
             self.cav["SUBARRAY HPOS"]=hstart
             self.cav["SUBARRAY HSIZE"]=hend-hstart
