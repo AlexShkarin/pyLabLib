@@ -56,4 +56,4 @@ More options are described in the `documentation <https://pylablib.readthedocs.i
 Related projects
 -------------------------
 
-`Pylablib cam-control <https://github.com/AlexShkarin/pylablib-cam-control>` - software for universal camera control and frames acquisition.
+`Pylablib cam-control <https://github.com/AlexShkarin/pylablib-cam-control>`__ - software for universal camera control and frames acquisition.

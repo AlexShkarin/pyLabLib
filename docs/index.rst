@@ -35,6 +35,13 @@ The library only works on Python 3, and has been most extensively tested on Wind
 .. note::
    This is documentation for the newer **1.x** version of the library. The older **0.x** documentation can be found at https://pylablib-v0.readthedocs.io/en/latest/ .
 
+
+Related projects
+-------------------------
+
+`Pylablib cam-control <https://github.com/AlexShkarin/pylablib-cam-control>`__ - software for universal camera control and camera data acquisition.
+
+
 .. toctree::
    :maxdepth: 2
    :includehidden:
@@ -47,13 +54,6 @@ The library only works on Python 3, and has been most extensively tested on Wind
    misc_utils
    changelog
    API reference <.apidoc/modules>
-
-
-
-Related projects
--------------------------
-
-`Pylablib cam-control <https://github.com/AlexShkarin/pylablib-cam-control>` - software for universal camera control and camera data acquisition.
 
 
 Indices and tables
