@@ -23,6 +23,18 @@ you can write
     import pylablib.legacy as pll
     from pylablib.legacy.aux_libs.devices import Lakeshore
 
+1.2.1
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- General
+
+    * Added restarting methods for regular and threaded applications.
+
+- Threading
+
+    * Bugfixes in cameras and camera threads.
+    * Bugfixes in streaming.
+
 1.2.0
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

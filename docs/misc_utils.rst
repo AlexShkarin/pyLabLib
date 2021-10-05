@@ -84,6 +84,7 @@ A variety of small useful methods and classes:
     - :class:`.utils.general.DummyResource`: a "dummy" resource class, which can be used in a ``with`` block but does nothing; can be used to, e.g., replace multi-threading resources such as locks to turn them off.
     - Unique ID generators: :class:`.utils.general.UIDGenerator` and :class:`.utils.general.NamedUIDGenerator`, which generate unique names (based on a counter), with a thread-safe option (useful to create, e.g., unique data markers).
     - Timekeeping: :class:`.utils.general.Countdown` for single shot and :class:`.utils.general.Timer` for repeating tasks. Simplify checking how much time is left (including options for infinite timeout), checking if timeout is passed, resetting, etc.
+    - Script restarting vua :func:`.utils.general.restart` (thread-controller style applications can also use :func:`.thread.controller.restart_app` for a more managed restart).
     - :class:`.utils.general.StreamFileLogger`, which can be set up to log all outputs into a stream (e.g., ``stdout``)::
 
         from pylablib import StreamFileLogger
