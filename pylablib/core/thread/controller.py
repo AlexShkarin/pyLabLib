@@ -10,6 +10,7 @@ import sys
 import traceback
 import heapq
 import collections
+import atexit
 
 _default_multicast_pool=mpool.MulticastPool()
 
@@ -19,6 +20,7 @@ _stopped_threads=set()
 _running_threads_lock=threading.Lock()
 _running_threads_notifier=synchronizing.QMultiThreadNotifier()
 _running_threads_stopping=False
+_restart_request=False
 
 
 _exception_print_lock=threading.Lock()
@@ -540,6 +542,7 @@ class QThreadController(QtCore.QObject):
         In addition, if ``wake_on_message==True``, wake up if any message has been received;
         it this case. return ``True`` if the wait has been completed, and ``False`` if it has been interrupted by a message.
         If ``top_loop==True``, treat the waiting as the top message loop (i.e., any top loop message or signal can be executed here).
+        If ``timeout is None``, wait forever (usually, until the application is closed, or some interrupt message raises and error).
         Local call method.
         """
         try:
@@ -1981,13 +1984,36 @@ def stop_all_controllers(sync=True, concurrent=True, stop_self=True):
                 stop_controller(n,sync=sync)
     if stop_self:
         stop_controller(current_ctl,sync=True)
-def stop_app(code=0):
+def stop_app(code=0, sync=False):
     """
     Initialize stopping the application.
     
     Do this either by stopping the GUI controller (if it exists), or by stopping all controllers.
+    If `sync` is ``True`` and the thread is not the main one, wait at this point until the process is stopped during the app shutdown;
+    otherwise, the execution will continue as normal, and the thread will be stopped at a later time during the app shutdown.
     """
     try:
         get_gui_controller(create_if_missing=False).stop(code=code)
+        if sync:
+            try:
+                get_controller(sync=False).sleep(timeout=None)
+            except threadprop.NoControllerThreadError:
+                pass
     except threadprop.NoControllerThreadError:
         stop_all_controllers(sync=False)
+def restart_app(code=0, sync=False):
+    """
+    Restart the application.
+
+    Equivalent to :func:`stop_app` followed by the scrip restart.
+    If `sync` is ``True`` and the thread is not the main one, wait at this point until the process is stopped during the app shutdown;
+    otherwise, the execution will continue as normal, and the thread will be stopped at a later time during the app shutdown.
+    """
+    global _restart_request  # pylint: disable=global-statement
+    _restart_request=True
+    stop_app(code,sync=sync)
+def _check_restart():
+    if _restart_request:
+        threadprop.get_app().closeAllWindows()
+        general.restart()
+atexit.register(_check_restart)

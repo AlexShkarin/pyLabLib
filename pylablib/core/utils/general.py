@@ -5,6 +5,8 @@ Collection of small utilities.
 import time
 import threading
 import os, signal
+import sys
+import subprocess
 import functools
 import collections
 import contextlib
@@ -999,3 +1001,16 @@ def muxcall(argname, all_arg_value="all", all_arg_func=None, mux_argnames=None, 
 
 def wait_for_keypress(message="Waiting..."):
     input(message)
+
+def restart():
+    """
+    Restart the script.
+    
+    Execution will not resume after this call.
+    Note: due to Windows limitations, this function does not replace the current process with a new one,
+    but rather calls a new process and makes the current one wait for its execution.
+    Hence, each nested call adds an additional loaded application into the memory.
+    Therefore, nesting restart calls (i.e., calling several restarts in a row) should be avoided.
+    """
+    p=subprocess.Popen([sys.executable]+sys.argv)
+    sys.exit(p.wait())
