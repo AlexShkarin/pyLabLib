@@ -68,12 +68,12 @@ A dictionary can be build from a Python ``dict``, which automatically normalizes
 File IO
 -------------------------
 
-:mod:`pylablib.core.fileio` contains several function for saving and loading data into different kinds of files: binary (:func:`.loadfile.load_bin` and :func:`.savefile.save_bin`), csv (:func:`.loadfile.load_csv` and :func:`.savefile.save_csv`), or dictionary (:func:`.loadfile.load_dict` and :func:`.savefile.save_dict`).
+:mod:`pylablib.core.fileio` contains several function for saving and loading data into different kinds of files: binary (:func:`.loadfile.load_bin` and :func:`.savefile.save_bin`), CSV (:func:`.loadfile.load_csv` and :func:`.savefile.save_csv`), or dictionary (:func:`.loadfile.load_dict` and :func:`.savefile.save_dict`).
 
 Binary files
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The first (binary files) closely corresponds to numpy ``fromfile``. In addition, it also allows automatic conversion into pandas arrays, setting column names, and skipping some number of bytes::
+The first (binary files) closely corresponds to numpy ``fromfile``. In addition, it also allows automatic conversion into pandas arrays, setting column names, and skipping some number of bytes from the start::
 
     >> table = np.arange(6).reshape((3,2))
     >> pll.save_bin(table, "table.dat", dtype="<f8)
@@ -160,7 +160,7 @@ Note that currently it operates only with simple flat tables and does not suppor
 Dictionary files
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Finally, dictionary saving and loading operates with :class:`.dictionary.Dictionary` objects. It is generally useful to load or save various settings or parameters (e.g., device parameters, data processing parameters, GUI or device state). It supports most basic Python data types as values: standard scalar types (integers, reals, complex numbers, strings, booleans, ``None``), containers (tuples, lists, dictionaries, sets, including nested ones), binary and raw string representation (e.g., ``b"\x00"`` or ``r"m\n\o"``), short numpy arrays (represented as, e.g., ``"array([1, 2, 3])"``), and inline tables (which are interpreted as pandas table by default). The only common data type not included is named tuples; they get automatically converted to regular tuples on saving.
+Finally, dictionary saving and loading operates with :ref:`dictionary <storage_dictionary>` objects. It is generally useful to load or save various heterogeneous settings or parameters, such as device parameters, data processing parameters, and GUI or device state. It supports most basic Python data types as values: standard scalar types (integers, reals, complex numbers, strings, booleans, ``None``), containers (tuples, lists, dictionaries, sets, including nested ones), binary and raw string representation (e.g., ``b"\x00"`` or ``r"m\n\o"``), short numpy arrays (represented as, e.g., ``"array([1, 2, 3])"``), and inline tables (which are interpreted as pandas table by default). The only common data type not included is named tuples; they get automatically converted to regular tuples on saving.
 
 The dictionary files have the ``key value`` line formats and typically use full paths (as opposed to, say, XML hierarchy), which makes them easier to inspect and parse without pylablib. For example, the dictionary from the previous section will be saved as
 
@@ -210,7 +210,7 @@ The format also supports hierarchy using ``//branch`` to mark a start of sub-bra
         label  r"$\nu_0$"
     ///
 
-Finally, it is possible to specify inline tables using special comment lines
+Finally, it is possible to specify inline tables using special comment lines. For example,
 
 .. code-block:: none
 
@@ -222,7 +222,7 @@ Finally, it is possible to specify inline tables using special comment lines
     3   9.j
     ## End table
 
-Produces a dictionary containing pandas DataFrame:
+produces a dictionary containing pandas DataFrame:
 
 .. code-block:: none
 

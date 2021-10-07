@@ -6,7 +6,7 @@
 Andor cameras
 =======================
 
-Andor implements two completely separate interfaces for different cameras. The older one, called SDK, or simply SDK, provides interface for the older cameras: iXon, iKon, iStart, iDus, iVac, Luca, Newton. The details of this SDK are available in the `manual <https://andor.oxinst.com/downloads/uploads/Andor_Software_Development_Kit_2.pdf>`__.
+Andor implements two completely separate interfaces for different cameras. The older one, called SDK2, or simply SDK, provides interface for the older cameras: iXon, iKon, iStart, iDus, iVac, Luca, Newton. The details of this SDK are available in the `manual <https://andor.oxinst.com/downloads/uploads/Andor_Software_Development_Kit_2.pdf>`__.
 
 The newer SDK, called SDK3, covers newer cameras: Zyla, Neo, Apogee, Sona, Marana, and Balor. The `manual <https://andor.oxinst.com/downloads/uploads/Andor_SDK3_Manual.pdf>`__ describes the cameras and capabilities in more details.
 
@@ -59,7 +59,7 @@ The operation of these cameras is relatively standard. They support all the stan
         cam = Andor.AndorSDK2Camera(temperature=-50, fan_mode="on")
     
     - Often cameras have a lot of different readout parameters: channel, amplifier, vertical and horizontal scan speed, etc. These parameters greatly affect the camera sensitivity and readout speed. Upon the connection, the parameter are typically set to the slowest mode. To get the list of all possible parameter combinations, you can use :meth:`.AndorSDK2Camera.get_all_amp_modes` and :meth:`.AndorSDK2Camera.get_max_vsspeed`. Afterwards, you can set them using :meth:`.AndorSDK2Camera.set_amp_mode` and :meth:`.AndorSDK2Camera.set_vsspeed`.
-    - The default shutter parameter is ``"closed"``, which preserves camera from possible high illumination, but can lead to confusion.
+    - The default shutter parameter is ``"closed"``. This preserves camera from possible high illumination, but can lead to confusion, if you expect to see some image.
     - This SDK does not allow for specifying number of frames in the frames buffer. However, the parameters chosen by the SDK are usually reasonable (at least a second worth of acquisition).
     - Some cameras (e.g., iXon) have lots of readout (full frame, ROI, full vertical binning, etc.) and acquisition modes (single, continuous, accumulating, kinetic cycle, etc.). They are described in details in the `manual <https://andor.oxinst.com/downloads/uploads/Andor_Software_Development_Kit_2.pdf>`__.
 
@@ -113,7 +113,7 @@ The operation of these cameras is also relatively standard. They support all the
         >> cam.cav["ExposureTime"]  # get the exposure; could also use cam.get_attribute_value("ExposureTime")
         0.1
 
-      Some values serve as commands; these can be invoked using :meth:`.AndorSDK3Camera.call_command` method. To see all available attributes, you can call :meth:`.AndorSDK3Camera.get_all_attributes` to get a dictionary with attribute objects, and :meth:`.AndorSDK3Camera.get_all_attribute_values` to get the dictionary of attribute values. The attribute objects provide additional information: its kind, whether it's implemented, readable, or writable, what are its limits or possible values, etc::
+      Some values serve as commands; these can be invoked using :meth:`.AndorSDK3Camera.call_command` method. To see all available attributes, you can call :meth:`.AndorSDK3Camera.get_all_attributes` to get a dictionary with attribute objects, and :meth:`.AndorSDK3Camera.get_all_attribute_values` to get the dictionary of attribute values. The attribute objects provide additional information: their kind, whether they are implemented, readable, or writable, what are their limits or possible values, etc::
 
         >> cam = Andor.AndorSDK3Camera()
         >> attr = cam.get_attribute("SensorTemperature")
@@ -126,4 +126,5 @@ The operation of these cameras is also relatively standard. They support all the
       
       The description of the attributes is given in `manual <https://andor.oxinst.com/downloads/uploads/Andor_SDK3_Manual.pdf>`__.
     
-    - USB cameras can, in principle, generate data at higher rate than about 320Mb/s that the USB3 bus supports. For example, Andor Zyla with 16 bit readout has a single full frame size of 8Mb, which puts the maximal USB throughput at about 40FPS. At the same time, the camera itself is capable of reading up to 100FPS at the full frame. Hence, it is possible to overflow the camera internal buffer (size on the order of 1Gb) regardless of the PC performance. If this happens, the acquisition process halts and needs to be restarted. To check for the number of buffer overflows, you can use :meth:`.AndorSDK3Camera.get_missed_frames_status`, and to reset this counter, :meth:`.AndorSDK3Camera.reset_overflows_counter` (it also automatically resets on acquisition clearing, but not stopping). In addition, the class can implement different strategies when encountering overflow while waiting for a new frame. It is set using :meth:`.AndorSDK3Camera.set_overflow_behavior`, and it can be ``"error"`` (raise :exc:`.AndorFrameTransferError`, which is the default behavior), ``"restart"`` (restart the acquisition and immediately raise timeout error), or ``"ignore"`` (ignore the overflow, which will eventually lead to a timeout error, as the new frames are no longer generated).
+    - USB cameras can, in principle, generate data at higher rate than about 320Mb/s that the USB3 bus supports. For example, Andor Zyla with 16 bit readout has a single full frame size of 8Mb, which puts the maximal USB throughput at about 40FPS. At the same time, the camera itself is capable of reading up to 100FPS at the full frame. Hence, it is possible to overflow the camera internal buffer (size on the order of 1Gb) regardless of the PC performance. If this happens, the acquisition process halts and needs to be restarted. You can check the number of buffer overflows using :meth:`.AndorSDK3Camera.get_missed_frames_status`, and reset this counter using :meth:`.AndorSDK3Camera.reset_overflows_counter`; the counter is also automatically resets on acquisition clearing, but not stopping.
+    Furthermore, the class implements different strategies when encountering overflow while waiting for a new frame. The specific strategy is selected using :meth:`.AndorSDK3Camera.set_overflow_behavior`, and it can be ``"error"`` (raise :exc:`.AndorFrameTransferError`, which is the default behavior), ``"restart"`` (restart the acquisition and immediately raise timeout error), or ``"ignore"`` (ignore the overflow, which will eventually lead to a timeout error, as the new frames are no longer generated).

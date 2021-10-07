@@ -6,19 +6,19 @@
 OZ Optics devices
 ==============================
 
-OZ Optics provides a variety of mostly fiber-optics related devices. Here we focus on fiber optomechanics solutions: polarization controller, tunable filter and variable attenuator. Their requirements and general approach are fairly similar, so they are all collected here.
+OZ Optics provides a variety of mostly fiber-optics related devices. Pylalbib covers some of its fiber optomechanics solutions: polarization controller, tunable filter and variable attenuator. Their requirements and general approach are fairly similar, so they are all collected here.
 
 
 Software requirements
 -----------------------
 
-All the devices provide either a bare RS232 interface, or a USB connection with built-in USB-to-RS232 chip. In either way, they are automatically recognized as serial ports, and no additional software is required.
+All the devices provide either a bare RS232 interface, or a USB connection with built-in USB-to-RS232 chip. In either case, they are automatically recognized as serial ports, and no additional software is required.
 
 
 Connection
 -----------------------
 
-The devices devices are identified as COM ports, they use the standard :ref:`connection method <devices_connection>`, and all you need to know is their COM-port address (e.g., ``COM5``)::
+The devices are identified as COM ports, so they use the standard :ref:`connection method <devices_connection>`, and all you need to know is their COM-port address (e.g., ``COM5``)::
 
     >> from pylablib.devices import OZOptics
     >> ctl = OZOptics.EPC04("COM5")

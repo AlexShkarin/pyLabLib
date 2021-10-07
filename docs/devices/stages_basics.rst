@@ -9,14 +9,14 @@ Stages control basics
 Basic example
 --------------------------------------
 
-Almost all stages implement the same basic functionality for homing, motion, stopping, and querying the status::
+Almost all stages implement the same basic functionality for moving, stopping, homing, and querying the status::
 
     stage = Thorlabs.KinesisMotor("27000001")  # connect to the stage
     stage.home()  # home the stage
     stage.wait_for_home()  # wait until homing is done
     stage.move_by(1000)  # move by 1000 steps
     stage.wait_move()  # wait until moving is done
-    stage.jog("+")  # initiate jog (continuous move) in the given direction
+    stage.jog("+")  # initiate jog (continuous move) in the positive direction
     time.sleep(1.)  # wait for 1 second
     stage.stop()  # stop the motion
     stage.close()
@@ -33,9 +33,9 @@ Counters, encoders, homing, and limit switches
 
 Stages have two basic strategies for keeping track of the position. The first one is counting the steps. The problem with it is that once the device is powered up, its position in unknown. Hence, it requires some kind of homing procedure, which usually involves moving to a predefined position and zeroing out the step counter there. This position is defined by the hardware, usually in the form of a limit switch: a physical switch located at the end of the stage travel range, which changes the state when the stage reaches its position. It also usually automatically turns off the motion when tripped, to prevent the motor from overheating or the stage from breaking.
 
-When stepper motors are used, the size of each step (or microstep) is a (reasonably) well-defined fraction of a turn, so counting them gives fairly reproducible results. However, piezo slip-stick sliders (such as Attocube or SmarAct) have inherently unreliable steps size which depends on, e.g., load, direction, position, temperature, or other environmental factors. In this case steps counting, while possible, usually leads to long-term drifts.
+When stepper motors are used, the size of each step (or microstep, if used) is a reasonably well-defined fraction of a turn, so counting them gives fairly reproducible results. On the other hand, piezo slip-stick sliders (such as Attocube, SmarAct, or Picomotor) have inherently unreliable steps size which depends on, e.g., load, direction, position, temperature, or other environmental factors. In this case steps counting, while possible, usually leads to long-term drifts.
 
-If the reliable counting is impossible, like in the case of sliders or regular (as opposed to stepper) motors, the manufacturer might add a hardware position readout. It can be digital (encoder) or analog (e.g., resistive, capacitive, or interferometric readout). The first kind is generally simpler, cheaper and more reliable, but the second one can provide much higher resolution, and can work in more extreme environments (high vacuum, cryogenics). In both cases, the controllers would typically have some kind of feedback loop to smoothly control the motion speed to approach a given position.
+If the reliable counting is impossible, like in the case of sliders or regular DC (as opposed to stepper) motors, the manufacturer might add a hardware position readout. It can be digital (encoder) or analog (e.g., resistive, capacitive, or optical readout). The first kind is generally simpler, cheaper and more reliable, but the second one can provide much higher resolution, and can work in more extreme environments (high vacuum, cryogenics). In both cases, the controllers would typically have some kind of feedback loop to smoothly control the motion speed and direction to approach a given position.
 
 
 Steps and real coordinates
@@ -55,7 +55,7 @@ In many cases, the motor speed is ramped up and down linearly rather than abrupt
 Application notes and examples
 -------------------------------------------
 
-Here we talk more practically about performing tasks common to most stages.
+Here we talk more practically about using pyalblib to perform common tasks.
 
 
 Motion
@@ -78,20 +78,20 @@ To stop immediately (which is usually only used with ``jog`` commands) you can u
 Status and synchronization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Since the motion commands are asynchronous, the devices provide two methods to synchronize it with the script execution. The first is ``is_moving`` which checks if the stage is currently in motion. The second is ``wait_move``, which pauses the execution until the stage motion is finished.
+Since the motion commands are asynchronous, the devices provide two methods to synchronize it with the script execution. The first one, ``is_moving``, checks if the stage is currently in motion. The second one, ``wait_move``, pauses the execution until the stage motion is finished.
 
-In addition, many stages provide methods for additional information, e.g., ``get_status`` (which, usually, returns state of motion, limit switches, possible errors, etc.), or ``get_current_speed``.
+In addition, many stages provide methods to obtain additional information, e.g., ``get_status`` (which, usually, returns state of motion, limit switches, possible errors, etc.), or ``get_current_speed``.
 
 
 Position readout
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The stage has position readout (either hardware sensor, or step counting), it is implemented with the ``get_position`` method. In most cases, it will be accompanied with the ``set_position_reference`` method, which lets one change the currently stored position, effectively adding an offset to all further position readings::
+If a stage has position readout (either hardware sensor, or step counting), it is implemented with the ``get_position`` method. In most cases, it will be accompanied with the ``set_position_reference`` method, which lets one change the currently stored position, effectively adding an offset to all further position readings::
 
     >> stage.get_position()
     10000
     >> stage.set_position_reference(20000)  # change current reference to 
-    >> stage.get_position()  # note that it reacts immediately, unlike move_to
+    >> stage.get_position()  # note that it reacts immediately, unlike move_to; no physical motion happened
     20000
     >> stage.move_to(21000)  # move by 1000 steps; equivalent to .move_by(1000), or .move_to(11000) before the reference change
 

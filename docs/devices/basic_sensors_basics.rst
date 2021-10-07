@@ -21,7 +21,7 @@ Basic sensors usually only implement a handful of functions related to reading o
 Application notes and examples
 -------------------------------------------
 
-Here we talk more practically about performing tasks common to most sensors.
+Here we talk more practically about using pylablib to perform commons sensor tasks.
 
 
 Readout

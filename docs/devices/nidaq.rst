@@ -6,9 +6,9 @@
 NI DAQmx interface
 =======================
 
-National Instruments produces lots of different data acquisition devices, which support digital and analog input and output, both immediate and clocked (depending on the exact device). They are controlled via a very universal `NI DAQmx <https://knowledge.ni.com/KnowledgeArticleDetails?id=kA00Z000000P8baSAC>`__ interface. This interface is provided in `python-nidaqmx <https://nidaqmx-python.readthedocs.io/en/latest/>`__ package, which provides a fairly close to original functionality, but with much more convenient Python wrappers. Pylablib implements a relatively thin wrapper around this package to present it in a way similar to the other device classes, and to simplify common tasks such as setting up voltage and counter input channels.
+National Instruments produces lots of different data acquisition devices, which support digital and analog input and output, both immediate and clocked (depending on the exact device). They are controlled via a very universal `NI DAQmx <https://knowledge.ni.com/KnowledgeArticleDetails?id=kA00Z000000P8baSAC>`__ interface. This interface is implemented in `python-nidaqmx <https://nidaqmx-python.readthedocs.io/en/latest/>`__ package, which provides a fairly close to original functionality, but with much more convenient Python wrappers. Pylablib implements a relatively thin wrapper around this package to present it in a way similar to the other device classes, and to simplify common tasks such as setting up voltage and counter input channels.
 
-The main daq class is :class:`pylablib.devices.NI.NIDAQ<.NI.daq.NIDAQ>`.
+The main daq class is :class:`pylablib.devices.NI.NIDAQ<.NI.daq.NIDAQ>`. It has been tested with NI PCIe-6323, NI USB-6008, and NI USB-6363.
 
 Software requirements
 -----------------------
@@ -51,12 +51,12 @@ The typical use case involves setting up different input and output channels, st
     daq.setup_clock(100)  # setup 100Hz sampling clock
     trace = daq.read(100)  # start acquisition, read finite number of samples, and stop it again
     # now do continuous acquisition + processing loop
-    samples = 0
+    nsamples = 0
     daq.start()  # start continuous acquisition
-    while samples<1000:
+    while nsamples<1000:
         sample = daq.read()
         ... process sample
-        samples+=1
+        nsamples+=1
     daq.stop()
 
 The class provide basic methods to set up analog, digital, and counter inputs, and analog and digital outputs. All the analog and digital inputs are synchronized to the same clock, which is the default analog input sample clock (``ai/SampleClock``) by default. It is also possible to set up the external clock via :meth:`.NIDAQ.setup_clock` and export the sampling clock via :meth:`.NIDAQ.export_clock`. Not that not all devices support clocked digital inputs, which means that setting up digital inputs there would raise an error.
@@ -65,4 +65,4 @@ By default, the counter inputs are synchronized to the same clock, although it i
 
 Acquisition is controlled with :meth:`.NIDAQ.start` and :meth:`.NIDAQ.stop` methods, and the readout is performed via :meth:`.NIDAQ.read`. The result of this is always a 2D numpy array, where the first index corresponds to samples and the second to channels. The order of channels can be obtained from :meth:`.NIDAQ.get_input_channels`.
 
-The outputs can be either analog or digital. The digital outputs are always immediate, i.e., they immediately produce and hold the latest output value. The analog outputs can work in two modes: either immediate, or clocked. The mode is set up via :meth:`.NIDAQ.setup_voltage_output_clock`. In this case, it is possible to output a list of values, which produces a waveform clocked according to the specified clock (a standalone clock by default, although synchronizing with the analog input clock is also possible).
+The outputs can be either analog or digital. The digital outputs are always immediate, i.e., they immediately produce and hold the latest output value. The analog outputs can work in two modes: either immediate, or clocked. The mode is set up via :meth:`.NIDAQ.setup_voltage_output_clock`. In this case, it is possible to output a list of values, which produces a waveform clocked according to the specified clock: either a separate clock source (default), or the analog input clock, which makes voltage input and output synchronized.

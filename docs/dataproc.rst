@@ -16,9 +16,10 @@ Class :class:`.fitting.Fitter` is a user-friendly wrapper around :func:`scipy.op
     - The wrapper automatically handles complex parameters (split into real and imaginary parts), numpy arrays, lists, or tuples (including nested structures);
     - The final parameters (fit and fixed) are returned in a single dictionary indexed by their names;
     - The wrapper also returns the fit function with all of the parameters bound to the final fit and fixed values;
-    - The fit function result is flattened during fitting, so it, for example, works for functions returning 2D arrays.
+    - The fit function result is flattened during fitting, so it works for functions returning multi-dimensional (for example, 2D) arrays.
 
-**Examples**
+Examples
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Fitting a Lorentzian::
 
@@ -89,7 +90,7 @@ There are several functions present for filtering the data to smooth it or reduc
         >> pll.decimate_datasets([trace, trace2], "sum")  # same as np.sum([trace, trace2],axis=0)
         array([ 0,  2,  6, 12, 20, 30, 42, 56, 72, 90])
 
-    - Sliding decimation methods :func:`.filters.sliding_average`, :func:`.filters.median_filter` and :func:`.filters.sliding_filter` are related, but use a sliding window of `n` points instead of complete decimation of `n` points together. It only works for 1D traces or 2D multi-column datasets. Note that :func:`.filters.sliding_filter` is implemented through a simple Python loop, so it is not very efficient::
+    - Sliding decimation methods :func:`.filters.sliding_average`, :func:`.filters.median_filter` and :func:`.filters.sliding_filter` are related, but use a sliding window of `n` points instead of complete decimation of `n` points together. They only work for 1D traces or 2D multi-column datasets. Note that :func:`.filters.sliding_filter` is implemented through a simple Python loop, so it is fairly inefficient::
 
         >> trace = np.arange(10)
         >> pll.sliding_average(trace, 4)  # average points in 4-point window (by default use "reflect" boundary conditions)
@@ -98,7 +99,7 @@ There are several functions present for filtering the data to smooth it or reduc
         array([2, 3, 4, 5, 6, 7, 8, 9, 9, 9])
 
     - Next are convolution filters which operate by convolving the trace with a given kernel function. These involve :func:`.filters.gaussian_filter` (and :func:`.filters.gaussian_filter_nd`, which is simply a wrapper around :func:`scipy.ndimage.gaussian_filter`), and a more generic :func:`.filters.convolution_filter`. Related are infinite impulse response (IIR) filter :func:`.filters.low_pass_filter` and :func:`.filters.high_pass_filter`, which mimic standard single-pole low-pass and high-pass filters. In principle, they can be modelled as a convolution with an exponential decay, but the implementation using the recursive filters is more efficient for large widths.
-    - Finally, there are Fourier filters, which Fourier-transform the trace, scale the transform values, and transform it back to the real domain. These involve the main function :func:`.filters.fourier_filter`, which takes a generic frequency response function, as well as two specific response function generators :func:`.filters.fourier_filter_bandpass` and :func:`.filters.fourier_filter_bandstop` (both hard cutoff).
+    - Finally, there are Fourier filters, which Fourier-transform the trace, scale the transform values, and transform it back to the real domain. These involve the main function :func:`.filters.fourier_filter`, which takes a generic frequency response function, as well as two specific response function generators :func:`.filters.fourier_filter_bandpass` and :func:`.filters.fourier_filter_bandstop`, both generating hard frequency cutoff filters.
 
 
 .. _dataproc_fourier:
@@ -115,7 +116,9 @@ The main methods are :func:`.fourier.fourier_transform` for the direct transform
     >> df = PSD[1,0] - PSD[0,0]
     >> df  # total span is 1kHz with 10**5 points, resulting in 0.01Hz step
     0.01
-    >> np.sum(PSD[:,1]) * df  # integrated PSD is equal to the original trace RMS squared, which is 1 for the normal distribution
+    >> np.sum(PSD[:,1]) * df  # integrated PSD is equal to the original trace RMS squared, which is about 1 for the normal distribution
+    1.005262206692361
+    >> np.mean(x**2)
     1.005262206692361
 
 

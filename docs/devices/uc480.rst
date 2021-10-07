@@ -13,7 +13,7 @@ The code is located in :mod:`pylablib.devices.uc480`, and the main camera class 
 Software requirements
 -----------------------
 
-These cameras require ``uc480.dll``, which is automatically installed with the freely available `Thorcam <https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam>`__ tools. By default, the library searches for DLLs in ``Thorlabs/Scientific Imaging/ThorCam`` folder in ``Program Files`` folder (or ``Program files (x86)``, if 32-bit version of Python is running), as well as in the folder containing the script. If the DLLs are located elsewhere, the path can be specified using the library parameter ``devices/dlls/uc480``::
+These cameras require ``uc480.dll``, which is automatically installed with the freely available `ThorCam <https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam>`__ tools. By default, the library searches for DLLs in ``Thorlabs/Scientific Imaging/ThorCam`` folder in ``Program Files`` folder (or ``Program files (x86)``, if 32-bit version of Python is running), as well as in the folder containing the script. If the DLLs are located elsewhere, the path can be specified using the library parameter ``devices/dlls/uc480``::
 
     import pylablib as pll
     pll.par["devices/dlls/uc480"] = "path/to/dlls"
@@ -36,15 +36,15 @@ The cameras are identified by their camera ID or device ID (both starting from 1
     >> cam = uc480.UC480Camera()  # connecting to the first available camera
     >> cam.close()
 
-If ``cam_id = 0`` is provided, the software connects to the first available camera.
+If ``cam_id = 0`` is provided (default), the software connects to the first available camera.
 
 Operation
 ------------------------
 
 The operation of these cameras is relatively standard. They support all the standard methods for dealing with ROI and exposure, starting and stopping acquisition, and operating the frame reading loop. However, there's a couple of differences from the standard libraries worth highlighting:
 
-    - Some cameras support both binning (adding several pixels together) and subsampling (skipping some pixels). However, only one can be enabled at a time. They can be set independently using, correspondingly, :meth:`.UC480Camera.get_binning`/:meth:`.UC480Camera.set_binning` and :meth:`.UC480Camera.get_subsampling`/:meth:`.UC480Camera.set_subsampling`. They can also be set as binning factors in :meth:`.UC480Camera.get_roi`/:meth:`.UC480Camera.set_roi`. Whether binning or subsampling is set there can be determined by the ``roi_binning_mode`` parameter on creation.
-    - Uc480 API supports many different pixel modes, including packed ones. However, pylablib currently supports only unpacked modes.
+    - Some cameras support both binning (adding several pixels together) and subsampling (skipping some pixels). However, only one can be enabled at a time. They can be set independently using, correspondingly, :meth:`.UC480Camera.get_binning`/:meth:`.UC480Camera.set_binning` and :meth:`.UC480Camera.get_subsampling`/:meth:`.UC480Camera.set_subsampling`. They can also be set as binning factors in :meth:`.UC480Camera.get_roi`/:meth:`.UC480Camera.set_roi`. Whether binning or subsampling is set there can be determined by the ``roi_binning_mode`` parameter supplied on creation.
+    - Uc480 API supports many different pixel modes, including packed ones. However, pylablib currently supports only monochrome unpacked modes.
     - Occasionally (especially at high frame rates) frames get skipped during transfer, before they are placed into the frame buffer by the camera driver. This can happen in two different ways. First, the frame is simply dropped without any indication. This typically can not be detected without using the framestamp contained in the frame info, as the frames flow appear to be uninterrupted. In the second way, the acquisition appears to get "restarted" (the internal number of acquired frames is dropped to zero), which is detected by the library. In this case there are several different ways the software can react, which are controlled using :meth:`.UC480Camera.set_frameskip_behavior`.
       
       The default way to address this "restart" event (``"ignore"``) is to ignore it and only adjust the internal acquired frame counter; this manifests as quietly dropped frames, exactly the same as the first kind of event. In the other method (``"skip"``), some number of frames are marked as skipped, so that the difference between the number of acquired frames and the internal framestamp is kept constant. This makes the gap explicit in the camera frame counters. Finally (``"error"``), the software can raise ``uc480FrameTransferError`` when such event is detected, which can be used to, e.g., restart the acquisition.

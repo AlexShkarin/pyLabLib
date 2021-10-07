@@ -14,7 +14,7 @@ The main device class is :class:`pylablib.devices.Toptica.TopticaIBeam<.ibeam.To
 Software requirements
 -----------------------
 
-The device is connected to the PC via RS232 or USB. RS232 simply requires a COM-port controller on the PC, which in most cases is a USB-to-Serial adapter. Such adapters normally come with their standard drivers. The USB version simply involves a built-in USB-to-Serial converter (e.g., a standard FTDI chip), so it also shows up as a virtual COM port. Hence, it requires relatively standard drivers, which are either included with the laser, or can be download from the `manufacturer's website <https://www.toptica.com/products/single-mode-diode-lasers/ibeam-smart/>`__ (e.g., together with the TOPAS control software).
+The device is connected to the PC via RS232 or USB. RS232 simply requires a COM-port controller on the PC, which in most cases is a USB-to-Serial adapter. Such adapters normally come with their standard drivers. The USB version simply involves a built-in USB-to-Serial converter (e.g., a standard FTDI chip), so it also shows up as a virtual COM port. Hence, it requires relatively standard drivers, which are either included with the laser, or can be download from the `manufacturer's website <https://www.toptica.com/products/single-mode-diode-lasers/ibeam-smart/>`__, for example, together with the TOPAS control software.
 
 
 Connection

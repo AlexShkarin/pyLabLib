@@ -6,14 +6,14 @@
 NI IMAQdx cameras interface
 ===========================
 
-NI IMAQdx is the interface provided by  National Instruments and which supports a wide variety of cameras. It is completely separate from IMAQ, and it supports other interfaces: USB, Ethernet and FireWire. It has been tested with Ethernet-connected PhotonFocus HD1-D1312 camera.
+NI IMAQdx is the interface provided by  National Instruments and which supports a wide variety of cameras. It is completely separate from IMAQ, and it supports different communication interfaces: USB, Ethernet and FireWire. It has been tested with Ethernet-connected PhotonFocus HD1-D1312 camera.
 
 The code is located in :mod:`pylablib.devices.IMAQdx`, and the main camera class is :class:`pylablib.devices.IMAQdx.IMAQdxCamera<.IMAQdx.IMAQdxCamera>`.
 
 Software requirements
 ----------------------
 
-These cameras require ``imaqdx.dll``, which is installed with the freely available `Vision Acquisition Software <https://www.ni.com/en-us/support/downloads/drivers/download.vision-acquisition-software.html>`__. However, the IMAQdx part of the software is proprietary, and requires purchase to use. After installation, the DLL is automatically added to the ``System32`` folder, where pylablib looks for it by default. If the DLL is located elsewhere, the path can be specified using the library parameter ``devices/dlls/niimaqdx``::
+These cameras require ``imaqdx.dll``, which is installed with the freely available `Vision Acquisition Software <https://www.ni.com/en-us/support/downloads/drivers/download.vision-acquisition-software.html>`__. However, the IMAQdx part of the software is proprietary, and requires purchase to use. If the software license is invalid, then any attempt to communicate with cameras will result in ``License not activated`` error (although simply listing the cameras still works). After installation, the DLL is automatically added to the ``System32`` folder, where pylablib looks for it by default. If the DLL is located elsewhere, the path can be specified using the library parameter ``devices/dlls/niimaqdx``::
 
     import pylablib as pll
     pll.par["devices/dlls/niimaqdx"] = "path/to/dlls"
@@ -65,8 +65,8 @@ Known issues
 --------------------
 
 - It seems like sometimes the camera communication settings might be interfering with its operation. It can show up in an unexpected way, e.g., as an ``Attribute value is out of range`` error when starting acquisition. If it looks like this might be the case, it is a good idea to open the camera in NI MAX (note that Ethernet cameras are listed under ``Network Devices``, not in the general device list) and try to snap a single frame. NI MAX might report some problems with the settings and suggest resolution methods. Once the camera is operational, you can close NI MAX and save the camera settings (request is shown upon closing).
-- In general, Ethernet cameras work better with larger packet sizes. However, packets above 1500 bits (so-called Jumbo packets) are not supported by all network adapters by default. If this is the case, any attempt to acquire images causes ``IMAQdxErrorTestPacketNotReceived`` error. One way to deal with that is to set the packet size to 1500, which is done automatically when ``small_packet=True`` is supplied upon the camera creation. The other is to enable in the adapter properties (in Windows this is done in Device Manager).
-- Currently only the basic unpacked monochrome pixel formats are supported: ``Mono8``, ``Mono10``, ``Mono12``, ``Mono16``, and ``Mono32``. The reason is that even nominally well-defined types (e.g., ``Mono12Packed``) have different formats for different cameras. Currently any unsupported format will raise an error on readout by default. It it still possible to read these out as raw frame data (in the form of 1D or 2D numpy ``'u1'`` array) by enabling raw frame readout using :meth:`.IMAQdxCamera.enable_raw_readout` method::
+- In general, Ethernet cameras work better with larger packet sizes. However, packets above 1500 bits (so-called jumbo packets) are not supported by all network adapters by default. If this is the case, any attempt to acquire images causes ``IMAQdxErrorTestPacketNotReceived`` error. One way to deal with that is to set the packet size to 1500, which is done automatically when ``small_packet=True`` is supplied upon the camera creation. The other is to enable jumbo packets in the adapter properties (in Windows this is done in Device Manager).
+- Currently only the basic unpacked monochrome pixel formats are supported: ``Mono8``, ``Mono10``, ``Mono12``, ``Mono16``, and ``Mono32``. The reason is that even nominally well-defined types (e.g., ``Mono12Packed``) have different formats for different cameras. Currently any unsupported format will raise an error on readout by default. It it still possible to read these out as raw frame data in the form of 1D or 2D numpy ``'u1'`` array by enabling raw frame readout using :meth:`.IMAQdxCamera.enable_raw_readout` method::
 
     >> cam = IMAQdx.IMAQdxCamera()
     >> cam.get_detector_size()  # 1280px x 1024px frame

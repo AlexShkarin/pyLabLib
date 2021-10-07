@@ -39,7 +39,7 @@ The laser is identified by its IP address (typically starting with ``192.168.1``
 
 The port is set up in the ``Remote interface`` row of the ``Network Settings`` menu of the laser web interface. There you also need to provide the correct IP address of the controlling PC and enable the remote interface; otherwise the connection will be rejected by the laser.
 
-In addition, you can enable websocket interface option, which is used to send request directly though the device web interface (it should also be opened in the browser and logged in to work). It is used for some options which are unavailable otherwise, such as enabling or disable the wavemeter connection, receiving some additional status information, and performing more robust control.
+In addition, you can enable websocket interface option, which is used to send request directly though the device web interface. It is used for some options which are unavailable otherwise, such as enabling or disable the wavemeter connection, receiving some additional status information, and performing more robust control. Note that for proper operation the web interfaces should be opened in the browser and logged in.
 
 Operation
 ------------------------
@@ -48,4 +48,4 @@ The method names are pretty self-explanatory, and mostly correspond directly to 
 
 One should note, that the device operation is not very stable, and occasionally some errors and crashes arise. These can range from failed wavelength tuning and terascan, to terascans failing in exotic ways (e.g., the remote interface suggests that the scan is in progress while the web interface reports a crash), to complete device failure requiring Ice Bloc power cycling.
 
-The device class attempts to somewhat mitigate it by providing relatively robust stopping method :meth:`.Solstis.stop_all_operation`. It uses web interface to get a better information about the laser crashing and send additional stopping commands. It also performs additional steps to stop scans and put the laser in an operation state after a failure, such as starting quick small fine and terascans, and tuning to a nearby frequency.
+The device class attempts to somewhat mitigate it by providing relatively a robust stopping method :meth:`.Solstis.stop_all_operation`, which tries to set the devices to the default idle state. It uses web interface to get a better information about the laser crashing and send additional stopping commands. It also performs additional steps to stop scans and put the laser in an operation state after a failure, such as starting quick small fine and terascans, and tuning to a nearby frequency.

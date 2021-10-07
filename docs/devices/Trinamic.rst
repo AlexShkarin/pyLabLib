@@ -14,7 +14,7 @@ The main device class is :class:`pylablib.devices.Trinamic.TMCM1110<.Trinamic.ba
 Software requirements
 -----------------------
 
-USB connection needs drivers, which are supplied with the freely-available `TMCL-IDE <https://www.trinamic.com/support/software/tmcl-ide/#c3291>`__, or `TMCL-LITE <https://www.trinamic.com/products/modules/details/tmcm-1110/#downloads-4>`__. With those drivers installed, the controllers show up as virtual COM ports. Note that when several devices are connected, they sometimes get assigned conflicting (i.e., overlapping) COM ports. In this case, you might need to manually reassign these in the device manager.
+USB connection needs drivers, which are supplied with the freely-available `TMCL-IDE <https://www.trinamic.com/support/software/tmcl-ide/#c3291>`__, or `TMCL-LITE <https://www.trinamic.com/products/modules/details/tmcm-1110/#downloads-4>`__. With those drivers installed, the controllers show up as virtual COM ports. Note that when several devices are connected, they sometimes get assigned conflicting (i.e., overlapping) COM ports. In this case, you might need to manually reassign these in the Device Manager.
 
 
 Connection

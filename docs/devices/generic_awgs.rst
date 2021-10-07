@@ -13,7 +13,7 @@ The generic AWG class is :class:`pylablib.devices.AWG.GenericAWG<.AWG.generic.Ge
 Software requirements
 -----------------------
 
-Most of these AWGs use NI VISA communication interface. Hence, they require NI VISA Runtime, which is freely available from the `National Instruments website <https://www.ni.com/en-us/support/downloads/drivers/download.ni-visa.html>`__ Instek and Iso-Tech AWGs show up as virtual COM ports, so they require no additional software.
+Most of these AWGs use NI VISA communication interface. Hence, they require NI VISA Runtime, which is freely available from the `National Instruments website <https://www.ni.com/en-us/support/downloads/drivers/download.ni-visa.html>`__. However, Instek and Iso-Tech AWGs show up as virtual COM ports, so they require no additional software.
 
 
 Connection
@@ -44,11 +44,12 @@ The method names are usually pretty self-explanatory. A typical operation involv
 
 However, there is a couple of points to keep in mind:
 
-    - Since the same general class architecture supports both single-channel and multichannel devices, the channel argument is usually close to the end of the argument list and is not mandatory. If it is not supplied, it is chosen to be the current default channel (1 by default), which can be set using :meth:`.GenericAWG.select_current_channel`. Hence, int the example above we can write::
+    - Since the same general class architecture supports both single-channel and multichannel devices, the channel argument is usually close to the end of the argument list and is not mandatory. If it is not supplied, it is chosen to be the current default channel (1 upon creation), which can be set using :meth:`.GenericAWG.select_current_channel`. Hence, int the example above we can write::
 
         dev.select_current_channel(2)  # now all methods assume channel 2
         dev.set_function("square")
         dev.set_duty_cycle(20)
         dev.set_output_range((-1, 1))
+        dev.enable_output()
     
     - Similarly, some methods can be present but not applicable to the particular AWG (e.g., burst trigger related methods, phase synchronization methods, etc.) If this is the case, they will cause an error when called.

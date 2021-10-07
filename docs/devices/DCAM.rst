@@ -13,7 +13,7 @@ The code is located in :mod:`pylablib.devices.DCAM`, and the main camera class i
 Software requirements
 -----------------------
 
-These cameras require ``dcamapi.dll``, which is installed with most of Hamamatsu software (such as HoKaWo or HiPic), as well as with the freely available `DCAM API <https://dcam-api.com/>`__, which also includes all the necessary drivers. After installation, the DLL is automatically added to the ``System32`` folder, where pylablib looks for it by default. If the DLL is located elsewhere, the path can be specified using the library parameter ``devices/dlls/dcamapi``::
+These cameras require ``dcamapi.dll``, which is installed with most of Hamamatsu software (such as HoKaWo or HiPic), as well as with the freely available `DCAM API <https://dcam-api.com/>`__, which also includes all the necessary drivers. Keep in mind, that you also need to install the drivers for required corresponding camera type (USB, Ethernet, IEEE 1394). These drivers are in the same installer, but need to be installed separately. After installation, the DLL is automatically added to the ``System32`` folder, where pylablib looks for it by default. If the DLL is located elsewhere, the path can be specified using the library parameter ``devices/dlls/dcamapi``::
 
     import pylablib as pll
     pll.par["devices/dlls/dcamapi"] = "path/to/dlls"
@@ -55,5 +55,6 @@ To see all available attributes, you can call :meth:`.DCAMCamera.get_all_attribu
     (0.001, 10.0)
 
 Additionally, there's a couple of differences from the standard libraries worth highlighting:
-    - The library supports only symmetric binning, i.e., the binning factor is the same in both directions. For compatibility :meth:`.DCAMCamera.get_roi` and :meth:`.DCAMCamera.set_roi` still return and accept both binnings independently, but they are always the same when returned, and ``vbin`` is ignored when set.
+
+    - The library supports only symmetric binning, i.e., the binning factor is the same in both directions. For compatibility :meth:`.DCAMCamera.get_roi` and :meth:`.DCAMCamera.set_roi` still return and accept both binning parameters independently, but they are always the same when returned, and ``vbin`` is ignored when set.
     - By default, the SDK does not provide independent control of the frame period and the exposure. Hence, ``set_frame_period`` method is unavailable, and the frame rate is defined solely by the exposure.

@@ -12,9 +12,9 @@ Basic examples
 Basic camera usage is fairly straightforward::
 
     from pylablib import Andor
-    cam = Andor.AndorSDK2Camera()  # connect to the camera
+    cam = Andor.AndorSDK3Camera()  # connect to the camera
     cam.set_exposure(10E-3)  # set 10ms exposure
-    cam.set_roi(0,128,0,128)  # set 128x128px ROI in the upper right corner
+    cam.set_roi(0,128,0,128)  # set 128x128px ROI in the upper left corner
     images = cam.grab(10)  # grab 10 frames
     cam.close()
 
@@ -35,19 +35,19 @@ Basic concepts
 Frames buffer
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In most cases, the frames acquired by the camera are first temporarily stored in the local camera and / or frame grabber memory, from which they are transferred to the PC RAM by the camera drivers. Afterwards, this memory is made available to all other applications. In principle, it should be enough to store only the most recent frame in RAM, and for the user software to continuously read and process it. However, such approach is very demanding to the user code: if the new frame is acquired before the previous one is processed, the RAM data is overwritten, and the old frame is lost. Hence, it is more practical to have a *buffer* of several most recently acquired frames to account for interruptions caused by OS scheduling and by other jobs performed in the user software. In this case, the frames get lost only when the buffer is completely filled, and the oldest frames starts getting overwritten.
+In most cases, the frames acquired by the camera are first temporarily stored in the local camera and / or frame grabber memory, from which they are transferred to the PC RAM by the camera drivers. Afterwards, this memory is made available to all other applications. In principle, it should be enough to store only the most recent frame in RAM, and for the user software to continuously wait for a new frame, immediately read it from RAM and process it. However, such approach is very demanding to the user code: if the new frame is acquired before the previous one is processed or copied, then the RAM data is overwritten, and the old frame is lost. Hence, it is more practical to have a *buffer* of several most recently acquired frames to account for inevitable interruptions in the user wait-read-process loop caused by OS scheduling and by other jobs. In this case, the frames get lost only when the buffer is completely filled, and the oldest frames starts getting overwritten.
 
-When using the camera classes provided by pylablib, you do not need to worry about setting up the buffer yourself, since it is done behind the scene either by the manufacturer's code or by pylablib. However, it is important to keep in mind the existence of the buffer when setting up the acquisition, interpreting the buffer and acquired frames status, or identifying the skipped frames.
+When using the camera classes provided by pylablib, you do not need to worry about setting up the buffer yourself, since it is done behind the scene either by the manufacturer's code or by the device class. However, it is important to keep in mind the existence of the buffer when setting up the acquisition, interpreting the buffer and acquired frames status, or identifying the skipped frames.
 
-The size of the buffer can almost always be selected by the user. Typically it is a good idea to have at least 100ms worth of frames there, although, depending on the other jobs performed by the thread, it can be larger.
+The size of the buffer can almost always be selected by the user. Typically it is a good idea to have at least 100ms worth of frames there, although, depending on the other jobs performed by the software, it can be larger.
 
 
 Acquisition setup
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Setting up an acquisition process might take a lot of time (up to 10s in more extreme cases). This happens mostly because of the buffer allocation and setting up internal API structures, while starting the acquisition process itself is fairly fast. Hence, it is useful to separate setting up / cleaning up and starting / stopping.
+Setting up an acquisition process might take a lot of time (up to 10s in more extreme cases). This happens mostly because of the buffer allocation and setting up internal API structures; initiating the acquisition process itself is fairly fast. Hence, it is useful to separate setting up / cleaning up and starting / stopping.
 
-The first two procedures correspond to ``setup_acquisition`` and ``clear_acquisition`` method, which are slow, but rarely called. Usually, they only need to be invoked right after connection to the camera, or when the acquired image size is change (e.g., due to binning or ROI). Since these methods deal with buffer allocation, in almost all cases they take a parameter specifying buffer size (typically called ``nframes``).
+The first two procedures correspond to ``setup_acquisition`` and ``clear_acquisition`` method, which are slow, but rarely called. Usually, they only need to be invoked right after connecting to the camera, or when the acquired image size is changed (e.g., due to a change in binning or ROI). Since these methods deal with buffer allocation, in almost all cases they take a parameter specifying buffer size (typically called ``nframes``).
 
 The other two procedures correspond to ``start_acquisition`` and ``stop_acquisition`` methods. These try to be as fast as possible, as they need to be called any time the acquisition is started or stopped, or when minor parameters (frame rate, exposure, trigger mode) are called.
 
@@ -55,21 +55,21 @@ The other two procedures correspond to ``start_acquisition`` and ``stop_acquisit
 Region of interest (ROI) and binning
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Most cameras allow the user to select only part of the whole sensor for readout and transfer. Since the readout speed is usually the factor limiting the frame rate, selecting small ROI lets you achieve high frame rate. In addition, it also reduces the size of the frame buffer and the data transfer load. Same goes for binning: many cameras can add values of several consecutive pixels in the same row or column (or both), which results in smaller images and, depending on the camera architecture, higher signal-to-noise ratio. Much less frequently you can set up subsampling instead of binning, which skips pixels instead of averaging them together.
+Most cameras allow the user to select only a part of the whole sensor for readout and transfer. Since the readout speed is usually the factor limiting the frame rate, selecting smaller ROI frequently lets you achieve higher frame rate. In addition, it also reduces the size of the frame buffer and the data transfer load. Same goes for binning: many cameras can combine values of several consecutive pixels in the same row or column (or both), which results in smaller images and, depending on the camera architecture, higher signal-to-noise ratio compared to binning in post-processing. Much less frequently you can set up subsampling instead of binning, which skips pixels instead of averaging them together.
 
-Both operations very strongly depend on the exact hardware, so there are typically many associated restriction. The most common are minimal sizes in width and height, positions and sizes being factors of some power of 2 (up to 32 for some cameras), or equal binning for both axes. The library will typically round the ROI to the nearest allowed value. Furthermore, the scaling of the maximal frame rate on the ROI is also hardware-dependent; for example, in many sCMOS chips readout speed only cares about vertical extent (since the readout is done simultaneously for the whole row). In most cases, it takes some experiments to get a hang of the camera behavior.
+Both operations depend very strongly on the exact hardware, so there are typically many associated restriction. The most common are minimal sizes in width and height, positions and sizes being factors of some power of 2 (up to 32 for some cameras), or equal binning for both axes. Device classes will typically round the ROI to the nearest allowed value. Furthermore, the scaling of the maximal frame rate with the ROI size is also hardware-dependent; for example, in many sCMOS chips readout speed only depends on the vertical extent, since the readout is done simultaneously for the whole row. In most cases, it takes some experiments to get a hang of the camera behavior.
 
 
 Exposure and frame rate
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Almost all scientific cameras let user change the exposure, typically in a wide range (down to sub-ms). Frequently they also also to separately change the frame period (inverse of the frame rate). Usually (but not always) the minimal frame period is set by the exposure plus some readout time, which depends on the ROI and some additional parameters such as pixel clock or simultaneous readout mode.
+Almost all scientific cameras let user change the exposure, typically in a wide range (down to sub-ms). Frequently they also allow to separately change the frame period (inverse of the frame rate). Usually (but not always) the minimal frame period is set by the exposure plus some readout time, which depends on the ROI and some additional parameters such as pixel clock or simultaneous readout mode. Usually exposure takes priority over the frame period, i.e., if the frame period is set too short, it is automatically adjusted. Notable exception from this rule is :ref:`Uc480 <cameras_uc480>` interface, where this dependence in reversed.
 
 
 Triggering
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Usually the cameras will have several different options for triggering, i.e., choosing when to start acquiring a new frame. The default option is the internal trigger, which means that the internal timer generates trigger event at a constant rate (frame rate). Many cameras will also take an external trigger signal to synchronize acquisition to external events or other cameras. Typically, a rising edge from 0 to 5V on the input will initiate the frame acquisition, but more exotic options (different polarities, exposure control with pulse width, line-readout trigger) can be present.
+Usually the cameras will have several different options for triggering, i.e., choosing when to start acquiring a new frame or a new batch of frames. The default option is the internal trigger, which means that the internal timer generates trigger event at a constant rate (frame rate). Many cameras will also take an external trigger signal to synchronize acquisition to external events or other cameras. Typically, a rising edge from 0 to 5V on the input will initiate the frame acquisition, but more exotic options (different polarities or levels, exposure control with pulse width, line-readout trigger) can be present.
 
 
 
@@ -108,9 +108,9 @@ A typical simple acquisition loop has already been shown above::
             break
     cam.stop_acquisition()
 
-It relies on 3 sets of methods. First, starting and stopping acquisition using ``start_acquisition`` and ``stop_acquisition``. As explained above, one also has an option to setup the acquisition first using ``setup_acquisition```, which makes subsequent ``start_acquisition`` call much faster. In other cases, ``start_acquisition`` takes the same parameters and sets up the acquisition if necessary (if any parameters are different from the current ones).
+It relies on 3 sets of methods. First, starting and stopping acquisition using ``start_acquisition`` and ``stop_acquisition``. As explained above, one also has an option to setup the acquisition first using ``setup_acquisition``, which makes the subsequent ``start_acquisition`` call faster. However, one can also supply the same setup parameters to ``start_acquisition`` method, which automatically sets up the acquisition if it is not set up yet, or if any parameters are different from the current ones.
 
-Second, checking the acquisition process. The method used above is ``wait_for_frame``, which by default waits until there is at least one unread frame in the buffer (i.e., it exits immediately if there is already a frame available). Its arguments modify this behavior by changing the point from which the new frame is acquired (e.g., from the current call), or the minimal required number of frames. Alternatively, there is a method ``get_new_images_range``, which returns a range of the frame indices (from the start of acquisition) which have been acquired but not read.
+Second are the methods for checking on the acquisition process. The method used above is ``wait_for_frame``, which by default waits until there is at least one unread frame in the buffer (i.e., it exits immediately if there is already a frame available). Its arguments modify this behavior by changing the point from which the new frame is acquired (e.g., from the current call), or the minimal required number of frames. Alternatively, there is a method ``get_new_images_range``, which returns a range of the frame indices which have been acquired but not read. This method allows for a quick check of a number of unread frames without pausing the acquisition.
 
 Finally, there are methods for reading out the frames. The simplest method is ``read_oldest_image``, which return the oldest image which hasn't been read yet, and marks it as read. A more powerful is the ``read_multiple_images`` method, which can return a range of images (by default, all unread images). Both of these methods also take a ``peek`` argument, which allows one to read the frames without marking them as read.
 
@@ -141,7 +141,7 @@ Both ROI and binning are controlled by one pair of methods ``get_roi`` and ``set
 
 Regardless of the frame indexing, the first pair of arguments always controls horizontal span, the second pair controls vertical span, and the last pair controls horizontal and vertical binning (if applicable).
 
-In addition, there is a couple of methods to acquire the detector and frame size. The first method is ``get_detector_size``. It always returns the full frame size as a tuple with width first and hight second, and therefore is not affected by ROI, binning, and indexing. The second method is ``get_data_dimensions``, which returns the shape of the returned frame given the currently set up indexing. The results of this method do depend on the ROI, binning, and indexing::
+In addition, there is a couple of methods to acquire the detector and frame size. The first method is ``get_detector_size``. It always returns the full camera detector size as a tuple ``(width, height)`` and, therefore, is not affected by ROI, binning, and indexing. The second method is ``get_data_dimensions``, which returns the shape of the returned frame given the currently set up indexing. The results of this method do depend on the ROI, binning, and indexing::
 
     >> cam.get_detector_size()  # (width, height)
     (2560, 1920)
@@ -164,7 +164,7 @@ In addition, there is a couple of methods to acquire the detector and frame size
 Exposure and frame period
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In pylablib these parameters are controlled by ``get_exposure``/``set_exposure`` and, correspondingly ``get_frame_period``/``set_frame_period`` methods. Some cameras can provide finer control over these parameters. In addition, ``get_frame_timings`` method provides an overview of all the relevant times. Exposure typically takes priority over frame period: if the frame period is set too small, it becomes the smallest possible for the given exposure; at the same time, if the exposure is set too big, it is still applied, and the frame period becomes the smallest possible with this exposure::
+In pylablib these parameters are normally controlled by ``get_exposure``/``set_exposure`` and, correspondingly ``get_frame_period``/``set_frame_period`` methods. In addition, ``get_frame_timings`` method provides an overview of all the relevant times. Exposure typically takes priority over frame period: if the frame period is set too small, it becomes the smallest possible for the given exposure; at the same time, if the exposure is set too big, it is still applied, and the frame period becomes the smallest possible with this exposure::
 
     >> cam.get_frame_timings()  # frame period is a usually bit larger due to the readout time
     TAcqTimings(exposure=0.1, frame_period=0.12)
@@ -173,7 +173,7 @@ In pylablib these parameters are controlled by ``get_exposure``/``set_exposure``
     >> cam.get_frame_timings()  # smaller exposure is still compatible with this frame period
     TAcqTimings(exposure=0.01, frame_period=0.12)
 
-    >> cam.set_frame_period(0)  # effectively means "set highest possible frame rate"
+    >> cam.set_frame_period(0)  # effectively means "set the highest possible frame rate"
     >> cam.get_frame_timings()
     TAcqTimings(exposure=0.01, frame_period=0.03)
 
@@ -181,7 +181,7 @@ In pylablib these parameters are controlled by ``get_exposure``/``set_exposure``
     >> cam.get_frame_timings()  # frame period is increased accordingly
     TAcqTimings(exposure=0.2, frame_period=0.22)
 
-There are exceptions for some camera types, which are discussed separately
+There are exceptions for some camera types, which are discussed separately.
 
 
 .. _cameras_basics_attributes:
@@ -189,9 +189,9 @@ There are exceptions for some camera types, which are discussed separately
 Camera attributes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Some camera interfaces, e.g., :ref:`Thorlabs Scientific Cameras <cameras_thorlabs_tlcamera>`, :ref:`PCO SC2 <cameras_pco_sc2>`, or :ref:`NI IMAQ <cameras_imaq>` are fairly specific, and only apply to a handful of devices with very similar capabilities. In this case, pylablib usually attempts to implement as much of the functionality as possible given the available hardware, and to present it via camera object methods.
+Some camera interfaces, e.g., :ref:`Thorlabs Scientific Cameras <cameras_thorlabs_tlcamera>`, :ref:`PCO SC2 <cameras_pco_sc2>`, or :ref:`NI IMAQ <cameras_imaq>` are fairly specific, and only apply to a handful of devices with very similar capabilities. In this case, pylablib usually attempts to implement as much of the functionality as possible given the available hardware, and to present it via the camera object methods.
 
-In other cases, e.g., :ref:`NI IMAQdx <cameras_imaqdx>`, :ref:`Andor SDK3 <cameras_andor_sdk3>`, or :ref:`DCAM <cameras_dcam>`, the same interface deals with many fairly different cameras. This is especially true for IMAQdx, which covers hundreds of cameras from dozens of manufacturers, all with very different capabilities and purpose. Since managing such cameras can not usually be conformed to a small set of functions, it is implemented through attributes mechanism. That is, for each camera the interface defines a set of attributes (sometimes also called properties or features), which can be queried or set by their names, and whose exact meaning and possible values depend on the specific camera.
+In other cases, e.g., :ref:`NI IMAQdx <cameras_imaqdx>`, :ref:`Andor SDK3 <cameras_andor_sdk3>`, or :ref:`DCAM <cameras_dcam>`, the same interface deals with many fairly different cameras. This is especially true for IMAQdx, which covers hundreds of cameras from dozens of manufacturers, all with very different capabilities and purpose. Since managing such cameras can not usually be conformed to a small set of functions, it is implemented through camera attributes mechanism. That is, for each camera the interface defines a set of attributes (sometimes also called properties or features), which can be queried or set by their names, and whose exact meaning and possible values depend on the specific camera.
 
 Typically, cameras dealing with attributes will implement :meth:`.IAttributeCamera.get_attribute_value` and :meth:`.IAttributeCamera.set_attribute_value` for querying and setting the attributes, as well as dictionary-like ``.cav`` (stands for "camera attribute value") interface to do the same thing::
 
@@ -226,7 +226,7 @@ Note that, depending on the camera, the attribute properties (especially minimal
     >> attr.min  # now the minimal possible exposure is smaller
     7.795e-05
 
-If the documentation is not available (as is the case for, e.g., some IMAQdx cameras), the best way to learn about the attributes is to using the native software (whenever available) to modify camera settings and then checking how the attributes change. Besides that, it is always useful to check attribute description (available for IMAQdx parameter), their range, and the available values for enum attributes.
+If the documentation is not available (as is the case for, e.g., some IMAQdx cameras), the best way to learn about the attributes is to use the native software (whenever available) to modify camera settings and then check how the attributes change. Besides that, it is always useful to check attribute description (available for IMAQdx parameter), their range, and the available values for enum attributes.
 
 
 Trigger setup
@@ -244,9 +244,9 @@ The trigger is usually set up using ``set_trigger_mode`` method, although it mig
 Frame metainfo
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Many cameras supply additional information together with the frames. Most frequently it includes the internal framestamp and timestamp (which are useful for tracking missing frames), but sometimes it also includes additional information such as frame size or location, status, or auxiliary input bits. To get this information, you can supply the argument ``return_info=True`` to the ``read_multiple_images`` method. In this case, instead of a single list of frames, it will return a tuple of two lists, where the second list contains this metainfo.
+Many cameras supply additional information together with the frames. Most frequently it contains the internal framestamp and timestamp (which are useful for tracking missing frames), but sometimes it also includes additional information such as frame size or location, status, or auxiliary input bits. To get this information, you can supply the argument ``return_info=True`` to the ``read_multiple_images`` method. In this case, instead of a single list of frames, it will return a tuple of two lists, where the second list contains this metainfo.
 
-There are several slightly different metainfo formats, which can be set using :meth:`.ICamera.set_frame_info_format` method. The default representation is a (possibly nested) named tuple, but it is also possible to represent it as a flat list, or a flat dictionary. The exact structure and values depend on the camera.
+There are several slightly different metainfo formats, which can be set using :meth:`.ICamera.set_frame_info_format` method. The default representation is a (possibly nested) named tuple, but it is also possible to represent it as a flat list, flat dictionary, or a numpy array. The exact structure and values depend on the camera.
 
 Keep in mind, that for some camera interfaces (e.g., :ref:`Uc480 <cameras_uc480>` or :ref:`Silicon Software <cameras_siso>`) obtaining the additional information might take relatively long, even longer than the proper frame readout. Hence, at higher frame rates it might become a bottleneck, and would need to be turned off.
 

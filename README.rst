@@ -39,7 +39,7 @@ Requirements
 
 - Python 3 (tested with 3.6+)
 - Most extensively tested with Windows 10 and 64-bit Python. Linux is, in principle, supported, but devices which require manufacturer-provided DLLs (mostly cameras) might, potentially, have problems.
-- Basic version only needs numpy, SciPy and pandas. Advanced device communication packages (such as `PyVISA <https://pyvisa.readthedocs.io/en/master/>`_ and `pySerial <https://pythonhosted.org/pyserial/>`_) are automatically installed, but can be avoided if necessary.
+- Basic version only needs numpy, SciPy and pandas. Advanced device communication packages (such as `PyVISA <https://pyvisa.readthedocs.io/en/latest/>`_ and `pySerial <https://pythonhosted.org/pyserial/>`_) are automatically installed, but can be avoided if necessary.
 - Some devices might require `additional software <https://pylablib.readthedocs.io/en/latest/devices/devices_basics.html#dependencies-and-external-software>`__. If this is the case, the requirements are mentioned on the corresponding page.
 
 

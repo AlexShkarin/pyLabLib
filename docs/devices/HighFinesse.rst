@@ -6,7 +6,7 @@
 HighFinesse wavemeters
 ==============================
 
-HighFinesse produces a variety of fiber-coupled wavelength meters. Here we focus on WS series with a USB connection. The code has been tested with several WS6 and WS7 wavemeters.
+HighFinesse produces a variety of fiber-coupled wavelength meters. Currently pylablib only deals with WS series which uses a USB connection. The code has been tested with several WS6 and WS7 wavemeters.
 
 The main device class is :class:`pylablib.devices.HighFinesse.WLM<.wlm.WLM>`.
 
@@ -37,9 +37,9 @@ The device class makes an attempt to search for the DLL and executable in the st
     >> wm = HighFinesse.WLM(1234, dll_path=dll_path, app_path=app_path)
     >> wm.close()
 
-A unique property of this device is the ability to control it from several applications. Keep this in mind, since it might cause confusion or strange results if the control attempts are not synchronized.
+A unique property of this device is the ability to control it simultaneously from several applications. Keep this in mind, since it might cause confusion or strange results if the control attempts are not synchronized.
 
-.. warning:: Communication with several simultaneously running wavemeters has not been tested, and will probably not work correctly.
+.. warning:: Communication with several simultaneously running wavemeters from a single application has not been tested, and might not work correctly.
 
 
 Operation
@@ -48,6 +48,6 @@ Operation
 The operation of the wavemeter is fairly straightforward, but there is a couple of points to keep in mind:
 
     - By default, the main measurement functions (:meth:`.WLM.get_frequency` and :meth:`.WLM.get_wavelength`) raise an error on over- or under-exposure. If this is undesirable (e.g., the laser has power jumps), one can instead make it return ``"over"`` or ``"under"`` on these occasions.
-    - The measurement result returns immediately, but they are updated only about every 15-30ms (+ exposure time). Hence, fast consecutive calls to :meth:`.WLM.get_frequency` and :meth:`.WLM.get_wavelength` will return the same value.
-    - Multi-channel devices have two working modes: single-channel (when only one channel is enabled at a time) and cycling (the wavemeter constantly cycles through several channels for quasi-simultaneous measurement). Some methods only make sense in one of this modes, e.g., :meth:`.WLM.set_active_channel` only works in the single-channel mode, while :meth:`.WLM.enable_switcher_channel` only in the multi-channel mode. By default, these methods will automatically switch to the corresponding mode.
+    - The measurement result is returned immediately, but it is updated only about every 15-30ms (+ exposure time). Hence, fast consecutive calls to :meth:`.WLM.get_frequency` and :meth:`.WLM.get_wavelength` will return the same value.
+    - Multi-channel devices have two working modes: single-channel (when only one channel is enabled at a time) and cycling (the wavemeter constantly cycles through several channels for quasi-simultaneous measurements). Some methods only make sense in one of this modes, e.g., :meth:`.WLM.set_active_channel` only works in the single-channel mode, while :meth:`.WLM.enable_switcher_channel` only in the multi-channel mode. By default, these methods will automatically switch to the corresponding mode.
     - Due to a minor control software bug, change in the exposure on some channels might not be reported until the control software is switched to the corresponding channel's exposure control tab (in the upper right corner). By default, the device class performs this switching any time the exposure value is queried, which solves the issue. However, it does take about 10ms. If it is critical, it's possible to turn of this behavior by setting ``auto_channel_tab`` attribute to ``False``.

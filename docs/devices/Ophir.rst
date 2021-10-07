@@ -20,7 +20,7 @@ The device provides a bare RS232 interface, so any appropriate USB-to-RS232 adap
 Connection
 -----------------------
 
-Since the devices are identified as COM ports, they use the standard :ref:`connection method <devices_connection>`, and all you need to know is their COM-port address (e.g., ``COM5``)::
+Since the devices are identified as COM ports, they use the standard :ref:`connection method <devices_connection>`, and all you need to know is their COM-port address (e.g., ``COM5``) and the baudrate, if it is different from the standard one (9600 baud)::
 
     >> from pylablib.devices import Ophir
     >> meter1 = Ophir.VegaPowerMeter("COM5")  # default connection assumes 9600 baud
@@ -35,5 +35,5 @@ Operation
 The operation of the power meter is fairly straightforward, but there is a couple of points to keep in mind:
 
     - On the Vega controller the results can be sent at most 15 times a second. However, they are not necessarily updated at this rate, so several consecutive request might yield the same result.
-    - The device provides the way to change the communication baud rate. IF the rate is changed from the current one, the device is automatically disconnected, and the new class needs to be instantiated with the updated baudrate.
+    - The device provides the way to change the communication baud rate. If the rate is changed, the device is automatically disconnected, and the new object needs to be instantiated with the updated baudrate.
     - The device might return ``"over"`` instead of the power reading on overexposure. To fix that, you can adjust the measurement range using :meth:`.VegaPowerMeter.set_range_idx`.

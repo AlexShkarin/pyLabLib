@@ -6,7 +6,7 @@
 Tektronix oscilloscopes
 =======================
 
-Tektronix produces a large number of very widespread oscilloscope. They have strongly overlapping, though not entirely identical, interfaces. The library has been tested with TDS2002B, TDS2004B, and DBO2014B.
+Tektronix produces a large number of very widespread oscilloscopes. They have strongly overlapping, though not entirely identical, interfaces. The library has been tested with TDS2002B, TDS2004B, and DBO2014B.
 
 The generic oscilloscope class is :class:`pylablib.devices.Tektronix.ITektronixScope<.Tektronix.base.ITektronixScope>`, and the derived classes for specific devices are :class:`pylablib.devices.Tektronix.TDS2000<.Tektronix.base.TDS2000>` of TDS2000 series and :class:`pylablib.devices.Tektronix.DPO2000<.Tektronix.base.DPO2000>` for DPO2000/MSO2000 series.
 
@@ -47,7 +47,7 @@ The method names are usually pretty self-explanatory. A typical operation involv
 
 However, there is a couple of points to keep in mind:
 
-    - The acquisition is controlled using ``grab_`` methods. Generally, the most convenient way is to use :meth:`.ITektronixScope.grab_single` to acquire a single waveform (analogous to pressing a ``Single`` button on the oscilloscope panel). By default, this method waits until the acquisition is complete (i.e., the oscilloscope triggered and the waveform is completely acquired) before continuing. You can also set ``wait=False`` to perform other operation in the meantime. The acquisition status can be queried via :meth:`.ITektronixScope.is_grabbing`, which returns ``True`` while the trigger is armed or while the data is recording, and ``False`` after the acquisition is done.
+    - The acquisition is controlled using ``grab_`` methods. Generally, the most convenient way is to use :meth:`.ITektronixScope.grab_single` to acquire a single waveform (analogous to pressing a ``Single`` button on the oscilloscope panel). By default, this method waits until the acquisition is complete (i.e., the oscilloscope is triggered and the waveform is completely acquired) before continuing. You can also set ``wait=False`` to perform other operations in the meantime. The acquisition status can be queried via :meth:`.ITektronixScope.is_grabbing`, which returns ``True`` while the trigger is armed or while the data is recording, and ``False`` after the acquisition is done.
     - It appears that the software trigger does not work some time (~500 ms) after the acquisition is set up. If it is invoked in :meth:`.ITektronixScope.grab_single` method by supplying ``software_trigger=True``, a 300ms delay is added automatically. However, if you invoke it manually using :meth:`.ITektronixScope.force_trigger`, you should keep it in mind.
     - The waveform transfer is usually performed via :meth:`.ITektronixScope.read_sweep` or :meth:`.ITektronixScope.read_multiple_sweeps` methods. Since the waveform is transferred in raw form, it requires a preamble data (vertical and horizontal scales and offsets, data format, etc.) to translate into physical units. By default, it is acquired every time before the waveform transfer, which takes some time (up to ~200ms). Alternatively, one can acquire a preamble once and use it in subsequent reading. This method is faster, but will result in an incorrect scaling if the parameters are changed in the meantime (either remotely, or directly on the oscilloscope)::
 

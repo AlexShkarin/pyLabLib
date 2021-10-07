@@ -37,13 +37,13 @@ The operation of this gauge is fairly straightforward, but there is a couple of 
 
     - On measurement error :meth:`.TPG260.get_pressure` returns ``None``. To get the underlying issue, you can use :meth:`.TPG260.get_channel_status`
     - By default, the pressure is always returned in Pa regardless of the display units. This behavior can be overridden by setting ``display_units=True`` in :meth:`.TPG260.get_pressure`.
-    - In case an errors occur, you can use :meth:`.TPG260.get_current_errors` to get the list of currently active errors and :meth:`.TPG260.reset_error` to reset them.
+    - In case an error occurs, you can use :meth:`.TPG260.get_current_errors` to get the list of currently active errors and :meth:`.TPG260.reset_error` to reset them.
     - This communication protocol for 350-series gauges (361, 362 and 366) is similar, so the device class should also be able to work with them. However, it has not been tested.
 
 DPG202/TPG202 controller
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-There is a variety of different controllers which implement a similar protocol: DPG202 and TPG202, as well as a variety of RS485-controlled gauges (e.g., CPT200). It is based on requesting parameters with certain 3-digit numbers. These are fairly consistent between the devices, for example, ``312`` stands for the software version, ``740`` for pressure, and ``349`` for the device name. However, different devices implement different subset of those. The supplied class provides a generic interface through :meth:`.DPG202.get_value` and :meth:`.DPG202.comm` methods, which, correspondingly, request or set a value of a given parameter given its number (e.g., ``740``) and datatype (e.g., ``"string"``, ``"u_expo_new"``, or ``"u_short_int"``). Both of these pieces of information are usually provided in the controller or gauge manual in the ``Parameter overview`` (or similar-named) section. At the present, the device class provides only the most basic functionality::
+There is a variety of different controllers which implement a similar protocol: DPG202 and TPG202, as well as a variety of RS485-controlled gauges (e.g., CPT200). It is based on requesting parameters with certain 3-digit numbers. These are fairly consistent between the devices, for example, ``312`` stands for the software version, ``740`` for pressure, and ``349`` for the device name. However, different devices implement different subsets of these parameters. The supplied class provides a generic interface through :meth:`.DPG202.get_value` and :meth:`.DPG202.comm` methods, which, correspondingly, request or set a value of a given parameter given its number (e.g., ``740``) and datatype (e.g., ``"string"``, ``"u_expo_new"``, or ``"u_short_int"``). Both of these pieces of information are usually provided in the controller or gauge manual in the ``Parameter overview`` (or similar-named) section. Currently the device class provides only the most basic functionality::
 
     >> from pylablib.devices import Pfeiffer
     >> gauge = Pfeiffer.DPG202("COM5")

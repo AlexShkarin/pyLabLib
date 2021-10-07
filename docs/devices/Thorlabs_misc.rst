@@ -6,19 +6,19 @@
 Miscellaneous Thorlabs devices
 ==============================
 
-Thorlabs has a variety of devices implementing different serial communication protocols, mostly related to optomechanics. Their requirements and general approach are fairly similar, so they are all collected here.
+Thorlabs has a variety of devices implementing different serial communication protocols, mostly related to optomechanics. Their requirements and general approach are still fairly similar, so they are all collected here.
 
 
 Software requirements
 -----------------------
 
-Most devices provide either a bare RS232 interface, or a USB connection with built-in USB-to-RS232 chip. In either way, they are automatically recognized as serial ports, and no additional software is required. The only exception on this page is MFF101/102 motorized flip mount, which belongs to the :ref:`Kinesis devices <stages_thorlabs_kinesis>` and requires APT software.
+Most devices provide either a bare RS232 interface, or a USB connection with a built-in USB-to-RS232 chip. In either case, they are automatically recognized as serial ports, and no additional software is required. The only exception on this page is MFF101/102 motorized flip mount, which belongs to the :ref:`Kinesis devices <stages_thorlabs_kinesis>` and requires APT software.
 
 
 Connection
 -----------------------
 
-Most of the devices devices are identified as COM ports, they use the standard :ref:`connection method <devices_connection>`, and all you need to know is their COM-port address (e.g., ``COM5``)::
+Most of the devices are identified as COM ports, so they use the standard :ref:`connection method <devices_connection>`, and all you need to know is their COM-port address (e.g., ``COM5``)::
 
     >> from pylablib.devices import Thorlabs
     >> wheel = Thorlabs.FW102("COM5")
@@ -34,7 +34,7 @@ Operation
 MFF101/102 flip mount
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-The class is provided as :class:`pylablib.devices.Thorlabs.MFF<.Thorlabs.kinesis.MFF>`. It allows for control of the flip mirror position, as well as changing its digital input and output settings.
+The class is provided as :class:`pylablib.devices.Thorlabs.MFF<.Thorlabs.kinesis.MFF>`. It allows for control of the flip mirror position, as well as changing its motion parameters and designations of its digital input and output.
 
 
 .. _misc_thorlabs_fw:
@@ -44,9 +44,9 @@ FW102/212 filter wheel
 
 The class is proved as :class:`pylablib.devices.Thorlabs.FW<.Thorlabs.serial.FW>`.
 
-In addition to setting the position, it allows to adjust speed settings and turn the indicator LED off to minimize light contamination. By default, the wheel also "respects bound" between the first and the last position. Usually, when one orders a move from, e.g., position 2 to 6 on a 6-position wheel, it would go along the shortest route, i.e., position 1. If this is an ND filter wheel (e.g., FW102CNEB), this leads to momentary increase of the transmitted power by ND0.5 (about factor of 3) compared to either of the positions. To avoid that, the class breaks this move into several shorter (no longer than 1/3 of the wheel) moves, which never cross the boundary between the first and the last position. This takes a bit longer (as it requires several consecutive moves), but is generally safer. This behavior can be turned off by setting ``respect_bound=False`` on class creation.
+In addition to setting the position, it allows to adjust speed settings and turn the indicator LED off to minimize light contamination. By default, the wheel also "respects bound" between the first and the last position. Usually, when one orders a move from, e.g., position 2 to 6 on a 6-position wheel, it would go along the shortest route, i.e., position 1. If this is an ND filter wheel (e.g., FW102CNEB), this leads to momentary increase of the transmitted power by ND0.5 (about factor of 3) compared to start and stop positions. To avoid that, the class breaks this move into several shorter (no longer than 1/3 of the wheel) moves, which never cross the boundary between the first and the last position. This takes a bit longer (as it requires several consecutive moves), but is generally safer. This behavior can be turned off by setting ``respect_bound=False`` on class creation.
 
-Note that older version (1.0) of the filter wheel do not support the full range of options and operate on a slightly different protocol. This leads to crashes on at least some of the methods, e.g., :meth:`.FW.get_position`. In this case, you can try :class:`pylablib.devices.Thorlabs.FWv1<.Thorlabs.serial.FWv1>` instead.
+Note that older version (1.0) of the filter wheel do not support the full range of options and operate on a slightly different protocol. This leads to crashes on at least some of the methods, e.g., :meth:`.FW.get_position`. If this is the case, you can try :class:`pylablib.devices.Thorlabs.FWv1<.Thorlabs.serial.FWv1>` instead.
 
 
 .. _misc_thorlabs_mdt693:

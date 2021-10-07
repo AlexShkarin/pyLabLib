@@ -17,11 +17,11 @@ Currently supported devices:
     stages_root
     basic_sensors_root
     basic_lasers
+    M2
+    Toptica
     Tektronix
     nidaq
     generic_awgs
     Thorlabs_misc
     OZOptics
-    Toptica
-    M2
     misc_devices
