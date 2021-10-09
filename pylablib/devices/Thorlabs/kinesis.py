@@ -660,7 +660,7 @@ class KinesisMotor(KinesisDevice):
     def _autodetect_stage(self, model):
         info=self.query(0x0005).data
         stage_id,=struct.unpack("<H",info[76:78])
-        if model in ["KDC101","TDC101","ODC001"]:
+        if model in ["KDC101","TDC001","ODC001"]:
             stages={2:"Z706",3:"Z712",4:"Z725",5:"CR1-Z7",6:"PRM1-Z8",
                     7:"MTS25-Z8",8:"MTS50-Z8",9:"Z825",10:"Z812",11:"Z806"}
             return stages.get(stage_id,None)
@@ -684,7 +684,7 @@ class KinesisMotor(KinesisDevice):
         if stage in {"Z606","Z612","Z625"}:
             return 24600E3,"m"
         if stage in {"PRM1-Z8","PRM1TZ8"}:
-            return 1919.6418578623391E3,"m" # that's what it says in the manual...
+            return 1919.6418578623391,"deg" # that's what it says in the manual...
         if stage in {"CR1-Z7"}:
             return 12288E3,"m"
         if stage in {"DDSM50","DDSM100"}:
@@ -737,13 +737,13 @@ class KinesisMotor(KinesisDevice):
         if isinstance(scale,tuple):
             return scale,"user"
         model=self.get_device_info().model_no
-        if scale is None:
+        if scale=="stage":
             scale=self._autodetect_stage(model)
         if isinstance(scale,py3.textstring) or scale is None:
             ssc,units=self._get_step_scale(model,scale)
         else:
             ssc,units=scale,"user_step"
-        if model in ["KDC101","TDC101"]:
+        if model in ["KDC101","TDC001"]:
             time_conv=2048/6E6
             return (ssc,ssc*time_conv*2**16,ssc*time_conv**2*2**16),units
         if model in ["TBD001","KBD101"] or model.startswith("BBD10") or model.startswith("BBD20"):

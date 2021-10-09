@@ -132,7 +132,7 @@ class GenericCameraThread(device_thread.DeviceThread):
 
     
     def _set_acquisition_status(self, status, text=None):
-        status_names={"stopped":"Stopped", "setup":"Settings up...", "acquiring":"In progress", "cleanup":"Cleaning up..."}
+        status_names={"stopped":"Stopped", "setup":"Setting up...", "acquiring":"In progress", "cleanup":"Cleaning up..."}
         self.update_status("acquisition",status,text or status_names.get(status))
     def setup_acquisition(self, *args, force_setup=False, **kwargs):
         status=self.sv["status/acquisition"]
