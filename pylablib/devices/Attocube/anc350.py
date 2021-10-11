@@ -372,7 +372,7 @@ class ANC350(comm_backend.ICommBackendWrapper,stage.IMultiaxisStage):
     @interface.use_parameters
     def stop(self, axis="all"):
         """Stop motion of a given axis"""
-        self.set_value(0x0410,axis,0)
+        self.set_value(0x040E,axis,0)
     
     @interface.use_parameters
     def jog(self, axis, direction):
