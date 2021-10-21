@@ -40,6 +40,15 @@ pylablib.core.thread.notifier module
     :undoc-members:
     :show-inheritance:
 
+pylablib.core.thread.profile module
+-----------------------------------
+
+.. automodule:: pylablib.core.thread.profile
+    :members:
+    :inherited-members:
+    :undoc-members:
+    :show-inheritance:
+
 pylablib.core.thread.synchronizing module
 -----------------------------------------
 
