@@ -1,15 +1,13 @@
 # pylint: disable=wrong-spelling-in-comment
 
 from ...core.utils import ctypes_wrap
-from ...core.devio.comm_backend import DeviceError
+from .base import ArcusError
 from .ArcusPerformaxDriver_defs import define_functions, AR_HANDLE
 from ..utils import load_lib
 
 import ctypes
 
 
-class ArcusError(DeviceError):
-    """Generic Arcus error"""
 class ArcusPerformaxLibError(ArcusError):
     """Generic Arcus Performax library error"""
     def __init__(self, func, arguments):

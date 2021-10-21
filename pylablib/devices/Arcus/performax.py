@@ -1,6 +1,7 @@
-from .ArcusPerformaxDriver_lib import lib, ArcusError, ArcusPerformaxLibError
+from .ArcusPerformaxDriver_lib import lib, ArcusPerformaxLibError
+from .base import ArcusError, ArcusBackendError
 from ...core.utils import py3, general
-from ...core.devio import interface
+from ...core.devio import interface, comm_backend
 from ..interface import stage
 
 import time
@@ -37,38 +38,55 @@ class GenericPerformaxStage(stage.IMultiaxisStage):
 
     Args:
         idx(int): stage index
+        conn: if not ``None``, defines a connection to RS485 connection. Usually (e.g., for USB-to-RS485 adapters) this is a serial connection,
+            which either a name (e.g., ``"COM1"``), or a tuple ``(name, baudrate)`` (e.g., ``("COM1", 9600)``);
+            if `conn` is ``None``, assume direct USB connection and use the manufacturer-provided DLL
     """
     _default_operation_cooldown=0.01
     _axis_value_case="upper"
     Error=ArcusError
-    def __init__(self, idx=0):
+    def __init__(self, idx=0, conn=None):
         super().__init__()
         self._operation_cooldown=self._default_operation_cooldown
-        lib.initlib()
+        self.conn=conn
+        if conn is None:
+            lib.initlib()
+            self.instr=None
+            self._instr_conn=None
+        else:
+            self.instr=comm_backend.new_backend(conn,("auto","serial"),term_read="\r",term_write="\r",timeout=3.,datatype="str",
+                defaults={"serial":("COM1",9600),"network":("192.168.1.250",5001)},reraise_error=ArcusBackendError)
+            self._instr_conn=self.instr.conn
         self.idx=idx
         self.handle=None
         self.open()
         self._add_info_variable("device_info",self.get_device_info)
+        self._add_status_variable("device_number",self.get_device_number)
 
 
     def _get_connection_parameters(self):
-        return self.idx
+        return self.idx,self._instr_conn
     def open(self):
         """Open the connection to the stage"""
-        self.close()
-        lib.fnPerformaxComGetNumDevices()  # sometimes needed to set up the dll
-        # lib.fnPerformaxComSetTimeouts(5000,5000)
-        for _ in range(5):
-            try:
-                self.handle=lib.fnPerformaxComOpen(self.idx)
-                lib.fnPerformaxComFlush(self.handle)
-                return
-            except ArcusPerformaxLibError:
-                time.sleep(0.3)
-        raise ArcusError("can't connect to the stage with index {}".format(self.idx))
+        if self.instr is not None:
+            self.instr.open()
+        else:
+            self.close()
+            lib.fnPerformaxComGetNumDevices()  # sometimes needed to set up the dll
+            # lib.fnPerformaxComSetTimeouts(5000,5000)
+            for _ in range(5):
+                try:
+                    self.handle=lib.fnPerformaxComOpen(self.idx)
+                    lib.fnPerformaxComFlush(self.handle)
+                    return
+                except ArcusPerformaxLibError:
+                    time.sleep(0.3)
+            raise ArcusError("can't connect to the stage with index {}".format(self.idx))
     def close(self):
         """Close the connection to the stage"""
-        if self.handle is not None:
+        if self.instr is not None:
+            self.instr.close()
+        elif self.handle is not None:
             for _ in range(5):
                 try:
                     lib.fnPerformaxComClose(self.handle)
@@ -78,6 +96,8 @@ class GenericPerformaxStage(stage.IMultiaxisStage):
                     time.sleep(0.3)
             raise ArcusError("can't disconnect from the stage with index {}".format(self.idx))
     def is_opened(self):
+        if self.instr is not None:
+            return bool(self.instr)
         return self.handle is not None
     def _check_handle(self):
         if self.handle is None:
@@ -85,19 +105,59 @@ class GenericPerformaxStage(stage.IMultiaxisStage):
 
     def get_device_info(self):
         """Get the device info"""
+        if self.instr is not None:
+            return (self.idx,self.get_device_number())
         return get_usb_device_info(self.idx)
     def query(self, comm):
         """Send a query to the stage and return the reply"""
-        self._check_handle()
-        time.sleep(self._operation_cooldown)
-        scomm=py3.as_builtin_bytes(comm)+b"\x00"
-        try:
-            reply=py3.as_str(lib.fnPerformaxComSendRecv(self.handle,scomm))
-            if reply.startswith("?"):
-                raise ArcusError("device returned error: {}".format(reply[1:]))
-            return reply
-        except ArcusPerformaxLibError:
-            raise ArcusError("error sending device query {}".format(comm))
+        if self.instr is not None:
+            if self.instr.get_backend_name()=="network":
+                self.instr.write(comm)
+            else:
+                self.instr.write("@{:02d}{}".format(self.idx,comm))
+            return self.instr.readline()
+        else:
+            self._check_handle()
+            time.sleep(self._operation_cooldown)
+            scomm=py3.as_builtin_bytes(comm)+b"\x00"
+            try:
+                reply=py3.as_str(lib.fnPerformaxComSendRecv(self.handle,scomm))
+                if reply.startswith("?"):
+                    raise ArcusError("device returned error: {}".format(reply[1:]))
+                return reply
+            except ArcusPerformaxLibError:
+                raise ArcusError("error sending device query {}".format(comm))
+
+    def get_device_number(self):
+        """
+        Get the device number used in RS-485 communications.
+        
+        Usually it is a string with the format similar to ``"4EX00"``.
+        """
+        return self.query("DN")
+    def set_device_number(self, number, store=True):
+        """
+        Get the device number used in RS-485 communications.
+        
+        `number` can be either a full device id (e.g., ``"4EX00"``), or a single number between 0 and 99.
+        In order for the change to take effect, the device needs to be power-cycled.
+        If ``store==True``, automatically store settings to the memory; otherwise, the settings will be lost
+        unless :meth:`store_defaults` is called at some point before the power-cycle.
+        """
+        if isinstance(number,int):
+            number="{}{:02d}".format(self.get_device_number()[:3],number)
+        self.query("DN={}".format(number))
+        if store:
+            self.store_defaults()
+        return self.get_device_number()
+
+    def store_defaults(self):
+        """
+        Store some of the settings to the memory as defaults.
+        
+        Applies to device number, baudrate, limit error behavior, polarity, and some other settings.
+        """
+        self.query("STORE")
 
 
 
@@ -115,12 +175,13 @@ class Performax4EXStage(GenericPerformaxStage):
     _split_comms=False
     _individual_home=False
     _analog_inputs=range(1,9)
-    def __init__(self, idx=0, enable=True):
-        super().__init__(idx=idx)
+    def __init__(self, idx=0, conn=None, enable=True):
+        super().__init__(idx=idx,conn=conn)
         self.enable_absolute_mode()
         if enable:
             self.enable_axis()
         self.enable_limit_errors(False)
+        self._add_status_variable("baudrate",self.get_baudrate)
         self._add_settings_variable("limit_errors_enabled",self.limit_errors_enabled,self.enable_limit_errors)
         self._add_status_variable("current_limit_errors",self.check_limit_error)
         self._add_status_variable("position",self.get_position)
@@ -134,6 +195,28 @@ class Performax4EXStage(GenericPerformaxStage):
         self._add_status_variable("digital_input",self.get_digital_input_register,priority=-2)
         self._add_settings_variable("digital_output",self.get_digital_output_register,priority=-2)
         self._add_settings_variable("analog_input",self.get_analog_input,priority=-2,mux=(self._analog_inputs,))
+
+
+    _p_baudrate=interface.EnumParameterClass("baudrate",{9600:1,19200:2,38400:3,57600:4,115200:5})
+    @interface.use_parameters(_returns="baudrate")
+    def get_baudrate(self):
+        """Get current baud rate"""
+        return self.query("DB")
+    @interface.use_parameters
+    def set_baudrate(self, baudrate, store=True):
+        """
+        Set current baud rate.
+        
+        Acceptable values are 9600 (default), 19200, 38400, 57600, and 115200.
+        In order for the change to take effect, the device needs to be power-cycled.
+        If ``store==True``, automatically store settings to the memory; otherwise, the settings will be lost
+        unless :meth:`store_defaults` is called at some point before the power-cycle.
+        """
+        self.query("DB={}".format(baudrate))
+        if store:
+            self.store_defaults()
+        return self.get_baudrate()
+
 
     def enable_absolute_mode(self, enable=True):
         """Set absolute motion mode"""

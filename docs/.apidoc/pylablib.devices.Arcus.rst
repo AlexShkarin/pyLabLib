@@ -4,6 +4,15 @@ pylablib.devices.Arcus package
 Submodules
 ----------
 
+pylablib.devices.Arcus.base module
+----------------------------------
+
+.. automodule:: pylablib.devices.Arcus.base
+    :members:
+    :inherited-members:
+    :undoc-members:
+    :show-inheritance:
+
 pylablib.devices.Arcus.performax module
 ---------------------------------------
 

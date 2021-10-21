@@ -6,7 +6,7 @@
 Arcus Performax positioners
 ==============================
 
-Arcus has several motor controllers and drivers, which are mainly different in their number of axes, communication possibilities, and driving function. They are also distributed under different names, e.g., Nippon Pulse America (NPA) or Newmark Systems. However, the models nomenclature is the same: there is 4EX for 4-axis controllers with USB and RS485 connection, 2EX/2ED for 2-axis controllers with USB and RS485 connections, and 4ET for 4-axis controllers with Ethernet connection. The class has been tested with 4EX and (partially) 2ED controllers with USB connectivity mode, but other controllers and modes mentioned above should also work.
+Arcus has several motor controllers and drivers, which are mainly different in their number of axes, communication possibilities, and driving function. They are also distributed under different names, e.g., Nippon Pulse America (NPA) or Newmark Systems. However, the models nomenclature is the same: there is 4EX for 4-axis controllers with USB and RS485 connection, 2EX/2ED for 2-axis controllers with USB and RS485 connections, and 4ET for 4-axis controllers with Ethernet connection. The class has been tested with 4EX and (partially) 2ED controllers with USB and RS-485 connectivity mode, but other controllers mentioned above should also work.
 
 The main device classes are :class:`pylablib.devices.Arcus.Performax4EXStage<.performax.Performax4EXStage>` or 4-axis controllers and :class:`pylablib.devices.Arcus.Performax2EXStage<.performax.Performax2EXStage>` for 2-axis controllers. In addition to a different number of axes, they have several syntax differences, so one can not substitute for the other.
 
@@ -21,10 +21,10 @@ The controller has several communication modes: USB, RS485, and Ethernet. USB mo
     from pylablib.devices import Arcus
     stage = Arcus.Performax4EXStage()
 
-The controller has only been tested with USB communication.
-
 .. warning::
-    There appear to be some issues with Python 3.6 which result in out-of-bounds write, memory corruption, and undefined behavior. Hence, Python 3.7+ is required to work with this device.
+    There appear to be some issues for USB-controlled devices with Python 3.6 which result in out-of-bounds write, memory corruption, and undefined behavior. Hence, Python 3.7+ is required to work with this device.
+
+RS-485 connection does not require any device-specific drivers or DLLs, but it does need RS-485 controller connected to the PC. Such controllers usually show up as virtual COM ports, and they typically do not need any additional drivers.
 
 
 Connection
@@ -42,6 +42,17 @@ When using the USB connection, the device is identified by its index, starting f
     >> stage2 = Arcus.Performax2EXStage(idx=1)
     >> stage1.close()
     >> stage2.close()
+
+When using the RS-485 connection, you need to specify the serial port corresponding to your RS-485 connection and, possibly, its baud rate::
+    
+    stage = Arcus.Performax4EXStage(conn = "COM5")
+    stage2 = Arcus.Performax4EXStage(conn = ("COM5",38400)) # specify a baud rate
+
+The baud rate is 9600 by default, which is the standard value for the controllers. However, it can be changed using :meth:`.Performax4EXStage.set_baudrate` method, in which case you would need to explicitly specify it during the next connection.
+
+In RS-485 mode ``idx`` parameter is still used, and it specifies the device number connected to this controller. By default this number is 0, and it can be queried (using USB connection) via :meth:`.Performax4EXStage.get_device_number`. It can also be set using :meth:`.Performax4EXStage.set_device_number`, although the changes takes effect only after the device is power cycled. Although in principle ``idx`` can be used to distinguish several Arcus controllers connected to the same bus (i.e., sharing the same RS-485 COM port), currently only single device connection is supported.
+
+To switch between USB and RS-485 control modes, you need to plug or unplug USB connection. It is strongly recommended to power cycle the device after that, since otherwise it might stop responding to RS-485 commands.
 
 
 Operation
