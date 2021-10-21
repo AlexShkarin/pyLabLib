@@ -14,7 +14,7 @@ def muxchannel(*args, **kwargs):
     if len(args)>0:
         return muxchannel(**kwargs)(args[0])
     def ch_func(self, *_, **__):
-        return list(range(1,self.get_channels_number()+1))
+        return list(range(1,self.get_channels_number(refresh=False)+1))
     return general.muxcall("channel",all_arg_func=ch_func,mux_argnames=kwargs.get("mux_argnames",None),return_kind=kwargs.get("return_kind","list"),allow_partial=True)
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["model","serial_number","revision_number","compilation_number"])
 class WLM(interface.IDevice):
@@ -41,6 +41,7 @@ class WLM(interface.IDevice):
         self.autostart=autostart
         self.dchannel=1
         self.auto_channel_tab=True
+        self._channels_number=None
         self._opened=False
         self.open()
 
@@ -93,13 +94,15 @@ class WLM(interface.IDevice):
         """Check if the measurement is running"""
         return self.lib.GetOperationState(0)==EBaseOperation.cCtrlStartMeasurement
 
-    def get_channels_number(self):
+    def get_channels_number(self, refresh=True):
         """Get number of channels in the wavemeter"""
-        return self.lib.GetChannelsCount(0)
+        if self._channels_number is None or refresh:
+            self._channels_number=self.lib.GetChannelsCount(0)
+        return self._channels_number
     def _get_channel(self, channel):
         if channel is None:
             return self.dchannel
-        chrng=(1,self.get_channels_number())
+        chrng=(1,self.get_channels_number(refresh=False))
         if channel<chrng[0] or channel>chrng[1]:
             raise HighFinesseError("invalid channel index {}; must be between {} and {}".format(channel,*chrng))
         return channel

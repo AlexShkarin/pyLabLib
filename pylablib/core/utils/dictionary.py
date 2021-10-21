@@ -2,7 +2,7 @@
 Tree-like multi-level dictionary with advanced indexing options.
 """
 
-from functools import reduce
+from functools import reduce, lru_cache
 
 from . import funcargparse, general, strdump
 import re
@@ -10,6 +10,19 @@ import collections
 import json
 import pandas as pd
 
+def _split_path_base(path, omit_empty=True, sep=None):
+    if not (isinstance(path, list) or isinstance(path, tuple)):
+        path=[path]
+    else:
+        path=general.flatten_list(path)
+    if sep is None:
+        path=[e for t in path for e in str(t).split("/")]
+    else:
+        path=[e for t in path for e in re.split(sep,str(t))]
+    if omit_empty:
+        path=[p for p in path if p!=""]
+    return path
+_split_path_cached=lru_cache(maxsize=10**5)(_split_path_base)
 def split_path(path, omit_empty=True, sep=None):
     """
     Split generic path into individual path entries.
@@ -22,17 +35,10 @@ def split_path(path, omit_empty=True, sep=None):
     Returns:
         list: A list of individual entries.
     """
-    if not (isinstance(path, list) or isinstance(path, tuple)):
-        path=[path]
-    else:
-        path=general.flatten_list(path)
-    if sep is None:
-        path=[e for t in path for e in str(t).split("/")]
-    else:
-        path=[e for t in path for e in re.split(sep,str(t))]
-    if omit_empty:
-        path=[p for p in path if p!=""]
-    return path
+    try:
+        return _split_path_cached(path,omit_empty=omit_empty,sep=sep)
+    except TypeError:
+        return _split_path_base(path,omit_empty=omit_empty,sep=sep)
 def normalize_path_entry(entry, case_normalization=None):
     """Normalize the case of the entry if it's not case-sensitive. Normalization is either ``None`` (no normalization, names are case-sensitive), ``'lower'`` or ``'upper'``"""
     funcargparse.check_parameter_range(case_normalization,"case_normalization",{None,"lower","upper"})
