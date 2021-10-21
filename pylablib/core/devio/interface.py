@@ -1,6 +1,7 @@
 ### Interface for a generic device class ###
 
 from ..utils import functions, dictionary, general, py3, funcargparse
+from .base import DeviceError
 import functools
 import contextlib
 import collections
@@ -40,6 +41,14 @@ class IDevice:
     def __exit__(self, *args, **vargs):
         self.close()
         return False
+    @contextlib.contextmanager
+    def _close_on_error(self):
+        """Context manager, which closes the device if the code inside raises an error"""
+        try:
+            yield
+        except getattr(self,"Error",DeviceError):
+            self.close()
+            raise
     
     def _get_connection_parameters(self):
         raise NotImplementedError("IDevice._get_connection_parameters")
@@ -171,6 +180,8 @@ class IDevice:
             if kind not in self._device_vars:
                 raise ValueError("unrecognized device variable kind: {}".format(kind))
         info={}
+        if include=="all":
+            include=-10
         variables,priority=(None,include) if isinstance(include,int) else (include,None)
         for kind in kinds:
             for k in self._device_vars_order[kind]:

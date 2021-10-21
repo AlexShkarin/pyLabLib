@@ -18,10 +18,10 @@ class ThorlabsSerialInterface(SCPI.SCPIDevice):
     _default_failsafe=True
     _default_retry_delay=0.5
     def __init__(self, conn):
-        SCPI.SCPIDevice.__init__(self,conn,backend="serial",term_read=["\r","\n"],term_write="\r",timeout=5.,backend_defaults={"serial":("COM1",115200)})
+        super().__init__(conn,backend="serial",term_read=["\r","\n"],term_write="\r",timeout=5.,backend_defaults={"serial":("COM1",115200)})
 
     def open(self):
-        SCPI.SCPIDevice.open(self)
+        super().open()
         self.instr.flush_read()
     
     def _check_reply(self, reply, msg=None):
@@ -59,13 +59,14 @@ class FW(ThorlabsSerialInterface):
     """
     _validate_echo=True
     def __init__(self, conn, respect_bound=True):
-        ThorlabsSerialInterface.__init__(self,conn)
+        super().__init__(conn)
         self._add_settings_variable("pos",self.get_position,self.set_position)
         self._add_settings_variable("pcount",self.get_pcount,self.set_pcount)
         self._add_settings_variable("speed_mode",self.get_speed_mode,self.set_speed_mode)
         self._add_settings_variable("trigger_mode",self.get_trigger_mode,self.set_trigger_mode)
         self._add_settings_variable("sensors_mode",self.get_sensor_mode,self.set_sensor_mode)
-        self.pcount=self.get_pcount()
+        with self._close_on_error():
+            self.pcount=self.get_pcount()
         self.respect_bound=respect_bound
 
     _id_comm="*idn?"
@@ -149,7 +150,7 @@ class FWv1(ThorlabsSerialInterface):
     """
     _validate_echo=True
     def __init__(self, conn, pcount=6, respect_bound=True):
-        ThorlabsSerialInterface.__init__(self,conn)
+        super().__init__(conn)
         self.pcount=pcount
         self._add_settings_variable("pos",self.get_position,self.set_position)
         self._add_info_variable("pcount",self.get_pcount)
@@ -219,14 +220,11 @@ class MDT69xA(ThorlabsSerialInterface):
         conn: serial connection parameters (usually port or a tuple containing port and baudrate)
     """
     def __init__(self, conn):
-        ThorlabsSerialInterface.__init__(self,conn)
+        super().__init__(conn)
         self._add_settings_variable("voltage",self.get_voltage,self.set_voltage,mux=("xyz",1))
         self._add_status_variable("voltage_range",self.get_voltage_range)
-        try:
+        with self._close_on_error():
             self.get_id(timeout=2.)
-        except self.instr.Error:
-            self.close()
-            raise
 
     _id_comm="I"
     _p_channel=interface.EnumParameterClass("channel",["x","y","z"])

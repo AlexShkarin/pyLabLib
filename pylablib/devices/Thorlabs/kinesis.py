@@ -543,7 +543,7 @@ class MFF(KinesisDevice):
         conn: serial connection parameters (usually 8-digit device serial number).
     """
     def __init__(self, conn):
-        KinesisDevice.__init__(self,conn)
+        super().__init__(conn)
         self._add_settings_variable("state",self.get_state,self.move_to_state)
 
     get_status_n=KinesisDevice._get_status_n
@@ -640,7 +640,7 @@ class KinesisMotor(KinesisDevice):
             if the scale can't be autodetected, it can be obtained from the APT manual knowing the device and the stage model
     """
     def __init__(self, conn, scale="step"):
-        KinesisDevice.__init__(self,conn)
+        super().__init__(conn)
         self.add_background_comm(0x0464) # move completed
         self.add_background_comm(0x0466) # move stopped
         self.add_background_comm(0x0444) # homed
@@ -654,8 +654,9 @@ class KinesisMotor(KinesisDevice):
         self._add_settings_variable("homing_parameters",self.get_homing_parameters,self.setup_homing)
         self._add_settings_variable("gen_move_parameters",self.get_gen_move_parameters,self.setup_gen_move)
         self._add_settings_variable("limit_switch_parameters",self.get_limit_switch_parameters,self.setup_limit_switch)
-        self._stage=self._get_stage(scale)
-        self._scale,self._scale_units=self._calculate_scale(scale)
+        with self._close_on_error():
+            self._stage=self._get_stage(scale)
+            self._scale,self._scale_units=self._calculate_scale(scale)
     
     def _autodetect_stage(self, model):
         info=self.query(0x0005).data

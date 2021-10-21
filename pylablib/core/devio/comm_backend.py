@@ -97,6 +97,10 @@ class IDeviceCommBackend:
         conn=cls._conn_to_dict(conn2).copy()
         conn.update(cls._conn_to_dict(conn1))
         return conn
+    @classmethod
+    def get_backend_name(cls):
+        """Get string representation of the backend (e.g., ``"serial"``, ``"visa"``, or ``"network"``)"""
+        return getattr(cls,"_backend",None)
 
     def _to_datatype(self, data):
         if self.datatype=="auto":
