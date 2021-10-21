@@ -19,7 +19,7 @@ from ....core.dataproc import filters
 
 import pyqtgraph
 
-from ....core.gui import QtCore
+from ....core.gui import QtCore, Signal
 import numpy as np
 import contextlib
 import time
@@ -216,7 +216,7 @@ class ImagePlotter(QLayoutManagedWidget):
         super().setup(layout="vbox",no_margins=True)
         self.name=name
         self.single_armed=False
-        self.single_acquired=False
+        self.new_image_set=False
         self.img=np.zeros(img_size)
         self.do_image_update=True
         self.xbin=1
@@ -346,7 +346,7 @@ class ImagePlotter(QLayoutManagedWidget):
                 raise ValueError("only 2D images or 3D images with 3 or 4 color channels are allowed; got image with the shape {}".format(img.shape))
             self.img=img
             self.single_armed=False
-            self.single_acquired=True
+            self.new_image_set=True
     def arm_single(self):
         """Arm the single-image trigger"""
         self.single_armed=True
@@ -489,11 +489,11 @@ class ImagePlotter(QLayoutManagedWidget):
         return True
     # Update image plot
     @controller.exsafe
-    def update_image(self, update_controls=False, do_redraw=False, only_new_image=True):
+    def update_image(self, update_controls=True, do_redraw=False, only_new_image=True):
         """
         Update displayed image.
 
-        If ``update_controls==True``, update control values (such as image min/max values and line positions).
+        If ``update_controls==True``, update control values (such as image min/max values and line positions); otherwise, keep the current values.
         If ``do_redraw==True``, force update regardless of the ``"update_image"`` button state; otherwise, update only if it is enabled.
         If ``only_new_image==True`` and the image hasn't changed since the last call to ``update_image``, skip redraw (however, if ``do_redraw==True``, force redrawing regardless).
         """
@@ -505,11 +505,9 @@ class ImagePlotter(QLayoutManagedWidget):
         with self._while_updating():
             values=self._get_values()
             if not do_redraw:
-                if not (values.v["update_image"] or self.single_acquired):
+                if not self.new_image_set and (only_new_image or not self.do_image_update):
                     return
-                if only_new_image and not self.single_acquired:
-                    return
-                self.single_acquired=False
+            self.new_image_set=False
             draw_img=self.img
             if self.xbin>1:
                 draw_img=filters.decimate(draw_img,self.xbin,dec=self.dec,axis=0)

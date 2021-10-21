@@ -277,7 +277,7 @@ class IQContainer:
             values=values.copy()
             for v in exclude:
                 if v in values:
-                    del values[exclude]
+                    del values[v]
         return values
     def _normalize_name(self, name):
         if isinstance(name,tuple):

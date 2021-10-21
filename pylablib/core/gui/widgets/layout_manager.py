@@ -95,6 +95,8 @@ class IQLayoutManagedWidget:
                 row=(row%max(row_cnt,1) if row<0 else row)
             if rowspan=="end":
                 rowspan=max(row_cnt-row,1)
+            elif rowspan<0:
+                rowspan=max(row_cnt+rowspan-row,1)
         if lkind in {"grid","hbox"}:
             if col=="next":
                 col=col_cnt if layout.count() else 0
@@ -102,6 +104,8 @@ class IQLayoutManagedWidget:
                 col=(col%max(col_cnt,1) if col<0 else col)
             if colspan=="end":
                 colspan=max(col_cnt-col,1)
+            elif colspan<0:
+                colspan=max(col_cnt+colspan-col,1)
         return lname,(row,col,rowspan,colspan)
     def _insert_layout_element(self, lname, element, location, kind="widget"):
         layout,lkind=self._sublayouts[lname]
@@ -146,6 +150,25 @@ class IQLayoutManagedWidget:
                 utils.delete_layout_item(layout,idx)
                 return True
         return False
+    def get_element_position(self, element):
+        """
+        Get the sublayout and the position of the given widget.
+        
+        Return tuple ``(sublayout, location)``, where ``sublayout`` is the sublayout name (``"name"`` for the main layout),
+        and ``location`` is a tuple ``(row, column, rowspan, colspan)``.
+        If the given widget is not in this layout, return ``None``.
+        """
+        for name,(layout,kind) in self._sublayouts.items():
+            idx=utils.find_layout_element(layout,element)
+            if idx is not None:
+                if kind=="grid":
+                    location=layout.getItemPosition(idx)
+                elif kind=="hbox":
+                    location=(0,idx,1,1)
+                elif kind=="vbox":
+                    location=(idx,0,1,1)
+                return name,location 
+        return False
     def add_sublayout(self, name, kind="grid", location=None):
         """
         Add a sublayout to the given location.
@@ -177,6 +200,15 @@ class IQLayoutManagedWidget:
     def get_sublayout_kind(self, name=None):
         """Get the kind of the previously added sublayout"""
         return self._sublayouts[name or self._default_layout][1]
+    def get_layout_shape(self, name=None):
+        """Get shape ``(rows, cols)`` of the current layout"""
+        layout,kind=self._sublayouts[name or self._default_layout]
+        if kind=="grid":
+            return layout.rowCount(),layout.columnCount()
+        elif kind=="hbox":
+            return 1,layout.count()
+        else:
+            return layout.count(),1
     
     def add_spacer(self, height=0, width=0, stretch_height=False, stretch_width=False, stretch=0, location="next"):
         """

@@ -8,7 +8,7 @@ class ComboBox(QtWidgets.QComboBox):
     Allows setting values which are reported via ``value_changed`` signal instead of simple indices.
     """
     def __init__(self, parent):
-        QtWidgets.QComboBox.__init__(self, parent)
+        super().__init__(parent)
         self.activated.connect(self._on_index_changed)
         self._index=-1
         self._index_values=None

@@ -1,4 +1,11 @@
-from . import qdelete
+from . import qdelete, QtWidgets
+
+
+def get_top_parent(widget):
+    """Find the top-level parent (parent which does not have further parents)"""
+    while widget is not None and widget.parent() is not None:
+        widget=widget.parent()
+    return widget
 
 def find_layout_element(layout, element):
     """
@@ -34,6 +41,62 @@ def clean_layout(layout, delete_layout=False):
             delete_layout_item(layout,0)
         if delete_layout:
             qdelete(layout)
+
+def _find_contained_widget(parent, widget, parent_kind="widget", result_kind="layout"):
+    if parent is widget:
+        return (widget,"widget")
+    if parent is None:
+        return None
+    layout=parent.layout() if parent_kind=="widget" else parent
+    if layout is None:
+        return None
+    for idx in range(layout.count()):
+        item=layout.itemAt(idx)
+        if item.widget() is not None:
+            result=_find_contained_widget(item.widget(),widget,parent_kind="widget",result_kind=result_kind)
+        elif item.layout() is not None:
+            result=_find_contained_widget(item.layout(),widget,parent_kind="layout",result_kind=result_kind)
+        else:
+            result=None
+        if result is not None:
+            if result[1]=="widget" and parent_kind==result_kind:
+                return parent,"result"
+            return result
+def get_layout_container(widget, top=None, kind="widget"):
+    """
+    Find a container widget or layout which contains the given widget.
+
+    Note that the container widget does not necessarily correspond to the element parent.
+    If no container could be found, return ``None``.
+    If `kind` can be either ``"widget"`` (return the containing widget),
+    or ``"layout"`` (return the containing layout, which is a layout or sublayout of the containing widget).
+
+    This method works by traversing the whole layout tree, so it can be relatively slow.
+    `top` can specify the top container (widget or layout) which definitely contains the given widget;
+    if not specified, use the top-level parent found by :func:`get_top_parent`.
+    """
+    parent_kind="widget"
+    if top is None:
+        top=get_top_parent(widget)
+    else:
+        parent_kind="layout" if isinstance(top,QtWidgets.QLayout) else "widget"
+    if kind not in {"widget","layout"}:
+        raise ValueError("unrecognized result kind: {}".format(kind))
+    result=_find_contained_widget(top,widget,parent_kind=parent_kind,result_kind=kind)
+    return result[0] if result is not None else None
+def delete_widget(widget):
+    """Remove widget from its layout container and delete it"""
+    if widget is None:
+        return False
+    layout=get_layout_container(widget,kind="layout")
+    if layout is not None:
+        idx=find_layout_element(layout,widget)
+        if idx is not None:
+            delete_layout_item(layout,idx)
+            return True
+    widget.deleteLater()
+    return False
+    
 
 
 def is_layout_row_empty(layout, row):
