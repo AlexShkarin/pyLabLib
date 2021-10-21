@@ -59,16 +59,30 @@ class CUC480_CAPTURE_STATUS_INFO(uc480_defs.CUC480_CAPTURE_STATUS_INFO):
 
 
 class uc480Lib:
-    def __init__(self):
+    def __init__(self, backend="uc480"):
+        self.backend=backend
         self._initialized=False
+
+    @staticmethod
+    def _load_dll(backend):
+        if backend=="uc480":
+            lib_name="uc480.dll" if platform.architecture()[0][:2]=="32" else "uc480_64.dll"
+            thorcam_path=load_lib.get_program_files_folder("Thorlabs/Scientific Imaging/ThorCam")
+            error_message="The library is automatically supplied with Thorcam software\n"+load_lib.par_error_message.format("uc480")
+            return load_lib.load_lib(lib_name,locations=("parameter/uc480",thorcam_path,"global"),error_message=error_message,call_conv="cdecl")
+        elif backend=="ueye":
+            lib_name="ueye_api.dll" if platform.architecture()[0][:2]=="32" else "ueye_api_64.dll"
+            ueye_path=load_lib.get_program_files_folder("IDS/uEye/USB driver package")
+            ids_path=load_lib.get_program_files_folder("IDS/uEye/develop/bin")
+            error_message="The library is automatically supplied with IDS uEye or IDS Software Suite\n"+load_lib.par_error_message.format("ueye")
+            return load_lib.load_lib(lib_name,locations=("parameter/ueye",ueye_path,ids_path,"global"),error_message=error_message,call_conv="cdecl")
+        else:
+            raise RuntimeError("unrecognized backend: {}".format(backend))
 
     def initlib(self):
         if self._initialized:
             return
-        thorcam_path=load_lib.get_program_files_folder("Thorlabs/Scientific Imaging/ThorCam")
-        error_message="The library is automatically supplied with Thorcam software\n"+load_lib.par_error_message.format("uc480")
-        lib_name="uc480.dll" if platform.architecture()[0][:2]=="32" else "uc480_64.dll"
-        self.lib=load_lib.load_lib(lib_name,locations=("parameter/uc480",thorcam_path,"global"),error_message=error_message,call_conv="cdecl")
+        self.lib=self._load_dll(self.backend)
         lib=self.lib
         define_functions(lib)
 
@@ -448,4 +462,11 @@ class uc480Lib:
         self.is_CaptureStatus(hcam,uc480_defs.CAPTURE_STATUS_CMD.IS_CAPTURE_STATUS_INFO_CMD_RESET,None,0)
 
 
-lib=uc480Lib()
+libs={backend:uc480Lib(backend=backend) for backend in ["uc480","ueye"]}
+def get_lib(backend):
+    """Get and initialize library with the corresponding backend"""
+    if backend in libs:
+        lib=libs[backend]
+        lib.initlib()
+        return lib
+    raise ValueError("unrecognized backend '{}'; available backends are {}".format(backend,list(libs)))

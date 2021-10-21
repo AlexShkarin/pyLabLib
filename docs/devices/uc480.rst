@@ -3,22 +3,26 @@
 .. note::
     General camera communication concepts are described on the corresponding :ref:`page <cameras_basics>`
 
-Uc480 camera interface
-=======================
+Uc480/uEye camera interface
+===========================
 
-This is the interface used in multiple cameras, including simple Thorlabs and IDS cameras. It has been tested with IDS SC2592R12M and Thorlabs DCC1545M.
+This is the interface used in multiple cameras, including many simple Thorlabs and IDS cameras. It has been tested with IDS SC2592R12M and Thorlabs DCC1545M.
 
-The code is located in :mod:`pylablib.devices.uc480`, and the main camera class is :class:`pylablib.devices.uc480.UC480Camera<.uc480.UC480Camera>`.
+Essentially identical interface is available under two different implementations: either as Thorlabs uc480 or as IDS uEye. Both of these seem to cover exactly the same cameras, both are freely available from the manufacturers, and both implement exactly the same functionality. However, these interfaces are not interchangeable, and each camera will only interact with one of them depending on which driver it happens to use (usually based on which of the software packages was installed last). Hence, if you have both `ThorCam <https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam>`__ and `IDS Software Suite <https://en.ids-imaging.com/ids-software-suite.html>`__ installed, you would need to check both interfaces. Normally, the interface should correspond to the software which can connect to the camera (either ThorCam or uEye Cockpit).
+
+The code is located in :mod:`pylablib.devices.uc480`, and the main camera class is :class:`pylablib.devices.uc480.UC480Camera<.uc480.UC480Camera>`. Note that while the names only refer to uc480, the same functions and classes equally cover IDS uEye interface if the appropriate ``backend`` argument is provided.
 
 Software requirements
 -----------------------
 
-These cameras require ``uc480.dll``, which is automatically installed with the freely available `ThorCam <https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam>`__ tools. By default, the library searches for DLLs in ``Thorlabs/Scientific Imaging/ThorCam`` folder in ``Program Files`` folder (or ``Program files (x86)``, if 32-bit version of Python is running), as well as in the folder containing the script. If the DLLs are located elsewhere, the path can be specified using the library parameter ``devices/dlls/uc480``::
+Depending on the interface, these cameras require either ``uc480.dll``, or ``ueye_api.dll``. These are automatically installed with, correspondingly, the freely available `ThorCam <https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam>`__ software or with `IDS Software Suite <https://en.ids-imaging.com/ids-software-suite.html>`__ (upon registration; note that you need specifically IDS Software Suite, and not IDS peak). By default, the library searches for DLLs in the corresponding ``Program Files`` folder (``Thorlabs/Scientific Imaging/ThorCam`` or ``IDS/uEye``), in the locations placed in ``PATH`` during the installation, as well as in the folder containing the script. If the DLLs are located elsewhere, the path can be specified using the library parameter ``devices/dlls/uc480`` or ``devices/dlls/ueye``::
 
     import pylablib as pll
-    pll.par["devices/dlls/uc480"] = "path/to/dlls"
+    pll.par["devices/dlls/uc480"] = "path/to/uc480/dlls"
     from pylablib.devices import uc480
     cam = uc480.UC480Camera()
+    pll.par["devices/dlls/ueye"] = "path/to/ueye/dlls"
+    cam = uc480.UC480Camera(backend="ueye")
 
 
 Connection
@@ -30,6 +34,7 @@ The cameras are identified by their camera ID or device ID (both starting from 1
     >> uc480.list_cameras()
     [TCameraInfo(cam_id=4, dev_id=1, sens_id=11, model='SC2592R12M', serial_number='1234567890', in_use=False, status=0)]
     >> cam = uc480.UC480Camera(cam_id=4)  # connect to the camera using cam_id
+    >> img = cam.snap()
     >> cam.close()
     >> cam = uc480.UC480Camera(dev_id=1)  # connecting to the same camera using dev_id
     >> cam.close()
@@ -37,6 +42,15 @@ The cameras are identified by their camera ID or device ID (both starting from 1
     >> cam.close()
 
 If ``cam_id = 0`` is provided (default), the software connects to the first available camera.
+
+By default, the code above uses Thorlabs ``uc480`` interface. If you want to use ``ueye`` interface, you need to specify ``backend="ueye"`` argument to the corresponding functions and to the camera class upon creation. With that, the example above becomes::
+
+    >> from pylablib.devices import uc480
+    >> uc480.list_cameras(backend="ueye")  # list all cameras for uEye backend
+    [TCameraInfo(cam_id=4, dev_id=1, sens_id=11, model='SC2592R12M', serial_number='1234567890', in_use=False, status=0)]
+    >> cam = uc480.UC480Camera(cam_id=4, backend="ueye")  # connect to the camera using cam_id and ueye backend
+    >> img = cam.snap()
+    >> cam.close()
 
 Operation
 ------------------------

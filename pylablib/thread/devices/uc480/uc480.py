@@ -13,12 +13,13 @@ class UC480CameraThread(camera.GenericCameraThread):
     def connect_device(self):
         with self.using_devclass("uc480.UC480Camera",host=self.remote) as cls:
             if self.sn is not None:
-                dev_id=uc480.find_by_serial(serial_number=self.sn)
-                self.device=cls(dev_id=dev_id)
+                dev_id=uc480.find_by_serial(serial_number=self.sn,backend=self.backend)
+                self.device=cls(dev_id=dev_id,backend=self.backend)
             else:
-                self.device=cls(cam_id=self.id)
-    def setup_task(self, idx, dev_idx=None, sn=None, remote=None, misc=None):
+                self.device=cls(cam_id=self.id,dev_id=self.dev_id,backend=self.backend)
+    def setup_task(self, idx, dev_idx=None, sn=None, backend="uc480", remote=None, misc=None):
         self.id=idx
         self.dev_id=dev_idx
         self.sn=sn
+        self.backend=backend
         super().setup_task(remote=remote,misc=misc)

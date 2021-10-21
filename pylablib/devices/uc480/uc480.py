@@ -1,5 +1,5 @@
 from . import uc480_defs
-from .uc480_lib import lib, uc480Error, uc480LibError
+from .uc480_lib import get_lib, uc480Error, uc480LibError
 
 from ...core.utils import py3, general
 from ...core.devio import interface
@@ -12,25 +12,37 @@ import ctypes
 
 
 class uc480TimeoutError(uc480Error):
-    """uc480 frame timeout error"""
+    """uc480/ueye frame timeout error"""
 class uc480FrameTransferError(uc480Error):
-    """uc480 frame transfer error"""
+    """uc480/ueye frame transfer error"""
 
 
 TCameraInfo=collections.namedtuple("TCameraInfo",["cam_id","dev_id","sens_id","model","serial_number","in_use","status"])
-def list_cameras():
-    """List camera connections (interface kind and camera index)"""
-    lib.initlib()
+def list_cameras(backend="uc480"):
+    """
+    List all uc480/ueye camera connections (interface kind and camera index).
+    
+    `backend` is the camera DLL backend; can be either ``"uc480"`` for Thorlabs-associated cameras, or ``"ueye"`` for IDS uEye-associated cameras
+    """
+    lib=get_lib(backend)
     return [TCameraInfo(ci.dwCameraID,ci.dwDeviceID,ci.dwSensorID,py3.as_str(ci.Model),py3.as_str(ci.SerNo),bool(ci.dwInUse),ci.dwStatus)
          for ci in lib.is_GetCameraList()]
-def get_cameras_number():
-    """Get the total number of connected uc480 cameras"""
-    return len(list_cameras())
+def get_cameras_number(backend="uc480"):
+    """
+    Get the total number of connected uc480/ueye cameras.
+    
+    `backend` is the camera DLL backend; can be either ``"uc480"`` for Thorlabs-associated cameras, or ``"ueye"`` for IDS uEye-associated cameras
+    """
+    return len(list_cameras(backend=backend))
 
-def find_by_serial(serial_number):
-    """Find device ID using its serial number"""
+def find_by_serial(serial_number, backend="uc480"):
+    """
+    Find device ID using its serial number.
+    
+    `backend` is the camera DLL backend; can be either ``"uc480"`` for Thorlabs-associated cameras, or ``"ueye"`` for IDS uEye-associated cameras
+    """
     serial_number=py3.as_str(serial_number) if isinstance(serial_number,py3.bytestring) else str(serial_number)
-    for c in list_cameras():
+    for c in list_cameras(backend=backend):
         if c.serial_number==serial_number:
             return c.dev_id
     raise ValueError("can't find camera with serial number {}".format(serial_number))
@@ -42,7 +54,7 @@ TTimestamp=collections.namedtuple("TTimestamp",["year","month","day","hour","min
 TFrameInfo=collections.namedtuple("TFrameInfo",["frame_index","framestamp","timestamp","timestamp_dev","size","io_status","flags"])
 class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
     """
-    Thorlabs uc480 camera.
+    Thorlabs uc480 / IDS uEye camera.
 
     Args:
         cam_id(int): camera ID; use 0 to get the first available camera
@@ -53,6 +65,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
             The first method requires assigning camera IDs beforehand (otherwise IDs might overlap, in which case only one camera can be accessed),
             but the assigned IDs are permanent; the second method always has unique IDs, but they might change if the cameras are disconnected and reconnected.
             For a more reliable assignment, one can use :func:`find_by_serial` function to find device ID based on the camera serial number.
+        backend: camera DLL backend; can be either ``"uc480"`` for Thorlabs-associated cameras, or ``"ueye"`` for IDS uEye-associated cameras
     """
     Error=uc480Error
     TimeoutError=uc480TimeoutError
@@ -60,9 +73,10 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
     _TFrameInfo=TFrameInfo
     _frameinfo_fields=general.make_flat_namedtuple(TFrameInfo,fields={"timestamp":TTimestamp,"size":camera.TFrameSize})._fields
     _adjustable_frameinfo_period=True
-    def __init__(self, cam_id=0, roi_binning_mode="auto", dev_id=None):
+    def __init__(self, cam_id=0, roi_binning_mode="auto", dev_id=None, backend="uc480"):
         super().__init__()
-        lib.initlib()
+        self.backend=backend
+        self.lib=get_lib(backend)
         if dev_id is None:
             self.id=cam_id
             self.is_dev_id=False
@@ -101,17 +115,17 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         self._add_settings_variable("frame_period",self.get_frame_period,self.set_frame_period)
 
     def _get_connection_parameters(self):
-        return (self.id,"dev_id" if self.is_dev_id else "cam_id")
+        return (self.id,"dev_id" if self.is_dev_id else "cam_id",self.backend)
     def open(self):
         """Open connection to the camera"""
         if self.hcam is None:
-            self.hcam=lib.is_InitCamera(self.id|(uc480_defs.DEVENUM.IS_USE_DEVICE_ID if self.is_dev_id else 0),None)
+            self.hcam=self.lib.is_InitCamera(self.id|(uc480_defs.DEVENUM.IS_USE_DEVICE_ID if self.is_dev_id else 0),None)
             self._set_auto_mono_color_mode()
     def close(self):
         """Close connection to the camera"""
         if self.hcam is not None:
             self.clear_acquisition()
-            lib.is_ExitCamera(self.hcam)
+            self.lib.is_ExitCamera(self.hcam)
             self.hcam=None
         self.hcam=None
     def is_opened(self):
@@ -125,21 +139,21 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         Return tuple ``(model, manufacturer, serial_number, usb_version, date, dll_version, camera_type)``.
         """
         sen_info=self._get_sensor_info()
-        cam_info=lib.is_GetCameraInfo(self.hcam)
-        dll_ver=lib.is_GetDLLVersion()
+        cam_info=self.lib.is_GetCameraInfo(self.hcam)
+        dll_ver=self.lib.is_GetDLLVersion()
         dll_ver="{}.{}.{}".format((dll_ver>>24),(dll_ver>>16)&0xFF,dll_ver&0xFFFF)
         cam_id=self.get_camera_id()
         return TDeviceInfo(cam_id,py3.as_str(sen_info.strSensorName),py3.as_str(cam_info.ID),py3.as_str(cam_info.SerNo),py3.as_str(cam_info.Version),
             py3.as_str(cam_info.Date),dll_ver,cam_info.Type)
     def get_camera_id(self):
         """Get the current camera id"""
-        return lib.is_SetCameraID(self.hcam,uc480_defs.CAMID.IS_GET_CAMERA_ID)
+        return self.lib.is_SetCameraID(self.hcam,uc480_defs.CAMID.IS_GET_CAMERA_ID)
     def set_camera_id(self, cam_id):
         """Set the new camera id (stored in non-volatile memory, i.e., survives power cycling)"""
-        lib.is_SetCameraID(self.hcam,cam_id)
+        self.lib.is_SetCameraID(self.hcam,cam_id)
         return self.get_camera_id()
     def _get_sensor_info(self):
-        return lib.is_GetSensorInfo(self.hcam)
+        return self.lib.is_GetSensorInfo(self.hcam)
 
     ### Buffer controls ###
     def _allocate_buffers(self, n):
@@ -148,21 +162,21 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         bpp=self._get_pixel_mode_settings()[0]
         self._buffers=[]
         for _ in range(n):
-            self._buffers.append((lib.is_AllocImageMem(self.hcam,frame_size[1],frame_size[0],bpp),(frame_size[0],frame_size[1]),bpp))
-            lib.is_AddToSequence(self.hcam,*self._buffers[-1][0])
+            self._buffers.append((self.lib.is_AllocImageMem(self.hcam,frame_size[1],frame_size[0],bpp),(frame_size[0],frame_size[1]),bpp))
+            self.lib.is_AddToSequence(self.hcam,*self._buffers[-1][0])
         return n
     def _deallocate_buffers(self):
         if self._buffers is not None:
-            lib.is_ClearSequence(self.hcam)
+            self.lib.is_ClearSequence(self.hcam)
             for b in self._buffers:
-                lib.is_FreeImageMem(self.hcam,*b[0])
+                self.lib.is_FreeImageMem(self.hcam,*b[0])
             self._buffers=None
     def _find_buffer(self, buff):
         baddr=[ctypes.cast(b[0][0],ctypes.c_void_p).value for b in self._buffers]
         buffaddr=ctypes.cast(buff,ctypes.c_void_p).value
         return baddr.index(buffaddr)
     def _get_buffer_state(self):
-        bs=lib.is_GetActSeqBuf(self.hcam)
+        bs=self.lib.is_GetActSeqBuf(self.hcam)
         return bs[0],self._find_buffer(bs[1]),self._find_buffer(bs[2])
     def _update_buffer_counter(self, timeout=None, skip_gap=False):
         ctd=general.Countdown(timeout)
@@ -172,7 +186,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
                 break
             if ctd.passed():
                 return False
-        last_acq=lib.is_CameraStatus(self.hcam,uc480_defs.CAMINFO.IS_SEQUENCE_CNT,uc480_defs.CAMINFO.IS_GET_STATUS)+self._acq_offset-1
+        last_acq=self.lib.is_CameraStatus(self.hcam,uc480_defs.CAMINFO.IS_SEQUENCE_CNT,uc480_defs.CAMINFO.IS_GET_STATUS)+self._acq_offset-1
         last_buffer=bs[2]
         frame_stat=self._frame_counter.get_frames_status()
         prev_acq=frame_stat[0]
@@ -182,8 +196,8 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         acq_shift=dbuff-dacq
         self._acq_offset+=acq_shift
         if skip_gap:
-            last_stamp=lib.is_GetImageInfo(self.hcam,self._buffers[last_buffer][0][1]).u64FrameNumber
-            prev_stamp=lib.is_GetImageInfo(self.hcam,self._buffers[prev_buffer][0][1]).u64FrameNumber
+            last_stamp=self.lib.is_GetImageInfo(self.hcam,self._buffers[last_buffer][0][1]).u64FrameNumber
+            prev_stamp=self.lib.is_GetImageInfo(self.hcam,self._buffers[prev_buffer][0][1]).u64FrameNumber
             dstamp=last_stamp-prev_stamp
             stamp_shift=dstamp-dbuff
             self._acq_offset+=stamp_shift
@@ -195,27 +209,27 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
 
     ### Generic controls ###
     def get_frame_timings(self):
-        exp=lib.is_Exposure(self.hcam,uc480_defs.EXPOSURE_CMD.IS_EXPOSURE_CMD_GET_EXPOSURE,ctypes.c_double)*1E-3
-        frame_rate=lib.is_SetFrameRate(self.hcam,uc480_defs.FRAMERATE.IS_GET_FRAMERATE)
+        exp=self.lib.is_Exposure(self.hcam,uc480_defs.EXPOSURE_CMD.IS_EXPOSURE_CMD_GET_EXPOSURE,ctypes.c_double)*1E-3
+        frame_rate=self.lib.is_SetFrameRate(self.hcam,uc480_defs.FRAMERATE.IS_GET_FRAMERATE)
         return self._TAcqTimings(exp,1./frame_rate)
     def set_exposure(self, exposure):
         """Set camera exposure"""
         exposure=max(exposure,1E-6) # exposure=0 sets it to some default value
-        exposure=lib.is_Exposure(self.hcam,uc480_defs.EXPOSURE_CMD.IS_EXPOSURE_CMD_SET_EXPOSURE,ctypes.c_double,exposure*1E3)
+        exposure=self.lib.is_Exposure(self.hcam,uc480_defs.EXPOSURE_CMD.IS_EXPOSURE_CMD_SET_EXPOSURE,ctypes.c_double,exposure*1E3)
         return exposure*1E-3
     def set_frame_period(self, frame_time):
         """Set frame period (time between two consecutive frames in the internal trigger mode)"""
-        ftr=lib.is_GetFrameTimeRange(self.hcam)
+        ftr=self.lib.is_GetFrameTimeRange(self.hcam)
         frame_time=min(max(frame_time,ftr[0]),ftr[1])
-        lib.is_SetFrameRate(self.hcam,1./frame_time)
+        self.lib.is_SetFrameRate(self.hcam,1./frame_time)
         return self.get_frame_period()
     def get_pixel_rate(self):
         """Get camera pixel rate (in Hz)"""
-        return lib.is_PixelClock(self.hcam,uc480_defs.PIXELCLOCK_CMD.IS_PIXELCLOCK_CMD_GET,ctypes.c_uint)*1E6
+        return self.lib.is_PixelClock(self.hcam,uc480_defs.PIXELCLOCK_CMD.IS_PIXELCLOCK_CMD_GET,ctypes.c_uint)*1E6
     def get_available_pixel_rates(self):
         """Get all available pixel rates (in Hz)"""
-        nrates=lib.is_PixelClock(self.hcam,uc480_defs.PIXELCLOCK_CMD.IS_PIXELCLOCK_CMD_GET_NUMBER,ctypes.c_uint)
-        rates=lib.is_PixelClock(self.hcam,uc480_defs.PIXELCLOCK_CMD.IS_PIXELCLOCK_CMD_GET_LIST,ctypes.c_uint*nrates)
+        nrates=self.lib.is_PixelClock(self.hcam,uc480_defs.PIXELCLOCK_CMD.IS_PIXELCLOCK_CMD_GET_NUMBER,ctypes.c_uint)
+        rates=self.lib.is_PixelClock(self.hcam,uc480_defs.PIXELCLOCK_CMD.IS_PIXELCLOCK_CMD_GET_LIST,ctypes.c_uint*nrates)
         return sorted([r*1E6 for r in rates])
     def get_pixel_rates_range(self):
         """
@@ -223,7 +237,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
 
         Return tuple ``(min, max, step)`` if minimal and maximal value, and a step.
         """
-        rng=lib.is_PixelClock(self.hcam,uc480_defs.PIXELCLOCK_CMD.IS_PIXELCLOCK_CMD_GET_RANGE,ctypes.c_uint*3)
+        rng=self.lib.is_PixelClock(self.hcam,uc480_defs.PIXELCLOCK_CMD.IS_PIXELCLOCK_CMD_GET_RANGE,ctypes.c_uint*3)
         return tuple([v*1E6 for v in rng])
     def set_pixel_rate(self, rate=None):
         """
@@ -237,7 +251,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
             rate=rates[-1]
         else:
             rate=sorted(rates,key=lambda r: abs(r-rate))[0]
-        lib.is_PixelClock(self.hcam,uc480_defs.PIXELCLOCK_CMD.IS_PIXELCLOCK_CMD_SET,ctypes.c_uint,int(np.round(rate/1E6)))
+        self.lib.is_PixelClock(self.hcam,uc480_defs.PIXELCLOCK_CMD.IS_PIXELCLOCK_CMD_SET,ctypes.c_uint,int(np.round(rate/1E6)))
         return self.get_pixel_rate()
 
     _color_modes= { "raw8": uc480_defs.COLORMODE.IS_CM_SENSOR_RAW8, "raw10": uc480_defs.COLORMODE.IS_CM_SENSOR_RAW10,
@@ -258,17 +272,17 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
     _p_color_mode=interface.EnumParameterClass("color_mode",_color_modes)
     def _check_all_color_modes(self):
         names=[]
-        m0=lib.is_SetColorMode(self.hcam,uc480_defs.COLORMODE.IS_GET_COLOR_MODE)
+        m0=self.lib.is_SetColorMode(self.hcam,uc480_defs.COLORMODE.IS_GET_COLOR_MODE)
         for n,m in self._color_modes.items():
             try:
-                lib.is_SetColorMode(self.hcam,m,check=True)
-                nm=lib.is_SetColorMode(self.hcam,uc480_defs.COLORMODE.IS_GET_COLOR_MODE)
+                self.lib.is_SetColorMode(self.hcam,m,check=True)
+                nm=self.lib.is_SetColorMode(self.hcam,uc480_defs.COLORMODE.IS_GET_COLOR_MODE)
                 if m==nm:
                     names.append(n)
             except uc480LibError as err:
                 if err.code!=uc480_defs.ERROR.IS_INVALID_COLOR_FORMAT:
                     raise
-        lib.is_SetColorMode(self.hcam,m0)
+        self.lib.is_SetColorMode(self.hcam,m0)
         return names
     def get_all_color_modes(self):
         """Get a list of all available color modes"""
@@ -280,7 +294,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
 
         For possible modes, see :meth:`get_all_color_modes`.
         """
-        return lib.is_SetColorMode(self.hcam,uc480_defs.COLORMODE.IS_GET_COLOR_MODE)
+        return self.lib.is_SetColorMode(self.hcam,uc480_defs.COLORMODE.IS_GET_COLOR_MODE)
     @camera.acqcleared
     @interface.use_parameters(mode="color_mode")
     def set_color_mode(self, mode):
@@ -289,7 +303,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
 
         For possible modes, see :meth:`get_all_color_modes`.
         """
-        lib.is_SetColorMode(self.hcam,mode,check=True)
+        self.lib.is_SetColorMode(self.hcam,mode,check=True)
         return self.get_color_mode()
     def _set_auto_mono_color_mode(self):
         """Set color mode to the most appropriate mono setting, if the sensor is mono"""
@@ -328,19 +342,19 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
 
         Return tuple ``(master, red, green, blue)`` of corresponding gain factors.
         """
-        return tuple([lib.is_SetHWGainFactor(self.hcam,uc480_defs.GAINFACTOR.IS_GET_MASTER_GAIN_FACTOR+i,0)/100 for i in range(4)])
+        return tuple([self.lib.is_SetHWGainFactor(self.hcam,uc480_defs.GAINFACTOR.IS_GET_MASTER_GAIN_FACTOR+i,0)/100 for i in range(4)])
     def get_max_gains(self):
         """
         Get maximal gains.
 
         Return tuple ``(master, red, green, blue)`` of corresponding maximal gain factors.
         """
-        return tuple([lib.is_SetHWGainFactor(self.hcam,uc480_defs.GAINFACTOR.IS_INQUIRE_MASTER_GAIN_FACTOR+i,100)/100 for i in range(4)])
+        return tuple([self.lib.is_SetHWGainFactor(self.hcam,uc480_defs.GAINFACTOR.IS_INQUIRE_MASTER_GAIN_FACTOR+i,100)/100 for i in range(4)])
     def _set_channel_gain(self, i, ivalue):
-        max_gain=lib.is_SetHWGainFactor(self.hcam,uc480_defs.GAINFACTOR.IS_INQUIRE_MASTER_GAIN_FACTOR+i,100)
+        max_gain=self.lib.is_SetHWGainFactor(self.hcam,uc480_defs.GAINFACTOR.IS_INQUIRE_MASTER_GAIN_FACTOR+i,100)
         min_gain=100
         ivalue=max(min(ivalue,max_gain),min_gain)
-        lib.is_SetHWGainFactor(self.hcam,uc480_defs.GAINFACTOR.IS_SET_MASTER_GAIN_FACTOR+i,ivalue)
+        self.lib.is_SetHWGainFactor(self.hcam,uc480_defs.GAINFACTOR.IS_SET_MASTER_GAIN_FACTOR+i,ivalue)
     def set_gains(self, master=None, red=None, green=None, blue=None):
         """
         Set current gains.
@@ -353,11 +367,11 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         return self.get_gains()
     def get_gain_boost(self):
         """Check if gain boost is enabled"""
-        return bool(lib.is_SetGainBoost(self.hcam,uc480_defs.GAIN.IS_GET_SUPPORTED_GAINBOOST) and lib.is_SetGainBoost(self.hcam,uc480_defs.GAIN.IS_GET_GAINBOOST))
+        return bool(self.lib.is_SetGainBoost(self.hcam,uc480_defs.GAIN.IS_GET_SUPPORTED_GAINBOOST) and self.lib.is_SetGainBoost(self.hcam,uc480_defs.GAIN.IS_GET_GAINBOOST))
     def set_gain_boost(self, enabled):
         """Enable or disable gain boost"""
-        if lib.is_SetGainBoost(self.hcam,uc480_defs.GAIN.IS_GET_SUPPORTED_GAINBOOST):
-            lib.is_SetGainBoost(self.hcam,1 if enabled else 0,check=True)
+        if self.lib.is_SetGainBoost(self.hcam,uc480_defs.GAIN.IS_GET_SUPPORTED_GAINBOOST):
+            self.lib.is_SetGainBoost(self.hcam,1 if enabled else 0,check=True)
         return self.get_gain_boost()
 
 
@@ -378,15 +392,15 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
     def start_acquisition(self, *args, **kwargs):
         self.stop_acquisition()
         super().start_acquisition(*args,**kwargs)
-        lib.is_ResetCaptureStatus(self.hcam)
-        lib.is_CaptureVideo(self.hcam,uc480_defs.LIVEFREEZE.IS_DONT_WAIT,check=True)
+        self.lib.is_ResetCaptureStatus(self.hcam)
+        self.lib.is_CaptureVideo(self.hcam,uc480_defs.LIVEFREEZE.IS_DONT_WAIT,check=True)
         self._acq_in_progress=True
         self._reset_skip_counter()
         self._frame_counter.reset(self._acq_params["nframes"])
     def stop_acquisition(self):
         if self.acquisition_in_progress():
             self._frame_counter.update_acquired_frames(self._get_acquired_frames(error_on_skip=False))
-            lib.is_StopLiveVideo(self.hcam,0)
+            self.lib.is_StopLiveVideo(self.hcam,0)
             self._acq_in_progress=False
     def acquisition_in_progress(self):
         return self._acq_in_progress
@@ -396,7 +410,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         return self._TFramesStatus(*self._frame_counter.get_frames_status())
     def get_acquired_frame_status(self):
         acquired=self._get_acquired_frames(error_on_skip=False)
-        cstat=lib.is_GetCaptureStatus(self.hcam).adwCapStatusCnt_Detail
+        cstat=self.lib.is_GetCaptureStatus(self.hcam).adwCapStatusCnt_Detail
         transfer_missed=sum([cstat[i] for i in [0xa2,0xa3,0xb2,0xc7]])
         return TAcquiredFramesStatus(acquired,transfer_missed,self._frameskip_events)
     _p_frameskip_behavior=interface.EnumParameterClass("frameskip_behavior",["error","ignore","skip"])
@@ -414,7 +428,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         self._buff_offset=0
         self._frameskip_events=0
     def _get_acquired_frames(self, error_on_skip=True):
-        acq=lib.is_CameraStatus(self.hcam,uc480_defs.CAMINFO.IS_SEQUENCE_CNT,uc480_defs.CAMINFO.IS_GET_STATUS)+self._acq_offset
+        acq=self.lib.is_CameraStatus(self.hcam,uc480_defs.CAMINFO.IS_SEQUENCE_CNT,uc480_defs.CAMINFO.IS_GET_STATUS)+self._acq_offset
         prev_acq=self._frame_counter.get_frames_status()[0]
         if acq<prev_acq:
             updated=False
@@ -451,7 +465,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
 
         Return tuple ``(horizontal, vertical)`` of lists with all possible supported subsampling factors.
         """
-        all_modes=lib.is_SetSubSampling(self.hcam,uc480_defs.SUBSAMPLING.IS_GET_SUPPORTED_SUBSAMPLING)
+        all_modes=self.lib.is_SetSubSampling(self.hcam,uc480_defs.SUBSAMPLING.IS_GET_SUPPORTED_SUBSAMPLING)
         supp={"v":set(),"h":set()}
         for (d,s),mask in self._subsampling_modes.items():
             if all_modes&mask==mask:
@@ -459,8 +473,8 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         return sorted(supp["h"]),sorted(supp["v"])
     def get_subsampling(self):
         """Get current subsampling"""
-        hsub=lib.is_SetSubSampling(self.hcam,uc480_defs.SUBSAMPLING.IS_GET_SUBSAMPLING_FACTOR_HORIZONTAL)
-        vsub=lib.is_SetSubSampling(self.hcam,uc480_defs.SUBSAMPLING.IS_GET_SUBSAMPLING_FACTOR_VERTICAL)
+        hsub=self.lib.is_SetSubSampling(self.hcam,uc480_defs.SUBSAMPLING.IS_GET_SUBSAMPLING_FACTOR_HORIZONTAL)
+        vsub=self.lib.is_SetSubSampling(self.hcam,uc480_defs.SUBSAMPLING.IS_GET_SUBSAMPLING_FACTOR_VERTICAL)
         return hsub,vsub
     @camera.acqcleared
     def set_subsampling(self, hsub=1, vsub=1):
@@ -472,7 +486,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         """
         hsub,vsub=self._truncate_subsampling(hsub,vsub,self.get_supported_subsampling_modes())
         mask=self._p_subsampling_mode(("h",hsub))|self._p_subsampling_mode(("v",vsub))
-        lib.is_SetSubSampling(self.hcam,mask,check=True)
+        self.lib.is_SetSubSampling(self.hcam,mask,check=True)
         return self.get_subsampling()
 
 
@@ -491,7 +505,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
 
         Return tuple ``(horizontal, vertical)`` of lists with all possible supported binning factors.
         """
-        all_modes=lib.is_SetBinning(self.hcam,uc480_defs.BINNING.IS_GET_SUPPORTED_BINNING)
+        all_modes=self.lib.is_SetBinning(self.hcam,uc480_defs.BINNING.IS_GET_SUPPORTED_BINNING)
         supp={"v":set(),"h":set()}
         for (d,s),mask in self._binning_modes.items():
             if all_modes&mask==mask:
@@ -499,8 +513,8 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         return sorted(supp["v"]),sorted(supp["h"])
     def get_binning(self):
         """Get current binning"""
-        hbin=lib.is_SetBinning(self.hcam,uc480_defs.BINNING.IS_GET_BINNING_FACTOR_HORIZONTAL)
-        vbin=lib.is_SetBinning(self.hcam,uc480_defs.BINNING.IS_GET_BINNING_FACTOR_VERTICAL)
+        hbin=self.lib.is_SetBinning(self.hcam,uc480_defs.BINNING.IS_GET_BINNING_FACTOR_HORIZONTAL)
+        vbin=self.lib.is_SetBinning(self.hcam,uc480_defs.BINNING.IS_GET_BINNING_FACTOR_VERTICAL)
         return hbin,vbin
     @camera.acqcleared
     def set_binning(self, hbin=1, vbin=1):
@@ -512,7 +526,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         """
         hbin,vbin=self._truncate_subsampling(hbin,vbin,self.get_supported_binning_modes())
         mask=self._p_binning_mode(("h",hbin))|self._p_binning_mode(("v",vbin))
-        lib.is_SetBinning(self.hcam,mask,check=True)
+        self.lib.is_SetBinning(self.hcam,mask,check=True)
         return self.get_binning()
 
     def get_detector_size(self):
@@ -520,8 +534,8 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         sensor=self._get_sensor_info()
         return sensor.nMaxWidth,sensor.nMaxHeight
     def _check_aoi(self, aoi):
-        lib.is_AOI(self.hcam,uc480_defs.IMAGE.IS_AOI_IMAGE_SET_AOI,uc480_defs.CIS_RECT,aoi)
-        return tuple(lib.is_AOI(self.hcam,uc480_defs.IMAGE.IS_AOI_IMAGE_GET_AOI,uc480_defs.CIS_RECT))==aoi
+        self.lib.is_AOI(self.hcam,uc480_defs.IMAGE.IS_AOI_IMAGE_SET_AOI,uc480_defs.CIS_RECT,aoi)
+        return tuple(self.lib.is_AOI(self.hcam,uc480_defs.IMAGE.IS_AOI_IMAGE_GET_AOI,uc480_defs.CIS_RECT))==aoi
     def _get_roi_binning(self):
         return self.get_subsampling() if self._roi_binning_mode=="subsample" else self.get_binning()
     def _set_roi_binning(self, hbin, vbin):
@@ -546,7 +560,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
 
         Return tuple ``(hstart, hend, vstart, vend, hbin, vbin)``.
         """
-        rect=lib.is_AOI(self.hcam,uc480_defs.IMAGE.IS_AOI_IMAGE_GET_AOI,uc480_defs.CIS_RECT)
+        rect=self.lib.is_AOI(self.hcam,uc480_defs.IMAGE.IS_AOI_IMAGE_GET_AOI,uc480_defs.CIS_RECT)
         hbin,vbin=self._get_roi_binning()
         return (rect.s32X*hbin,(rect.s32X+rect.s32Width)*hbin,rect.s32Y*vbin,(rect.s32Y+rect.s32Height)*vbin,hbin,vbin)
     @camera.acqcleared
@@ -562,16 +576,16 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         hstart,hend,vstart,vend,hbin,vbin=self._trunc_roi(*roi)
         self._set_roi_binning(1,1) # in case current ROI is too small for the current binning
         aoi=uc480_defs.IS_RECT(hstart,vstart,(hend-hstart),(vend-vstart))
-        lib.is_AOI(self.hcam,uc480_defs.IMAGE.IS_AOI_IMAGE_SET_AOI,uc480_defs.CIS_RECT,aoi)
+        self.lib.is_AOI(self.hcam,uc480_defs.IMAGE.IS_AOI_IMAGE_SET_AOI,uc480_defs.CIS_RECT,aoi)
         self._set_roi_binning(hbin,vbin)
         aoi=uc480_defs.IS_RECT(hstart//hbin,vstart//vbin,(hend-hstart)//hbin,(vend-vstart)//vbin)
-        lib.is_AOI(self.hcam,uc480_defs.IMAGE.IS_AOI_IMAGE_SET_AOI,uc480_defs.CIS_RECT,aoi)
+        self.lib.is_AOI(self.hcam,uc480_defs.IMAGE.IS_AOI_IMAGE_SET_AOI,uc480_defs.CIS_RECT,aoi)
         return self.get_roi()
     def get_roi_limits(self, hbin=1, vbin=1):
         wdet,hdet=self.get_detector_size()
-        smin=lib.is_AOI(self.hcam,uc480_defs.IMAGE.IS_AOI_IMAGE_GET_SIZE_MIN,uc480_defs.CIS_SIZE_2D)
-        pstep=lib.is_AOI(self.hcam,uc480_defs.IMAGE.IS_AOI_IMAGE_GET_POS_INC,uc480_defs.CIS_POINT_2D)
-        sstep=lib.is_AOI(self.hcam,uc480_defs.IMAGE.IS_AOI_IMAGE_GET_SIZE_INC,uc480_defs.CIS_SIZE_2D)
+        smin=self.lib.is_AOI(self.hcam,uc480_defs.IMAGE.IS_AOI_IMAGE_GET_SIZE_MIN,uc480_defs.CIS_SIZE_2D)
+        pstep=self.lib.is_AOI(self.hcam,uc480_defs.IMAGE.IS_AOI_IMAGE_GET_POS_INC,uc480_defs.CIS_POINT_2D)
+        sstep=self.lib.is_AOI(self.hcam,uc480_defs.IMAGE.IS_AOI_IMAGE_GET_SIZE_INC,uc480_defs.CIS_SIZE_2D)
         mhbin,mvbin=self._truncate_roi_binning(wdet,hdet)
         hlim=camera.TAxisROILimit(smin[0]*hbin,wdet,pstep[0]*hbin,sstep[0]*hbin,mhbin)
         vlim=camera.TAxisROILimit(smin[1]*vbin,hdet,pstep[1]*vbin,sstep[1]*vbin,mvbin)
@@ -585,12 +599,12 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
     _np_dtypes={8:"u1",16:"<u2",32:"<u4"}
     def _read_buffer(self, n, return_info=False, nchan=None):
         buff,dim,bpp=self._buffers[(n-self._buff_offset)%len(self._buffers)]
-        frame_info=lib.is_GetImageInfo(self.hcam,buff[1]) if return_info else None
+        frame_info=self.lib.is_GetImageInfo(self.hcam,buff[1]) if return_info else None
         if nchan is None:
             nchan=self._get_pixel_mode_settings()[1]
         shape=dim+((nchan,) if nchan>1 else ())
         frame=np.empty(shape=shape,dtype=self._np_dtypes[bpp//nchan])
-        lib.is_CopyImageMem(self.hcam,buff[0],buff[1],frame.ctypes.data)
+        self.lib.is_CopyImageMem(self.hcam,buff[0],buff[1],frame.ctypes.data)
         frame=self._convert_indexing(frame,"rct")
         if return_info:
             ts=frame_info.TimestampSystem
