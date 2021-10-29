@@ -100,7 +100,9 @@ class Solstis(interface.IDevice):
         if tx_id is None:
             tx_id=self.tx_id
             self.tx_id=self.tx_id%16383+1
-        msg={"message":{"transmission_id":[tx_id],"op":op,"parameters":dict(params)}}
+        msg={"message":{"transmission_id":[tx_id],"op":op}}
+        if params is not None:
+            msg["message"]["parameters"]=dict(params)
         return json.dumps(msg,default=float)
     def _parse_message(self, msg):
         pmsg=json.loads(msg)

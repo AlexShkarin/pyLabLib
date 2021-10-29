@@ -374,7 +374,7 @@ class GenericCameraThread(device_thread.DeviceThread):
 
         State can be ``"stopped"`` (acquisition stopped) or ``"acquiring"`` (acquisition is in progress)
         """
-        self.wait_for_variable("status/acquisition",state)
+        self.sync_variable("status/acquisition",state)
     def wait_for_next_frame(self, n=1, start=None, timeout=None):
         """
         Wait until `n` frames have been acquired starting from the `start` (current moment by default).
@@ -385,5 +385,5 @@ class GenericCameraThread(device_thread.DeviceThread):
         """
         if start is None:
             start=self.v["frames/last_idx"]
-        self.wait_for_variable("frames/last_idx", lambda idx: idx>=start+n, timeout=timeout)
+        self.sync_variable("frames/last_idx", lambda idx: idx>=start+n, timeout=timeout)
         return self.v["frames/last_frame"]

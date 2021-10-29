@@ -863,7 +863,8 @@ class QThreadController(QtCore.QObject):
         """
         Wait until thread variable with the given `name` satisfies the condition given by `pred`.
         
-        `pred` is a function which takes one argument (variable value) and returns whether the condition is satisfied.
+        `pred` can be a variable values, a container (list, set, tuple) of possible values,
+        or a function which takes one argument (variable value) and returns whether the condition is satisfied.
         It is executed in the caller thread.
         External call method.
         """

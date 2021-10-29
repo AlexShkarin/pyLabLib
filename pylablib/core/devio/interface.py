@@ -194,6 +194,20 @@ class IDevice:
                         except all_err:
                             pass
         return info
+    def _remove_device_variable(self, path, kind=None):
+        """Remove a device variable"""
+        if kind is None:
+            for k,v in self._device_vars.items():
+                if path in v:
+                    kind=k
+                    break
+        if kind not in self._device_vars:
+            raise ValueError("unrecognized device variable kind: {}".format(kind))
+        if path not in self._device_vars[kind]:
+            raise ValueError("variable {} does not exist".format(path))
+        del self._device_vars[kind][path]
+        order=self._device_vars_order[kind]
+        del order[order.index(path)]
     def get_settings(self, include=0):
         """
         Get dict ``{name: value}`` containing all the device settings.
