@@ -935,14 +935,15 @@ class AccessIterator:
 
 
 
-def muxcall(argname, all_arg_value="all", all_arg_func=None, mux_argnames=None, return_kind="list", allow_partial=False):
+def muxcall(argname, special_args=None, mux_argnames=None, return_kind="list", allow_partial=False):
     """
     Wrap a function such that it can become multiplexable over a given argument.
 
     Args:
         argname: name of the argument to loop over
-        all_arg_value: value of `argname` argument which indicates that the function should be multiplexed over all argument values
-        all_arg_func: function which takes the same arguments as the wrapped function and returns a list of values for `argname` to loop over
+        special_args: if not ``None``, defines a dictionary ``{arg: func}`` for special values of the argument
+            (e.g., ``"all"``, ``None``, etc.), where ``arg`` is its value, and ``func`` is the method taking the same arguments
+            as the called function and returning the substitute argument (e.g., a list of all arguments)
         mux_argnames: names of additional arguments which, when supplied list or dict values, and when the `argname` value is a list,
             specify different values for different calls
         return_kind: method to combined multiple returned values; can be ``"list"``, ``"dict"`` (return dict ``{arg: result}``),
@@ -956,18 +957,17 @@ def muxcall(argname, all_arg_value="all", all_arg_func=None, mux_argnames=None, 
         mux_argnames=()
     elif not isinstance(mux_argnames,(tuple,list)):
         mux_argnames=(mux_argnames,)
-    if all_arg_value is None:
-        all_arg_value=()
-    elif not isinstance(all_arg_value,(tuple,list)):
-        all_arg_value=(all_arg_value,)
     def wrapper(func):
         sig=functions.funcsig(func)
         @functools.wraps(func)
         def wrapped(*args, **kwargs):
             all_args=sig.as_kwargs(args,kwargs,add_defaults=True)
             marg=all_args[argname]
-            if marg in all_arg_value and all_arg_func is not None:
-                marg=all_arg_func(*args,**kwargs)
+            while True:
+                try:
+                    marg=special_args[marg](*args,**kwargs)
+                except (KeyError,TypeError): # including non-hashable marg
+                    break
             if isinstance(marg,list):
                 mux_args={}
                 for n in mux_argnames:

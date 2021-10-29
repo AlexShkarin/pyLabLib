@@ -13,7 +13,7 @@ def muxchan(*args, **kwargs):
         return muxchan(**kwargs)(args[0])
     def chan_func(self, *_, **__):
         return list(range(1,self._channels_number+1))
-    return general.muxcall("channel",all_arg_func=chan_func,mux_argnames=kwargs.get("mux_argnames",None),return_kind="list",allow_partial=True)
+    return general.muxcall("channel",special_args={"all":chan_func},mux_argnames=kwargs.get("mux_argnames",None),return_kind="list",allow_partial=True)
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["serial","version"])
 TWorkHours=collections.namedtuple("TWorkHours",["power_up","laser_on"])
 TTemperatures=collections.namedtuple("TTemperatures",["diode","baseplate"])

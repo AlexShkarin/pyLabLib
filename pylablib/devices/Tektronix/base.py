@@ -17,7 +17,7 @@ def muxchannel(*args, **kwargs):
         return muxchannel(**kwargs)(args[0])
     def ch_func(self, *_, **__):
         return list(self._main_channels_idx)
-    return general.muxcall("channel",all_arg_func=ch_func,mux_argnames=kwargs.get("mux_argnames",None),return_kind=kwargs.get("return_kind","list"),allow_partial=True)
+    return general.muxcall("channel",special_args={"all":ch_func},mux_argnames=kwargs.get("mux_argnames",None),return_kind=kwargs.get("return_kind","list"),allow_partial=True)
 TTriggerParameters=collections.namedtuple("TTriggerParameters",["source","level","coupling","slope"])
 class ITektronixScope(SCPI.SCPIDevice):
     """

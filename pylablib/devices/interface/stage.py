@@ -7,25 +7,33 @@ class IStage(interface.IDevice):
     _p_direction=interface.EnumParameterClass("direction",[("+",True),(1,True),("-",False),(0,False)])
 
 
-def muxaxis(*args, **kwargs):
+def muxaxis(*args, argname="axis", **kwargs):
     """Multiplex the function over its axis argument"""
     if len(args)>0:
-        return muxaxis(**kwargs)(args[0])
-    def ax_func(self, *_, **__):
+        return muxaxis(argname=argname,**kwargs)(args[0])
+    def all_ax_func(self, *_, **__):
         return self._mapped_axes
-    return general.muxcall("axis",all_arg_func=ax_func,mux_argnames=kwargs.get("mux_argnames",None),return_kind=kwargs.get("return_kind","list"),allow_partial=True)
+    def def_ax_func(self, *_, **__):
+        if self._default_axis is None:
+            raise TypeError("{} argument must be provided".format(argname))
+        return self._default_axis
+    return general.muxcall(argname,special_args={"all":all_ax_func,None:def_ax_func},mux_argnames=kwargs.get("mux_argnames",None),return_kind=kwargs.get("return_kind","list"),allow_partial=True)
 class IMultiaxisStage(IStage):
     """
     Generic multiaxis stage class.
 
     Has methods to assign and map axes and the axis device parameter.
+
+    Args:
+        default_axis: default axis parameter value used when ``axis=None`` is provided
     """
     _axes=[]
     _axis_parameter_name="axis"
     _axis_value_case=None
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, default_axis="all", **kwargs):
+        super().__init__(*args,**kwargs)
         self._original_axis_parameter=None
+        self._default_axis=default_axis
         self._mapped_axes=list(self._axes)
         self._add_parameter_class(interface.EnumParameterClass(self._axis_parameter_name,self._axes,value_case=self._axis_value_case))
         self._add_info_variable("axes",self.get_all_axes)

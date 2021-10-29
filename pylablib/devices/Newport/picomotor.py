@@ -20,7 +20,7 @@ def muxaddr(*args, **kwargs):
         return muxaddr(**kwargs)(args[0])
     def addr_func(self, *_, **__):
         return self._addr_list
-    return general.muxcall("addr",all_arg_func=addr_func,mux_argnames=kwargs.get("mux_argnames",None),return_kind=kwargs.get("return_kind","dict"),allow_partial=True)
+    return general.muxcall("addr",special_args={"all":addr_func},mux_argnames=kwargs.get("mux_argnames",None),return_kind=kwargs.get("return_kind","dict"),allow_partial=True)
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["id"])
 class Picomotor8742(comm_backend.ICommBackendWrapper,stage.IMultiaxisStage):
     """
