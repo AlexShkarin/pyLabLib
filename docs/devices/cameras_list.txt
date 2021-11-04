@@ -4,6 +4,7 @@
 - :ref:`NI IMAQdx <cameras_imaqdx>`: National Instruments universal camera interface. Tested with Ethernet-connected PhotonFocus HD1-D1312 camera.
 - :ref:`Photon Focus <cameras_photonfocus>`: Photon Focus pfcam interface. Tested with PhotonFocus MV-D1024E camera connected through either NI frame grabbers (PCI-1430 and PCI-1433) or Silicon Software frame grabbers (microEnable IV AD4-CL).
 - :ref:`PCO SC2 <cameras_pco_sc2>`: PCO cameras. Tested with pco.edge cameras with CLHS and regular CameraLink interfaces.
+- :ref:`Picam <cameras_picam>`: Princeton Instruments cameras. Tested with a PIXIS 400 camera.
 - :ref:`Silicon Software <cameras_siso>`: Silicon Software frame grabbers. Tested with microEnable IV AD4-CL frame grabbers together with PhotonFocus MV-D1024E camera.
 - :ref:`Thorlabs Scientific Cameras <cameras_thorlabs_tlcamera>`: Thorlabs sCMOS cameras. Tested with Thorlabs Kiralux camera.
 - :ref:`Uc480/uEye <cameras_uc480>`: multiple cameras, including simple Thorlabs and IDS cameras. Tested with IDS SC2592R12M and Thorlabs DCC1545M.
