@@ -42,7 +42,7 @@ def errcheck(passing=None, lib=None):
     """
     Build an error checking function.
 
-    Return a function which checks return codes of IMAQdx library functions.
+    Return a function which checks return codes of PCO SC2 library functions.
     `passing` is a list specifying which return codes are acceptable (by default only 0, which is success code, is acceptable).
     """
     if passing is None:

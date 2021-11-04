@@ -243,15 +243,16 @@ class IMAQdxCamera(camera.IROICamera, camera.IAttributeCamera):
                     pass
         return [IMAQdxAttribute(self.sid,a) for a in attr_names]
 
-    def get_attribute_value(self, name, error_on_missing=True, default=None):
+    def get_attribute_value(self, name, error_on_missing=True, default=None, enum_as_str=True):
         """
         Get value of an attribute with the given name.
         
         If the value doesn't exist or can not be read and ``error_on_missing==True``, raise error; otherwise, return `default`.
         If `default` is not ``None``, assume that ``error_on_missing==False``.
         If `name` points at a dictionary branch, return a dictionary with all values in this branch.
+        If ``enum_as_str==True``, return enum-style values as strings; otherwise, return corresponding integer values.
         """
-        return super().get_attribute_value(name,error_on_missing=error_on_missing,default=default)
+        return super().get_attribute_value(name,error_on_missing=error_on_missing,default=default,enum_as_str=enum_as_str)
     def set_attribute_value(self, name, value, truncate=True, error_on_missing=True):
         """
         Set value of an attribute with the given name.
@@ -261,9 +262,9 @@ class IMAQdxCamera(camera.IROICamera, camera.IAttributeCamera):
         If ``truncate==True``, truncate value to lie within attribute range.
         """
         return super().set_attribute_value(name,value,truncate=truncate,error_on_missing=error_on_missing)
-    def get_all_attribute_values(self, root=""):
+    def get_all_attribute_values(self, root="", enum_as_str=True):
         """Get values of all attributes with the given `root`"""
-        return super().get_all_attribute_values(root=root)
+        return super().get_all_attribute_values(root=root,enum_as_str=enum_as_str)
     def set_all_attribute_values(self, settings, root="", truncate=True):
         """
         Set values of all attributes with the given `root`.

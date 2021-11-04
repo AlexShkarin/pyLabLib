@@ -46,7 +46,7 @@ def get_stats():
 
     Return tuple ``((ttime,wtime), (threads,ctls))``.
     Here ``ttime`` and ``wtime`` are total execution time (sum of all thread times) and the wall time (since the last reset) respectively.
-    ``threads`` are yappi-generated stats, and ``ctls`` is the list ``[(name,ctl)]`` with the controller names and thread controlles,
+    ``threads`` are yappi-generated stats, and ``ctls`` is the list ``[(name,ctl)]`` with the controller names and thread controllers,
     which are ordered in the same way as ``threads`` (for any non-controlled or stopped thread these are set to ``None``).
     """
     _check_yappi()

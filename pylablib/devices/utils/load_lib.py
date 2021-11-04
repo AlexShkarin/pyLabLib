@@ -241,7 +241,7 @@ class LibraryController:
             elif opid in self.closed:
                 return None,None
             else:
-                raise ValueError("supplied opid {} has never been issued")
+                raise ValueError("supplied opid {} has never been issued".format(opid))
             self.preinit()
             self.open_devices-=1
             close_result=self._do_close() # pylint: disable=assignment-from-no-return

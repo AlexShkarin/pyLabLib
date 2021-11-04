@@ -750,12 +750,12 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         Note that the minimal ROI size depends on the current (not just supplied) binning settings.
         For more accurate results, is it only after setting up the binning.
         """
-        hdet,wdet=self.get_detector_size()
+        wdet,hdet=self.get_detector_size()
         params=[self._get_feature(p) for p in ["AOIWidth","AOIHeight","AOIHBin","AOIVBin"]]
         minp=[p.min for p in params]
         maxp=[p.max for p in params]
-        hlim=camera.TAxisROILimit(minp[0]*hbin,hdet,1,hbin,maxp[2])
-        vlim=camera.TAxisROILimit(minp[1]*vbin,wdet,1,vbin,maxp[3])
+        hlim=camera.TAxisROILimit(minp[0]*hbin,wdet,1,hbin,maxp[2])
+        vlim=camera.TAxisROILimit(minp[1]*vbin,hdet,1,vbin,maxp[3])
         return hlim,vlim
     
     def _check_buffer_overflow(self):
