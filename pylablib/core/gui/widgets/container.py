@@ -502,3 +502,13 @@ class QTabContainer(IQContainer, QtWidgets.QTabWidget):
         for n in list(self._tabs):
             self.remove_tab(n)
         super().clear()
+    def get_current_name(self):
+        """Get current tab name"""
+        tab=self.currentWidget()
+        for n,w in self._tabs.items():
+            if tab is w:
+                return n
+    def set_by_name(self, name):
+        """Set tab by name"""
+        tab=self.c[name]
+        self.setCurrentIndex(self.indexOf(tab))

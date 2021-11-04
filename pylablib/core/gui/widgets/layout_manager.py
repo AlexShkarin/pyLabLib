@@ -168,7 +168,7 @@ class IQLayoutManagedWidget:
                 elif kind=="vbox":
                     location=(idx,0,1,1)
                 return name,location 
-        return False
+        return None
     def add_sublayout(self, name, kind="grid", location=None):
         """
         Add a sublayout to the given location.
