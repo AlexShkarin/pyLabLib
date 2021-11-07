@@ -307,6 +307,32 @@ class ParamTable(container.QWidgetContainer):
         widget.setObjectName(self.name+"_"+name)
         widget.set_value(value)
         return self.add_simple_widget(name,widget,label=label,add_indicator=add_indicator,location=location,tooltip=tooltip,add_change_event=add_change_event)
+    def add_dropdown_button(self, name, caption, options=None, index_values=None, label=None, add_indicator=None, location=None, tooltip=None, add_change_event=True, virtual=False):
+        """
+        Add a button which shows a dropdown menu when clicked.
+
+        Similar in behavior to a regular button, but its changed event provides a single argument which is the name of the selected item.
+        
+        Args:
+            name (str): widget name (used to reference its value in the values table)
+            caption (str or list): text on the button
+            options (list): list of strings specifying menu options
+            index_values (list): list of values corresponding to menu options; if supplied, these values are used when setting/getting values or sending signals.
+            virtual (bool): if ``True``, the widget is not added, and a virtual handler is added instead
+            
+        Rest of the arguments and the return value are the same as :meth:`add_simple_widget`.
+        """
+        if virtual:
+            return self.add_virtual_element(name,add_indicator=add_indicator)
+        widget=widget_button.DropdownButton(self)
+        widget.setText(caption)
+        widget.setObjectName(self.name+"_"+name)
+        if options:
+            if index_values is None:
+                index_values=list(range(len(options)))
+            for i,o in zip(index_values,options):
+                widget.add_item(i,o)
+        return self.add_simple_widget(name,widget,label=label,add_indicator=add_indicator,location=location,tooltip=tooltip,add_change_event=add_change_event)
     def add_check_box(self, name, caption, value=False, label=None, add_indicator=None, location=None, tooltip=None, add_change_event=True, virtual=False):
         """
         Add a checkbox to the table.
@@ -425,10 +451,10 @@ class ParamTable(container.QWidgetContainer):
         Args:
             name (str): widget name (used to reference its value in the values table)
             value (bool): specifies initial value
-            options (list): list of string specifying box options
-            index_values (list): list of values corresponding to box options; if supplies, these number are used when setting/getting values or sending signals.
-            out_of_range (str): behavior when out-of-range value is applied; c
-                an be ``"error"`` (raise error), ``"reset"`` (reset to no-value position), or ``"ignore"`` (keep current value).
+            options (list): list of strings specifying box options
+            index_values (list): list of values corresponding to box options; if supplied, these values are used when setting/getting values or sending signals
+            out_of_range (str): behavior when out-of-range value is applied;
+                can be ``"error"`` (raise error), ``"reset"`` (reset to no-value position), or ``"ignore"`` (keep current value).
             virtual (bool): if ``True``, the widget is not added, and a virtual handler is added instead
             
         Rest of the arguments and the return value are the same as :meth:`add_simple_widget`.

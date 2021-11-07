@@ -132,6 +132,8 @@ class QHighlightFrame(QtWidgets.QFrame):
                 sl,loc=anchor[0],anchor[1:]
             else:
                 sl,loc=("main",anchor)
+        if not isinstance(loc,tuple):
+            loc=(loc,)
         sublayout=container.get_sublayout(sl)
         if container.get_sublayout_kind(sl)=="grid":
             if kind=="element":
