@@ -120,7 +120,10 @@ class QHighlightFrame(QtWidgets.QFrame):
             self.add_anchor(anchor)
             return
         if isinstance(anchor,str):
-            anchor=container.w[anchor] if hasattr(container,"w") else container.c[anchor]
+            try:
+                anchor=container.w[anchor]
+            except KeyError:
+                anchor=container.c[anchor]
         if isinstance(anchor,QtWidgets.QWidget):
             container=utils.get_layout_container(anchor,top=container)
             if kind=="element" or container is None:
