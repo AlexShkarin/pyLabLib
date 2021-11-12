@@ -657,10 +657,10 @@ class AndorSDK2Lib:
                 for hssp in range(hsspeeds):
                     hsspeed_hz=self.GetHSSpeed(ch,oamp,hssp)
                     for pa in range(preamps):
-                        preamp_gain=self.GetPreAmpGain(pa)
                         try:
-                            self.IsPreAmpGainAvailable(ch,oamp,hssp,pa)
-                            modes.append(TAmpModeFull(ch,bit_depth,oamp,oamp_kind,hssp,hsspeed_hz,pa,preamp_gain))
+                            preamp_gain=self.GetPreAmpGain(pa)
+                            if self.IsPreAmpGainAvailable(ch,oamp,hssp,pa):
+                                modes.append(TAmpModeFull(ch,bit_depth,oamp,oamp_kind,hssp,hsspeed_hz,pa,preamp_gain))
                         except AndorSDK2LibError:
                             pass
         return modes

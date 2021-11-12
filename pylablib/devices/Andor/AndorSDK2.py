@@ -232,11 +232,12 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
             if self.idx>=ncams:
                 raise AndorError("camera index {} is not available ({} cameras exist)".format(self.idx,ncams))
             self.handle=lib.GetCameraHandle(self.idx)
-            with _camsel_lock:
-                self._select_camera()
-                lib.Initialize(py3.as_builtin_bytes(self.ini_path))
-                self._opid=libctl.open().opid
-            self._setup_default_settings()
+            with self._close_on_error():
+                with _camsel_lock:
+                    self._select_camera()
+                    lib.Initialize(py3.as_builtin_bytes(self.ini_path))
+                    self._opid=libctl.open().opid
+                self._setup_default_settings()
     def close(self):
         """Close connection to the camera"""
         if self.handle is not None:
@@ -245,7 +246,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
                 try:
                     self._select_camera()
                 except AndorError:
-                    return
+                    pass
             finally:
                 self.handle=None
                 libctl.close(self._opid)
@@ -701,7 +702,10 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         if self.set_acquisition_mode("kinetic",setup_params=False) is None: return
         lib.SetNumberKinetics(num_cycle)
         lib.SetNumberAccumulations(num_acc)
-        lib.SetNumberPrescans(num_prescan)
+        if self._has_option("set",AC_SETFUNC.AC_SETFUNCTION_PRESCANS):
+            lib.SetNumberPrescans(num_prescan)
+        else:
+            num_prescan=0
         lib.SetKineticCycleTime(cycle_time)
         lib.SetAccumulationCycleTime(cycle_time_acc)
         return (num_cycle,cycle_time,num_acc,cycle_time_acc,num_prescan)
