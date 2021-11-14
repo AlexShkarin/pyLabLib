@@ -1119,3 +1119,140 @@ class KinesisPiezoMotor(KinesisDevice):
     setup_drive=KinesisDevice._pzmot_setup_drive
     get_jog_parameters=KinesisDevice._pzmot_get_jog_parameters
     setup_jog=KinesisDevice._pzmot_setup_jog
+
+
+
+
+
+TQuadDetectorPIDParams=collections.namedtuple("TQuadDetectorPIDParams",["p","i","d"])
+TQuadDetectorSetpoint=collections.namedtuple("TQuadDetectorSetpoint",["xpos","ypos"])
+TQuadDetectorReadings=collections.namedtuple("TQuadDetectorReadings",["xdiff","ydiff","sum","xpos","ypos"])
+TQuadDetectorOutputParams=collections.namedtuple("TQuadDetectorOutputParams",["xmin","xmax","ymin","ymax","xgain","ygain","route","open_loop_out"])
+class KinesisQuadDetector(BasicKinesisDevice):
+    """
+    Kinesis quadrature detectors: KPA101, TPA101, TQD001.
+
+    Implements FTDI chip connectivity via pyft232 (virtual serial interface).
+
+    Args:
+        conn(str): serial connection parameters (usually an 8-digit device serial number).
+    """
+    def __init__(self, conn, timeout=3.):
+        super().__init__(conn,timeout=timeout)
+        self._add_settings_variable("pid_parameters",self.get_pid_parameters,self.set_pid_parameters)
+        self._add_settings_variable("manual_output",self.get_manual_output,self.set_manual_output)
+        self._add_status_variable("readings",self.get_readings)
+        self._add_settings_variable("operation_mode",self.get_operation_mode,self.set_operation_mode)
+        self._add_settings_variable("output_parameters",self.get_output_parameters,self.set_output_parameters)
+    
+    _invert_xdiff=True  # apparently, all returned (but not set) values for xdiff and xpos are inverted
+    def _quad_req(self, subid):
+        """Perform QUAD request (applicable to TQD/TPA/KPA detectors)"""
+        data=self.query(0x0871,subid).data
+        rsubid,=struct.unpack("<H",data[:2])
+        if rsubid!=subid:
+            raise RuntimeError("unexpected submessage ID in the reply: expected 0x{:02x}, got 0x{:02x}".format(subid,rsubid))
+        return data[2:]
+    def _quad_set(self, subid, data):
+        """Perform PZMOT set (applicable to KIMx01/TIMx01)"""
+        data=struct.pack("<H",subid)+data
+        self.send_comm_data(0x0870,data)
+    def get_pid_parameters(self):
+        """Get current PID gain parameters ``(p, i, d)``"""
+        data=self._quad_req(0x01)
+        par=struct.unpack("<HHH",data)
+        return TQuadDetectorPIDParams(*[v/32767 for v in par])
+    def set_pid_parameters(self, p=None, i=None, d=None):
+        """
+        Set current PID gain parameters ``(p, i, d)``.
+        
+        If any parameter is ``None``, use the current value.
+        """
+        current_parameters=self.get_pid_parameters()
+        p=current_parameters.p if p is None else p
+        i=current_parameters.i if i is None else i
+        d=current_parameters.d if d is None else d
+        par=[int(v*32767) for v in [p,i,d]]
+        par=[max(0,min(v,32767)) for v in par]
+        data=struct.pack("<HHH",*par)
+        self._quad_set(0x01,data)
+        return self.get_pid_parameters()
+    def get_manual_output(self):
+        """Get current manual output values ``(xpos, ypos)`` (used in open loop mode)"""
+        data=self._quad_req(0x0D)
+        par=struct.unpack("<hh",data)
+        par=[v/32767*10 for v in par]
+        if self._invert_xdiff:
+            par[0]*=-1
+        return TQuadDetectorSetpoint(*par)
+    def set_manual_output(self, xpos=None, ypos=None):
+        """
+        Get current manual output values (used in open loop mode).
+        
+        If any parameter is ``None``, use the current value.
+        """
+        current_parameters=self.get_manual_output()
+        xpos=current_parameters.xpos if xpos is None else xpos
+        ypos=current_parameters.ypos if ypos is None else ypos
+        par=[int(v/10*32767) for v in [xpos,ypos]]
+        par=[max(-32768,min(v,32767)) for v in par]
+        data=struct.pack("<hh",*par)
+        self._quad_set(0x0D,data)
+        return self.get_manual_output()
+    def get_readings(self):
+        """Get current readings ``(xdiff, ydiff, sum, xpos, ypos)``"""
+        data=self._quad_req(0x03)
+        par=struct.unpack("<hhHhh",data)
+        par=[v/32767*10 for v in par]
+        par[2]*=2 # sum has double the scaling
+        if self._invert_xdiff:
+            par[0]*=-1
+            par[3]*=-1
+        return TQuadDetectorReadings(*par)
+    _p_quad_oper_mode=interface.EnumParameterClass("quad_oper_mode",{"monitor":1,"open_loop":2,"closed_loop":3,"auto_loop":4})
+    @interface.use_parameters(_returns="quad_oper_mode")
+    def get_operation_mode(self):
+        """Get current operation mode: ``"monitor"``, ``"open_loop"``, ``"closed_loop"``, or ``"auto_loop"``"""
+        data=self._quad_req(0x07)
+        mode,=struct.unpack("<H",data)
+        return mode
+    @interface.use_parameters(mode="quad_oper_mode")
+    def set_operation_mode(self, mode):
+        """Get current operation mode: ``"monitor"``, ``"open_loop"``, ``"closed_loop"``, or ``"auto_loop"``"""
+        data=struct.pack("<H",mode)
+        self._quad_set(0x07,data)
+        return self.get_operation_mode()
+    _p_quad_route=interface.EnumParameterClass("quad_route",{"sma_only":1,"sma_hub":2})
+    _p_quad_open_loop_out=interface.EnumParameterClass("quad_open_loop_out",{"zero":1,"fixed":2})
+    @interface.use_parameters(_returns=[None,None,None,None,None,None,"quad_route","quad_open_loop_out"])
+    def get_output_parameters(self):
+        """Get current output parameters ``(xmin, xmax, ymin, ymax, xgain, ygain, route, open_loop_out)``"""
+        data=self._quad_req(0x05)
+        par=struct.unpack("<hhhhHHhh",data)
+        lims=[v/32767*10 for v in par[:4]]
+        gains=[v/32767 for v in par[6:8]]
+        return TQuadDetectorOutputParams(lims[0],lims[2],lims[1],lims[3],gains[0],gains[1],par[4],par[5])
+    @interface.use_parameters(route="quad_route",open_loop_out="quad_open_loop_out")
+    def set_output_parameters(self, xmin=None, xmax=None,  ymin=None, ymax=None, xgain=None, ygain=None, route=None, open_loop_out=None):
+        """
+        Set current PID gain parameters ``(xmin, xmax, ymin, ymax, xgain, ygain, route, open_loop_out)``.
+        
+        `xmin`, `xmax`, `ymin`, and `ymax` specify output limits, `xgain` and `ygain` specify additional separate gain (between -1 and 1),
+        `route` sets where output is routed in the closed loop mode (either ``"sma_only"`` or ``"sma_hub"``),
+        `open_loop_out` specifies the output source in the open loop mode (either ``"zero"`` or ``"fixed"``).
+        If any parameter is ``None``, use the current value.
+        """
+        current_parameters=self._wop.get_output_parameters()
+        def v2i(v, scale=10):
+            return max(-32768,min(32767,int(v/scale*32767)))
+        xmin=v2i(current_parameters.xmin if xmin is None else xmin)
+        xmax=v2i(current_parameters.xmax if xmax is None else xmax)
+        ymin=v2i(current_parameters.ymin if ymin is None else ymin)
+        ymax=v2i(current_parameters.ymax if ymax is None else ymax)
+        xgain=v2i(current_parameters.xgain if xgain is None else xgain,scale=1)
+        ygain=v2i(current_parameters.ygain if ygain is None else ygain,scale=1)
+        route=current_parameters.route if route is None else route
+        open_loop_out=current_parameters.open_loop_out if open_loop_out is None else open_loop_out
+        data=struct.pack("<hhhhHHhh",xmin,ymin,xmax,ymax,route,open_loop_out,xgain,ygain)
+        self._quad_set(0x05,data)
+        return self.get_output_parameters()
