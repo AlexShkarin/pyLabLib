@@ -2,10 +2,11 @@ from ...core.devio import interface, comm_backend
 from ...core.utils import general, funcargparse, py3
 from .base import ThorlabsError, ThorlabsTimeoutError, ThorlabsBackendError
 
-from ..interface.stage import IStage
+from ..interface.stage import IMultiaxisStage, muxaxis
 
 import struct
 import warnings
+import contextlib
 
 import re
 import time
@@ -157,14 +158,14 @@ class BasicKinesisDevice(comm_backend.ICommBackendWrapper):
         """
         data=self.query(0x0005,dest=dest).data
         serial_no,=struct.unpack("<I",data[:4])
-        model_no=data[4:12].decode().strip("\x00")
+        model_no=data[4:12].decode().strip("\x00").strip()
         port,port_model_no=self._get_device_model()
         if not self._model_match(model_no,port_model_no):
             warnings.warn("model number {} doesn't match the device ID prefix {}({})".format(model_no,port,port_model_no))
         fw_ver="{}.{}.{}".format(*struct.unpack("<BBB",data[14:17])[::-1])
         hw_type,=struct.unpack("<H",data[12:14])
         hw_ver,mod_state,nchannels=struct.unpack("<HHH",data[78:84])
-        notes=py3.as_str(data[18:66]).strip("\x00")
+        notes=py3.as_str(data[18:64]).strip("\x00").strip()
         return TDeviceInfo(serial_no,model_no,fw_ver,hw_type,hw_ver,mod_state,nchannels,notes)
     def get_number_of_channels(self):
         """Get number of channels on the device"""
@@ -191,11 +192,32 @@ TJogParams=collections.namedtuple("TJogParams",["mode","step_size","min_velocity
 TGenMoveParams=collections.namedtuple("TGenMoveParams",["backlash_distance"])
 THomeParams=collections.namedtuple("THomeParams",["home_direction","limit_switch","velocity","offset_distance"])
 TLimitSwitchParams=collections.namedtuple("TLimitSwitchParams",["hw_kind_cw","hw_kind_ccw","hw_swapped","sw_position_cw","sw_position_ccw","sw_kind"])
-class KinesisDevice(BasicKinesisDevice,IStage):
-    def __init__(self, conn, timeout=3.):
-        super().__init__(conn,timeout=timeout)
-        self._forward_positive=False
-    def _get_status_n(self, channel=1):
+TPZMotorDriveParams=collections.namedtuple("TPZMotorDriveParams",["max_voltage","velocity","acceleration"])
+TPZMotorJogParams=collections.namedtuple("TPZMotorJogParams",["mode","step_size_fw","step_size_bk","velocity","acceleration"])
+muxchannel=lambda *args,**kwargs: muxaxis(*args,argname="channel",**kwargs)
+class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
+    def __init__(self, conn, timeout=3., default_channel=1):
+        super().__init__(conn,timeout=timeout,default_axis=default_channel)
+        self._remove_device_variable("axes")
+        self._add_info_variable("channel",self.get_all_channels)
+    _axes=[1]
+    def get_all_channels(self):
+        """Get the list of all available channels; alias of ``get_all_axes`` method"""
+        return super().get_all_axes()
+    def set_default_channels(self, channel):
+        """Set the default channel for all channel-related methods"""
+        self._default_axis=channel
+    @contextlib.contextmanager
+    def using_channel(self, channel):
+        """Context manager for temporarily using a different default channel"""
+        current_channel=self._default_axis
+        self._default_axis=channel
+        try:
+            yield
+        finally:
+            self._default_axis=current_channel
+    @muxchannel
+    def _get_status_n(self, channel=None):
         """
         Get numerical status of the device.
 
@@ -207,7 +229,8 @@ class KinesisDevice(BasicKinesisDevice,IStage):
                 (1<<4,"moving_bk"),(1<<5,"moving_fw"),(1<<6,"jogging_bk"),(1<<7,"jogging_fw"),
                 (1<<9,"homing"),(1<<10,"homed"),(1<<12,"tracking"),(1<<13,"settled"),
                 (1<<14,"motion_error"),(1<<24,"current_limit"),(1<<31,"enabled")]
-    def _get_status(self, channel=1):
+    @muxchannel
+    def _get_status(self, channel=None):
         """
         Get device status.
 
@@ -218,7 +241,9 @@ class KinesisDevice(BasicKinesisDevice,IStage):
         """
         status_n=self._get_status_n(channel=channel)
         return [s for (m,s) in self.status_bits if status_n&m]
-    def _wait_for_status(self, status, enabled, channel=1, timeout=None, period=0.05):
+    _default_get_status=_get_status
+    @muxchannel
+    def _wait_for_status(self, status, enabled, channel=None, timeout=None, period=0.05):
         """
         Wait until the given status (or list of status bits) is in the desired state.
 
@@ -231,7 +256,7 @@ class KinesisDevice(BasicKinesisDevice,IStage):
             funcargparse.check_parameter_range(s,"status",[s for _,s in self.status_bits])
         ctd=general.Countdown(timeout)
         while True:
-            curr_status=self._get_status(channel=channel)
+            curr_status=self._default_get_status(channel=channel)
             if enabled and any([s in curr_status for s in status]):
                 return
             if (not enabled) and all([s not in curr_status for s in status]):
@@ -240,7 +265,8 @@ class KinesisDevice(BasicKinesisDevice,IStage):
                 raise ThorlabsTimeoutError
             time.sleep(period)
 
-    def _home(self, sync=True, force=False, channel=1, timeout=None):
+    @muxchannel
+    def _home(self, sync=True, force=False, channel=None, timeout=None):
         """
         Home the device.
 
@@ -252,13 +278,15 @@ class KinesisDevice(BasicKinesisDevice,IStage):
         self.send_comm(0x0443,channel)
         if sync:
             self._wait_for_home(channel=channel,timeout=timeout)
-    def _is_homing(self, channel=1):
+    @muxchannel
+    def _is_homing(self, channel=None):
         """Check if homing is in progress"""
-        return "homing" in self._get_status(channel=channel)
-    def _is_homed(self, channel=1):
+        return "homing" in self._default_get_status(channel=channel)
+    @muxchannel
+    def _is_homed(self, channel=None):
         """Check if the device is homed"""
-        return "homed" in self._get_status(channel=channel)
-    def _wait_for_home(self, channel=1, timeout=None):
+        return "homed" in self._default_get_status(channel=channel)
+    def _wait_for_home(self, channel=None, timeout=None):
         """Wait until the device is homed"""
         return self._wait_for_status("homed",True,channel=channel,timeout=timeout)
     
@@ -289,7 +317,8 @@ class KinesisDevice(BasicKinesisDevice,IStage):
         if scale!=1:
             value/=scale
         return value
-    def _get_position(self, channel=1, scale=True):
+    @muxchannel
+    def _get_position(self, channel=None, scale=True):
         """
         Get current position.
         
@@ -298,7 +327,8 @@ class KinesisDevice(BasicKinesisDevice,IStage):
         data=self.query(0x0411,channel).data
         pos=struct.unpack("<i",data[2:6])[0]
         return self._d2p(pos,"p",scale=scale)
-    def _set_position_reference(self, position=0, channel=1, scale=True):
+    @muxchannel(mux_argnames="position")
+    def _set_position_reference(self, position=0, channel=None, scale=True):
         """
         Set position reference (actual motor position stays the same).
         
@@ -306,21 +336,25 @@ class KinesisDevice(BasicKinesisDevice,IStage):
         """
         self.send_comm_data(0x0410,struct.pack("<Hi",channel,self._p2d(position,"p",scale=scale)))
         return self._get_position(channel=channel)
-    def _move_by(self, distance=1, channel=1, scale=True):
+    @muxchannel(mux_argnames="distance")
+    def _move_by(self, distance=1, channel=None, scale=True):
         """
         Move by a given amount (positive or negative) from the current position.
         
         If ``scale==True``, assume that the distance is in the physical units (see class description); otherwise, assume it is in the device internal units (steps).
         """
         self.send_comm_data(0x0448,struct.pack("<Hi",channel,self._p2d(distance,"p",scale=scale)))
-    def _move_to(self, position, channel=1, scale=True):
+    @muxchannel(mux_argnames="position")
+    def _move_to(self, position, channel=None, scale=True):
         """Move to `position` (positive or negative).
         
         If ``scale==True``, assume that the position is in the physical units (see class description); otherwise, assume it is in the device internal units (steps).
         """
         self.send_comm_data(0x0453,struct.pack("<Hi",channel,self._p2d(position,"p",scale=scale)))
+    _forward_positive=False
+    @muxchannel(mux_argnames="direction")
     @interface.use_parameters
-    def _jog(self, direction, channel=1, kind="continuous"):
+    def _jog(self, direction, channel=None, kind="continuous"):
         """
         Jog in the given direction (``"+"`` or ``"-"``).
         
@@ -333,15 +367,17 @@ class KinesisDevice(BasicKinesisDevice,IStage):
         comm=0x0457 if kind=="continuous" else 0x046A
         self.send_comm(comm,channel,1 if _jog_fw else 2)
     _moving_status=["moving_fw","moving_bk","jogging_fw","jogging_bk"]
-    def _is_moving(self, channel=1):
+    @muxchannel
+    def _is_moving(self, channel=None):
         """Check if motion is in progress"""
-        curr_status=self._get_status(channel=channel)
+        curr_status=self._default_get_status(channel=channel)
         return any([s in curr_status for s in self._moving_status])
-    def _wait_move(self, channel=1, timeout=None):
+    def _wait_move(self, channel=None, timeout=None):
         """Wait until motion command is done"""
         return self._wait_for_status(self._moving_status,False,channel=channel,timeout=timeout)
 
-    def _stop(self, immediate=False, sync=True, channel=1, timeout=None):
+    @muxchannel
+    def _stop(self, immediate=False, sync=True, channel=None, timeout=None):
         """
         Stop the motion.
 
@@ -351,12 +387,13 @@ class KinesisDevice(BasicKinesisDevice,IStage):
         self.send_comm(0x0465,channel,1 if immediate else 2)
         if sync:
             self._wait_for_stop(channel=channel,timeout=timeout)
-    def _wait_for_stop(self, channel=1, timeout=None):
+    def _wait_for_stop(self, channel=None, timeout=None):
         """Wait until motion or homing is done"""
         return self._wait_for_status(self._moving_status+["homing"],False,channel=channel,timeout=timeout)
 
 
-    def _get_velocity_parameters(self, channel=1, scale=True):
+    @muxchannel
+    def _get_velocity_parameters(self, channel=None, scale=True):
         """
         Get current velocity parameters ``(min_velocity, acceleration, max_velocity)``
         
@@ -368,7 +405,8 @@ class KinesisDevice(BasicKinesisDevice,IStage):
         acceleration=self._d2p(acceleration,"a",scale=scale)
         max_velocity=self._d2p(max_velocity,"v",scale=scale)
         return TVelocityParams(min_velocity,acceleration,max_velocity)
-    def _setup_velocity(self, min_velocity=None, acceleration=None, max_velocity=None, channel=1, scale=True):
+    @muxchannel(mux_argnames=["min_velocity","acceleration","max_velocity"])
+    def _setup_velocity(self, min_velocity=None, acceleration=None, max_velocity=None, channel=None, scale=True):
         """
         Set velocity parameters.
         
@@ -385,8 +423,9 @@ class KinesisDevice(BasicKinesisDevice,IStage):
 
     _p_jog_mode=interface.EnumParameterClass("jog_mode",{"continuous":1,"step":2})
     _p_stop_mode=interface.EnumParameterClass("jog_stop_mode",{"immediate":1,"profiled":2})
+    @muxchannel
     @interface.use_parameters(_returns=["jog_mode",None,None,None,None,"jog_stop_mode"])
-    def _get_jog_parameters(self, channel=1, scale=True):
+    def _get_jog_parameters(self, channel=None, scale=True):
         """
         Get current jog parameters ``(mode, step_size, min_velocity, acceleration, max_velocity, stop_mode)``
         
@@ -399,8 +438,9 @@ class KinesisDevice(BasicKinesisDevice,IStage):
         acceleration=self._d2p(acceleration,"a",scale=scale)
         max_velocity=self._d2p(max_velocity,"v",scale=scale)
         return TJogParams(mode,step_size,min_velocity,acceleration,max_velocity,stop_mode)
+    @muxchannel(mux_argnames=["mode","step_size","min_velocity","acceleration","max_velocity","stop_mode"])
     @interface.use_parameters(mode="jog_mode",stop_mode="jog_stop_mode")
-    def _setup_jog(self, mode=None, step_size=None, min_velocity=None, acceleration=None, max_velocity=None, stop_mode=None, channel=1, scale=True):
+    def _setup_jog(self, mode=None, step_size=None, min_velocity=None, acceleration=None, max_velocity=None, stop_mode=None, channel=None, scale=True):
         """
         Set jog parameters.
         
@@ -418,7 +458,8 @@ class KinesisDevice(BasicKinesisDevice,IStage):
         self.send_comm_data(0x0416,data)
         return self._get_jog_parameters(channel=channel,scale=scale)
 
-    def _get_adc_inputs(self, channel=1, scale=True):
+    @muxchannel
+    def _get_adc_inputs(self, channel=None, scale=True):
         """
         Get current adc input voltages ``(input1, input2)``.
         
@@ -431,7 +472,8 @@ class KinesisDevice(BasicKinesisDevice,IStage):
             input2/=2**15/5.
         return (input1,input2)
 
-    def _get_gen_move_parameters(self, channel=1, scale=True):
+    @muxchannel
+    def _get_gen_move_parameters(self, channel=None, scale=True):
         """
         Get general move parameters parameters ``(backlash_distance)``
         
@@ -441,7 +483,8 @@ class KinesisDevice(BasicKinesisDevice,IStage):
         backlash_distance,=struct.unpack("<i",data[2:6])
         backlash_distance=self._d2p(backlash_distance,"p",scale=scale)
         return TGenMoveParams(backlash_distance)
-    def _setup_gen_move(self, backlash_distance=None, channel=1, scale=True):
+    @muxchannel(mux_argnames=["backlash_distance"])
+    def _setup_gen_move(self, backlash_distance=None, channel=None, scale=True):
         """
         Set jog parameters.
         
@@ -456,8 +499,9 @@ class KinesisDevice(BasicKinesisDevice,IStage):
 
     _p_home_direction=interface.EnumParameterClass("home_direction",{"forward":1,"reverse":2})
     _p_limit_switch=interface.EnumParameterClass("limit_switch",{"reverse":1,"forward":4})
+    @muxchannel
     @interface.use_parameters(_returns=["home_direction","limit_switch",None,None])
-    def _get_homing_parameters(self, channel=1, scale=True):
+    def _get_homing_parameters(self, channel=None, scale=True):
         """
         Get current homing parameters ``(home_direction, limit_switch, velocity, offset_distance)``
         
@@ -468,8 +512,9 @@ class KinesisDevice(BasicKinesisDevice,IStage):
         velocity=self._d2p(velocity,"v",scale=scale)
         offset_distance=self._d2p(offset_distance,"p",scale=scale)
         return THomeParams(home_direction,limit_switch,velocity,offset_distance)
+    @muxchannel(mux_argnames=["home_direction","limit_switch","velocity","offset_distance"])
     @interface.use_parameters
-    def _setup_homing(self, home_direction=None, limit_switch=None, velocity=None, offset_distance=None, channel=1, scale=True):
+    def _setup_homing(self, home_direction=None, limit_switch=None, velocity=None, offset_distance=None, channel=None, scale=True):
         """
         Set homing parameters.
         
@@ -487,8 +532,9 @@ class KinesisDevice(BasicKinesisDevice,IStage):
 
     _p_hw_limit_kind=interface.EnumParameterClass("hw_limit_kind",{"ignore":1,"make":2,"break":3,"make_home":4,"break_home":5,"index_mark":6})
     _p_sw_limit_kind=interface.EnumParameterClass("sw_limit_kind",{"ignore":1,"stop_imm":2,"stop_prof":3})
+    @muxchannel
     @interface.use_parameters(_returns=["hw_limit_kind","hw_limit_kind",None,None,None,"sw_limit_kind"])
-    def _get_limit_switch_parameters(self, channel=1, scale=True):
+    def _get_limit_switch_parameters(self, channel=None, scale=True):
         """
         Get current limit switch parameters ``(hw_kind_cw, hw_kind_ccw, hw_flipped, sw_position_cw, sw_position_ccw, sw_kind)``
         
@@ -503,8 +549,9 @@ class KinesisDevice(BasicKinesisDevice,IStage):
         sw_position_cw=self._d2p(sw_position_cw,"p",scale=scale)
         sw_position_ccw=self._d2p(sw_position_ccw,"p",scale=scale)
         return TLimitSwitchParams(hw_kind_cw&0x7F,hw_kind_ccw&0x7F,swapped_cw,sw_position_cw,sw_position_ccw,sw_kind&0x7F)
+    @muxchannel(mux_argnames=["hw_kind_cw","hw_kind_ccw","hw_swapped","sw_position_cw","sw_position_ccw","sw_kind"])
     @interface.use_parameters(hw_kind_cw="hw_limit_kind",hw_kind_ccw="hw_limit_kind",sw_kind="sw_limit_kind")
-    def _setup_limit_switch(self, hw_kind_cw=None, hw_kind_ccw=None, hw_swapped=None, sw_position_cw=None, sw_position_ccw=None, sw_kind=None, channel=1, scale=True):
+    def _setup_limit_switch(self, hw_kind_cw=None, hw_kind_ccw=None, hw_swapped=None, sw_position_cw=None, sw_position_ccw=None, sw_kind=None, channel=None, scale=True):
         """
         Set home parameters.
         
@@ -525,8 +572,203 @@ class KinesisDevice(BasicKinesisDevice,IStage):
         return self._get_limit_switch_parameters(channel=channel,scale=scale)
 
 
+    _p_channel_id=interface.EnumParameterClass("channel_id",{1:0x01,2:0x02,3:0x04,4:0x08})
+    @muxchannel
+    @interface.use_parameters(channel="channel_id")
+    def _is_channel_enabled(self, channel=None):  # seems to not work for most devices when tested
+        """Check if the given channel is enabled"""
+        data=self.query(0x0211,channel).data
+        return data==0x01
+    @muxchannel(mux_argnames="enabled")
+    @interface.use_parameters(channel="channel_id")
+    def _enable_channel(self, enabled=True, channel=None):  # seems to not work for most devices when tested
+        """Enable or disable the given channel"""
+        self.query(0x0210,channel,0x01 if enabled else 0x02)
+        return self._wip._is_channel_enabled(channel)
 
 
+    _pzmot_kind=None
+    def _pzmot_get_kind(self):
+        if self._pzmot_kind is None:
+            self._pzmot_kind=self.get_device_info().model_no[:3].upper()
+        return self._pzmot_kind
+    @muxchannel
+    def _pzmot_get_status_n(self, channel=None):
+        """
+        Get numerical status of the piezo motor.
+
+        For details, see APT communications protocol.
+        """
+        data=self.query(0x08E0).data
+        status=[struct.unpack("<I",data[i*14+10:i*14+14])[0] for i in range(4)]
+        return status[channel-1]
+    @muxchannel
+    def _pzmot_get_status(self, channel=None):
+        """
+        Get piezo motor status.
+
+        Return list of status strings, which can include ``"sw_fw_lim"`` (forward limit switch reached), ``"sw_bk_lim"`` (backward limit switch reached),
+        ``"moving_fw"`` (moving forward), ``"moving_bk"`` (moving backward), ``"jogging_fw"`` (jogging forward), ``"jogging_bk"`` (jogging backward),
+        ``"homing"`` (homing), ``"homed"`` (homing done), ``"tracking"``, ``"settled"``,
+        ``"motion_error"`` (excessive position error), ``"current_limit"`` (motor current limit exceeded), or ``"enabled"`` (motor is enabled).
+        """
+        status_n=self._pzmot_get_status_n(channel=channel)
+        return [s for (m,s) in self.status_bits if status_n&m]
+    @interface.use_parameters(channel="channel_id")
+    def _pzmot_req(self, subid, channel):
+        """Perform PZMOT request (applicable to KIMx01/TIMx01)"""
+        data=self.query(0x08C1,subid,channel).data
+        rsubid,rchannel=struct.unpack("<HH",data[:4])
+        if rchannel!=channel:
+            raise RuntimeError("unexpected channel in the reply: expected 0x{:02x}, got 0x{:02x}".format(channel,rchannel))
+        if rsubid!=subid:
+            raise RuntimeError("unexpected submessage ID in the reply: expected 0x{:02x}, got 0x{:02x}".format(subid,rsubid))
+        return data[4:]
+    @interface.use_parameters(channel="channel_id")
+    def _pzmot_set(self, subid, channel, data):
+        """Perform PZMOT set (applicable to KIMx01/TIMx01)"""
+        data=struct.pack("<HH",subid,channel)+data
+        self.send_comm_data(0x08C0,data)
+    @muxchannel
+    def _pzmot_get_position(self, channel=None):
+        """Get current piezo-motor position"""
+        data=self._pzmot_req(0x05,channel)
+        return struct.unpack("<ii",data)[0]
+    @muxchannel(mux_argnames="position")
+    def _pzmot_set_position_reference(self, position=0, channel=None):
+        """Set piezo-motor position reference (actual position stays the same)"""
+        self._pzmot_set(0x05,channel,struct.pack("<ii",position,0))
+        return self._pzmot_get_position(channel)
+    @muxchannel
+    def _pzmot_get_drive_parameters(self, channel=None):
+        """
+        Get current piezo-motor drive parameters ``(max_voltage, velocity, acceleration)``
+        
+        Voltage is defined in volts, velocity in steps/s, and acceleration in steps/s^2.
+        """
+        data=self._pzmot_req(0x07,channel)
+        return TPZMotorDriveParams(*struct.unpack("<HII",data))
+    @muxchannel(mux_argnames=["max_voltage","velocity","acceleration"])
+    def _pzmot_setup_drive(self, max_voltage=None, velocity=None, acceleration=None, channel=None):
+        """
+        Set piezo-motor drive parameters.
+        
+        If any parameter is ``None``, use the current value.
+        Voltage is defined in volts, velocity in steps/s, and acceleration in steps/s^2.
+        """
+        current_parameters=self._pzmot_get_drive_parameters(channel=channel)
+        max_voltage=current_parameters.max_voltage if max_voltage is None else max_voltage
+        velocity=current_parameters.velocity if velocity is None else velocity
+        acceleration=current_parameters.acceleration if acceleration is None else acceleration
+        data=struct.pack("<HII",max_voltage,velocity,acceleration)
+        self._pzmot_set(0x07,channel,data)
+        return self._pzmot_get_drive_parameters(channel)
+    @muxchannel
+    @interface.use_parameters(_returns=["jog_mode",None,None,None,None])
+    def _pzmot_get_jog_parameters(self, channel=None):
+        """
+        Get current piezo-motor jog parameters ``(mode, step_size_fw, step_size_bk, velocity, acceleration)``
+        
+        Step size is defined in piezo steps, velocity in steps/s, and acceleration in step/s^2.
+        """
+        if self._pzmot_get_kind()=="TIM":
+            data=self._pzmot_req(0x09 if self._pzmot_kind=="TIM" else 0x0D,channel)
+            par=struct.unpack("<HIII",data)
+            return TPZMotorJogParams(par[0],par[1],*par[1:])
+        else:
+            data=self._pzmot_req(0x2D,channel)
+            return TPZMotorJogParams(*struct.unpack("<HIIII",data))
+    @muxchannel(mux_argnames=["mode","step_size_fw","step_size_bk","velocity","acceleration"])
+    @interface.use_parameters(mode="jog_mode")
+    def _pzmot_setup_jog(self, mode=None, step_size_fw=None, step_size_bk=None, velocity=None, acceleration=None, channel=None):
+        """
+        Set piezo-motor jog parameters.
+        
+        If any parameter is ``None``, use the current value.
+        Step size is defined in piezo steps, velocity in steps/s, and acceleration in step/s^2.
+        TIM-series controllers do not support separate step size, so `step_size_bk` is ignored for them.
+        """
+        current_parameters=self._wop._pzmot_get_jog_parameters(channel)
+        mode=current_parameters.mode if mode is None else mode
+        step_size_fw=current_parameters.step_size_fw if step_size_fw is None else step_size_fw
+        step_size_bk=current_parameters.step_size_bk if step_size_bk is None else step_size_bk
+        velocity=current_parameters.velocity if velocity is None else velocity
+        acceleration=current_parameters.acceleration if acceleration is None else acceleration
+        if self._pzmot_get_kind()=="TIM":
+            data=struct.pack("<HIII",mode,step_size_fw,velocity,acceleration)
+            self._pzmot_set(0x09,channel,data)
+        else:
+            data=struct.pack("<HIIII",mode,step_size_fw,step_size_bk,velocity,acceleration)
+            self._pzmot_set(0x2D,channel,data)
+        return self._pzmot_get_jog_parameters(channel)
+
+
+    _p_pzmot_channel_enabled=interface.EnumParameterClass("pzmot_channel_enabled",{False:0,None:0,1:1,2:2,3:3,4:4,(1,):1,(2,):2,(3,):3,(4,):4,(1,2):5,(3,4):6})
+    @interface.use_parameters(_returns="pzmot_channel_enabled")
+    def _pzmot_get_enabled_channels(self):
+        """
+        Check which specific piezo motor channels are enabled.
+
+        Can be ``None`` (none enabled), or a tuple with either one or two channels:
+        ``(1,)`` to ``(4,)``, ``(1,2)`` or ``(3,4)``.
+        """
+        data=self.query(0x08C1,0x2B).data
+        return struct.unpack("<HH",data)[1]
+    @interface.use_parameters(channel="pzmot_channel_enabled")
+    def _pzmot_enable_channels(self, channel):
+        """
+        Enable specific piezo motor channel.
+
+        Can be ``None`` (none enabled), and integer 1 to 4,
+        or a tuple ``(1,2)`` or ``(3,4)`` (enable 2 channel simultaneously).
+        """
+        data=struct.pack("<HH",0x2B,channel)
+        self.send_comm_data(0x08C0,data)
+        return self._pzmot_get_enabled_channels()
+    def _pzmot_autoenable(self, channel, auto_enable=True):
+        if auto_enable:
+            channel={0x01:1,0x02:2,0x04:3,0x08:4}[channel]
+            enabled=self._pzmot_get_enabled_channels()
+            if channel not in enabled:
+                self._pzmot_enable_channels(channel)
+
+    @muxchannel(mux_argnames="position")
+    @interface.use_parameters(channel="channel_id")
+    def _pzmot_move_to(self, position, auto_enable=True, channel=None):
+        """Move piezo-motor to `position` (positive or negative)"""
+        self._pzmot_autoenable(channel,auto_enable)
+        self.send_comm_data(0x08D4,struct.pack("<Hi",channel,position))
+    @muxchannel(mux_argnames="distance")
+    @interface.use_parameters(channel="channel_id")
+    def _pzmot_move_by(self, distance=1, auto_enable=True, channel=None):
+        """Move piezo-motor by a given `distance` (positive or negative)"""
+        self._pzmot_autoenable(channel,auto_enable)
+        self._pzmot_move_to(self._pzmot_get_position(channel)+distance,auto_enable=auto_enable,channel=channel)
+    @muxchannel(mux_argnames="direction")
+    @interface.use_parameters
+    def _pzmot_jog(self, direction, kind="continuous", auto_enable=True, channel=None):
+        """
+        Jog piezo motor in the given direction (``"+"`` or ``"-"``).
+
+        If ``kind=="continuous"``, simply start motion in the given direction at the standard jog speed
+        until either the motor is stopped explicitly, or the limit is reached.
+        If ``kind=="builtin"``, use the built-in jog command, whose parameters are specified by :meth:`get_jog_parameters`.
+        Note that ``kind=="continuous"`` is still implemented through the builtin jog, so it changes its parameters;
+        hence, afterwards the jog parameters need to be manually restored.
+        """
+        funcargparse.check_parameter_range(kind,"kind",["continuous","builtin"])
+        self._pzmot_autoenable(channel,auto_enable)
+        if kind=="continuous":
+            self._pzmot_setup_jog(mode="continuous",channel=channel)
+        _jog_fw=(self._forward_positive==bool(direction))
+        self.send_comm(0x08D9,channel,1 if _jog_fw else 2)
+    @muxchannel
+    @interface.use_parameters
+    def _pzmot_stop(self, channel=None):
+        """Stop the piezo motor motion"""
+        self._pzmot_move_by(0,channel=channel,auto_enable=False)
+    def _pzmot_wait_for_status(self, status, enabled, timeout=None, period=0.05, channel=None):
+        return self._wait_for_status(status,enabled,channel=channel,timeout=timeout,period=period)
 
 
 
@@ -550,10 +792,12 @@ class MFF(KinesisDevice):
     get_status=KinesisDevice._get_status
     wait_for_status=KinesisDevice._wait_for_status
     
-    def move_to_state(self, state, channel=0):
+    @muxchannel
+    def move_to_state(self, state, channel=None):
         """Move to the given flip mount state (either 0 or 1)"""
         self.send_comm(0x046A,channel,2 if state else 1)
-    def get_state(self, channel=0):
+    @muxchannel
+    def get_state(self, channel=None):
         """
         Get the flip mount state (either 0 or 1).
 
@@ -571,8 +815,9 @@ class MFF(KinesisDevice):
     _p_io_oper_mode=interface.EnumParameterClass("io_oper_mode",{"in_toggle":1,"in_position":2,"out_position":3,"out_motion":4})
     _p_io_sig_mode=interface.EnumParameterClass("io_sig_mode",{"in_button":0x01,"in_voltage":0x02,"in_button_inf":0x05,"in_voltage_inv":0x06,
                                                                 "out_edge":0x10,"out_pulse":0x20,"out_edge_inv":0x50,"out_pulse_inv":0x60})
+    @muxchannel
     @interface.use_parameters(_returns=[None,"io_oper_mode","io_sig_mode",None,"io_oper_mode","io_sig_mode",None])
-    def get_flipper_parameters(self, channel=1):
+    def get_flipper_parameters(self, channel=None):
         """
         Get current flipper parameters ``(transit_time, io1_oper_mode, io1_sig_mode, io1_pulse_width, io2_oper_mode, io2_sig_mode, io2_pulse_width)``
         
@@ -585,8 +830,9 @@ class MFF(KinesisDevice):
         data=self.query(0x0511,channel).data
         transit_time,_,io1_oper_mode,io1_sig_mode,io1_pulse_width,io2_oper_mode,io2_sig_mode,io2_pulse_width=struct.unpack("<iiHHiHHi",data[2:26])
         return TFlipperParameters(transit_time*1E-3,io1_oper_mode,io1_sig_mode,io1_pulse_width*1E-3,io2_oper_mode,io2_sig_mode,io2_pulse_width*1E-3)
+    @muxchannel(mux_argnames=["transit_time","io1_oper_mode","io1_sig_mode","io1_pulse_width","io2_oper_mode","io2_sig_mode","io2_pulse_width"])
     @interface.use_parameters(io1_oper_mode="io_oper_mode",io1_sig_mode="io_sig_mode",io2_oper_mode="io_oper_mode",io2_sig_mode="io_sig_mode")
-    def setup_flipper(self, transit_time=None, io1_oper_mode=None, io1_sig_mode=None, io1_pulse_width=None, io2_oper_mode=None, io2_sig_mode=None, io2_pulse_width=None, channel=1):
+    def setup_flipper(self, transit_time=None, io1_oper_mode=None, io1_sig_mode=None, io1_pulse_width=None, io2_oper_mode=None, io2_sig_mode=None, io2_pulse_width=None, channel=None):
         """
         Set flipper parameters.
         
@@ -816,3 +1062,60 @@ class KinesisMotor(KinesisDevice):
     setup_gen_move=KinesisDevice._setup_gen_move
     get_limit_switch_parameters=KinesisDevice._get_limit_switch_parameters
     setup_limit_switch=KinesisDevice._setup_limit_switch
+
+
+
+
+
+
+class KinesisPiezoMotor(KinesisDevice):
+    """
+    Thorlabs piezo motor (TIM/KIM series) controller.
+
+    Implements FTDI chip connectivity via pyft232 (virtual serial interface).
+
+    Args:
+        conn(str): serial connection parameters (usually an 8-digit device serial number).
+    """
+    def __init__(self, conn, default_channel=1):
+        super().__init__(conn,default_channel=default_channel)
+        self.add_background_comm(0x08D6) # move completed
+        self._add_status_variable("enabled_channels",self.get_enabled_channels,self.enable_channels)
+        self._add_status_variable("position",lambda: self.get_position(channel="all"))
+        self._add_status_variable("status",lambda: self.get_status(channel="all"))
+        self._add_settings_variable("drive_parameters",lambda: self.get_drive_parameters(channel="all"), lambda v: self.setup_drive(v,channel="all"))
+        self._add_settings_variable("jog_parameters",lambda: self.get_jog_parameters(channel="all"), lambda v: self.setup_jog(v,channel="all"))
+        with self._close_on_error():
+            self._autodetect_axes()
+    def _autodetect_axes(self):
+        model=self.get_device_info().model_no
+        if model in ["TIM001","KIM001"]:
+            self._update_axes([1])
+        elif model in ["TIM101","KIM101"]:
+            self._update_axes([1,2,3,4])
+        else:
+            warnings.warn("unexpected piezo motor model: {}; assuming one axis".format(model))
+            self._update_axes([1])
+    _forward_positive=True
+    _default_get_status=KinesisDevice._pzmot_get_status
+
+    get_enabled_channels=KinesisDevice._pzmot_get_enabled_channels
+    enable_channels=KinesisDevice._pzmot_enable_channels
+
+    get_status_n=KinesisDevice._pzmot_get_status_n
+    get_status=KinesisDevice._pzmot_get_status
+    wait_for_status=KinesisDevice._pzmot_wait_for_status
+
+    get_position=KinesisDevice._pzmot_get_position
+    set_position_reference=KinesisDevice._pzmot_set_position_reference
+    move_by=KinesisDevice._pzmot_move_by
+    move_to=KinesisDevice._pzmot_move_to
+    jog=KinesisDevice._pzmot_jog
+    is_moving=KinesisDevice._is_moving
+    wait_move=KinesisDevice._wait_move
+    stop=KinesisDevice._pzmot_stop
+
+    get_drive_parameters=KinesisDevice._pzmot_get_drive_parameters
+    setup_drive=KinesisDevice._pzmot_setup_drive
+    get_jog_parameters=KinesisDevice._pzmot_get_jog_parameters
+    setup_jog=KinesisDevice._pzmot_setup_jog
