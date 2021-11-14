@@ -168,6 +168,9 @@ class Performax4EXStage(GenericPerformaxStage):
 
     Args:
         idx(int): stage index
+        conn: if not ``None``, defines a connection to RS485 connection. Usually (e.g., for USB-to-RS485 adapters) this is a serial connection,
+            which either a name (e.g., ``"COM1"``), or a tuple ``(name, baudrate)`` (e.g., ``("COM1", 9600)``);
+            if `conn` is ``None``, assume direct USB connection and use the manufacturer-provided DLL
         enable: if ``True``, enable all axes on startup
     """
     _axes=list("XYZU")
@@ -177,10 +180,11 @@ class Performax4EXStage(GenericPerformaxStage):
     _analog_inputs=range(1,9)
     def __init__(self, idx=0, conn=None, enable=True):
         super().__init__(idx=idx,conn=conn)
-        self.enable_absolute_mode()
-        if enable:
-            self.enable_axis()
-        self.enable_limit_errors(False)
+        with self._close_on_error():
+            self.enable_absolute_mode()
+            if enable:
+                self.enable_axis()
+            self.enable_limit_errors(False)
         self._add_status_variable("baudrate",self.get_baudrate)
         self._add_settings_variable("limit_errors_enabled",self.limit_errors_enabled,self.enable_limit_errors)
         self._add_status_variable("current_limit_errors",self.check_limit_error)
@@ -451,6 +455,9 @@ class Performax2EXStage(Performax4EXStage):
 
     Args:
         idx(int): stage index
+        conn: if not ``None``, defines a connection to RS485 connection. Usually (e.g., for USB-to-RS485 adapters) this is a serial connection,
+            which either a name (e.g., ``"COM1"``), or a tuple ``(name, baudrate)`` (e.g., ``("COM1", 9600)``);
+            if `conn` is ``None``, assume direct USB connection and use the manufacturer-provided DLL
         enable: if ``True``, enable all axes on startup
     """
     _axes=list("XY")
