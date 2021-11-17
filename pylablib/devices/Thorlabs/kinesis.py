@@ -764,9 +764,11 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         self.send_comm(0x08D9,channel,1 if _jog_fw else 2)
     @muxchannel
     @interface.use_parameters
-    def _pzmot_stop(self, channel=None):
+    def _pzmot_stop(self, channel=None, sync=True):
         """Stop the piezo motor motion"""
         self._pzmot_move_by(0,channel=channel,auto_enable=False)
+        if sync:
+            self._wait_for_status(self._moving_status,False,channel=channel)
     def _pzmot_wait_for_status(self, status, enabled, timeout=None, period=0.05, channel=None):
         return self._wait_for_status(status,enabled,channel=channel,timeout=timeout,period=period)
 
