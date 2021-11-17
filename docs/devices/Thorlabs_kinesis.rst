@@ -6,9 +6,9 @@
 Thorlabs APT/Kinesis devices
 ==============================
 
-Thorlabs has a variety of APT/Kinesis devices for various motion-related functionality (mostly motor controllers and piezo drivers), which share the same API. The library uses an older and more low-level APT protocol to communicate with these devices. So far it has been only implemented for motor controllers and some :ref:`specialized devices <misc_thorlabs>` and tested with KDC101 and K10CR1 controllers.
+Thorlabs has a variety of APT/Kinesis devices for various motion-related functionality (mostly motor controllers and piezo drivers), which share the same API. The library uses an older and more low-level APT protocol to communicate with these devices. So far it has been only implemented for motor controllers and some :ref:`specialized devices <misc_thorlabs>` and tested with KDC101 and K10CR1 motor controllers, KIM101 piezo motor controller, and TPA101 quadrature sensor controller.
 
-The main device classes are :class:`pylablib.devices.Thorlabs.BasicKinesisDevice<.kinesis.BasicKinesisDevice>` for a generic Kinesis/APT devices and :class:`pylablib.devices.Thorlabs.KinesisMotor<.kinesis.KinesisMotor>` aimed at motor controllers such as K10CR1 or KDC101.
+The main device classes are :class:`pylablib.devices.Thorlabs.BasicKinesisDevice<.kinesis.BasicKinesisDevice>` for a generic Kinesis/APT devices :class:`pylablib.devices.Thorlabs.KinesisMotor<.kinesis.KinesisMotor>` aimed at motor controllers such as K10CR1 or KDC101, and :class:`pylablib.devices.Thorlabs.KinesisPiezoMotor<.kinesis.KinesisPiezoMotor>` for piezo drivers such as KIM and TIM.
 
 
 Software requirements
@@ -34,8 +34,31 @@ The devices are identified by their address, which correspond to their serial nu
 Operation
 -----------------------
 
+Standard motors
+=======================
+
 This controller has several features and differences compared to most other stages and sliders:
 
     - There are several different ways to specify the stage calibration, which are controlled by the ``scale`` parameter supplied upon the connection. By default (``scale = "step"``), it accepts and returns position in motor steps, velocity in steps/s and acceleration in steps/s^2 (scaling coefficients for the latter two are determined from the controller model). If ``scale = "stage"``, the class attempts to autodetect the stage and use meters or degrees instead of steps; in addition you can supply the stage name (e.g., ``"MTS25-Z8"``) as a scale instead of relying on the autodetection. If there is no calibration for the stage that you have, you can instead supply a single scaling factor, which specifies the number of steps per physical unit (e.g., for ``"MTS25-Z8"`` stage and mm units, one would supply ``scale = 34304``). The stage scaling can be obtained from the `APT <https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=Motion_Control&viewtab=1>`__ manual. Finally, one can supply a 3-tuple of scales for position, velocity and acceleration (all relative to the internal units). The details are given in the APT manual. To ensure that the units have been applied and/or autodetected correctly, you can use :meth:`.KinesisMotor.get_scale`, :meth:`.KinesisMotor.get_scale_units` and :meth:`.KinesisMotor.get_stage` methods.
     - By default, the controllers are treated as single-axis. If several axes are supported, they can be specified using ``channel`` argument.
     - The motor power-up parameters for homing, jogging, limit switches, etc., can be different from the parameters showing up in the APT/Kinesis controller. This can lead to problems if, e.g., homing speed is too low, so the motor appears stationary while homing. You should make sure to check those parameters using :meth:`.KinesisMotor.get_velocity_parameters`, :meth:`.KinesisMotor.get_jog_parameters`, :meth:`.KinesisMotor.get_homing_parameters`, :meth:`.KinesisMotor.get_gen_move_parameters`, and :meth:`.KinesisMotor.get_limit_switch_parameters`.
+
+
+Piezo motors
+=======================
+
+This controller has several features and differences compared to most other stages and sliders:
+
+    - The controllers are treated as multi-axis. However, to be compatible with other Kinesis motor, the channel argument is not required, and it defaults to the currently selected "default" channel (1 in the beginning). To control different channels, you can either supply ``channel`` argument explicitly, or specify a different default channel using :meth:`.KinesisPiezoMotor.set_default_channel` or :meth:`.KinesisPiezoMotor.using_channel`.
+    - The motor power-up parameters for jogging and drive can be different from the parameters showing up in the APT/Kinesis controller. This can lead to problems if, e.g., speed is too low. You should make sure to check those parameters using :meth:`.KinesisPiezoMotor.get_drive_parameters` and :meth:`.KinesisPiezoMotor.get_jog_parameters`.
+    - Even open-loop controllers support absolute positioning, which is achieved simply by counting steps in both directions. However, unlike stepper motors or encoders, these steps can be different depending on the direction, position, instantaneous load, speed, etc. Hence, the absolute positions quickly become unreliable. It is, therefore, recommended to generally use relative positioning using :meth:`.KinesisPiezoMotor.move_by` method.
+
+
+.. _stages_thorlabs_kinesis_quad:
+
+Quadrature detector
+=======================
+
+These are fairly different from the other discussed devices, since they are more related to sensors than to motors. This controller takes signal from a quadrature photodetector and implements a PI control loop to feed back to some control device (e.g., a piezo driver or a galvo mirror). Hence, all of its methods are fairly distinct from the usual motors. Nevertheless, it is described here, since it still belongs to the APT/Kinesis family of devices and shares their detection and connection approach. The device is implemented in the :class:`pylablib.devices.Thorlabs.KinesisQuadDetector<.kinesis.KinesisQuadDetector>` class.
+
+The operation is fairly straightforward: it implements control of PID parameters, output parameters (such as limits), operation mode (open/close loop), allows for reading current state and setting outputs in the open-loop mode.

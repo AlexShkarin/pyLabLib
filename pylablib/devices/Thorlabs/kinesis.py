@@ -204,7 +204,7 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
     def get_all_channels(self):
         """Get the list of all available channels; alias of ``get_all_axes`` method"""
         return super().get_all_axes()
-    def set_default_channels(self, channel):
+    def set_default_channel(self, channel):
         """Set the default channel for all channel-related methods"""
         self._default_axis=channel
     @contextlib.contextmanager
@@ -1187,7 +1187,7 @@ class KinesisQuadDetector(BasicKinesisDevice):
         return TQuadDetectorSetpoint(*par)
     def set_manual_output(self, xpos=None, ypos=None):
         """
-        Get current manual output values (used in open loop mode).
+        Set current manual output values (used in open loop mode).
         
         If any parameter is ``None``, use the current value.
         """
@@ -1218,7 +1218,7 @@ class KinesisQuadDetector(BasicKinesisDevice):
         return mode
     @interface.use_parameters(mode="quad_oper_mode")
     def set_operation_mode(self, mode):
-        """Get current operation mode: ``"monitor"``, ``"open_loop"``, ``"closed_loop"``, or ``"auto_loop"``"""
+        """Set current operation mode: ``"monitor"``, ``"open_loop"``, ``"closed_loop"``, or ``"auto_loop"``"""
         data=struct.pack("<H",mode)
         self._quad_set(0x07,data)
         return self.get_operation_mode()
