@@ -128,6 +128,8 @@ class GenericCameraThread(device_thread.DeviceThread):
         except ValueError:
             pass
         self.v["parameters"]=None
+        self._reset_frame_counters()
+        self.v["frames/last_frame"]=None
         super().close_device()
 
     
