@@ -141,7 +141,7 @@ Additionally, there is ``get_full_info`` method, which returns as complete infor
     3
     >>> wheel.close()
 
-By default not all information is shown, as it can take long time (up to several seconds) to obtain it, and it takes a lot of space on the screen. To get a full set of parameters, you can call ``get_full_info(-10)`` (``-10`` here specifies the parameter priority threshold, which is 0 by default, and has the lowest value of ``-10``)::
+By default not all information is shown, as it can take long time (up to several seconds) to obtain it, and it takes a lot of space on the screen. To get a full set of parameters, you can call ``get_full_info("all")``::
 
     >> cam = IMAQdx.IMAQdxCamera()
     >> cam.get_full_info()
@@ -153,7 +153,7 @@ By default not all information is shown, as it can take long time (up to several
         'detector_size': (1312, 1082),
         'device_info': TDeviceInfo(vendor='Photonfocus AG', model='HD1-D1312-80-G2-12', serial_number='0000000000000000', bus_type='Ethernet')  }
     >>
-    >> cam.get_full_info(-10)
+    >> cam.get_full_info("all")
     {   'roi': (0, 1312, 0, 1082),
         'acquisition_in_progress': False,
         'frames_status': TFramesStatus(acquired=0, unread=0, skipped=0, buffer_size=0),

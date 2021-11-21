@@ -173,8 +173,8 @@ class IDevice:
          
         `kinds` is the list of info variables kinds to be included in the info.
         `include` specifies either a list of variables (only these variables are returned),
-        or a priority threshold (only values with the priority equal or higher are returned).
-        Since the lowest priority is -10, setting ``include=-10`` queries all available variables.
+        a priority threshold (only values with the priority equal or higher are returned), or ``"all"`` (all available variables).
+        Since the lowest priority is -10, setting ``include=-10`` queries all available variables, which is equivalent to ``include="all"``.
         """
         for kind in kinds:
             if kind not in self._device_vars:
@@ -213,8 +213,8 @@ class IDevice:
         Get dict ``{name: value}`` containing all the device settings.
         
         `include` specifies either a list of variables (only these variables are returned),
-        or a priority threshold (only values with the priority equal or higher are returned).
-        Since the lowest priority is -10, setting ``include=-10`` queries all available variables.
+        a priority threshold (only values with the priority equal or higher are returned), or ``"all"`` (all available variables).
+        Since the lowest priority is -10, setting ``include=-10`` queries all available variables, which is equivalent to ``include="all"``.
         """
         return self._get_device_variables(["settings"],include=include)
     def get_full_status(self, include=0):
@@ -222,8 +222,8 @@ class IDevice:
         Get dict ``{name: value}`` containing the device status (including settings).
         
         `include` specifies either a list of variables (only these variables are returned),
-        or a priority threshold (only values with the priority equal or higher are returned).
-        Since the lowest priority is -10, setting ``include=-10`` queries all available variables.
+        a priority threshold (only values with the priority equal or higher are returned), or ``"all"`` (all available variables).
+        Since the lowest priority is -10, setting ``include=-10`` queries all available variables, which is equivalent to ``include="all"``.
         """
         return self._get_device_variables(["settings","status"],include=include)
     def get_full_info(self, include=0):
@@ -231,8 +231,8 @@ class IDevice:
         Get dict ``{name: value}`` containing full device information (including status and settings).
         
         `include` specifies either a list of variables (only these variables are returned),
-        or a priority threshold (only values with the priority equal or higher are returned).
-        Since the lowest priority is -10, setting ``include=-10`` queries all available variables.
+        a priority threshold (only values with the priority equal or higher are returned), or ``"all"`` (all available variables).
+        Since the lowest priority is -10, setting ``include=-10`` queries all available variables, which is equivalent to ``include="all"``.
         """
         return self._get_device_variables(["settings","status","info"],include=include)
     def apply_settings(self, settings):
