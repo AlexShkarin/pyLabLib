@@ -442,10 +442,29 @@ class QFrameContainer(IQWidgetContainer, QtWidgets.QFrame):
 class QGroupBoxContainer(IQWidgetContainer, QtWidgets.QGroupBox):
     """An extension of :class:`IQWidgetContainer` for a ``QGroupBox`` Qt base class"""
     def setup(self, caption=None, layout="vbox", no_margins=False, name=None):
-        QWidgetContainer.setup(self,layout=layout,no_margins=no_margins,name=name)
+        super().setup(layout=layout,no_margins=no_margins,name=name)
         if caption is not None:
             self.setTitle(caption)
 
+class QScrollAreaContainer(IQContainer, QtWidgets.QScrollArea):
+    """
+    An extension of :class:`IQWidgetContainer` for a ``QScrollArea`` Qt base class.
+    
+    Due to Qt organization, this container is "intermediate": it contains only a single :class:`QWidgetContainer` widget (named ``"widget"``),
+    which int turn has all of the standard container traits: layout, multiple widgets, etc.
+    """
+    def setup(self, layout="vbox", no_margins=False, name=None):
+        super().setup(name=name)
+        self.setFrameStyle(QtWidgets.QFrame.NoFrame)
+        self.setWidgetResizable(True)
+        self._cont=QWidgetContainer(self)
+        self._cont.setup(layout=layout,no_margins=no_margins,name="widget")
+        self.add_child("widget",self._cont)
+        self.setWidget(self._cont)
+    def clear(self):
+        cont=self.widget()
+        if cont is not None:
+            cont.clear()
 
 
 
