@@ -1,1 +1,1 @@
-from .performax import PerformaxThread
+from .performax import PerformaxThread, PerformaxSingleAxisThread
