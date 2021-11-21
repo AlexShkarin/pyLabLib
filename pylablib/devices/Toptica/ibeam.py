@@ -5,6 +5,7 @@ from .base import TopticaError, TopticaBackendError
 
 import re
 import collections
+import time
 
 
 def muxchan(*args, **kwargs):
@@ -46,8 +47,8 @@ class TopticaIBeam(comm_backend.ICommBackendWrapper):
     def open(self):
         res=super().open()
         try:
-            self.instr.flush_read()
-            self.query("echo off",multiline=True)
+            self._flush_read()
+            self.query("echo off",multiline=True,reply=False)
             self._channels_number=self._detect_channels_number()
             return res
         except self.Error:
@@ -55,8 +56,11 @@ class TopticaIBeam(comm_backend.ICommBackendWrapper):
             raise TopticaError("error connecting to the Toptica laser controller")
     
     _err_re=re.compile(r"%SYS-(\w)",flags=re.IGNORECASE)
-    def query(self, comm, multiline=False, keep_whitespace=False, check_error="FEW"):
+    def _flush_read(self):
         self.instr.flush_read()
+        time.sleep(0.005)
+    def _do_query(self, comm, multiline=False, keep_whitespace=False, check_error="FEW", reply=True):
+        self._flush_read()
         self.instr.write(comm)
         lines=[]
         while True:
@@ -73,15 +77,27 @@ class TopticaIBeam(comm_backend.ICommBackendWrapper):
             merr=self._err_re.match(lines[0])
             if merr and merr[1] in check_error:
                 raise TopticaError("command {} resulted in error: {}".format(comm,lines[0]))
+        if reply and not lines:
+            raise TopticaError("expected single line, but got no response")
         if multiline:
             return lines
         elif len(lines)>1:
             raise TopticaError("expected single line, but got response {} with {} lines".format("\n".join(lines),len(lines)))
         return lines[-1] if lines else None
+    def query(self, comm, multiline=False, keep_whitespace=False, check_error="FEW", reply=True):
+        ntries=5
+        error_delay=0.5
+        for i in range(ntries):
+            try:
+                return self._do_query(comm,multiline=multiline,keep_whitespace=keep_whitespace,check_error=check_error,reply=reply)
+            except TopticaError:
+                if i==ntries-1:
+                    raise
+                time.sleep(error_delay)
     
     def reboot(self):
         """Reboot the laser system"""
-        self.query("reset system")
+        self.query("reset system",reply=False)
     
     def get_device_info(self):
         """Get the device info of the laser system: ``(serial, version)``"""
@@ -115,7 +131,7 @@ class TopticaIBeam(comm_backend.ICommBackendWrapper):
         return self.query("status laser").upper()=="ON"
     def enable(self, enabled=True):
         """Turn the output on or off"""
-        self.query("laser {}".format("on" if enabled else "off"))
+        self.query("laser {}".format("on" if enabled else "off"),reply=False)
         return self.is_enabled()
 
     @muxchan
@@ -125,7 +141,7 @@ class TopticaIBeam(comm_backend.ICommBackendWrapper):
     @muxchan(mux_argnames="enabled")
     def enable_channel(self, channel, enabled=True):
         """Turn the specific channel on or off"""
-        self.query("{} {}".format("enable" if enabled else "disable",channel))
+        self.query("{} {}".format("enable" if enabled else "disable",channel),reply=False)
         return self.is_channel_enabled(channel)
     
     def _get_all_channel_powers(self):
@@ -144,7 +160,7 @@ class TopticaIBeam(comm_backend.ICommBackendWrapper):
     @muxchan(mux_argnames="power")
     def set_channel_power(self, channel, power):
         """Set channel power (in W)"""
-        self.query("channel {} power {:.3f} micro".format(channel,power*1E6))
+        self.query("channel {} power {:.0f} micro".format(channel,power*1E6),reply=False)
         return self.get_channel_power(channel)
     
     def get_output_power(self):
