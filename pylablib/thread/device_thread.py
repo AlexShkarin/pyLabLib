@@ -312,7 +312,7 @@ class DeviceThread(controller.QTaskThread):
         `post_update` is a string or a list of strings which specifies which update methods to call after the command.
         Check if the devices is opened, do nothing if it is not.
         """
-        if not isinstance(post_update,list):
+        if not isinstance(post_update,(list,tuple)):
             post_update=[] if post_update is None else [post_update]
         command_name=command_name or name
         def command(*args, **kwargs):

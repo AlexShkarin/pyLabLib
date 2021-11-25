@@ -247,16 +247,16 @@ class StandardValueHandler(IValueHandler):
     """
     def __init__(self, widget, default_name=None):
         super().__init__(widget)
-        self.get_value_kind=get_method_kind(getattr(self.widget,"get_value",None))
+        self.get_value_kind=get_method_kind(getattr(self.widget,"get_value")) if _hasattr(self.widget,"get_value") else None
         self.get_all_values_kind="simple" if _hasattr(self.widget,"get_all_values") else None
         if not (self.get_value_kind or self.get_all_values_kind):
             raise ValueError("can't find default getter for widget {}".format(self.widget))
-        self.set_value_kind=get_method_kind(getattr(self.widget,"set_value",None),add_args=1)
+        self.set_value_kind=get_method_kind(getattr(self.widget,"set_value"),add_args=1) if _hasattr(self.widget,"set_value") else None
         self.set_all_values_kind="simple" if _hasattr(self.widget,"set_all_values") else None
         if not (self.set_value_kind or self.set_all_values_kind):
             raise ValueError("can't find default setter for widget {}".format(self.widget))
-        self.repr_value_kind=get_method_kind(getattr(self.widget,"repr_value",None),add_args=1)
-        self.get_handler_kind=get_method_kind(getattr(self.widget,"get_handler",None))
+        self.repr_value_kind=get_method_kind(getattr(self.widget,"repr_value"),add_args=1) if _hasattr(self.widget,"repr_value") else None
+        self.get_handler_kind=get_method_kind(getattr(self.widget,"get_handler")) if _hasattr(self.widget,"get_handler") else None
         self.default_name=default_name
     def get_value(self, name=None):
         if name is None:
@@ -511,9 +511,9 @@ class StandardIndicatorHandler(IIndicatorHandler):
     def __init__(self, widget, default_name=None):
         IIndicatorHandler.__init__(self)
         self.widget=widget
-        self.get_indicator_kind=get_method_kind(getattr(self.widget,"get_indicator",None))
+        self.get_indicator_kind=get_method_kind(getattr(self.widget,"get_indicator")) if _hasattr(self.widget,"get_indicator") else None
         self.get_all_indicators_kind="simple" if _hasattr(self.widget,"get_all_indicators") else None
-        self.set_indicator_kind=get_method_kind(getattr(self.widget,"set_indicator",None),add_args=1)
+        self.set_indicator_kind=get_method_kind(getattr(self.widget,"set_indicator"),add_args=1) if _hasattr(self.widget,"set_indicator") else None
         self.set_all_indicators_kind="simple" if _hasattr(self.widget,"set_all_indicators") else None
         self.default_name=default_name
     def get_value(self, name=None):

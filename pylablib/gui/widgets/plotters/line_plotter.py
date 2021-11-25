@@ -5,6 +5,7 @@ A small expansion on top of :class:`.pyqtgraph.PlotWidget` which allows for thre
 """
 
 import pyqtgraph
+from ....core.utils import dictionary
 
 
 class LinePlotter(pyqtgraph.PlotWidget):
@@ -89,3 +90,9 @@ class LinePlotter(pyqtgraph.PlotWidget):
                         self._traces[n][0].setData(t[:,0],t[:,1])
                     else:
                         self._traces[n][0].setData([],[])
+    
+    def get_all_values(self):
+        """Dummy method to satisfy child widget requirements"""
+        return dictionary.Dictionary()
+    def set_all_values(self, values):
+        """Dummy method to satisfy child widget requirements"""
