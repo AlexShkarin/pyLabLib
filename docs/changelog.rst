@@ -23,6 +23,31 @@ you can write
     import pylablib.legacy as pll
     from pylablib.legacy.aux_libs.devices import Lakeshore
 
+1.3.0
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- General
+
+    * Minor speedups through calls caching.
+    * Changed ``muxcall`` signature to allow multiple special argument values.
+
+- Devices
+
+    * Added Princeton Instruments cameras, IDS uEye cameras (as an option in uc480 cameras backend), Thorlabs Kinesis piezo motor controllers (e.g., KIM101) and quadrature photo-detector controllers (e.g., KPA101).
+    * Added RS485 Arcus connection and a simple single-motor stage (DMX-J-SA).
+    * Improved reliability if errors are encountered upon connection.
+    * Multiple minor bug fixes and improved support of specific models.
+
+- GUI
+
+    * Added widgets: menu dropdown button, scroll area container, area highlighter.
+    * Added querying element position and layout shape in layout widgets.
+    * Added more utilities methods: querying containing layout, querying top-level parent, deleting widget.
+
+- Threading
+
+    * Added simple profiling through ``yappi``.
+
 1.2.1
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
