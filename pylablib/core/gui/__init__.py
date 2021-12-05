@@ -1,7 +1,10 @@
 import warnings
+import collections
 
 is_pyqt5=False
 is_pyside2=False
+_TQtKWArgs=collections.namedtuple("TQtKWArgs",["file_dialog_dir"])
+qtkwargs=_TQtKWArgs("dir")
 
 try:
     from PyQt5 import QtGui, QtWidgets, QtCore
@@ -15,6 +18,7 @@ try:
             warnings.warn("could not find sip required for some PyQt5 functionality; you need to either install it explicitly from PyPi, or update your PyQt5 version to 5.11 or above")
             qdelete=None
     is_pyqt5=True
+    qtkwargs=_TQtKWArgs("directory")
 except ImportError:
     try:
         from PySide2 import QtGui, QtWidgets, QtCore

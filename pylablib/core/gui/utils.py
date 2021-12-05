@@ -42,28 +42,32 @@ def clean_layout(layout, delete_layout=False):
         if delete_layout:
             qdelete(layout)
 
-def _find_contained_widget(parent, widget, parent_kind="widget", result_kind="widget"):
+def _find_contained_widget(parent, widget, result_kind="widget"):
     if parent is widget:
         return [widget] if result_kind=="widget" else []
     if parent is None:
         return None
-    layout=parent.layout()
+    if isinstance(parent,QtWidgets.QWidget):
+        result=_find_contained_widget(parent.layout(),widget,result_kind=result_kind)
+        if result is None and isinstance(parent,QtWidgets.QTabWidget):
+            for t in range(parent.count()):
+                result=_find_contained_widget(parent.widget(t),widget,result_kind=result_kind)
+                if result is not None:
+                    break
+    else:
+        layout=parent
     result=None
     if layout is not None:
         for idx in range(layout.count()):
             item=layout.itemAt(idx)
             if item.widget() is not None:
-                result=_find_contained_widget(item.widget(),widget,parent_kind="widget",result_kind=result_kind)
+                    result=_find_contained_widget(item.widget(),widget,result_kind=result_kind)
             elif item.layout() is not None:
-                result=_find_contained_widget(item.layout(),widget,parent_kind="layout",result_kind=result_kind)
+                    result=_find_contained_widget(item.layout(),widget,result_kind=result_kind)
             if result is not None:
                 break
-    if result is None and isinstance(parent,QtWidgets.QTabWidget):
-        for t in range(parent.count()):
-            result=_find_contained_widget(parent.widget(t),widget,parent_kind="widget",result_kind=result_kind)
             if result is not None:
-                break
-    if result is not None:
+        parent_kind="layout" if isinstance(parent,QtWidgets.QLayout) else "widget"
         if parent_kind==result_kind:
             result.append(parent)
         return result
@@ -80,15 +84,13 @@ def get_layout_container(widget, top=None, kind="widget"):
     `top` can specify the top container (widget or layout) which definitely contains the given widget;
     if not specified, use the top-level parent found by :func:`get_top_parent`.
     """
-    parent_kind="widget"
     if top is None:
         top=get_top_parent(widget)
-    else:
-        parent_kind="layout" if isinstance(top,QtWidgets.QLayout) else "widget"
     if kind not in {"widget","layout"}:
         raise ValueError("unrecognized result kind: {}".format(kind))
-    result=_find_contained_widget(top,widget,parent_kind=parent_kind,result_kind=kind)
-    return result[:2][-1] if result else None
+    result=_find_contained_widget(top,widget,result_kind=kind)
+    if result:
+        return result[:2][-1] if kind=="widget" else result[0]
 def get_all_layout_containers(widget, top=None, kind="widget"):
     """
     Get a list of all widgets or layouts containing the current widget.
@@ -103,14 +105,11 @@ def get_all_layout_containers(widget, top=None, kind="widget"):
     `top` can specify the top container (widget or layout) which definitely contains the given widget;
     if not specified, use the top-level parent found by :func:`get_top_parent`.
     """
-    parent_kind="widget"
     if top is None:
         top=get_top_parent(widget)
-    else:
-        parent_kind="layout" if isinstance(top,QtWidgets.QLayout) else "widget"
     if kind not in {"widget","layout"}:
         raise ValueError("unrecognized result kind: {}".format(kind))
-    return _find_contained_widget(top,widget,parent_kind=parent_kind,result_kind=kind)
+    return _find_contained_widget(top,widget,result_kind=kind)
 def delete_widget(widget):
     """Remove widget from its layout container and delete it"""
     if widget is None:

@@ -1749,7 +1749,7 @@ class QTaskThread(QThreadController):
         if not self._check_running(error=not ignore_errors):
             return
         sch=self._commands[name].scheduler
-        if self.is_in_controlled():
+        if self.is_in_controlled() and sync!=False:
             sch="direct"
         if sch in ["direct","direct_sync"]:
             if sch=="direct_sync" and not sync:

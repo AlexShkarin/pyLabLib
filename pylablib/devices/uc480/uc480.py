@@ -45,7 +45,7 @@ def find_by_serial(serial_number, backend="uc480"):
     for c in list_cameras(backend=backend):
         if c.serial_number==serial_number:
             return c.dev_id
-    raise ValueError("can't find camera with serial number {}".format(serial_number))
+    raise uc480Error("can't find camera with serial number {}".format(serial_number))
 
 
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["cam_id","model","manufacturer","serial_number","usb_version","date","dll_version","camera_type"])
