@@ -1,4 +1,4 @@
-from .. import QtCore, QtWidgets, Signal
+from .. import QtCore, QtWidgets, Signal, utils
 
 from ..limiter import as_limiter, LimitError, NumberLimit
 from ..formatter import as_formatter, str_to_float, order_to_pos, pos_to_order
@@ -10,13 +10,18 @@ class TextEdit(QtWidgets.QLineEdit):
     Maintains internally stored consistent value (which can be, e.g., accessed from different threads).
     """
     def __init__(self, parent, value=None):
-        QtWidgets.QLineEdit.__init__(self, parent)
+        super().__init__(parent)
         self.returnPressed.connect(self._on_enter)
         self.editingFinished.connect(self._on_edit_done)
         self._value=None
         if value is not None:
             self.set_value(value)
         self.textChanged.connect(self._on_change_text)
+        self._expand_border=None
+        self._exp_parameters=None
+        self._exp_placeholder=None
+        self._exp_frame=None
+        self._expanded=False
     def _on_edit_done(self):
         self.set_value(self.text())
         self.value_entered.emit(self._value)
@@ -31,8 +36,68 @@ class TextEdit(QtWidgets.QLineEdit):
             self.clearFocus()
             self.show_value()
         else:
-            QtWidgets.QLineEdit.keyPressEvent(self,event)
+            super().keyPressEvent(event)
 
+    def set_expandable(self, left=0, right=0, top=0, bottom=0):
+        """
+        Make text edit expandable.
+
+        If it is expandable, the edit size is expanded by the given size into the corresponding directions.
+        If all are zero, the widget behaves as normal.
+        """
+        if any([left,right,top,bottom]):
+            self._expand_border=(left,right,top,bottom)
+        else:
+            self._expand_border=None
+    def _make_exp_frame(self, pos, size, border):
+        frame=QtWidgets.QFrame(utils.get_top_parent(self))
+        frame.setLayout(QtWidgets.QVBoxLayout())
+        pad=4
+        frame.layout().setContentsMargins(pad,pad,pad,pad)
+        pos=frame.parentWidget().mapFromGlobal(pos)
+        frame.move(pos.x()-border[0]-pad,pos.y()-border[2]-pad)
+        frame.setFixedWidth(size.width()+border[0]+border[1]+pad*2)
+        frame.setFixedHeight(size.height()+border[2]+border[3]+pad*2)
+        return frame
+    def focusInEvent(self, evt):
+        if self._expand_border is not None and self._exp_placeholder is None:
+            loc=utils.get_widget_location(self)
+            size_rng=self.minimumWidth(),self.maximumWidth(),self.minimumHeight(),self.maximumHeight()
+            self._exp_parameters=loc,size_rng
+            parent=self.parentWidget()
+            pos,size=parent.mapToGlobal(self.pos()),self.size()
+            parent.setUpdatesEnabled(False)
+            self._exp_placeholder=QtWidgets.QWidget(parent)
+            self._exp_placeholder.setFixedWidth(self.width())
+            self._exp_placeholder.setFixedHeight(self.height())
+            if loc is not None:
+                utils.place_widget_at_location(self._exp_placeholder,loc)
+                loc.layout.removeWidget(self)
+            self._exp_frame=self._make_exp_frame(pos,size,self._expand_border)
+            self._exp_frame.layout().addWidget(self)
+            self._exp_frame.setVisible(True)
+            self.setFocus()
+            parent.setUpdatesEnabled(True)
+            self._expanded=True
+        return super().focusInEvent(evt)
+    def focusOutEvent(self, evt):
+        if self._expanded:
+            self._expanded=False
+            loc,size_rng=self._exp_parameters
+            self.setMinimumWidth(size_rng[0])
+            self.setMaximumWidth(size_rng[1])
+            self.setMinimumHeight(size_rng[2])
+            self.setMaximumHeight(size_rng[3])
+            self._exp_frame.layout().removeWidget(self)
+            utils.place_widget_at_location(self,loc)
+            self._exp_frame.hide()
+            utils.delete_widget(self._exp_placeholder)
+            utils.delete_widget(self._exp_frame)
+            self._exp_parameters=None
+            self._exp_placeholder=None
+            self._exp_frame=None
+        return super().focusOutEvent(evt)
+    
     value_entered=Signal(object)
     """Signal emitted when value is entered (regardless of whether it stayed the same)"""
     value_changed=Signal(object)
@@ -81,7 +146,7 @@ class NumEdit(QtWidgets.QLineEdit):
             specifies a dictionary ``{'ctrl':ctrl_step, 'alt':alt_step, 'shift':shift_step}`` with the corresponding steps (missing elements mean that the modifier key is ignored)
     """
     def __init__(self, parent, value=None, limiter=None, formatter=None, custom_steps=None):
-        QtWidgets.QLineEdit.__init__(self, parent)
+        super().__init__(parent)
         self.limiter=as_limiter(limiter)
         self.formatter=as_formatter(formatter)
         self.custom_steps=custom_steps or {}
@@ -137,7 +202,7 @@ class NumEdit(QtWidgets.QLineEdit):
             except ValueError:
                 self.show_value(interrupt_edit=True)
         else:
-            QtWidgets.QLineEdit.keyPressEvent(self,event)
+            super().keyPressEvent(event)
     def _read_input(self):
         try:
             return str_to_float(str(self.text()))

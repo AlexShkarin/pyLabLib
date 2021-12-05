@@ -1,5 +1,6 @@
 from . import qdelete, QtWidgets
 
+import collections
 
 def get_top_parent(widget):
     """Find the top-level parent (parent which does not have further parents)"""
@@ -56,17 +57,17 @@ def _find_contained_widget(parent, widget, result_kind="widget"):
                     break
     else:
         layout=parent
-    result=None
-    if layout is not None:
-        for idx in range(layout.count()):
-            item=layout.itemAt(idx)
-            if item.widget() is not None:
+        result=None
+        if layout is not None:
+            for idx in range(layout.count()):
+                item=layout.itemAt(idx)
+                if item.widget() is not None:
                     result=_find_contained_widget(item.widget(),widget,result_kind=result_kind)
-            elif item.layout() is not None:
+                elif item.layout() is not None:
                     result=_find_contained_widget(item.layout(),widget,result_kind=result_kind)
-            if result is not None:
-                break
-            if result is not None:
+                if result is not None:
+                    break
+    if result is not None:
         parent_kind="layout" if isinstance(parent,QtWidgets.QLayout) else "widget"
         if parent_kind==result_kind:
             result.append(parent)
@@ -124,6 +125,41 @@ def delete_widget(widget):
     return False
     
 
+
+TWidgetLocation=collections.namedtuple("TWidgetLocation",["layout","position"])
+def get_widget_location(widget, layout=None):
+    """
+    Get location of a widget within the given layout.
+
+    Return tuple ``(layout, position)``, where ``layout`` is the layout object,
+    and ``position`` is either a single position number (for box layouts),
+    or a tuple ``(row, col, rowspan, colspan)`` for a grid layout.
+    If layout is not specified, autodetect it.
+    """
+    if layout is None:
+        layout=get_layout_container(widget,kind="layout")
+    if layout is not None:
+        idx=find_layout_element(layout,widget)
+        if idx is not None:
+            if isinstance(layout,QtWidgets.QGridLayout):
+                return TWidgetLocation(layout,layout.getItemPosition(idx))
+            else:
+                return TWidgetLocation(layout,idx)
+def place_widget_at_location(widget, location):
+    """
+    Insert a widget within the given layout location.
+
+    `location` is a tuple tuple ``(layout, position)``, where ``layout`` is the layout object,
+    and ``position`` is either a single position number (for box layouts),
+    or a tuple ``(row, col, rowspan, colspan)`` for a grid layout.
+    The tuple has the same format as returned by :func:`get_widget_location`.
+    """
+    if location is not None:
+        layout,position=location
+        if isinstance(location.layout,QtWidgets.QGridLayout):
+            layout.addWidget(widget,*position)
+        else:
+            layout.insertWidget(position,widget)
 
 def is_layout_row_empty(layout, row):
     """Check if the given row in a grid layout is empty"""
