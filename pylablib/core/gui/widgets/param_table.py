@@ -541,6 +541,9 @@ class ParamTable(container.QWidgetContainer):
                 self.set_value(path,v,force=force)
             except KeyError:
                 pass
+    @controller.gui_thread_method
+    def update_value(self, name=None):
+        return super().update_value(name=name)
 
     def get_widget(self, name):
         name=self._normalize_name(name)

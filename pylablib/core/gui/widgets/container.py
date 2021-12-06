@@ -307,6 +307,14 @@ class IQContainer:
     def get_value_changed_signal(self, name):
         """Get a value-changed signal for a widget with the given name"""
         return self.gui_values.get_value_changed_signal(name)
+    def update_value(self, name=None):
+        """
+        Send update signal for a handler with a given name or list of names.
+        
+        Emit a value changed signal with the current value to notify the subscribed slots.
+        If `name` is ``None``, emit for all values in the table.
+        """
+        return self.gui_values.update_value(name=name)
 
     def get_indicator(self, name=None):
         """Get indicator value for a widget with the given name (``None`` means all indicators)"""
@@ -438,6 +446,9 @@ class QWidgetContainer(IQWidgetContainer, QtWidgets.QWidget):
 
 class QFrameContainer(IQWidgetContainer, QtWidgets.QFrame):
     """An extension of :class:`IQWidgetContainer` for a ``QFrame`` Qt base class"""
+
+class QDialogContainer(IQWidgetContainer, QtWidgets.QDialog):
+    """An extension of :class:`IQWidgetContainer` for a ``QDialog`` Qt base class"""
 
 class QGroupBoxContainer(IQWidgetContainer, QtWidgets.QGroupBox):
     """An extension of :class:`IQWidgetContainer` for a ``QGroupBox`` Qt base class"""
