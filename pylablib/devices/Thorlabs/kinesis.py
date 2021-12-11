@@ -39,14 +39,38 @@ class BasicKinesisDevice(comm_backend.ICommBackendWrapper):
     """
     Error=ThorlabsError
     def __init__(self, conn, timeout=3.):
-        defaults={"serial":{"baudrate":115200}, "ft232":{"baudrate":115200}}
+        defaults={"serial":{"baudrate":115200,"rtscts":True}, "ft232":{"baudrate":115200,"rtscts":True}}
         instr=comm_backend.new_backend(conn,backend=("auto","ft232"),term_write=b"",term_read=b"",timeout=timeout,
             defaults=defaults,reraise_error=ThorlabsBackendError)
         instr.setup_cooldown(write=0.003)
+        self._cycle_rts(instr)
         super().__init__(instr)
         self._add_info_variable("device_info",self.get_device_info)
         self._bg_msg_counters={}
 
+    @staticmethod
+    def _cycle_rts(instr):
+        be=instr.get_backend_name()
+        if be=="ft232":
+            instr.instr._flow=256  # SIO_RTS_CTS_HS
+            instr.instr._setFlowControl()
+            time.sleep(0.05)
+            instr.instr.flushInput()
+            instr.instr.flushOutput()
+            time.sleep(0.05)
+            instr.instr._flow=0
+            instr.instr._setFlowControl()
+            time.sleep(0.05)
+        elif be=="serial":
+            instr.instr.setRTS(1)
+            time.sleep(0.05)
+            instr.instr.flushInput()
+            instr.instr.flushOutput()
+            time.sleep(0.05)
+            instr.instr.setRTS(0)
+            time.sleep(0.05)
+        else:
+            warnings.warn("could not cycle RTS with backend '{}'; some devices might not work properly".format(be))
     @staticmethod
     def list_devices(filter_ids=True):
         """
