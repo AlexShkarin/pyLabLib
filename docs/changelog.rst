@@ -23,6 +23,13 @@ you can write
     import pylablib.legacy as pll
     from pylablib.legacy.aux_libs.devices import Lakeshore
 
+1.3.1
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Added expandable edit boxes and dialog containers.
+- Improved Thorlabs devices compliance.
+- Additional minor bugfixes in threading, GUI, devices.
+
 1.3.0
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

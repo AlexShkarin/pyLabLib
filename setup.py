@@ -23,7 +23,7 @@ dep_pyside2=['pyside2','shiboken2','pyqtgraph>0.10']
 setup(
     name='pylablib',
     # name='pylablib-lightweight',
-    version='1.3.0',
+    version='1.3.1',
     description='Code for use in lab environment: experiment automation, data acquisition, device communication',
     long_description=long_description,
     long_description_content_type="text/x-rst",
