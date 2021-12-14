@@ -1,5 +1,6 @@
 from ..utils import observer_pool, py3, general
 from . import callsync
+from .utils import ReadChangeLock
 
 import collections
 import fnmatch
@@ -33,6 +34,7 @@ class MulticastPool:
     """
     def __init__(self):
         self._pool=observer_pool.ObserverPool()
+        self._pool_lock=ReadChangeLock()
 
     def subscribe_direct(self, callback, srcs="any", dsts="any", tags=None, filt=None, priority=0, scheduler=None, sid=None):
         """
@@ -82,7 +84,8 @@ class MulticastPool:
                 call=scheduler.build_call(_orig_callback,args,kwargs,sync_result=False)
                 scheduler.schedule(call)
             callback=schedule_call
-        sid=self._pool.add_observer(callback,name=sid,filt=full_filt,priority=priority,cacheable=(filt is None))
+        with self._pool_lock.changing():
+            sid=self._pool.add_observer(callback,name=sid,filt=full_filt,priority=priority,cacheable=(filt is None))
         return sid
     def subscribe_sync(self, callback, srcs="any", dsts="any", tags=None, filt=None, priority=0, limit_queue=None, dest_controller=None, call_tag=None, call_interrupt=True, add_call_info=False, sid=None):
         """
@@ -119,7 +122,8 @@ class MulticastPool:
         return self.subscribe_direct(callback,srcs=srcs,dsts=dsts,tags=tags,filt=filt,priority=priority,scheduler=scheduler,sid=sid)
     def unsubscribe(self, sid):
         """Unsubscribe from a subscription with a given ID"""
-        self._pool.remove_observer(sid)
+        with self._pool_lock.changing():
+            self._pool.remove_observer(sid)
 
     def send(self, src, dst="any", tag=None, value=None):
         """
@@ -133,6 +137,7 @@ class MulticastPool:
             tag(str): multicast tag.
             value: multicast value.
         """
-        to_call=self._pool.find_observers(TMulticast(src,dst,tag),value)
+        with self._pool_lock.reading():
+            to_call=self._pool.find_observers(TMulticast(src,dst,tag),value)
         for _,obs in to_call:
             obs.callback(src,tag,value)

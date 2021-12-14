@@ -56,7 +56,7 @@ class DeviceThread(controller.QTaskThread):
         - ``get_full_info``: get full info of the device
     """
     parameter_variables="settings"
-    default_parameter_values=None
+    default_parameter_values={}
     full_info_variables=None
     def __init__(self, name=None, args=None, kwargs=None, multicast_pool=None):
         super().__init__(name=name,multicast_pool=multicast_pool,args=args,kwargs=kwargs)
