@@ -19,6 +19,7 @@ Subpackages
     pylablib.devices.IMAQdx
     pylablib.devices.Lakeshore
     pylablib.devices.LaserQuantum
+    pylablib.devices.Leybold
     pylablib.devices.LighthousePhotonics
     pylablib.devices.M2
     pylablib.devices.NI

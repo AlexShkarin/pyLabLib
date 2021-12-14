@@ -18,3 +18,4 @@ Currently supported sensors:
     Ophir
     Lakeshore
     Pfeiffer
+    Leybold
