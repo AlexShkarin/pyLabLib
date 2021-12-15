@@ -60,17 +60,19 @@ def exint(error_msg_template="{}:", pass_stop_exception=False):
             for hn in list(_exception_hooks):
                 if _exception_hooks[hn][1]:
                     del _exception_hooks[hn]
-        for h in hooks:
-            h()
         try:
-            stop_controller("gui",code=1,sync=False,require_controller=True)
-        except threadprop.NoControllerThreadError:
-            with _exception_print_lock:
-                print("Can't stop GUI thread; quitting the application",file=sys.stderr)
-                sys.stderr.flush()
-            sys.exit(1)
-        except threadprop.InterruptExceptionStop:
-            pass
+            for h in hooks:
+                h()
+        finally:
+            try:
+                stop_controller("gui",code=1,sync=False,require_controller=True)
+            except threadprop.NoControllerThreadError:
+                with _exception_print_lock:
+                    print("Can't stop GUI thread; quitting the application",file=sys.stderr)
+                    sys.stderr.flush()
+                sys.exit(1)
+            except threadprop.InterruptExceptionStop:
+                pass
 
 def add_exception_hook(name, func, single_call=False):
     """
@@ -102,9 +104,7 @@ def _toploop(func):
     @func_utils.getargsfrom(func,hide_outer_obj=True) # slots don't work well with bound methods
     def tlfunc(*args, **kwargs):
         ctl=threadprop.current_controller()
-        if ctl._in_inner_loop():
-            ctl._toploop_calls.append(lambda: func(*args,**kwargs))
-        else:
+        if not ctl._postpone_call("toploop",lambda: func(*args,**kwargs)):
             func(*args,**kwargs)
     return tlfunc
 def toploopSlot(*slargs, **slkwargs):
@@ -248,7 +248,8 @@ class QThreadController(QtCore.QObject):
         self._poke_timer_id=None
         self._loop_depth=0
         self._toploop_depth=0
-        self._toploop_calls=[]
+        self._postponed_calls={}
+        self._blocked_message_kinds=set()
         self._message_queue={}
         self._message_uid=0
         self._sync_queue={}
@@ -283,7 +284,7 @@ class QThreadController(QtCore.QObject):
         self.moveToThread(self.thread)
         self._control_sent.connect(self._recv_control,QtCore.Qt.QueuedConnection)
         self._thread_call_request.connect(self._on_call_in_thread,QtCore.Qt.QueuedConnection)
-        self._check_toploop_signals.connect(self._process_toploop_signals,QtCore.Qt.QueuedConnection)
+        self._check_postponed_signals.connect(self._process_postponed_signals,QtCore.Qt.QueuedConnection)
         if self.thread_kind=="main":
             threadprop.get_app().aboutToQuit.connect(self._on_finish_event,type=QtCore.Qt.DirectConnection)
             threadprop.get_app().lastWindowClosed.connect(self._on_last_window_closed,type=QtCore.Qt.DirectConnection)
@@ -300,8 +301,7 @@ class QThreadController(QtCore.QObject):
     def _recv_control(self, ctl): # control signal processing
         kind,tag,priority,value=ctl
         if kind=="message":
-            if self._in_inner_loop():
-                self._toploop_calls.append(lambda: self._recv_control(ctl))
+            if self._postpone_call(("toploop","message"),lambda: self._recv_control(ctl)):
                 return
             if self.process_message(tag,value):
                 return
@@ -320,6 +320,8 @@ class QThreadController(QtCore.QObject):
             else:
                 self._sync_queue.setdefault(tag,set()).add(value)
         elif kind=="stop":
+            if self._postpone_call("stop",lambda: self._recv_control(ctl)):
+                return
             with self._lifetime_state_lock:
                 if self._lifetime_state!="finishing":
                     self._stop_requested=True
@@ -338,9 +340,8 @@ class QThreadController(QtCore.QObject):
     _thread_call_request=Signal(object)
     @exsafeSlot(object)
     def _on_call_in_thread(self, call): # call signal processing
-        if (not call[2]) and self._in_inner_loop(): # call=(cnt,func,interrupt)
-            self._toploop_calls.append(lambda: self._execute_queued_call(call[:2]))
-        else:
+        kind=("toploop","call") if not call[2] else "call" # call=(cnt,func,interrupt)
+        if not self._postpone_call(kind,lambda: self._execute_queued_call(call[:2])):
             self._execute_queued_call(call[:2])
 
     ### Execution starting / finishing ###
@@ -425,33 +426,65 @@ class QThreadController(QtCore.QObject):
     ### Message loop management ###
     def _do_run(self):
         self.run()
-    _check_toploop_signals=Signal()
+    def _is_postponed_executable(self, kind):
+        if isinstance(kind,(tuple,frozenset)):
+            return all(self._is_postponed_executable(k) for k in kind)
+        if kind=="toploop":
+            return self._loop_depth<=self._toploop_depth
+        return kind not in self._blocked_message_kinds
+    def _postpone_call(self, kind, call):
+        if self._is_postponed_executable(kind):
+            return False
+        self._postponed_calls.setdefault(frozenset(kind),[]).append(call)
+        return True
+    _check_postponed_signals=Signal()
     @exsafeSlot()
-    def _process_toploop_signals(self):
-        if not self._in_inner_loop():
-            toploop_calls=self._toploop_calls
-            self._toploop_calls=[]
-            if toploop_calls:
-                for c in toploop_calls:
-                    c()
-    def _in_inner_loop(self):
-        return self._loop_depth>self._toploop_depth
+    def _process_postponed_signals(self):
+        to_call=[]
+        for kind,calls in self._postponed_calls.items():
+            if calls and self._is_postponed_executable(kind):
+                to_call+=calls
+                calls.clear()
+        for c in to_call:
+            c()
+    def _followup_postponed_signals(self):
+        if any(calls and self._is_postponed_executable(kind) for kind,calls in self._postponed_calls.items()):
+            self._check_postponed_signals.emit()
     @contextlib.contextmanager
     def _inner_loop(self, as_toploop=False):
         self._loop_depth+=1
         toploop_depth=self._toploop_depth
         if as_toploop:
             self._toploop_depth=self._loop_depth
-            if self._toploop_calls:
-                self._check_toploop_signals.emit()
+            self._followup_postponed_signals()
         try:
             yield
         finally:
             self._loop_depth-=1
             if as_toploop:
                 self._toploop_depth=toploop_depth
-            if not self._in_inner_loop() and self._toploop_calls:
-                self._check_toploop_signals.emit()
+            self._followup_postponed_signals()
+    @contextlib.contextmanager
+    def blocking_control_signals(self, kinds="all"):
+        """
+        Context manager which temporarily blocks external control signals.
+
+        After leaving the wrapped code segment, all of the blocked calls are executed.
+        `kind` determines the kind of calls to block; it is a collection of elements among
+        ``"message"``, ``"stop"``, and ``"call"`` and blocks, correspondingly, messages, stop signals,
+        and any ``call_in_thread``-related requests; can be also be ``"all"``, which includes all of these categories.
+        Useful to temporarily "suspend" the thread communication with other threads, especially for the main GUI thread (e.g., to show a blocking message box).
+        Local call method.
+        """
+        if kinds=="all":
+            kinds={"message","stop","call"}
+        blocked_message_kinds=self._blocked_message_kinds
+        self._blocked_message_kinds=blocked_message_kinds|set(kinds)
+        try:
+            yield
+        finally:
+            self._blocked_message_kinds=blocked_message_kinds
+            self._followup_postponed_signals()
 
     def _wait_in_process_loop(self, done_check, timeout=None, as_toploop=False):
         with self._inner_loop(as_toploop=as_toploop):
