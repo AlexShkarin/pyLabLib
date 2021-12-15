@@ -28,13 +28,16 @@ _exception_print_lock=threading.Lock()
 _debug_mode=False
 _debug_threads=[]
 
+_exception_hooks={}
+
 @contextlib.contextmanager
-def exint(error_msg_template="{}:"):
+def exint(error_msg_template="{}:", pass_stop_exception=False):
     """Context that intercepts exceptions and stops the execution in a controlled manner (quitting the main thread)"""
     try:
         yield
     except threadprop.InterruptExceptionStop:
-        pass
+        if pass_stop_exception:
+            raise
     except:  # pylint: disable=bare-except
         with _exception_print_lock:
             ctl_name=None
@@ -53,6 +56,12 @@ def exint(error_msg_template="{}:"):
                         print("\n\n\nStack trace of thread '{}':".format(ctl.name),file=sys.stderr)
                         traceback.print_stack(frame,file=sys.stderr)
             sys.stderr.flush()
+            hooks=[h for h,_ in _exception_hooks.values()]
+            for hn in list(_exception_hooks):
+                if _exception_hooks[hn][1]:
+                    del _exception_hooks[hn]
+        for h in hooks:
+            h()
         try:
             stop_controller("gui",code=1,sync=False,require_controller=True)
         except threadprop.NoControllerThreadError:
@@ -62,6 +71,19 @@ def exint(error_msg_template="{}:"):
             sys.exit(1)
         except threadprop.InterruptExceptionStop:
             pass
+
+def add_exception_hook(name, func, single_call=False):
+    """
+    Add an exception hook, which is called whenever exception is caught via :func:`exint` wrapper.
+    
+    If ``single_call==True``, the hook is removed from the set when it is called.
+    """
+    if name in _exception_hooks:
+        raise ValueError("exception hook {} is already defined".format(name))
+    _exception_hooks[name]=(func,single_call)
+def remove_exception_hook(name):
+    """Remove the exception hook with the given name"""
+    del _exception_hooks[name]
 
 def exsafe(func):
     """Decorator that intercepts exceptions raised by `func` and stops the execution in a controlled manner (quitting the main thread)"""
@@ -134,16 +156,16 @@ def remote_call(func):
         return self.call_in_thread_sync(func,args=(self,)+args,kwargs=kwargs,sync=True,same_thread_shortcut=True)
     return rem_func
 
-def call_in_thread(thread_name, interrupt=True, pass_exception=True, silent=False):
+def call_in_thread(thread_name, interrupt=True, pass_exception=True, silent=False, sync=True):
     """Decorator that turns any function into a remote call in a thread with a given name (call from a different thread is passed synchronously)"""
     def wrapper(func):
         @func_utils.getargsfrom(func)
         def rem_func(*args, **kwargs):
             thread=get_controller(thread_name)
-            return thread.call_in_thread_sync(func,args=args,kwargs=kwargs,sync=True,same_thread_shortcut=True,interrupt=interrupt,pass_exception=pass_exception,silent=silent)
+            return thread.call_in_thread_sync(func,args=args,kwargs=kwargs,sync=sync,same_thread_shortcut=True,interrupt=interrupt,pass_exception=pass_exception,silent=silent)
         return rem_func
     return wrapper
-def call_in_gui_thread(func=None, pass_exception=True, silent=False):
+def call_in_gui_thread(func=None, pass_exception=True, silent=False, sync=True):
     """Decorator that turns any function into a remote call in a GUI thread (call from a different thread is passed synchronously)"""
     if func is not None:
         return call_in_gui_thread(pass_exception=pass_exception,silent=silent)(func)
@@ -151,7 +173,7 @@ def call_in_gui_thread(func=None, pass_exception=True, silent=False):
         @func_utils.getargsfrom(func)
         def rem_func(*args, **kwargs):
             if not threadprop.is_gui_thread():
-                return get_gui_controller().call_in_thread_sync(func,args=args,kwargs=kwargs,sync=True,same_thread_shortcut=False)
+                return get_gui_controller().call_in_thread_sync(func,args=args,kwargs=kwargs,sync=sync,same_thread_shortcut=False,pass_exception=pass_exception,silent=silent)
             return func(*args,**kwargs)
         return rem_func
     return wrapper
@@ -346,7 +368,8 @@ class QThreadController(QtCore.QObject):
             self.notify_exec_point("run")
             if self.thread_kind=="run":
                 try:
-                    self._do_run()
+                    with exint(pass_stop_exception=True):
+                        self._do_run()
                 finally:
                     self.thread.quit_sync()
         except threadprop.InterruptExceptionStop:
