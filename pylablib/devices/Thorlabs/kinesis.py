@@ -216,6 +216,8 @@ TJogParams=collections.namedtuple("TJogParams",["mode","step_size","min_velocity
 TGenMoveParams=collections.namedtuple("TGenMoveParams",["backlash_distance"])
 THomeParams=collections.namedtuple("THomeParams",["home_direction","limit_switch","velocity","offset_distance"])
 TLimitSwitchParams=collections.namedtuple("TLimitSwitchParams",["hw_kind_cw","hw_kind_ccw","hw_swapped","sw_position_cw","sw_position_ccw","sw_kind"])
+TKCubeTrigIOParams=collections.namedtuple("TKCubeTrigIOParams",["trig1_mode","trig1_pol","trig2_mode","trig2_pol"])
+TKCubeTrigPosParams=collections.namedtuple("TKCubeTrigPosParams",["start_fw","step_fw","num_fw","start_bk","step_bk","num_bk","width","ncycles"])
 TPZMotorDriveParams=collections.namedtuple("TPZMotorDriveParams",["max_voltage","velocity","acceleration"])
 TPZMotorJogParams=collections.namedtuple("TPZMotorJogParams",["mode","step_size_fw","step_size_bk","velocity","acceleration"])
 muxchannel=lambda *args,**kwargs: muxaxis(*args,argname="channel",**kwargs)
@@ -577,7 +579,7 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
     @interface.use_parameters(hw_kind_cw="hw_limit_kind",hw_kind_ccw="hw_limit_kind",sw_kind="sw_limit_kind")
     def _setup_limit_switch(self, hw_kind_cw=None, hw_kind_ccw=None, hw_swapped=None, sw_position_cw=None, sw_position_ccw=None, sw_kind=None, channel=None, scale=True):
         """
-        Set home parameters.
+        Set limit switch parameters.
         
         If any parameter is ``None``, use the current value.
         If ``scale==True``, assume that the specified values are in the physical units (see class description); otherwise, assume it is in the device internal units (Steps).
@@ -595,6 +597,67 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         self.send_comm_data(0x0423,data)
         return self._get_limit_switch_parameters(channel=channel,scale=scale)
 
+    _p_kcube_trigio_mode=interface.EnumParameterClass("kcube_trigio_mode",{"off":0x00,
+        "in_gpio":0x01,"in_relmove":0x02,"in_absmove":0x03,"in_home":0x04,
+        "out_gpio":0x0A,"out_maxvel":0x0B,"out_pulse_fw":0x0D,"out_pulse_bk":0x0E,"out_pulse_move":0x0F,
+        "out_lim_fw":0x10,"out_lim_bk":0x11,"out_lim_both":0x12})
+    @interface.use_parameters(_returns=["kcube_trigio_mode",None,"kcube_trigio_mode",None])
+    def _get_kcube_trigio_parameters(self):
+        """Get KCube trigger IO parameters ``(trig1_pol, trig1_pol, trig2_mode, trig2_pol)``"""
+        data=self.query(0x0524,0x01).data
+        trig1_mode,trig1_pol,trig2_mode,trig2_pol=struct.unpack("<HHHH",data[2:10])
+        return TKCubeTrigIOParams(trig1_mode,bool(trig1_pol),trig2_mode,bool(trig2_pol))
+    @interface.use_parameters(trig1_mode="kcube_trigio_mode",trig2_mode="kcube_trigio_mode")
+    def _setup_kcube_trigio(self, trig1_mode=None, trig1_pol=None, trig2_mode=None, trig2_pol=None):
+        """
+        Set KCube trigger IO parameters.
+        
+        If any parameter is ``None``, use the current value.
+        """
+        current_parameters=self._wap._get_kcube_trigio_parameters()
+        trig1_mode=current_parameters.trig1_mode if trig1_mode is None else trig1_mode
+        trig1_pol=current_parameters.trig1_pol if trig1_pol is None else trig1_pol
+        trig2_mode=current_parameters.trig2_mode if trig2_mode is None else trig2_mode
+        trig2_pol=current_parameters.trig2_pol if trig2_pol is None else trig2_pol
+        data=struct.pack("<HHHHH",0x01,trig1_mode,trig1_pol,trig2_mode,trig2_pol)
+        self.send_comm_data(0x0523,data)
+        return self._get_kcube_trigio_parameters()
+
+    def _get_kcube_trigpos_parameters(self, scale=True):
+        """
+        Get KCube trigger position parameters ``(start_fw, step_fw, num_fw, start_bk, step_bk, num_bk, width, ncycles)``.
+        
+        If ``scale==True``, return positions and steps in the physical units (see class description); otherwise, return it in the device internal units (steps).
+        Pulse ``width`` is always defined in seconds.
+        """
+        data=self.query(0x0527,0x01).data
+        start_fw,step_fw,num_fw,start_bk,step_bk,num_bk,width,ncycles=struct.unpack("<iiiiiiii",data[2:34])
+        start_fw=self._d2p(start_fw,"p",scale=scale)
+        step_fw=self._d2p(step_fw,"p",scale=scale)
+        start_bk=self._d2p(start_bk,"p",scale=scale)
+        step_bk=self._d2p(step_bk,"p",scale=scale)
+        return TKCubeTrigPosParams(start_fw,step_fw,num_fw,start_bk,step_bk,num_bk,width/1E6,ncycles)
+    def _setup_kcube_trigpos(self, start_fw=None, step_fw=None, num_fw=None, start_bk=None, step_bk=None, num_bk=None, width=None, ncycles=None, scale=True):
+        """
+        Set KCube trigger IO parameters.
+        
+        If any parameter is ``None``, use the current value.
+        
+        If ``scale==True``, return positions and steps in the physical units (see class description); otherwise, return it in the device internal units (steps).
+        Pulse ``width`` is always defined in seconds.
+        """
+        current_parameters=self._wap._get_kcube_trigpos_parameters(scale=False)
+        start_fw=current_parameters.start_fw if start_fw is None else self._p2d(start_fw,"p",scale=scale)
+        step_fw=current_parameters.step_fw if step_fw is None else self._p2d(step_fw,"p",scale=scale)
+        num_fw=current_parameters.num_fw if num_fw is None else num_fw
+        start_bk=current_parameters.start_bk if start_bk is None else self._p2d(start_bk,"p",scale=scale)
+        step_bk=current_parameters.step_bk if step_bk is None else self._p2d(step_bk,"p",scale=scale)
+        num_bk=current_parameters.num_bk if num_bk is None else num_bk
+        width=current_parameters.width if width is None else int(width*1E6)
+        ncycles=current_parameters.ncycles if ncycles is None else ncycles
+        data=struct.pack("<Hiiiiiiii",0x01,start_fw,step_fw,num_fw,start_bk,step_bk,num_bk,width,ncycles)
+        self.send_comm_data(0x0526,data)
+        return self._get_kcube_trigpos_parameters()
 
     _p_channel_id=interface.EnumParameterClass("channel_id",{1:0x01,2:0x02,3:0x04,4:0x08})
     @muxchannel
@@ -929,6 +992,9 @@ class KinesisMotor(KinesisDevice):
         with self._close_on_error():
             self._stage=self._get_stage(scale)
             self._scale,self._scale_units=self._calculate_scale(scale)
+        if self.get_device_info().model_no in ["KDC101","KST101","KBD101"]:
+            self._add_settings_variable("kcube_trigio_parameters",self.get_kcube_trigio_parameters,self.setup_kcube_trigio)
+            self._add_settings_variable("kcube_trigpos_parameters",self.get_kcube_trigpos_parameters,self.setup_kcube_trigpos)
     
     def _autodetect_stage(self, model):
         info=self.query(0x0005).data
@@ -1088,6 +1154,10 @@ class KinesisMotor(KinesisDevice):
     setup_gen_move=KinesisDevice._setup_gen_move
     get_limit_switch_parameters=KinesisDevice._get_limit_switch_parameters
     setup_limit_switch=KinesisDevice._setup_limit_switch
+    get_kcube_trigio_parameters=KinesisDevice._get_kcube_trigio_parameters
+    setup_kcube_trigio=KinesisDevice._setup_kcube_trigio
+    get_kcube_trigpos_parameters=KinesisDevice._get_kcube_trigpos_parameters
+    setup_kcube_trigpos=KinesisDevice._setup_kcube_trigpos
 
 
 
