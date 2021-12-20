@@ -95,10 +95,10 @@ class IMAQLib:
             argprep={"bufSize":lambda buffer:len(buffer)}, byref=["bufSize"])  # pylint: disable=unnecessary-lambda
         #  Int32 imgSessionSerialRead(SESSION_ID sid, ctypes.c_char_p buffer, ctypes.POINTER(uInt32) bufSize, uInt32 timeout)
         self.imgSessionSerialRead=wrapper(lib.imgSessionSerialRead, ["sid","bufSize","timeout"], ["buffer","bufSize"],
-            argprep={"buffer":lambda bufSize:ctypes.create_string_buffer(bufSize+1)}, byref=["bufSize"])
+            argprep={"buffer":lambda bufSize:ctypes_wrap.strprep(bufSize+1)()}, byref=["bufSize"])
         #  Int32 imgSessionSerialReadBytes(SESSION_ID sid, ctypes.c_char_p buffer, ctypes.POINTER(uInt32) bufferSize, uInt32 timeout)
         self.imgSessionSerialReadBytes=wrapper(lib.imgSessionSerialReadBytes, ["sid","bufferSize","timeout"], ["buffer","bufferSize"],
-            argprep={"buffer":lambda bufferSize:ctypes.create_string_buffer(bufferSize+1)}, byref=["bufferSize"])
+            argprep={"buffer":lambda bufferSize:ctypes_wrap.strprep(bufferSize+1)()}, byref=["bufferSize"])
         #  Int32 imgSessionSerialFlush(SESSION_ID sid)
         self.imgSessionSerialFlush=wrapper(lib.imgSessionSerialFlush)        
 
