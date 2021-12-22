@@ -19,3 +19,4 @@ Currently supported sensors:
     Lakeshore
     Pfeiffer
     Leybold
+    KJL

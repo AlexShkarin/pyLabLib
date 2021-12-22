@@ -3,4 +3,5 @@
 - :ref:`Lakeshore <sensors_lakeshore>`: temperature sensors. Tested with Lakeshore 218.
 - :ref:`Pfeiffer <sensors_pfeiffer>`: pressure gauges. Tested with TPG261 and DPG202 controllers.
 - :ref:`Leybold <sensors_leybold>`: pressure gauges. Tested with ITR90 gauge.
+- :ref:`Kurt J. Lesker <sensors_kjl>`: pressure gauges. Tested with KJL300 gauge.
 - :ref:`Thorlabs quadrature detector controller <stages_thorlabs_kinesis_quad>`. Tested with TPA101.

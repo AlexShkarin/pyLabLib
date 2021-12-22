@@ -17,6 +17,7 @@ Subpackages
     pylablib.devices.HighFinesse
     pylablib.devices.IMAQ
     pylablib.devices.IMAQdx
+    pylablib.devices.KJL
     pylablib.devices.Lakeshore
     pylablib.devices.LaserQuantum
     pylablib.devices.Leybold
