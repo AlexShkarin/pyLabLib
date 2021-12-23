@@ -67,6 +67,15 @@ pylablib.core.thread.threadprop module
     :undoc-members:
     :show-inheritance:
 
+pylablib.core.thread.utils module
+---------------------------------
+
+.. automodule:: pylablib.core.thread.utils
+    :members:
+    :inherited-members:
+    :undoc-members:
+    :show-inheritance:
+
 
 Module contents
 ---------------

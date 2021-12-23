@@ -29,7 +29,7 @@ author = 'Alexey Shkarin'
 # The short X.Y version
 version = ''
 # The full version, including alpha/beta/rc tags
-release = '1.3.1'
+release = '1.3.2'
 
 
 # -- General configuration ---------------------------------------------------

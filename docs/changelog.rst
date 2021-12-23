@@ -23,6 +23,12 @@ you can write
     import pylablib.legacy as pll
     from pylablib.legacy.aux_libs.devices import Lakeshore
 
+1.3.2
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Added Leybold ITR90 and KJL300 pressure gauges.
+- Minor bugfixes in threading and devices.
+
 1.3.1
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
