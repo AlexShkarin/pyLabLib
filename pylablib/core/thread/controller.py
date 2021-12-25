@@ -1499,7 +1499,7 @@ class QTaskThread(QThreadController):
         self.start_batch_job(name,period,*(args or []),start_immediate=start_immediate,**(kwargs or {}))
         return name
 
-    def _get_priority_queue(self, priority, fast=False):
+    def _get_priority_queue(self, priority):
         """Get the queue with the given priority, creating one if it does not exist"""
         if priority not in self._priority_queues:
             with self._priority_queues_lock:
@@ -1958,7 +1958,7 @@ def get_controller(name=None, sync=True, timeout=None, sync_point=None):
     """
     if name is None:
         return threadprop.current_controller()
-    def get_controller():
+    def get_specified_controller():
         if isinstance(name,int):
             for ctl in _running_threads.values():
                 if ctl.thread.thread_id==name:
@@ -1967,14 +1967,14 @@ def get_controller(name=None, sync=True, timeout=None, sync_point=None):
             raise threadprop.NoControllerThreadError("thread {} is stopped".format(name))
         return _running_threads.get(name,None)
     with _running_threads_lock:
-        ctl=get_controller()
+        ctl=get_specified_controller()
         if ctl is None and not sync:
             raise threadprop.NoControllerThreadError("thread {} doesn't exist".format(name))
         if ctl is not None and sync_point is None:
             return ctl
     def wait_cond():
         with _running_threads_lock:
-            ctl=get_controller()
+            ctl=get_specified_controller()
             if ctl is not None:
                 return ctl
     thread=_running_threads_notifier.wait_until(wait_cond,timeout=timeout)

@@ -30,7 +30,7 @@ class ANC300Thread(device_thread.DeviceThread):
         with self.using_devclass("Attocube.ANC300",host=self.remote) as cls:
             self.device=cls(conn=self.conn,**self.dev_kwargs)
             self.device.is_enabled()
-    def setup_task(self, conn, backend="auto", remote=None, **kwargs):
+    def setup_task(self, conn, backend="auto", remote=None, **kwargs):  # pylint: disable=arguments-differ
         self.device_reconnect_tries=5
         self.conn=conn
         self.backend=backend

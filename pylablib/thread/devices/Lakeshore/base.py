@@ -23,7 +23,7 @@ class Lakeshore218Thread(device_thread.DeviceThread):
         with self.using_devclass("Lakeshore.Lakeshore218",host=self.remote) as cls:
             self.device=cls(conn=self.conn)
     _all_channels=list(range(1,9))
-    def setup_task(self, conn, channel=None, remote=None):
+    def setup_task(self, conn, channel=None, remote=None):  # pylint: disable=arguments-differ
         self.device_reconnect_tries=5
         self.conn=conn
         self.remote=remote

@@ -88,11 +88,10 @@ class GenericCameraThread(device_thread.DeviceThread):
     _frameinfo_include_fields=None
     TimeoutError=cam_utils.ICamera.TimeoutError
     FrameTransferError=cam_utils.ICamera.FrameTransferError
-    def setup_task(self, remote=None, misc=None, sn=None):
+    def setup_task(self, remote=None, misc=None):  # pylint: disable=arguments-differ
         super().setup_task()
         self.misc=dictionary.Dictionary(misc)
         self.frames_src=stream_manager.StreamSource(stream_message.FramesMessage,sn=self.name)
-        self.frames_sn=sn
         self.remote=remote
         self._use_fastbuff=False
         self._max_chunk_size_bytes=2**20
@@ -159,7 +158,7 @@ class GenericCameraThread(device_thread.DeviceThread):
         self._last_obtained_parameters={k:parameters[k] for k in self.parameter_freeze_running if k in parameters}
     def _update_additional_parameters(self, parameters):
         pass
-    def _get_parameters(self, pause=False):
+    def _get_parameters(self, pause=False):  # pylint: disable=arguments-differ
         if self.device:
             include=self.parameter_variables
             if self.device.acquisition_in_progress() and not pause:
@@ -199,7 +198,7 @@ class GenericCameraThread(device_thread.DeviceThread):
         for k in ["fastbuff","add_info"]:
             if k in parameters:
                 self.v["parameters",k]=parameters.pop(k)
-    def apply_parameters(self, parameters):
+    def apply_parameters(self, parameters, update=True):
         """
         Apply camera parameters.
 
@@ -216,10 +215,11 @@ class GenericCameraThread(device_thread.DeviceThread):
                 acq_nframes=acq_params.get("nframes") if acq_params else None
                 if nframes and (acq_nframes is None or acq_nframes<nframes*0.9 or acq_nframes>nframes*2):
                     self.setup_acquisition(nframes=nframes,force_setup=True)
-                self.update_parameters()
+                if update:
+                    self.update_parameters()
             self._set_acquisition_status(status)
 
-    def _get_metainfo(self, frames, indices, infos):
+    def _get_metainfo(self, frames, indices, infos):  # pylint: disable=unused-argument
         metainfo={}
         if self.v["parameters/add_info"]:
             fields=self.v["parameters/frame_info_fields"]
@@ -248,7 +248,7 @@ class GenericCameraThread(device_thread.DeviceThread):
         if infos is not None:
             infos=[np.asarray(infos[s:e]) for s,e in chunks]
         return frames,infos
-    def _expand_frame_infos(self, frames, indices, infos):
+    def _expand_frame_infos(self, frames, indices, infos):  # pylint: disable=unused-argument
         if infos is None:
             return None
         timestamp=int(time.time()*1E3)

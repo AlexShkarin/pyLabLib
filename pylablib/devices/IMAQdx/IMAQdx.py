@@ -1,7 +1,7 @@
 from pylablib.core.utils import funcargparse
 from . import NIIMAQdx_lib
 from .NIIMAQdx_lib import IMAQdxAttributeType, IMAQdxAttributeVisibility, IMAQdxCameraControlMode, IMAQdxBufferNumberMode
-from .NIIMAQdx_lib import lib, IMAQdxError, IMAQdxLibError
+from .NIIMAQdx_lib import wlib as lib, IMAQdxError, IMAQdxLibError  # pylint: disable=unused-import
 
 from ...core.utils import py3
 from ...core.devio import interface
@@ -243,7 +243,7 @@ class IMAQdxCamera(camera.IROICamera, camera.IAttributeCamera):
                     pass
         return [IMAQdxAttribute(self.sid,a) for a in attr_names]
 
-    def get_attribute_value(self, name, error_on_missing=True, default=None, enum_as_str=True):
+    def get_attribute_value(self, name, error_on_missing=True, default=None, enum_as_str=True):  # pylint: disable=arguments-differ
         """
         Get value of an attribute with the given name.
         
@@ -253,7 +253,7 @@ class IMAQdxCamera(camera.IROICamera, camera.IAttributeCamera):
         If ``enum_as_str==True``, return enum-style values as strings; otherwise, return corresponding integer values.
         """
         return super().get_attribute_value(name,error_on_missing=error_on_missing,default=default,enum_as_str=enum_as_str)
-    def set_attribute_value(self, name, value, truncate=True, error_on_missing=True):
+    def set_attribute_value(self, name, value, truncate=True, error_on_missing=True):  # pylint: disable=arguments-differ
         """
         Set value of an attribute with the given name.
         
@@ -262,10 +262,10 @@ class IMAQdxCamera(camera.IROICamera, camera.IAttributeCamera):
         If ``truncate==True``, truncate value to lie within attribute range.
         """
         return super().set_attribute_value(name,value,truncate=truncate,error_on_missing=error_on_missing)
-    def get_all_attribute_values(self, root="", enum_as_str=True):
+    def get_all_attribute_values(self, root="", enum_as_str=True):  # pylint: disable=arguments-differ
         """Get values of all attributes with the given `root`"""
         return super().get_all_attribute_values(root=root,enum_as_str=enum_as_str)
-    def set_all_attribute_values(self, settings, root="", truncate=True):
+    def set_all_attribute_values(self, settings, root="", truncate=True):  # pylint: disable=arguments-differ
         """
         Set values of all attributes with the given `root`.
         
@@ -323,7 +323,7 @@ class IMAQdxCamera(camera.IROICamera, camera.IAttributeCamera):
     
 
     @interface.use_parameters(mode="acq_mode")
-    def setup_acquisition(self, mode="sequence", nframes=100):
+    def setup_acquisition(self, mode="sequence", nframes=100):  # pylint: disable=arguments-differ
         """
         Setup acquisition mode.
 

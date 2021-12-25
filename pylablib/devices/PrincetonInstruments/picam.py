@@ -1,5 +1,5 @@
 from .picam_lib import PicamEnumeratedType, PicamValueType, picam_defs
-from .picam_lib import lib, PicamError, PicamLibError
+from .picam_lib import wlib as lib, PicamError, PicamLibError
 
 from ...core.utils import py3
 from ...core.devio import interface
@@ -34,8 +34,8 @@ def _parse_camid(camid):
     name=py3.as_str(camid.sensor_name)
     serial_number=py3.as_str(camid.serial_number)
     model=_get_str(PicamEnumeratedType.PicamEnumeratedType_Model,camid.model)
-    interface=_get_str(PicamEnumeratedType.PicamEnumeratedType_ComputerInterface,camid.computer_interface)
-    return TCameraInfo(name,serial_number,model,interface)
+    computer_interface=_get_str(PicamEnumeratedType.PicamEnumeratedType_ComputerInterface,camid.computer_interface)
+    return TCameraInfo(name,serial_number,model,computer_interface)
 def list_cameras():
     """List all cameras available through Picam interface"""
     with libctl.temp_open():
@@ -327,7 +327,7 @@ class PicamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
 
     def _list_attributes(self):
         return [PicamAttribute(self.handle,p) for p in lib.Picam_GetParameters(self.handle)]
-    def get_attribute_value(self, name, error_on_missing=True, default=None, enum_as_str=True):
+    def get_attribute_value(self, name, error_on_missing=True, default=None, enum_as_str=True):  # pylint: disable=arguments-differ
         """
         Get value of an attribute with the given name.
         
@@ -337,7 +337,7 @@ class PicamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         If ``enum_as_str==True``, return enum-style values as strings; otherwise, return corresponding integer values.
         """
         return super().get_attribute_value(name,error_on_missing=error_on_missing,default=default,enum_as_str=enum_as_str)
-    def set_attribute_value(self, name, value, truncate=True, error_on_missing=True):
+    def set_attribute_value(self, name, value, truncate=True, error_on_missing=True):  # pylint: disable=arguments-differ
         """
         Set value of an attribute with the given name.
         
@@ -346,10 +346,10 @@ class PicamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         If ``truncate==True``, truncate value to lie within attribute range.
         """
         return super().set_attribute_value(name,value,truncate=truncate,error_on_missing=error_on_missing)
-    def get_all_attribute_values(self, root="", enum_as_str=True):
+    def get_all_attribute_values(self, root="", enum_as_str=True):  # pylint: disable=arguments-differ
         """Get values of all attributes with the given `root`"""
         return super().get_all_attribute_values(root=root,enum_as_str=enum_as_str)
-    def set_all_attribute_values(self, settings, root="", truncate=True):
+    def set_all_attribute_values(self, settings, root="", truncate=True):  # pylint: disable=arguments-differ
         """
         Set values of all attributes with the given `root`.
         
@@ -471,7 +471,7 @@ class PicamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         lib.PicamAdvanced_SetAcquisitionBuffer(self.devhandle,0,0)
         self._buffer=None
     @interface.use_parameters(mode="acq_mode")
-    def setup_acquisition(self, mode="sequence", nframes=100):
+    def setup_acquisition(self, mode="sequence", nframes=100):  # pylint: disable=arguments-differ
         """
         Setup acquisition mode.
 

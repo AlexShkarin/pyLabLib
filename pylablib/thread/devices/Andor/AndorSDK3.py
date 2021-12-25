@@ -16,7 +16,7 @@ class AndorSDK3CameraThread(camera.GenericCameraThread):
     def setup_open_device(self):
         super().setup_open_device()
         self.device.set_overflow_behavior("restart")
-    def setup_task(self, idx=0, remote=None, misc=None):
+    def setup_task(self, idx=0, remote=None, misc=None):  # pylint: disable=arguments-differ
         self.idx=idx
         super().setup_task(remote=remote,misc=misc)
     def acq_finalize_regular(self):

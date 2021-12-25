@@ -308,4 +308,4 @@ class IMAQdxLib:
         self.IMAQdxRegisterAttributeUpdatedEvent_lib(sid,name,cb,callbackData)
         return cb
 
-lib=IMAQdxLib()
+wlib=IMAQdxLib()

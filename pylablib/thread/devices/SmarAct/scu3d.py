@@ -23,7 +23,7 @@ class SCU3DThread(device_thread.DeviceThread):
         with self.using_devclass("SmarAct.SCU3D",host=self.remote) as cls:
             self.device=cls(idx=self.idx,**self.dev_kwargs)
             self.device.get_status()
-    def setup_task(self, idx=0, remote=None, **kwargs):
+    def setup_task(self, idx=0, remote=None, **kwargs):  # pylint: disable=arguments-differ
         self.device_reconnect_tries=5
         self.idx=idx
         self.remote=remote

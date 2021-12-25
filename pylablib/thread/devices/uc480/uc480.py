@@ -17,7 +17,7 @@ class UC480CameraThread(camera.GenericCameraThread):
                 self.device=cls(dev_id=dev_id,backend=self.backend)
             else:
                 self.device=cls(cam_id=self.id,dev_id=self.dev_id,backend=self.backend)
-    def setup_task(self, idx, dev_idx=None, sn=None, backend="uc480", remote=None, misc=None):
+    def setup_task(self, idx, dev_idx=None, sn=None, backend="uc480", remote=None, misc=None):  # pylint: disable=arguments-differ
         self.id=idx
         self.dev_id=dev_idx
         self.sn=sn

@@ -139,7 +139,7 @@ class TableAccumulatorThread(controller.QTaskThread):
         - ``get_data``: get some of the accumulated data
         - ``reset``: clear stored data
     """
-    def setup_task(self, channels, src, tag, memsize=10**6):
+    def setup_task(self, channels, src, tag, memsize=10**6):  # pylint: disable=arguments-differ
         self.channels=channels
         self.table_accum=TableAccumulator(channels=channels,memsize=memsize)
         self.subscribe_direct(self._accum_data,srcs=src,tags=tag)
@@ -152,7 +152,7 @@ class TableAccumulatorThread(controller.QTaskThread):
         """Preprocess data before adding it to the table (to be overloaded)"""
         return data
 
-    def _accum_data(self, src, tag, value):
+    def _accum_data(self, src, tag, value):  # pylint: disable=unused-argument
         with self.data_lock:
             if hasattr(value,"get_ids") and self.cnt.receive_message(value):
                 self.table_accum.reset_data()

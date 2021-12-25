@@ -20,7 +20,7 @@ class KJL300(comm_backend.ICommBackendWrapper):
 
     Args:
         conn: serial connection parameters (usually port or a tuple containing port and baudrate)
-        addr: RS485 address (reqired both for RS-485 and for RS-232 communication; factory default is 1)
+        addr: RS485 address (required both for RS-485 and for RS-232 communication; factory default is 1)
     """
     Error=KJLError
     def __init__(self, conn, addr=1):

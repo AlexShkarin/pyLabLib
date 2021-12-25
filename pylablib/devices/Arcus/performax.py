@@ -1,4 +1,4 @@
-from .ArcusPerformaxDriver_lib import lib, ArcusPerformaxLibError
+from .ArcusPerformaxDriver_lib import wlib as lib, ArcusPerformaxLibError
 from .base import ArcusError, ArcusBackendError
 from ...core.utils import py3, general
 from ...core.devio import interface, comm_backend

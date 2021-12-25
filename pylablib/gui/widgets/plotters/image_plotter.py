@@ -19,7 +19,7 @@ from ....core.dataproc import filters
 
 import pyqtgraph
 
-from ....core.gui import QtCore, Signal
+from ....core.gui import QtCore
 import numpy as np
 import contextlib
 import time
@@ -41,7 +41,7 @@ class ImagePlotterCtl(QWidgetContainer):
     Args:
         parent: parent widget
     """
-    def setup(self, plotter, name=None, save_values=("colormap","img_lim_preset")):
+    def setup(self, plotter, name=None, save_values=("colormap","img_lim_preset")):  # pylint: disable=arguments-differ
         """
         Setup the image plotter controller.
 
@@ -103,7 +103,7 @@ class ImagePlotterCtl(QWidgetContainer):
         def set_colormap(value):
             colormap=dictionary.as_dict(value,style="nested")
             self.plotter.image_window.getHistogramWidget().gradient.restoreState(colormap)
-        self.add_property_element("colormap",getter=lambda: self.plotter.image_window.getHistogramWidget().gradient.saveState(),setter=set_colormap, add_indicator=False)
+        self.add_property_element("colormap",getter=lambda: self.plotter.image_window.getHistogramWidget().gradient.saveState(),setter=set_colormap,add_indicator=False)  # pylint: disable=unnecessary-lambda
         self._setup_gui_state()
 
     def set_img_lim(self, *args):
@@ -204,7 +204,7 @@ class ImagePlotter(QLayoutManagedWidget):
                 self.center=center
             if size:
                 self.size=size
-    def setup(self, name=None, img_size=(1024,1024), min_size=None):
+    def setup(self, name=None, img_size=(1024,1024), min_size=None):  # pylint: disable=arguments-differ
         """
         Setup the image plotter.
 
@@ -260,8 +260,8 @@ class ImagePlotter(QLayoutManagedWidget):
             self.cut_plot_window.addItem(c)
         self.cut_plot_panel.setVisible(False)
         self.set_row_stretch([4,1])
-        self.vline.sigPositionChanged.connect(lambda: self.update_image_controls(),QtCore.Qt.DirectConnection)
-        self.hline.sigPositionChanged.connect(lambda :self.update_image_controls(),QtCore.Qt.DirectConnection)
+        self.vline.sigPositionChanged.connect(lambda: self.update_image_controls(),QtCore.Qt.DirectConnection)  # pylint: disable=unnecessary-lambda
+        self.hline.sigPositionChanged.connect(lambda :self.update_image_controls(),QtCore.Qt.DirectConnection)  # pylint: disable=unnecessary-lambda
         self.image_window.getHistogramWidget().sigLevelsChanged.connect(lambda: self.update_image_controls(levels=self.image_window.getHistogramWidget().getLevels()),QtCore.Qt.DirectConnection)
         self.rectangles={}
 
@@ -601,7 +601,7 @@ class ImagePlotterCombined(QWidgetContainer):
     The plotter can be accessed as ``.plt`` attribute, and the controller as ``.ctl`` attribute.
     The ``"sidebar"`` sublayout can be used to add additional elements if necessary.
     """
-    def setup(self, img_size=(1024,1024), min_size=None, ctl_caption=None, name=None, save_values=("colormap","img_lim_preset")):
+    def setup(self, img_size=(1024,1024), min_size=None, ctl_caption=None, name=None, save_values=("colormap","img_lim_preset")):  # pylint: disable=arguments-differ
         super().setup(layout="hbox",name=name)
         self.plt=ImagePlotter(self)
         self.add_to_layout(self.plt)

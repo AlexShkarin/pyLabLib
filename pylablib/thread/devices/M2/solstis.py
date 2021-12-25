@@ -49,12 +49,13 @@ class M2Thread(device_thread.DeviceThread):
             self.device=cls(addr=self.addr,port=self.port,use_websocket=self.use_websocket,use_cavity=self.use_cavity,timeout=10.)
             self.device.set_timeout(120)
             self.device.get_coarse_wavelength()
-    def setup_task(self, addr, port, use_websocket=True, use_cavity=True, wavemeter=None):
+    def setup_task(self, addr, port, use_websocket=True, use_cavity=True, wavemeter=None, remote=None):  # pylint: disable=arguments-differ
         self.setup_properties()
         self.addr=addr
         self.port=port
         self.use_websocket=use_websocket
         self.use_cavity=use_cavity
+        self.remote=remote
         self.open()
         self.update_progress(0.)
         self.add_command("set_wavemeter_connection",self.set_wavemeter_connection,limit_queue=1,on_full_queue="skip_oldest")
@@ -235,7 +236,7 @@ class M2Thread(device_thread.DeviceThread):
                         tuned=False
                         break
                     yield
-    def fine_tune_finalize(self, *args, **kwargs):
+    def fine_tune_finalize(self, *args, **kwargs):  # pylint: disable=unused-argument
         self.stop_tuning()
 
     
@@ -326,14 +327,14 @@ class M2Thread(device_thread.DeviceThread):
                 yield
             if not (failed and failsafe):
                 break
-    def terascan_finalize(self, *args, **kwargs):
+    def terascan_finalize(self, *args, **kwargs):  # pylint: disable=unused-argument
         self.device.enable_terascan_updates(False)
         self.update_progress(0)
         self.update_scan_status("idle")
         self.v["terascan/stitching"]=0
         self.stop_tuning()
 
-    def fast_scan_start(self, scan_type, width, time, fine_tune=None):
+    def fast_scan_start(self, scan_type, width, time, fine_tune=None):  # pylint: disable=redefined-outer-name
         """
         Start fine sweep routine.
 
@@ -354,14 +355,14 @@ class M2Thread(device_thread.DeviceThread):
     def fast_scan_stop(self):
         """Stop fine sweep routine"""
         self.stop_batch_job("fast_scan")
-    def fast_scan_loop(self, scan_type, width, time, fine_tune=None):
+    def fast_scan_loop(self, scan_type, width, time, fine_tune=None):  # pylint: disable=redefined-outer-name
         if fine_tune is not None:
             for y in self.fine_tune_loop(*fine_tune):
                 yield y
             self.device.stop_all_operation()
         try:
             self.device.start_fast_scan(scan_type,width,time,sync=True)
-        except self.device.Error as err:
+        except self.device.Error:
             return
         self.update_scan_status("running")
         while True:
@@ -370,7 +371,7 @@ class M2Thread(device_thread.DeviceThread):
             if status["status"]=="stopped":
                 break
             yield
-    def fast_scan_finalize(self, *args, **kwargs):
+    def fast_scan_finalize(self, *args, **kwargs):  # pylint: disable=unused-argument
         self.update_progress(0)
         self.update_scan_status("idle")
         self.stop_tuning()
@@ -417,7 +418,7 @@ class M2Thread(device_thread.DeviceThread):
                 self.device.tune_etalon(et)
                 yield
             self.update_progress((i+1.)/len(wavelengths)*100.)
-    def coarse_scan_finalize(self, *args, **kwargs):
+    def coarse_scan_finalize(self, *args, **kwargs):  # pylint: disable=unused-argument
         self.update_progress(0)
         self.update_scan_status("idle")
         self.stop_tuning()

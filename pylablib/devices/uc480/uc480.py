@@ -376,7 +376,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
 
 
     ### Acquisition process controls ###
-    def setup_acquisition(self, nframes=100):
+    def setup_acquisition(self, nframes=100):  # pylint: disable=arguments-differ
         """
         Setup acquisition.
 
@@ -427,7 +427,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         self._acq_offset=0
         self._buff_offset=0
         self._frameskip_events=0
-    def _get_acquired_frames(self, error_on_skip=True):
+    def _get_acquired_frames(self, error_on_skip=True):  # pylint: disable=arguments-differ
         acq=self.lib.is_CameraStatus(self.hcam,uc480_defs.CAMINFO.IS_SEQUENCE_CNT,uc480_defs.CAMINFO.IS_GET_STATUS)+self._acq_offset
         prev_acq=self._frame_counter.get_frames_status()[0]
         if acq<prev_acq:

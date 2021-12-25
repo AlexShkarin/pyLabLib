@@ -54,7 +54,7 @@ class StreamFormerThread(controller.QTaskThread):
         """Gets called every time a new block is complete"""
         self.send_multicast(tag="stream/data",value=self._build_new_block())
 
-    def setup_task(self):
+    def setup_task(self):  # pylint: disable=arguments-differ
         self.channels={}
         self.table={}
         self.source_schedulers={}
@@ -276,7 +276,7 @@ class StreamFormerThread(controller.QTaskThread):
         """
         name=name if sn else self.source_sns[name]
         return self.cnt.set_cutoff(name,sid=sid,mid=mid)
-    def _parse_default(self, src, tag, value):
+    def _parse_default(self, src, tag, value):  # pylint: disable=unused-argument
         if isinstance(value,stream_message.DataBlockMessage):
             return value.get_data_dict()
         return value

@@ -650,7 +650,7 @@ class Countdown:
         """Restart the countdown from the current moment"""
         self.start=time.time() if start else None
         self.set_timeout(self.timeout)
-    def trigger(self, restart=True):
+    def trigger(self, restart=True):  # pylint: disable=redefined-outer-name
         """
         Trigger the countdown.
 

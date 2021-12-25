@@ -1,5 +1,5 @@
 from . import dcamapi4_lib
-from .dcamapi4_lib import lib, DCAMError, DCAMLibError
+from .dcamapi4_lib import wlib as lib, DCAMError, DCAMLibError
 
 from ...core.devio import interface
 from ...core.utils import py3, general
@@ -198,7 +198,7 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribute
         return [DCAMAttribute(self.handle,pid) for pid in ids]
     def _normalize_attribute_name(self, name):
         return name.lower().replace(" ","_")
-    def get_attribute_value(self, name, enum_str=False, error_on_missing=True, default=None):
+    def get_attribute_value(self, name, enum_str=False, error_on_missing=True, default=None):  # pylint: disable=arguments-differ
         """
         Get value of an attribute with the given name.
         
@@ -208,14 +208,14 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribute
         otherwise, return their integer values (only integers can be used for setting).
         """
         return super().get_attribute_value(name,enum_str=enum_str,error_on_missing=error_on_missing,default=default)
-    def set_attribute_value(self, name, value, error_on_missing=True):
+    def set_attribute_value(self, name, value, error_on_missing=True):  # pylint: disable=arguments-differ
         """
         Set value of an attribute with the given name.
         
         If the value doesn't exist or can not be written and ``error_on_missing==True``, raise error; otherwise, do nothing.
         """
         return super().set_attribute_value(name,value,error_on_missing=error_on_missing)
-    def get_all_attribute_values(self, enum_str=False):
+    def get_all_attribute_values(self, enum_str=False):  # pylint: disable=arguments-differ
         """
         Get values of all attributes.
 
@@ -223,7 +223,7 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribute
         otherwise, return their integer values (only integers can be used for setting).
         """
         return super().get_all_attribute_values(enum_str=enum_str)
-    def set_all_attribute_values(self, settings):
+    def set_all_attribute_values(self, settings):  # pylint: disable=arguments-differ
         """Set values of all attribute in the given dictionary"""
         return super().set_all_attribute_values(settings)
 
@@ -395,7 +395,7 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribute
         return hlim,vlim
 
     @interface.use_parameters(mode="acq_mode")
-    def setup_acquisition(self, mode="sequence", nframes=100):
+    def setup_acquisition(self, mode="sequence", nframes=100):  # pylint: disable=arguments-differ
         """
         Setup acquisition.
 

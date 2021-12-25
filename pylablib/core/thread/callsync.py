@@ -31,7 +31,7 @@ class QCallResultSynchronizer(QThreadNotifier):
     def failed(self):
         """Check if the call failed"""
         return self.get_progress()=="fail"
-    def get_value_sync(self, timeout=None, default=None, error_on_fail=True, error_on_skip=True, pass_exception=True):
+    def get_value_sync(self, timeout=None, default=None, error_on_fail=True, error_on_skip=True, pass_exception=True):  # pylint: disable=arguments-differ
         """
         Wait (with the given `timeout`) for the value passed by the notifier
 
@@ -40,7 +40,7 @@ class QCallResultSynchronizer(QThreadNotifier):
         If ``error_on_skip==True`` and the call was skipped (e.g., due to full call queue), raise :exc:`.threadprop.SkippedCallError`; otherwise, return `default`.
         If ``pass_exception==True`` and the returned value represents exception, re-raise it in the caller thread; otherwise, return `default`.
         """
-        res=QThreadNotifier.get_value_sync(self,timeout=timeout)
+        res=super().get_value_sync(timeout=timeout)
         if res is not None:
             kind,value=res  # pylint: disable=unpacking-non-sequence
             if kind=="result":
@@ -166,7 +166,7 @@ class QScheduledCall:
         try:
             res=("fail",None)
             res=("result",self.func(*self.args,**self.kwargs))
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             res=("exception",e)
             if not (self.silent if silent is None else silent):
                 raise
@@ -418,7 +418,7 @@ class QQueueScheduler(QScheduler):
         return bool(self.call_queue)
     def __len__(self):
         return len(self.call_queue)
-    def clear(self, close=True):
+    def clear(self, close=True):  # pylint: disable=arguments-differ
         """
         Clear the call queue.
 

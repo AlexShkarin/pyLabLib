@@ -33,7 +33,7 @@ class ANC350Thread(device_thread.DeviceThread):
     def setup_open_device(self):
         self.device.get_capacitance(measure=True)
         return super().setup_open_device()
-    def setup_task(self, conn=0, remote=None, **kwargs):
+    def setup_task(self, conn=0, remote=None, **kwargs):  # pylint: disable=arguments-differ
         self.device_reconnect_tries=5
         self.conn=conn
         self.remote=remote

@@ -36,7 +36,7 @@ class PerformaxThread(device_thread.DeviceThread):
         with self.using_devclass(cls_name,host=self.remote) as cls:
             self.device=cls(idx=self.idx,conn=self.conn,enable=self.enable)
             self.device.get_position()
-    def setup_task(self, idx=0, conn=None, enable=True, kind="4EX", remote=None):
+    def setup_task(self, idx=0, conn=None, enable=True, kind="4EX", remote=None):  # pylint: disable=arguments-differ
         funcargparse.check_parameter_range(kind,"kind",["4EX","2EX"])
         self.device_reconnect_tries=5
         self.idx=idx
@@ -148,7 +148,7 @@ class PerformaxSingleAxisThread(device_thread.DeviceThread):
         with self.using_devclass(cls_name,host=self.remote) as cls:
             self.device=cls(idx=self.idx,conn=self.conn,enable=self.enable,autoclear=self.autoclear)
             self.device.get_position()
-    def setup_task(self, idx=0, conn=None, enable=True, autoclear=True, remote=None):
+    def setup_task(self, idx=0, conn=None, enable=True, autoclear=True, remote=None):  # pylint: disable=arguments-differ
         self.device_reconnect_tries=5
         self.idx=idx
         self.conn=conn

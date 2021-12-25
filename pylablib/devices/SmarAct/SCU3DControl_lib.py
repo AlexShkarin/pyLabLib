@@ -127,4 +127,4 @@ class SCU3DControlLib:
 
 
 
-lib=SCU3DControlLib()
+wlib=SCU3DControlLib()

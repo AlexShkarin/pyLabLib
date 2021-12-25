@@ -1,5 +1,5 @@
 from . import sc2_camexport_lib
-from .sc2_camexport_lib import lib, PCO_ERR, PCOSC2Error, PCOSC2LibError, PCO_INTERFACE, sc2_defs, CAPS1, MAX_SCHEDULED_BUFFERS
+from .sc2_camexport_lib import wlib as lib, PCO_ERR, PCOSC2Error, PCOSC2LibError, PCO_INTERFACE, sc2_defs, CAPS1, MAX_SCHEDULED_BUFFERS
 
 from ...core.utils import dictionary, py3, general
 from ...core.utils.ctypes_wrap import class_tuple_to_dict
@@ -501,7 +501,7 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
 
 
     ### Acquisition process controls ###
-    def setup_acquisition(self, nframes=100):
+    def setup_acquisition(self, nframes=100):  # pylint: disable=arguments-differ
         """
         Setup acquisition.
 
@@ -572,7 +572,7 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         bins=lib.PCO_GetBinning(self.handle)
         return ((roi[0]-1)*bins[0],roi[2]*bins[0],(roi[1]-1)*bins[1],roi[3]*bins[1],bins[0],bins[1])
     @camera.acqcleared
-    def set_roi(self, hstart=0, hend=None, vstart=0, vend=None, hbin=1, vbin=1, symmetric=False):
+    def set_roi(self, hstart=0, hend=None, vstart=0, vend=None, hbin=1, vbin=1, symmetric=False):  # pylint: disable=arguments-differ
         """
         Setup camera ROI.
 

@@ -1,4 +1,4 @@
-from .SCU3DControl_lib import lib, SmarActError, EConfiguration
+from .SCU3DControl_lib import wlib as lib, SmarActError, EConfiguration
 from ...core.utils import general
 from ...core.devio import interface
 from ..interface import stage

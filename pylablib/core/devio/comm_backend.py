@@ -481,8 +481,8 @@ try:
             """
             Write data to the device.
             
-            If ``flush==True``, flush the write buffer.
             If ``read_echo==True``, wait for `read_echo_delay` seconds and then perform :func:`readline` (`read_echo_lines` times).
+            `flush` parameter is ignored.
             """
             self._log("write",data)
             data=py3.as_builtin_bytes(data)
@@ -653,7 +653,7 @@ try:
                                 if result.endswith(t):
                                     return result
         @logerror
-        def readline(self, remove_term=True, timeout=None, skip_empty=True, error_on_timeout=True):
+        def readline(self, remove_term=True, timeout=None, skip_empty=True, error_on_timeout=True):  # pylint: disable=arguments-differ
             """
             Read a single line from the device.
             
@@ -886,7 +886,7 @@ try:
                                 if result.endswith(t):
                                     return result
         @logerror
-        def readline(self, remove_term=True, timeout=None, skip_empty=True, error_on_timeout=True):
+        def readline(self, remove_term=True, timeout=None, skip_empty=True, error_on_timeout=True):  # pylint: disable=arguments-differ
             """
             Read a single line from the device.
             
@@ -1274,7 +1274,7 @@ try:
                         if result.endswith(t):
                             return result
         @logerror
-        def readline(self, remove_term=True, timeout=None, skip_empty=True, error_on_timeout=True):
+        def readline(self, remove_term=True, timeout=None, skip_empty=True, error_on_timeout=True):  # pylint: disable=arguments-differ
             """
             Read a single line from the device.
             
@@ -1295,7 +1295,7 @@ try:
             return self._to_datatype(result)
         @logerror
         @reraise
-        def read(self, size=None, max_read_size=65536):
+        def read(self, size=None, max_read_size=65536):  # pylint: disable=arguments-differ
             """
             Read data from the device.
             
@@ -1331,11 +1331,12 @@ try:
             return self._to_datatype(result)
         @logerror
         @reraise
-        def write(self, data, read_echo=False, read_echo_delay=0, read_echo_lines=1):
+        def write(self, data, flush=True, read_echo=False, read_echo_delay=0, read_echo_lines=1):
             """
             Write data to the device.
             
             If ``read_echo==True``, wait for `read_echo_delay` seconds and then perform :func:`readline` (`read_echo_lines` times).
+            `flush` parameter is ignored.
             """
             self._log("write",data)
             data=py3.as_builtin_bytes(data)

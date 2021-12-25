@@ -32,7 +32,7 @@ class FrameBinningThread(controller.QTaskThread):
         - ``enable_binning``: enable or disable the binning
         - ``setup_binning``: setup binning parameters
     """
-    def setup_task(self, src, tag_in, tag_out=None):
+    def setup_task(self, src, tag_in, tag_out=None):  # pylint: disable=arguments-differ
         self.subscribe_commsync(self.process_input_frames,srcs=src,tags=tag_in,limit_queue=2,on_full_queue="wait")
         self.tag_out=tag_out or tag_in
         self.v["params/spat"]={"bin":(1,1),"mode":"skip"}
@@ -140,7 +140,8 @@ class FrameBinningThread(controller.QTaskThread):
         frames=frames.astype(dtype)
         return frames
 
-    def process_input_frames(self, src, tag, msg):  # direct subscription + command for no-overhead forwarding?
+    # TODO: direct subscription + command for no-overhead forwarding?
+    def process_input_frames(self, src, tag, msg):  # pylint: disable=unused-argument
         """Process multicast message with input frames"""
         if not self.v["enabled"]:
             self.send_multicast(dst="any",tag=self.tag_out,value=msg)
@@ -197,7 +198,7 @@ class FrameSlowdownThread(controller.QTaskThread):
         - ``setup_slowdown``: setup slowdown parameters
         - ``set_output_period``: set the period of output frames generation
     """
-    def setup_task(self, src, tag_in, tag_out=None):
+    def setup_task(self, src, tag_in, tag_out=None):  # pylint: disable=arguments-differ
         self.subscribe_commsync(self.process_input_frames,srcs=src,tags=tag_in,limit_queue=10)
         self.tag_out=tag_out or tag_in
         self.frames_buffer=[]
@@ -290,7 +291,7 @@ class FrameSlowdownThread(controller.QTaskThread):
     def output_frame(self):
         if self.v["output_period"] is not None:
             self._emit_frames()
-    def process_input_frames(self, src, tag, msg):
+    def process_input_frames(self, src, tag, msg):  # pylint: disable=unused-argument
         """Process multicast message with input frames"""
         self._update_fps(self._in_fps_calc,"fps/in",msg.nframes())
         msg=msg.copy(mid=None)
@@ -351,7 +352,7 @@ class BackgroundSubtractionThread(controller.QTaskThread):
         - ``set_output_period``: set the period of output frames generation
     """
     TStoredFrame=collections.namedtuple("TStoredFrame",["frame","index","info","status_line"])
-    def setup_task(self, src, tag_in, tag_out=None):
+    def setup_task(self, src, tag_in, tag_out=None):  # pylint: disable=arguments-differ
         self.frames_src=stream_manager.StreamSource(builder=stream_message.FramesMessage,use_mid=False)
         self.subscribe_commsync(self.process_input_frames,srcs=src,tags=tag_in,limit_queue=20,on_full_queue="skip_oldest")
         self.tag_out=tag_out or tag_in+"/show"
@@ -553,7 +554,7 @@ class BackgroundSubtractionThread(controller.QTaskThread):
             self.send_multicast(dst="any",tag=self.tag_out,value=self.frames_src.build_message(show_frame,self.last_frame.index,[self.last_frame.info],source=self.name))
         self._new_show_frame=False
 
-    def process_input_frames(self, src, tag, msg):
+    def process_input_frames(self, src, tag, msg):   # pylint: disable=unused-argument
         """Process multicast message with input frames"""
         self.frames_src.receive_message(msg)
         self.last_frame=self.TStoredFrame(msg.last_frame(),msg.last_frame_index(),msg.last_frame_info(),msg.metainfo.get("status_line"))

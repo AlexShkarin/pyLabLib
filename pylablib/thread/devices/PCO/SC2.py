@@ -24,7 +24,7 @@ class PCOSC2CameraThread(camera.GenericCameraThread):
         if self._status_line_enabled:
             metainfo["status_line"]=("pco_sc2",(0,0,0,13))
         return metainfo
-    def setup_task(self, idx=0, cam_interface=None, reboot_on_fail=True, remote=None, misc=None):
+    def setup_task(self, idx=0, cam_interface=None, reboot_on_fail=True, remote=None, misc=None):  # pylint: disable=arguments-differ
         self.idx=idx
         self.cam_interface=cam_interface
         self.reboot_on_fail=reboot_on_fail

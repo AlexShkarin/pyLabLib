@@ -194,7 +194,7 @@ class DictionaryOutputFileFormat(ITextOutputFileFormat):
             line=self.inline_delimiters.join(line)
             self.write_line(stream,line)
         self.write_line(stream,"## Table end ##")
-    def write_data(self, loc_file, data):
+    def write_data(self, location_file, data):
         """
         Write data to a Dictionary file.
         
@@ -204,8 +204,8 @@ class DictionaryOutputFileFormat(ITextOutputFileFormat):
         """
         if not dictionary.is_dictionary(data):
             raise ValueError("format '{0}' can't save data {1}".format(self.format_name,data))
-        loc=loc_file.loc
-        stream=loc_file.stream
+        loc=location_file.loc
+        stream=location_file.stream
         table_builder=dict_entry.table_entry_builder(self.table_format)
         for path, value in data.iternodes(ordered=True,to_visit="leafs",include_path=True):
             if string_utils.is_convertible(value):
@@ -224,7 +224,7 @@ class DictionaryOutputFileFormat(ITextOutputFileFormat):
                     br=data.detach(rel_path)
                     data.add_entry(rel_path,d,branch_option="attach")
                     try:
-                        self.write_data(loc_file,data.branch_pointer(rel_path))
+                        self.write_data(location_file,data.branch_pointer(rel_path))
                     finally:
                         data.detach(rel_path)
                         data.add_entry(rel_path,br,branch_option="attach")
@@ -234,7 +234,7 @@ class DictionaryOutputFileFormat(ITextOutputFileFormat):
 
 
 class IBinaryOutputFileFormat(IOutputFileFormat):  # pylint: disable=abstract-method
-    def get_preamble(self, loc_file, data):  # pylint: disable=unused-argument
+    def get_preamble(self, location_file, data):  # pylint: disable=unused-argument
         return dictionary.Dictionary()
     
     
@@ -256,7 +256,7 @@ class TableBinaryOutputFileFormat(IBinaryOutputFileFormat):
             return np.asarray(table).dtype.newbyteorder("<").str
         else:
             return self.dtype
-    def get_preamble(self, loc_file, data):
+    def get_preamble(self, location_file, data):
         """
         Generate a preamble (dictionary describing the file format).
         

@@ -35,14 +35,14 @@ def errcheck(passing=None):
     `passing` is a list specifying which return codes are acceptable (by default, non-negative codes are acceptable).
     """
     passing=set(passing) if passing is not None else set()
-    def checker(result, func, arguments):
+    def errchecker(result, func, arguments):  # pylint: disable=unused-argument
         if isinstance(result,tuple):
             code,result=result[0],result[1:]
         else:
             code=result
         if code<0 and code not in passing: # positive codes are always success
             raise DCAMLibError(func.__name__,code)
-    return checker
+    return errchecker
 
 
 
@@ -243,4 +243,4 @@ class DCAMLib:
 
 
 
-lib=DCAMLib()
+wlib=DCAMLib()

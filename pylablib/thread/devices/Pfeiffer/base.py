@@ -21,7 +21,7 @@ class TPG260Thread(device_thread.DeviceThread):
         with self.using_devclass("Pfeiffer.TPG260",host=self.remote) as cls:
             self.device=cls(conn=self.conn)
     _all_channels=[1,2]
-    def setup_task(self, conn, remote=None, channel=1):
+    def setup_task(self, conn, remote=None, channel=1):  # pylint: disable=arguments-differ
         self.device_reconnect_tries=5
         self.conn=conn
         self.remote=remote
@@ -68,7 +68,7 @@ class DPG202Thread(device_thread.DeviceThread):
     def connect_device(self):
         with self.using_devclass("Pfeiffer.DPG202",host=self.remote) as cls:
             self.device=cls(conn=self.conn)
-    def setup_task(self, conn, remote=None):
+    def setup_task(self, conn, remote=None):  # pylint: disable=arguments-differ
         self.device_reconnect_tries=5
         self.conn=conn
         self.remote=remote

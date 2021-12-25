@@ -542,7 +542,7 @@ lref=ctypes.POINTER(ctypes.c_long)
 l64ref=ctypes.POINTER(ctypes.c_int64)
 dref=ctypes.POINTER(ctypes.c_double)
 sref=ctypes.c_char_p
-bool=ctypes.c_long
+bool=ctypes.c_long  # pylint: disable=redefined-builtin
 
 
 

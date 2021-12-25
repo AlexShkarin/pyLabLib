@@ -22,7 +22,7 @@ class VegaPowerMeterThread(device_thread.DeviceThread):
         with self.using_devclass("Ophir.VegaPowerMeter",host=self.remote) as cls:
             self.device=cls(conn=self.conn)
             self.device.get_power()
-    def setup_task(self, conn, remote=None):
+    def setup_task(self, conn, remote=None):  # pylint: disable=arguments-differ
         self.device_reconnect_tries=5
         self.conn=conn
         self.remote=remote

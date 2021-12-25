@@ -70,4 +70,4 @@ class ArcusPerformaxLib:
         return ctypes.cast(buff,rtype).contents
 
 
-lib=ArcusPerformaxLib()
+wlib=ArcusPerformaxLib()

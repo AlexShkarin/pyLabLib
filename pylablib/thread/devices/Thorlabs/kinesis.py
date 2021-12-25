@@ -29,7 +29,7 @@ class KinesisMotorThread(device_thread.DeviceThread):
         with self.using_devclass("Thorlabs.KinesisMotor",host=self.remote) as cls:
             self.device=cls(conn=self.conn,**self.dev_kwargs)
             self.device.get_position()
-    def setup_task(self, conn, remote=None, **kwargs):
+    def setup_task(self, conn, remote=None, **kwargs):  # pylint: disable=arguments-differ
         self.device_reconnect_tries=5
         self.conn=conn
         self.remote=remote
@@ -119,7 +119,7 @@ class KinesisPiezoMotorThread(device_thread.DeviceThread):
         with self.using_devclass("Thorlabs.KinesisPiezoMotor",host=self.remote) as cls:
             self.device=cls(conn=self.conn,**self.dev_kwargs)
             self.device.get_position()
-    def setup_task(self, conn, remote=None, default_channels=1, **kwargs):
+    def setup_task(self, conn, remote=None, default_channels=1, **kwargs):  # pylint: disable=arguments-differ
         self.device_reconnect_tries=5
         self.conn=conn
         self.remote=remote
@@ -204,7 +204,7 @@ class MFFThread(device_thread.DeviceThread):
         with self.using_devclass("Thorlabs.MFF",host=self.remote) as cls:
             self.device=cls(conn=self.conn,**self.dev_kwargs)
             self.device.get_state()
-    def setup_task(self, conn, remote=None, **kwargs):
+    def setup_task(self, conn, remote=None, **kwargs):  # pylint: disable=arguments-differ
         self.device_reconnect_tries=5
         self.conn=conn
         self.remote=remote
@@ -242,7 +242,7 @@ class ThorlabsKinesisQuadDetectorThread(device_thread.DeviceThread):
         with self.using_devclass("Thorlabs.KinesisQuadDetector",host=self.remote) as cls:
             self.device=cls(conn=self.conn)
             self.device.get_readings()
-    def setup_task(self, conn, remote=None):
+    def setup_task(self, conn, remote=None):  # pylint: disable=arguments-differ
         self.device_reconnect_tries=5
         self.conn=conn
         self.remote=remote

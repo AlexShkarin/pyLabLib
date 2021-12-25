@@ -9,7 +9,7 @@ class SettingsManager(controller.QTaskThread):
     Keeps track of all the settings sources (each settings source can add more of them),
     usually in order to save them when the data is being saved.
     """
-    def setup_task(self):
+    def setup_task(self):  # pylint: disable=arguments-differ
         self.sources={}
         self.values={}
         self.add_command("add_source")

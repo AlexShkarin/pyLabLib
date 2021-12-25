@@ -1,11 +1,11 @@
 from . import threadprop
-from . import notifier
+from .notifier import ISkippableNotifier
 from ..utils import general
 
 import threading
 
 
-class QThreadNotifier(notifier.ISkippableNotifier):
+class QThreadNotifier(ISkippableNotifier):
     """
     Wait-notify thread synchronizer for controlled Qt threads based on :class:`.notifier.ISkippableNotifier`.
 
@@ -20,20 +20,20 @@ class QThreadNotifier(notifier.ISkippableNotifier):
     _uid_gen=general.UIDGenerator(thread_safe=True)
     _notify_tag="#sync.notifier"
     def __init__(self, skippable=True):
-        notifier.ISkippableNotifier.__init__(self,skippable=skippable)
+        super().__init__(skippable=skippable)
         self._uid=None
         self.value=None
     def _pre_wait(self, *args, **kwargs):  # pylint: disable=unused-argument
         self._controller=threadprop.current_controller(require_controller=True)
         self._uid=self._uid_gen()
         return True
-    def _do_wait(self, timeout=None):
+    def _do_wait(self, timeout=None):  # pylint: disable=arguments-differ
         try:
             self._controller.wait_for_sync(self._notify_tag,self._uid,timeout=timeout)
             return True
         except threadprop.TimeoutThreadError:
             return False
-    def _pre_notify(self, value=None):
+    def _pre_notify(self, value=None):  # pylint: disable=arguments-differ
         self.value=value
     def _do_notify(self, *args, **kwargs):  # pylint: disable=unused-argument
         self._controller.send_sync(self._notify_tag,self._uid)

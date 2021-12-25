@@ -19,16 +19,14 @@ class GenericPhotonFocusCameraThread(camera.GenericCameraThread):
             row,transp=sline_pos
             metainfo["status_line"]=("photon_focus",(0,-1,row,-1)) if transp else ("photon_focus",(row,-1,0,-1))
         return metainfo
-    def setup_task(self, remote=None, misc=None):
-        super().setup_task(remote=remote,misc=misc)
     
-    def apply_parameters(self, parameters):
+    def apply_parameters(self, parameters, update=True):
         if self.device and list(parameters)==["roi"]:
             par_roi=parameters["roi"]
             dev_roi=self.device.get_roi()
             if dev_roi[1]-dev_roi[0]==par_roi[1]-par_roi[0] and dev_roi[3]-dev_roi[2]==par_roi[3]-par_roi[2]:
                 parameters["fast_roi"]=parameters.pop("roi")
-        super().apply_parameters(parameters)
+        super().apply_parameters(parameters,update=update)
     def _apply_additional_parameters(self, parameters):
         super()._apply_additional_parameters(parameters)
         if "fast_roi" in parameters:
@@ -49,7 +47,7 @@ class IMAQPhotonFocusCameraThread(GenericPhotonFocusCameraThread):
         with self.using_devclass("PhotonFocus.PhotonFocusIMAQCamera",host=self.remote) as cls:
             self.device=cls(imaq_name=self.imaq_name,pfcam_port=self.pfcam_port)
         
-    def setup_task(self, imaq_name, pfcam_port, remote=None, misc=None):
+    def setup_task(self, imaq_name, pfcam_port, remote=None, misc=None):  # pylint: disable=arguments-differ
         self.imaq_name=imaq_name
         self.pfcam_port=pfcam_port
         super().setup_task(remote=remote,misc=misc)
@@ -68,7 +66,7 @@ class SiliconSoftwarePhotonFocusCameraThread(GenericPhotonFocusCameraThread):
         with self.using_devclass("PhotonFocus.PhotonFocusSiSoCamera",host=self.remote) as cls:
             self.device=cls(siso_board=self.siso_board,siso_applet=self.siso_applet,siso_port=self.siso_port,pfcam_port=self.pfcam_port)
         
-    def setup_task(self, siso_board, siso_applet, siso_port, pfcam_port, remote=None, misc=None):
+    def setup_task(self, siso_board, siso_applet, siso_port, pfcam_port, remote=None, misc=None):  # pylint: disable=arguments-differ
         self.siso_board=siso_board
         self.siso_applet=siso_applet
         self.siso_port=siso_port

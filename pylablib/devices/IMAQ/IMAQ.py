@@ -1,5 +1,5 @@
 from . import niimaq_lib
-from .niimaq_lib import lib, IMAQError, IMAQLibError
+from .niimaq_lib import wlib as lib, IMAQError, IMAQLibError
 
 from ...core.utils import py3, funcargparse
 from ...core.devio import interface
@@ -445,7 +445,7 @@ class IMAQFrameGrabber(camera.IROICamera):
         
 
     @interface.use_parameters(mode="acq_mode")
-    def setup_acquisition(self, mode="sequence", nframes=100):
+    def setup_acquisition(self, mode="sequence", nframes=100):  # pylint: disable=arguments-differ
         """
         Setup acquisition mode.
 
@@ -550,7 +550,7 @@ class IMAQFrameGrabber(camera.IROICamera):
             self._frame_counter.advance_read_frames(rng)
         return rng[0],skipped_frames,raw_frames
     
-    def read_multiple_images(self, rng=None, peek=False, missing_frame="skip", return_info=False, fastbuff=False):
+    def read_multiple_images(self, rng=None, peek=False, missing_frame="skip", return_info=False, fastbuff=False):  # pylint: disable=arguments-differ
         """
         Read multiple images specified by `rng` (by default, all un-read images).
 

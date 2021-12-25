@@ -1,6 +1,6 @@
 from .base import AndorError, AndorTimeoutError, AndorNotSupportedError
 from . import atmcd32d_lib
-from .atmcd32d_lib import lib, AndorSDK2LibError
+from .atmcd32d_lib import wlib as lib, AndorSDK2LibError
 from .atmcd32d_lib import DRV_STATUS
 from .atmcd32d_lib import AC_ACQMODE, AC_READMODE, AC_TRIGGERMODE, AC_EMGAIN, AC_FEATURES, AC_GETFUNC, AC_SETFUNC
 from .atmcd32d_lib import drAC_CAMERATYPE, AC_PIXELMODE
@@ -956,7 +956,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
 
     ### Acquisition process controls ###
     @_camfunc
-    def setup_acquisition(self, mode=None, nframes=None):
+    def setup_acquisition(self, mode=None, nframes=None):  # pylint: disable=arguments-differ
         mode={"snap":"kinetic","sequence":"cont"}.get(mode,mode)
         if mode=="kinetic" and nframes is not None:
             par=self.get_kinetic_mode_parameters()

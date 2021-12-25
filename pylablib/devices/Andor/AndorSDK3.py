@@ -1,6 +1,6 @@
 from .base import AndorError, AndorTimeoutError, AndorFrameTransferError, AndorNotSupportedError
 from . import atcore_lib
-from .atcore_lib import lib, AndorSDK3LibError, feature_types, read_uint12
+from .atcore_lib import wlib as lib, AndorSDK3LibError, feature_types, read_uint12
 
 from ...core.utils import py3, dictionary, general, funcargparse
 from ...core.devio import interface
@@ -268,7 +268,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         `kind` can be ``"float"``, ``"int"``, ``"str"``, ``"bool"``, ``"enum"``, or ``"comm"`` (command).
         """
         self.attributes[name]=AndorSDK3Attribute(self.handle,name,kind=kind)
-    def get_attribute(self, name, update_properties=False, error_on_missing=True):
+    def get_attribute(self, name, update_properties=False, error_on_missing=True):  # pylint: disable=arguments-differ
         """
         Get the camera attribute with the given name.
         
@@ -278,7 +278,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         if att is not None and update_properties:
             att.update_properties()
         return att
-    def get_attribute_value(self, name, update_properties=False, error_on_missing=True, default=None):
+    def get_attribute_value(self, name, update_properties=False, error_on_missing=True, default=None):  # pylint: disable=arguments-differ
         """
         Get value of an attribute with the given name.
         
@@ -289,7 +289,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         error_on_missing=error_on_missing and (default is None)
         attr=self.get_attribute(name,update_properties=update_properties,error_on_missing=error_on_missing)
         return default if attr is None else attr.get_value(not_implemented_error=error_on_missing,default=default)
-    def set_attribute_value(self, name, value, update_properties=True, error_on_missing=True):
+    def set_attribute_value(self, name, value, update_properties=True, error_on_missing=True):  # pylint: disable=arguments-differ
         """
         Set value of an attribute with the given name.
         
@@ -299,7 +299,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         attr=self.get_attribute(name,update_properties=update_properties,error_on_missing=error_on_missing)
         if attr is not None:
             attr.set_value(value,not_implemented_error=error_on_missing)
-    def get_all_attribute_values(self, update_properties=False):
+    def get_all_attribute_values(self, update_properties=False):  # pylint: disable=arguments-differ
         """
         Get values of all attributes.
         
@@ -315,7 +315,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
                 except AndorSDK3LibError:  # sometimes nominally implemented features still raise errors
                     pass
         return values
-    def set_all_attribute_values(self, settings, update_properties=True):
+    def set_all_attribute_values(self, settings, update_properties=True):  # pylint: disable=arguments-differ
         """
         Set values of all attribute in the given dictionary.
         
@@ -575,7 +575,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
 
 
     @interface.use_parameters(mode="acq_mode")
-    def setup_acquisition(self, mode="sequence", nframes=100):
+    def setup_acquisition(self, mode="sequence", nframes=100):  # pylint: disable=arguments-differ
         """
         Setup acquisition.
 

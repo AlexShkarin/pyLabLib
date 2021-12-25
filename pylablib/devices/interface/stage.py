@@ -2,7 +2,7 @@ from ...core.devio import interface
 from ...core.utils import py3, general
 
 
-class IStage(interface.IDevice):
+class IStage(interface.IDevice):  # pylint: disable=abstract-method
     """Generic stage class"""
     _p_direction=interface.EnumParameterClass("direction",[("+",True),(1,True),("-",False),(0,False)])
 
@@ -18,7 +18,7 @@ def muxaxis(*args, argname="axis", **kwargs):
             raise TypeError("{} argument must be provided".format(argname))
         return self._default_axis
     return general.muxcall(argname,special_args={"all":all_ax_func,None:def_ax_func},mux_argnames=kwargs.get("mux_argnames",None),return_kind=kwargs.get("return_kind","list"),allow_partial=True)
-class IMultiaxisStage(IStage):
+class IMultiaxisStage(IStage):  # pylint: disable=abstract-method
     """
     Generic multiaxis stage class.
 

@@ -13,7 +13,7 @@ class IMAQdxCameraThread(camera.GenericCameraThread):
             self.device=cls(name=self.imaqdx_name)
     def _estimate_buffers_num(self):
         return self.min_buffer_size[1]
-    def setup_task(self, name, remote=None, misc=None):
+    def setup_task(self, name, remote=None, misc=None):  # pylint: disable=arguments-differ
         self.imaqdx_name=name
         super().setup_task(remote=remote,misc=misc)
 

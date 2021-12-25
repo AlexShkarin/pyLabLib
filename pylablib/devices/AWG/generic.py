@@ -31,7 +31,7 @@ class GenericAWG(SCPI.SCPIDevice):
     ReraiseError=GenericAWGBackendError
     _bool_selector=("OFF","ON")
     def __init__(self, addr):
-        SCPI.SCPIDevice.__init__(self,addr)
+        super().__init__(addr)
         self._channels_number=self._detect_channels_number()
         self._add_info_variable("channels_number",self.get_channels_number)
         functions={k:v for (k,v) in self._function_aliases.items() if k in self._supported_functions}
@@ -96,21 +96,21 @@ class GenericAWG(SCPI.SCPIDevice):
                 raise self.Error("option '{}' for channel {} is not supported by this device".format(name,channel))
             return False
         return True
-    def _add_scpi_parameter(self, name, comm, kind="float", parameter=None, set_delay=0, channel=None, comm_kind="source", add_variable=False):
+    def _add_scpi_parameter(self, name, comm, kind="float", parameter=None, set_delay=0, channel=None, comm_kind="source", add_variable=False):  # pylint: disable=arguments-differ
         if channel is not None and name not in self._all_channel_commands:
             if not self._can_add_command(name,channel):
                 return
             name=self._build_variable_name(name,channel)
             comm=self._build_channel_command(comm,channel,kind=comm_kind)
-        return SCPI.SCPIDevice._add_scpi_parameter(self,name,comm,kind=kind,parameter=parameter,set_delay=set_delay,add_variable=add_variable)
-    def _modify_scpi_parameter(self, name, comm, kind=None, parameter=None, set_delay=0, channel=None, comm_kind="source"):
+        return super()._add_scpi_parameter(name,comm,kind=kind,parameter=parameter,set_delay=set_delay,add_variable=add_variable)
+    def _modify_scpi_parameter(self, name, comm, kind=None, parameter=None, set_delay=0, channel=None, comm_kind="source"):  # pylint: disable=arguments-differ
         if channel is not None and name not in self._all_channel_commands:
             if not self._can_add_command(name,channel):
                 return
             name=self._build_variable_name(name,channel)
             comm=self._build_channel_command(comm,channel,kind=comm_kind)
-        return SCPI.SCPIDevice._modify_scpi_parameter(self,name,comm,kind=kind,parameter=parameter,set_delay=set_delay)
-    def _add_settings_variable(self, path, getter=None, setter=None, ignore_error=(), mux=None, multiarg=True, channel=None):
+        return super()._modify_scpi_parameter(name,comm,kind=kind,parameter=parameter,set_delay=set_delay)
+    def _add_settings_variable(self, path, getter=None, setter=None, ignore_error=(), mux=None, multiarg=True, channel=None):  # pylint: disable=arguments-differ
         if channel is not None and path not in self._all_channel_commands:
             if not self._can_add_command(path,channel):
                 return
@@ -121,7 +121,7 @@ class GenericAWG(SCPI.SCPIDevice):
             if getter is not None:
                 osetter=setter
                 setter=lambda *args: osetter(*args,channel=channel)
-        return SCPI.SCPIDevice._add_settings_variable(self,path,getter=getter,setter=setter,ignore_error=ignore_error,mux=mux,multiarg=multiarg)
+        return super()._add_settings_variable(path,getter=getter,setter=setter,ignore_error=ignore_error,mux=mux,multiarg=multiarg)
     def _get_channel_scpi_parameter(self, name, channel=None):
         self._check_command(name,channel=channel)
         if name in self._all_channel_commands:
@@ -136,24 +136,24 @@ class GenericAWG(SCPI.SCPIDevice):
         return self._set_scpi_parameter(self._build_variable_name(name,channel),value,result=result)
     def _get_scpi_parameter(self, name):
         try:
-            return SCPI.SCPIDevice._get_scpi_parameter(self,name)
+            return super()._get_scpi_parameter(name)
         except KeyError:
             raise self.Error("option '{}' is not supported by this device".format(name))
     def _set_scpi_parameter(self, name, value, result=False):
         try:
-            return SCPI.SCPIDevice._set_scpi_parameter(self,name,value,result=result)
+            return super()._set_scpi_parameter(name,value,result=result)
         except KeyError:
             raise self.Error("option '{}' is not supported by this device".format(name))
     def _ask_channel(self, msg, data_type="string", delay=0., timeout=None, read_echo=False, name=None, channel=None, comm_kind="source"):
         self._check_command(name,channel=channel)
         if name not in self._all_channel_commands:
             msg=self._build_channel_command(msg,channel,kind=comm_kind)
-        return SCPI.SCPIDevice.ask(self,msg,data_type=data_type,delay=delay,timeout=timeout,read_echo=read_echo)
+        return super().ask(msg,data_type=data_type,delay=delay,timeout=timeout,read_echo=read_echo)
     def _write_channel(self, msg, arg=None, arg_type=None, unit=None, bool_selector=("OFF","ON"), wait_sync=None, read_echo=False, read_echo_delay=0., name=None, channel=None, comm_kind="source"):
         self._check_command(name,channel=channel)
         if name not in self._all_channel_commands:
             msg=self._build_channel_command(msg,channel,kind=comm_kind)
-        return SCPI.SCPIDevice.write(self,msg,arg=arg,arg_type=arg_type,unit=unit,bool_selector=bool_selector,wait_sync=wait_sync,read_echo=read_echo,read_echo_delay=read_echo_delay)
+        return super().write(msg,arg=arg,arg_type=arg_type,unit=unit,bool_selector=bool_selector,wait_sync=wait_sync,read_echo=read_echo,read_echo_delay=read_echo_delay)
 
     def _build_variable_name(self, name, channel):
         """Build channel-specific settings variable name"""

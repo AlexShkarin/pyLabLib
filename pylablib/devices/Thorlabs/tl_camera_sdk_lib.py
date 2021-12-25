@@ -335,4 +335,4 @@ class ThorlabsTLCameraLib:
 
 
 
-lib=ThorlabsTLCameraLib()
+wlib=ThorlabsTLCameraLib()

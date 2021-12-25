@@ -235,4 +235,4 @@ except NBError:
         result[:,1::2]=(mid_uint8[:,:lst_uint8.shape[1]]>>4)|(lst_uint8<<4)
         return result[:,:width] if width else result
 
-lib=AndorSDK3Lib()
+wlib=AndorSDK3Lib()

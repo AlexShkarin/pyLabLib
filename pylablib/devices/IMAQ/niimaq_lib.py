@@ -245,4 +245,4 @@ class IMAQLib:
         return redLUT,greenLUT,blueLUT
 
 
-lib=IMAQLib()
+wlib=IMAQLib()

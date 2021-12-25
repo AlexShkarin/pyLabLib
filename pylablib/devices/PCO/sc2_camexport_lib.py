@@ -737,4 +737,4 @@ class PCOSC2Lib:
 
 
 
-lib=PCOSC2Lib()
+wlib=PCOSC2Lib()

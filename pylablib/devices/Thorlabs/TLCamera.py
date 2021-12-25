@@ -1,5 +1,5 @@
 from .tl_camera_sdk_lib import ThorlabsTLCameraError
-from .tl_camera_sdk_lib import lib
+from .tl_camera_sdk_lib import wlib as lib
 from . import tl_camera_sdk_defs
 
 from ...core.devio import interface
@@ -254,7 +254,7 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
 
 
     ### Acquisition process controls ###
-    def setup_acquisition(self, nframes=100):
+    def setup_acquisition(self, nframes=100):  # pylint: disable=arguments-differ
         """
         Setup acquisition.
 
@@ -266,7 +266,7 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
         self.stop_acquisition()
         self._buffer.cleanup()
         super().clear_acquisition()
-    def start_acquisition(self, frames_per_trigger="default", auto_start=True, nframes=None):
+    def start_acquisition(self, frames_per_trigger="default", auto_start=True, nframes=None):  # pylint: disable=arguments-differ
         """
         Start camera acquisition.
 

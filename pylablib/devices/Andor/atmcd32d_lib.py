@@ -703,4 +703,4 @@ class AndorSDK2Lib:
         self.SetEMCCDGain(gain)
 
 
-lib=AndorSDK2Lib()
+wlib=AndorSDK2Lib()

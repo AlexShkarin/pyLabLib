@@ -14,7 +14,7 @@ class ITR90Thread(device_thread.DeviceThread):
     def connect_device(self):
         with self.using_devclass("Leybold.ITR90",host=self.remote) as cls:
             self.device=cls(conn=self.conn)
-    def setup_task(self, conn, remote=None):
+    def setup_task(self, conn, remote=None):  # pylint: disable=arguments-differ
         self.device_reconnect_tries=5
         self.conn=conn
         self.remote=remote

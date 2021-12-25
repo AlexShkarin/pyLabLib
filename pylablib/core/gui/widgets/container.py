@@ -211,6 +211,7 @@ class IQContainer:
         Doesn't correspond to any actual widget, but behaves very similarly from the application point of view
         (its value can be set or read, it has on-change events, it can have indicator).
         The element value is simply stored on set and retrieved on get.
+        If ``multivalued==True``, the internal value is assumed to be complex, so it is forced to be a :class:`.Dictionary` every time it is set.
         If ``add_indicator==True``, add default indicator handler as well.
         """
         self.gui_values.add_virtual_element(name,value=value,multivalued=multivalued,add_indicator=add_indicator)
@@ -361,10 +362,10 @@ class IQWidgetContainer(IQLayoutManagedWidget, IQContainer):
     Abstract mix-in class, which needs to be added to a class inheriting from ``QWidget``.
     Alternatively, one can directly use :class:`QWidgetContainer`, which already inherits from ``QWidget``.
     """
-    def setup(self, layout="vbox", no_margins=False, name=None):
+    def setup(self, layout="vbox", no_margins=False, name=None):  # pylint: disable=arguments-differ
         IQContainer.setup(self,name=name)
         IQLayoutManagedWidget.setup(self,layout=layout,no_margins=no_margins)
-    def add_child(self, name, widget, location=None, gui_values_path=True):
+    def add_child(self, name, widget, location=None, gui_values_path=True):  # pylint: disable=arguments-differ
         """
         Add a contained child widget.
 
@@ -452,7 +453,7 @@ class QDialogContainer(IQWidgetContainer, QtWidgets.QDialog):
 
 class QGroupBoxContainer(IQWidgetContainer, QtWidgets.QGroupBox):
     """An extension of :class:`IQWidgetContainer` for a ``QGroupBox`` Qt base class"""
-    def setup(self, caption=None, layout="vbox", no_margins=False, name=None):
+    def setup(self, caption=None, layout="vbox", no_margins=False, name=None):  # pylint: disable=arguments-differ
         super().setup(layout=layout,no_margins=no_margins,name=name)
         if caption is not None:
             self.setTitle(caption)
@@ -462,9 +463,9 @@ class QScrollAreaContainer(IQContainer, QtWidgets.QScrollArea):
     An extension of :class:`IQWidgetContainer` for a ``QScrollArea`` Qt base class.
     
     Due to Qt organization, this container is "intermediate": it contains only a single :class:`QWidgetContainer` widget (named ``"widget"``),
-    which int turn has all of the standard container traits: layout, multiple widgets, etc.
+    which in turn has all of the standard container traits: layout, multiple widgets, etc.
     """
-    def setup(self, layout="vbox", no_margins=False, name=None):
+    def setup(self, layout="vbox", no_margins=False, name=None):  # pylint: disable=arguments-differ
         super().setup(name=name)
         self.setFrameStyle(QtWidgets.QFrame.NoFrame)
         self.setWidgetResizable(True)

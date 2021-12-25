@@ -77,7 +77,7 @@ class SharedMemIPCChannel(PipeIPCChannel):
     """
     _default_array_size=2**24
     def __init__(self, pipe_conn=None, arr=None, arr_size=None):
-        PipeIPCChannel.__init__(self,pipe_conn)
+        super().__init__(pipe_conn)
         if arr is None:
             self.arr_size=arr_size or self._default_array_size
             self.arr=Array("c",self.arr_size)
@@ -97,12 +97,12 @@ class SharedMemIPCChannel(PipeIPCChannel):
                 return False
             esize*=s
         return True
-    def send_numpy(self, data, method="auto", timeout=None):
+    def send_numpy(self, data, method="auto", timeout=None):  # pylint: disable=arguments-differ
         """Send numpy array"""
         if method=="auto":
             method="pipe" if data.nbytes<2**16 else "shm"
         if method=="pipe":
-            return PipeIPCChannel.send_numpy(self,data)
+            return super().send_numpy(data)
         if not self._check_strides(data): # need continuous array to send
             data=data.copy()
         buff_ptr,count=data.ctypes.data,data.nbytes

@@ -778,6 +778,7 @@ class GUIValues:
         Doesn't correspond to any actual widget, but behaves very similarly from the application point of view
         (its value can be set or read, it has on-change events, it can have indicator).
         The element value is simply stored on set and retrieved on get.
+        If ``multivalued==True``, the internal value is assumed to be complex, so it is forced to be a :class:`.Dictionary` every time it is set.
         If ``add_indicator==True``, add default indicator handler as well.
         """
         h=self.add_handler(name,VirtualValueHandler(value,multivalued=multivalued))

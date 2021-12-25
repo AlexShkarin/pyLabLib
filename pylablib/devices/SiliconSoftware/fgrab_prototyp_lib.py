@@ -34,7 +34,7 @@ def errcheck(lib, check=None, sarg=0):
     otherwise, any result always passes.
     `sarg` is the position of the frame grabber struct argument, which is used to get the error code and description.
     """
-    def checker(result, func, arguments):
+    def errchecker(result, func, arguments):
         s=None if sarg is None else arguments[sarg]
         if check is not None:
             valid=func_utils.call_cut_args(check,result,*arguments)
@@ -44,7 +44,7 @@ def errcheck(lib, check=None, sarg=0):
             code,desc=last_error_desc(lib,s)
             raise SIFgrabLibError(func.__name__,code=code,desc=desc)
         return result
-    return checker
+    return errchecker
 
 
 
@@ -70,9 +70,9 @@ class SIFgrabLib:
         apstrprep=ctypes_wrap.strprep(max_applet_name_length)
         wrapper=ctypes_wrap.CFunctionWrapper()
         wrapper_rz=ctypes_wrap.CFunctionWrapper(errcheck=errcheck(lib,check=lambda v:v==0))
-        wrapper_rnz=ctypes_wrap.CFunctionWrapper(errcheck=errcheck(lib,check=lambda v:bool(v)))
+        wrapper_rnz=ctypes_wrap.CFunctionWrapper(errcheck=errcheck(lib,check=lambda v:bool(v)))  # pylint: disable=unnecessary-lambda
         wrapper_rgez=ctypes_wrap.CFunctionWrapper(errcheck=errcheck(lib,check=lambda v:v>=0))
-        wrapper_init_rnz=ctypes_wrap.CFunctionWrapper(errcheck=errcheck(lib,check=lambda v:bool(v),sarg=None))
+        wrapper_init_rnz=ctypes_wrap.CFunctionWrapper(errcheck=errcheck(lib,check=lambda v:bool(v),sarg=None))  # pylint: disable=unnecessary-lambda
         wrapper_init_rgez=ctypes_wrap.CFunctionWrapper(errcheck=errcheck(lib,check=lambda v:v>=0,sarg=None))
         
         #  ctypes.c_int Fg_getLastErrorNumber(ctypes.c_void_p Fg)
@@ -381,4 +381,4 @@ class SIFgrabLib:
         return v.value
 
 
-lib=SIFgrabLib()
+wlib=SIFgrabLib()

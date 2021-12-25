@@ -369,4 +369,4 @@ class PicamLib:
         
 
 
-lib=PicamLib()
+wlib=PicamLib()

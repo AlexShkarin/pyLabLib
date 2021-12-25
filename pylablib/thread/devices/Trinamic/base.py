@@ -27,7 +27,7 @@ class TMCM1110Thread(device_thread.DeviceThread):
         with self.using_devclass("Trinamic.TMCM1110",host=self.remote) as cls:
             self.device=cls(conn=self.conn)
             self.device.get_position()
-    def setup_task(self, conn, remote=None):
+    def setup_task(self, conn, remote=None):  # pylint: disable=arguments-differ
         self.device_reconnect_tries=5
         self.conn=conn
         self.remote=remote

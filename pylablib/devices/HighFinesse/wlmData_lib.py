@@ -505,7 +505,3 @@ class WlmDataLib:
         # lib.ClearPIDHistory.restype=ctypes.c_long
         # lib.ClearPIDHistory.argtypes=[ctypes.c_long]
         # lib.ClearPIDHistory.argnames=["Port"]
-
-
-
-lib=WlmDataLib()

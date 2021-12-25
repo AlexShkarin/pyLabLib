@@ -1,5 +1,5 @@
 from . import pfcam_lib
-from .pfcam_lib import lib, PFCamError, PFCamLibError
+from .pfcam_lib import wlib as lib, PFCamError, PFCamLibError
 
 from ..IMAQ.IMAQ import IMAQFrameGrabber
 from ..SiliconSoftware.fgrab import SiliconSoftwareFrameGrabber
@@ -272,7 +272,7 @@ class IPhotonFocusCamera(camera.IAttributeCamera): # pylint: disable=abstract-me
                 pass
         return pfprops
 
-    def get_attribute_value(self, name, error_on_missing=True, default=None):
+    def get_attribute_value(self, name, error_on_missing=True, default=None):  # pylint: disable=arguments-differ
         """
         Get value of an attribute with the given name.
         
@@ -281,7 +281,7 @@ class IPhotonFocusCamera(camera.IAttributeCamera): # pylint: disable=abstract-me
         If `name` points at a dictionary branch, return a dictionary with all values in this branch.
         """
         return super().get_attribute_value(name,error_on_missing=error_on_missing,default=default)
-    def set_attribute_value(self, name, value, truncate=True, error_on_missing=True):
+    def set_attribute_value(self, name, value, truncate=True, error_on_missing=True):  # pylint: disable=arguments-differ
         """
         Set value of an attribute with the given name.
         
@@ -290,10 +290,10 @@ class IPhotonFocusCamera(camera.IAttributeCamera): # pylint: disable=abstract-me
         If ``truncate==True``, truncate value to lie within attribute range.
         """
         return super().set_attribute_value(name,value,truncate=truncate,error_on_missing=error_on_missing)
-    def get_all_attribute_values(self, root=""):
+    def get_all_attribute_values(self, root=""):  # pylint: disable=arguments-differ
         """Get values of all attributes with the given `root`"""
         return super().get_all_attribute_values(root=root)
-    def set_all_attribute_values(self, settings, root="", truncate=True):
+    def set_all_attribute_values(self, settings, root="", truncate=True):  # pylint: disable=arguments-differ
         """
         Set values of all attributes with the given `root`.
         

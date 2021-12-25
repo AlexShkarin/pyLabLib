@@ -296,7 +296,7 @@ class ITableDictionaryEntry(IDictionaryEntry):
         return desc, data
         
     @classmethod
-    def from_dict(cls, dict_ptr, loc, out_type="pandas"):
+    def from_dict(cls, dict_ptr, loc, out_type="pandas"):  # pylint: disable=arguments-differ
         """
         Convert a dictionary branch to a specific DictionaryEntry object.
         
@@ -564,7 +564,7 @@ class IExternalFileDictionaryEntry(IDictionaryEntry):
     def get_preamble(self):
         """Generate preamble (dictionary with supplementary data which allows to load the data from the file)"""
         return {}
-    def save_file(self, loc_file):
+    def save_file(self, location_file):
         """
         Save stored data into the given location.
 
@@ -572,7 +572,7 @@ class IExternalFileDictionaryEntry(IDictionaryEntry):
         """
         raise NotImplementedError("IExternalFileDictionaryEntry.save_file")
     @classmethod
-    def load_file(cls, loc_file, preamble):
+    def load_file(cls, location_file, preamble):
         """
         Load stored data from the given location, using the supplied preamble.
 
@@ -599,14 +599,14 @@ class ExternalNumpyDictionaryEntry(IExternalFileDictionaryEntry):
     def get_preamble(self):
         """Generate preamble (dictionary with supplementary data which allows to load the data from the file)"""
         return {"shape":self.data.shape,"dtype":self.data.dtype.str}
-    def save_file(self, loc_file):
+    def save_file(self, location_file):
         """Save stored data into the given location"""
-        with loc_file.open("wb") as stream:
+        with location_file.open("wb") as stream:
             self.data.tofile(stream)
     @classmethod
-    def load_file(cls, loc_file, preamble):
+    def load_file(cls, location_file, preamble):
         """Load stored data from the given location, using the supplied preamble"""
-        with loc_file.open("rb") as stream:
+        with location_file.open("rb") as stream:
             return np.fromfile(stream,dtype=preamble["dtype"]).reshape(preamble["shape"])
 IExternalFileDictionaryEntry.add_file_format(ExternalNumpyDictionaryEntry)
 

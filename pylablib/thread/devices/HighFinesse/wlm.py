@@ -26,7 +26,7 @@ class WLMThread(device_thread.DeviceThread):
         with self.using_devclass("HighFinesse.WLM",host=self.remote) as cls:
             self.device=cls(version=self.version,dll_path=self.dll_path,**self.dev_kwargs)
             self.device.get_frequency(error_on_invalid=False)
-    def setup_task(self, version=None, dll_path=None, channel=1, remote=None, **kwargs):
+    def setup_task(self, version=None, dll_path=None, channel=1, remote=None, **kwargs):  # pylint: disable=arguments-differ
         self.version=version
         self.dll_path=dll_path
         self.channel=channel

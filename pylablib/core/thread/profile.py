@@ -16,14 +16,14 @@ def _check_yappi():
 
 
 _wall_timer=time.time()
-def start(reset=True):
+def start(reset=True):  # pylint: disable=redefined-outer-name
     """
     Start yappi profile logging.
     
     If ``reset==True``, reset the stats.
     """
     _check_yappi()
-    global _wall_timer
+    global _wall_timer  # pylint: disable=global-statement
     yappi.set_clock_type("cpu")
     yappi.stop()
     if reset:
@@ -33,7 +33,7 @@ def start(reset=True):
 def reset():
     """Reset yappi profiling stats"""
     _check_yappi()
-    global _wall_timer
+    global _wall_timer  # pylint: disable=global-statement
     yappi.clear_stats()
     _wall_timer=time.time()
 def stop():
