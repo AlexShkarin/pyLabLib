@@ -126,7 +126,7 @@ so they can't be saved into text files. However, they're suited for pickling.
 
 
 ### Numpy array ###
-dumper.add_class(np.ndarray,np.ndarray.dumps,np.loads,"np")
+dumper.add_class(np.ndarray,np.ndarray.dumps,pickle.loads,"np")
 
 
 

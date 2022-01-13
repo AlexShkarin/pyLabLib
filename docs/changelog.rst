@@ -23,6 +23,11 @@ you can write
     import pylablib.legacy as pll
     from pylablib.legacy.aux_libs.devices import Lakeshore
 
+1.3.3
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Numpy ``loads`` bugfix (fixes compatibility with ``numpy>=1.22``).
+
 1.3.2
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
