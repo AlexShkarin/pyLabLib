@@ -22,6 +22,7 @@ Currently supported cameras:
     PhotonFocus
     PCO_SC2
     Picam
+    Pvcam
     SiliconSoftware
     Thorlabs_TLCamera
     uc480
