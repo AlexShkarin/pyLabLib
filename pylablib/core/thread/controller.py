@@ -669,7 +669,7 @@ class QThreadController(QtCore.QObject):
 
 
     ### Managing multicast pool interaction ###
-    def subscribe_sync(self, callback, srcs="any", tags=None, dsts="any", filt=None, subscription_priority=0, limit_queue=None, call_interrupt=True, add_call_info=False, sid=None):
+    def subscribe_sync(self, callback, srcs="any", tags=None, dsts="any", filt=None, subscription_priority=0, limit_queue=None, call_interrupt=True, add_call_info=False, return_result=False, sid=None):
         """
         Subscribe a synchronous callback to a multicast.
 
@@ -689,19 +689,20 @@ class QThreadController(QtCore.QObject):
                 can be ``"any"`` (any destination) or ``"all"`` (only source specifically having ``"all"`` as a destination).
             filt(callable): additional filter function which takes 4 arguments: source, destination, tag, and value,
                 and checks whether multicast passes the requirements.
+            subscription_priority(int): subscription priority (higher priority subscribers are called first).
             limit_queue(int): limits the maximal number of scheduled calls
                 (if the multicast is sent while at least `limit_queue` callbacks are already in queue to be executed, ignore it)
                 0 or negative value means no limit (not recommended, as it can increase the queue indefinitely if the multicast rate is high enough)
             call_interrupt: whether the call is an interrupt (call inside any loop, e.g., during waiting or sleeping), or it should be called in the main event loop
-            subscription_priority(int): subscription priority (higher priority subscribers are called first).
-            sid(int): subscription ID (by default, generate a new unique id and return it).
+            add_call_info(bool): if ``True``, add a fourth argument containing a call information (tuple with a single element, a timestamps of the call).
+            return_result: if ``True``, use a result synchronizer to return the result of the subscribed call; otherwise, ignore the result
+            sid(int): subscription ID (by default, generate a new unique name).
         """
         if self._multicast_pool:
-            sid=self._multicast_pool.subscribe_sync(callback,srcs=srcs,dsts=dsts or self.name,tags=tags,filt=filt,priority=subscription_priority,call_interrupt=call_interrupt,
-                limit_queue=limit_queue,add_call_info=add_call_info,dest_controller=self,sid=sid)
-            self._multicast_pool_sids.add(sid)
-            return sid
-    def subscribe_direct(self, callback, srcs="any", tags=None, dsts="any", filt=None, subscription_priority=0, scheduler=None, sid=None):
+            scheduler=callsync.QMulticastThreadCallScheduler(thread=self,limit_queue=limit_queue,
+                interrupt=call_interrupt,call_info_argname="call_info" if add_call_info else None)
+            return self.subscribe_direct(callback,srcs=srcs,dsts=dsts,tags=tags,filt=filt,subscription_priority=subscription_priority,scheduler=scheduler,return_result=return_result,sid=sid)
+    def subscribe_direct(self, callback, srcs="any", tags=None, dsts="any", filt=None, subscription_priority=0, scheduler=None, return_result=False, sid=None):
         """
         Subscribe asynchronous callback to a multicast.
         
@@ -722,10 +723,11 @@ class QThreadController(QtCore.QObject):
                 and checks whether multicast passes the requirements.
             subscription_priority(int): subscription priority (higher priority subscribers are called first).
             scheduler: if defined, multicast call gets scheduled using this scheduler instead of being called directly (which is the default behavior)
+            return_result: if ``True``, use a result synchronizer to return the result of the subscribed call; otherwise, ignore the result
             sid(int): subscription ID (by default, generate a new unique id and return it).
         """
         if self._multicast_pool:
-            sid=self._multicast_pool.subscribe_direct(callback,srcs=srcs,dsts=dsts or self.name,tags=tags,filt=filt,priority=subscription_priority,scheduler=scheduler,sid=sid)
+            sid=self._multicast_pool.subscribe_direct(callback,srcs=srcs,dsts=dsts or self.name,tags=tags,filt=filt,priority=subscription_priority,scheduler=scheduler,return_result=return_result,sid=sid)
             self._multicast_pool_sids.add(sid)
             return sid
     def unsubscribe(self, sid):
@@ -738,11 +740,12 @@ class QThreadController(QtCore.QObject):
         """
         self._multicast_pool_sids.remove(sid)
         self._multicast_pool.unsubscribe(sid)
-    def send_multicast(self, dst="any", tag=None, value=None, src=None):
+    def send_multicast(self, dst="any", tag=None, value=None, src=None, filter_results=True):
         """
         Send a multicast to the multicast pool.
 
         By default, the multicast source is the thread's name.
+        Return result synchronizers for all executed subscribed methods.
         Local call method.
 
         Args:
@@ -752,8 +755,34 @@ class QThreadController(QtCore.QObject):
             value: multicast value.
             src(str): multicast source; can be ``None`` (current thread name), a specific name, ``"all"`` (will pass all subscribers' source filters),
                 or ``"any"`` (will only be passed to subscribers specifically subscribed to multicast with ``"any"`` source).
+            filter_results: if ``True``, filter the results to exclude dummy synchronizers, which correspond to calls which do not return anythong
         """
-        self._multicast_pool.send(src or self.name,dst,tag,value)
+        result=self._multicast_pool.send(src or self.name,dst,tag,value)
+        if filter_results:
+            result=[r for r in result if not getattr(r,"_not_synchronizer",False)]
+        return result
+    def send_multicast_sync(self, dst="any", tag=None, value=None, src=None, timeout=None, default_result=None, pass_exception=True):
+        """
+        Send a multicast to the multicast pool and synchronize the results, if available.
+
+        By default, the multicast source is the thread's name.
+        Results are collected and synchronized only from the subscriptions which return them (i.e., set ``return_result=True``).
+        Local call method.
+
+        Args:
+            dst(str): multicast destination; can be a name, ``"all"`` (will pass all subscribers' destination filters),
+                or ``"any"`` (will only be passed to subscribers specifically subscribed to multicast with ``"any"`` destination).
+            tag(str): multicast tag.
+            value: multicast value.
+            src(str): multicast source; can be ``None`` (current thread name), a specific name, ``"all"`` (will pass all subscribers' source filters),
+                or ``"any"`` (will only be passed to subscribers specifically subscribed to multicast with ``"any"`` source).
+            timeout: synchronization timeout (``None`` means waiting forever)
+            default_result: default result value if synchronization failed (timed out, thread stopped, etc.)
+            pass_exception: if ``True`` and the signal processor raised an exception, raise it in this thread as well
+            If ``pass_exception==True`` and the returned value represents exception, re-raise it in the caller thread; otherwise, return `default`.
+        """
+        syncs=self.send_multicast(dst=dst,tag=tag,value=value,src=src)
+        return [s.get_value_sync(timeout=timeout,default=default_result,pass_exception=pass_exception) for s in syncs]
 
 
     ### Variable management ###
@@ -1730,7 +1759,7 @@ class QTaskThread(QThreadController):
             command=getattr(self,name)
         self._commands[name]=self.TCommand(command,"direct_sync" if error_on_async else "direct",None)
 
-    def subscribe_commsync(self, callback, srcs="any", tags=None, dsts="any", filt=None, subscription_priority=0, scheduler=None, limit_queue=None, on_full_queue="skip_current", priority=0, add_call_info=False, sid=None):
+    def subscribe_commsync(self, callback, srcs="any", tags=None, dsts="any", filt=None, subscription_priority=0, scheduler=None, limit_queue=None, on_full_queue="skip_current", priority=0, add_call_info=False, return_result=False, sid=None):
         """
         Subscribe a callback to a multicast which is synchronized with commands and jobs execution.
 
@@ -1762,6 +1791,7 @@ class QTaskThread(QThreadController):
                 ``"call_oldest"`` (execute the oldest call in the queue immediately in the caller thread), or
                 ``"wait"`` (wait until the call can be scheduled, which is checked after every call removal from the queue; place the call)
             add_call_info(bool): if ``True``, add a fourth argument containing a call information (tuple with a single element, a timestamps of the call).
+            return_result: if ``True``, use a result synchronizer to return the result of the subscribed call; otherwise, ignore the result
             sid(int): subscription ID (by default, generate a new unique id and return it).
         """
         if self._multicast_pool:
@@ -1769,7 +1799,7 @@ class QTaskThread(QThreadController):
             if scheduler is None and (limit_queue is not None or add_call_info):
                 scheduler=callsync.QQueueLengthLimitScheduler(max_len=limit_queue or 0,on_full_queue=on_full_queue,call_info_argname="call_info" if add_call_info else None)
             multischeduler=callsync.QMultiQueueScheduler([psch] if scheduler is None else [scheduler,psch],[self._command_poke])
-            sid=self.subscribe_direct(callback,srcs=srcs,tags=tags,dsts=dsts or self.name,filt=filt,subscription_priority=subscription_priority,scheduler=multischeduler,sid=sid)
+            sid=self.subscribe_direct(callback,srcs=srcs,tags=tags,dsts=dsts or self.name,filt=filt,subscription_priority=subscription_priority,scheduler=multischeduler,return_result=return_result,sid=sid)
             return sid
 
     ##########  EXTERNAL CALLS  ##########
