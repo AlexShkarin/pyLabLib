@@ -416,6 +416,12 @@ class CStructWrapper:
     def conv(self):
         """Prepare wrapper after setting up the fields from the wrapped structure"""
         pass
+    @classmethod
+    def _get_tcls(cls, fnames):
+        if getattr(cls,"fnames",None)!=fnames:
+            cls.fnames=fnames
+            cls.tcls=collections.namedtuple(cls.__name__,[("f_"+n if n.startswith("_") else n) for n in fnames])
+        return cls.tcls
     def tup(self):
         """Convert wrapper into a named tuple"""
         params={}
@@ -439,7 +445,7 @@ class CStructWrapper:
             elif isinstance(params[f],ctypes.Array):
                 params[f]=params[f][:]
         vals=[params[f] for f in fnames]
-        tcls=collections.namedtuple(self.__class__.__name__,fnames)
+        tcls=self._get_tcls(fnames)
         return tcls(*vals)
 
     @classmethod
@@ -447,9 +453,12 @@ class CStructWrapper:
         """Prepare a blank C structure"""
         return cls().to_struct()
     @classmethod
-    def prep_struct_args(cls, **kwargs):
+    def prep_struct_args(cls, *args, **kwargs):
         """Prepare a C structure with the given supplied fields"""
         s=cls()
+        if args:
+            kwargs=kwargs.copy()
+            kwargs.update({n:v for (n,_),v in zip(cls._struct._fields_,args)})
         for k,v in kwargs.items():
             setattr(s,k,v)
         return s.to_struct()

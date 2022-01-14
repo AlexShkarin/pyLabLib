@@ -6,7 +6,7 @@
 Princeton Instruments Picam cameras
 ===================================
 
-Picam is the interface provided by Princeton Instruments and which supports a set of their cameras. It has been tested with PIXIS 400 camera.
+Picam is the interface provided by Teledyne Princeton Instruments and which supports a set of their cameras. It has been tested with PIXIS 400 camera.
 
 The code is located in :mod:`pylablib.devices.PrincetonInstruments`, and the main camera class is :class:`pylablib.devices.PrincetonInstruments.PicamCamera<.picam.PicamCamera>`.
 
