@@ -175,6 +175,10 @@ class GenericCameraThread(device_thread.DeviceThread):
             return parameters
         else:
             return dictionary.Dictionary()
+    def _get_aux_full_info(self):
+        if self.device:
+            if hasattr(self.device,"ca"):
+                return {"attribute_desc":self.device.ca[""]}
 
     def _reset_frame_counters(self):
         self.v["frames/acquired"]=0
@@ -192,7 +196,7 @@ class GenericCameraThread(device_thread.DeviceThread):
             n_rate=self.min_buffer_size[0]/self.device.get_frame_period()
             return int(max(n_fixed,n_rate))
         return None
-    def _prepare_applied_parameters(self, parameter):
+    def _prepare_applied_parameters(self, parameters):
         pass
     def _apply_additional_parameters(self, parameters):
         for k in ["fastbuff","add_info"]:

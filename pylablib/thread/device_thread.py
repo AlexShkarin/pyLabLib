@@ -292,15 +292,26 @@ class DeviceThread(controller.QTaskThread):
         A function for a job which is setup in :meth:`DeviceThread.setup_full_info_job`. Normally doesn't need to be called explicitly.
         """
         self.v["full_info"]=self._get_device_parameters_dictionary(self.full_info_variables)
-    def get_full_info(self):
+    def _get_aux_full_info(self):
+        """
+        Get additional full info parts which are not returned by the class by default.
+
+        Ususally involves classes with complicated behavior which can not be saved in a files, e.g., camera attributes or parameter classes.
+        """
+        return None
+    def get_full_info(self, add_aux=False):
         """
         Get full device info.
         
         If the full info job is set up using :meth:`DeviceThread.setup_full_info_job`, use the last cached version of the full info;
         otherwise, request a new version from the device.
+        If ``add_aux==True``, include possbile custom info which involves non-savable classes, e.g., camera attribute classes.
         """
         if self.device:
-            return self.v["full_info"] if self._full_info_job else self._get_device_parameters_dictionary(include=self.full_info_variables)
+            info=self.v["full_info"] if self._full_info_job else self._get_device_parameters_dictionary(include=self.full_info_variables)
+            if add_aux:
+                info.update(self._get_aux_full_info() or {})
+            return info
         else:
             return dictionary.Dictionary()
 
