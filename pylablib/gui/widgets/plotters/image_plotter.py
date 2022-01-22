@@ -19,7 +19,7 @@ from ....core.dataproc import filters
 
 import pyqtgraph
 
-from ....core.gui import QtCore
+from ....core.gui import QtCore, Signal
 import numpy as np
 import contextlib
 import time
@@ -261,7 +261,9 @@ class ImagePlotter(QLayoutManagedWidget):
         self.cut_plot_panel.setVisible(False)
         self.set_row_stretch([4,1])
         self.vline.sigPositionChanged.connect(lambda: self.update_image_controls(),QtCore.Qt.DirectConnection)  # pylint: disable=unnecessary-lambda
-        self.hline.sigPositionChanged.connect(lambda :self.update_image_controls(),QtCore.Qt.DirectConnection)  # pylint: disable=unnecessary-lambda
+        self.hline.sigPositionChanged.connect(lambda: self.update_image_controls(),QtCore.Qt.DirectConnection)  # pylint: disable=unnecessary-lambda
+        self.vline.sigPositionChanged.connect(lambda: self.lines_updated.emit(),QtCore.Qt.DirectConnection)  # pylint: disable=unnecessary-lambda
+        self.hline.sigPositionChanged.connect(lambda: self.lines_updated.emit(),QtCore.Qt.DirectConnection)  # pylint: disable=unnecessary-lambda
         self.image_window.getHistogramWidget().sigLevelsChanged.connect(lambda: self.update_image_controls(levels=self.image_window.getHistogramWidget().getLevels()),QtCore.Qt.DirectConnection)
         self.rectangles={}
 
@@ -413,6 +415,7 @@ class ImagePlotter(QLayoutManagedWidget):
             if (not show) and rect.rect in imgview.addedItems:
                 imgview.removeItem(rect.rect)
 
+    lines_updated=Signal()
     @controller.exsafe
     def center_lines(self):
         """Center coordinate lines"""
@@ -434,7 +437,7 @@ class ImagePlotter(QLayoutManagedWidget):
             self.hblines[0].setPos(hpos-cut_width/2)
             self.hblines[1].setPos(hpos+cut_width/2)
     def get_line_positions(self):
-        """Return lines positions reference to the original image, taking into account flip/transpose"""
+        """Return lines positions referenced to the original image, taking into account flip/transpose"""
         values=self._get_values()
         if not values.v["show_lines"]:
             return None
@@ -446,6 +449,19 @@ class ImagePlotter(QLayoutManagedWidget):
         if values.v["transpose"]:
             ipos,jpos=jpos,ipos
         return ipos,jpos
+    def set_line_positions(self, ipos=None, jpos=None):
+        """Set line positions referenced to the original image, taking into account flip/transpose"""
+        values=self._get_values()
+        if values.v["transpose"]:
+            ipos,jpos=jpos,ipos
+        if ipos is not None:
+            if values.v["flip_x"]:
+                ipos=-ipos  # pylint: disable=invalid-unary-operand-type
+            self.vline.setPos(ipos/self.xbin)
+        if jpos is not None:
+            if values.v["flip_y"]:
+                jpos=-jpos  # pylint: disable=invalid-unary-operand-type
+            self.hline.setPos(jpos/self.ybin)
 
     # Update image controls based on PyQtGraph image window
     @controller.exsafeSlot()
@@ -612,7 +628,7 @@ class ImagePlotterCombined(QWidgetContainer):
                 self.add_child("ctl",self.ctl)
             else:
                 self.add_group_box("ctl_box",caption=ctl_caption).add_child("ctl",self.ctl)
-                self.c["ctl_box"].setMaximumWidth(200)
+                self.c["ctl_box"].setFixedWidth(200)
             self.ctl.setup(self.plt,save_values=save_values)
             self.add_padding()
         self.get_sublayout().setStretch(0,1)

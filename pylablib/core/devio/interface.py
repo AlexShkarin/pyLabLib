@@ -60,6 +60,8 @@ class IDevice:
             v=getattr(self,n)
             if isinstance(v,IParameterClass) and v.name:
                 self._add_parameter_class(v)
+    def _as_parameter_class(self, par):
+        return self._parameters.get(par,par)
     def _add_parameter_class(self, par_class):
         """
         Add a parameter class.

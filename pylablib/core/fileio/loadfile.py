@@ -7,8 +7,8 @@ from ..utils import funcargparse, library_parameters
 
 import numpy as np
 
-library_parameters.library_parameters.update({"fileio/loadfile/csv/out_type":"pandas"})
-library_parameters.library_parameters.update({"fileio/loadfile/dict/inline_out_type":"pandas"})
+library_parameters.library_parameters.update({"fileio/loadfile/csv/out_type":"pandas"},overwrite=False)
+library_parameters.library_parameters.update({"fileio/loadfile/dict/inline_out_type":"pandas"},overwrite=False)
 
 
 ##### File formats #####

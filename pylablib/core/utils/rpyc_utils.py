@@ -1,6 +1,7 @@
 """Routines and classes related to RPyC package"""
 
-from . import module as module_utils, net
+from . import module as module_utils, net, library_parameters
+library_parameters.library_parameters.update({"remote/rpyc/default_connect_config":{}},overwrite=False)
 
 try:
     import rpyc
@@ -228,7 +229,7 @@ def run_device_service(port=18812, verbose=False):
         print("Running device service at {} ({}), IP {}".format(hostnames[0],hostnames[1],hostips_list))
     rpyc.ThreadedServer(rpyc.utils.helpers.classpartial(DeviceService,verbose=verbose),port=port).start()
 
-def connect_device_service(addr, port=18812, timeout=3, attempts=2, error_on_fail=True):
+def connect_device_service(addr, port=18812, timeout=3, attempts=2, error_on_fail=True, config=None):
     """
     Connect to the :class:`DeviceService` running at the given address and port
     
@@ -241,7 +242,8 @@ def connect_device_service(addr, port=18812, timeout=3, attempts=2, error_on_fai
         warnings.simplefilter("ignore")
         try:
             s=rpyc.SocketStream.connect(addr,port,timeout=timeout,attempts=attempts)
-            return rpyc.connect_stream(s,SocketTunnelService).root
+            config=library_parameters.library_parameters["remote/rpyc/default_connect_config"] if config is None else config
+            return rpyc.connect_stream(s,SocketTunnelService,config=config).root
         except net.socket.timeout:
             if error_on_fail:
                 raise
