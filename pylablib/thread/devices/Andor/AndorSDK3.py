@@ -12,7 +12,7 @@ class AndorSDK3CameraThread(camera.GenericCameraThread):
     _frameinfo_include_fields={"frame_index","timestamp_dev"}
     def connect_device(self):
         with self.using_devclass("Andor.AndorSDK3Camera",host=self.remote) as cls:
-            self.device=cls(idx=self.idx)
+            self.device=cls(idx=self.idx)  # pylint: disable=not-callable
     def setup_open_device(self):
         super().setup_open_device()
         self.device.set_overflow_behavior("restart")

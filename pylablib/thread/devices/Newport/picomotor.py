@@ -29,7 +29,7 @@ class Picomotor8742Thread(device_thread.DeviceThread):
     """
     def connect_device(self):
         with self.using_devclass("Newport.Picomotor8742",host=self.remote) as cls:
-            self.device=cls(conn=self.conn,backend=self.backend,multiaddr=self.multiaddr,**self.dev_kwargs)
+            self.device=cls(conn=self.conn,backend=self.backend,multiaddr=self.multiaddr,**self.dev_kwargs)  # pylint: disable=not-callable
             self.device.is_moving()
     def setup_task(self, conn, backend="auto", multiaddr=False, remote=None, **kwargs):  # pylint: disable=arguments-differ
         self.device_reconnect_tries=5

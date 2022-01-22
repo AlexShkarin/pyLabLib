@@ -11,7 +11,7 @@ class AndorSDK2CameraThread(camera.GenericCameraThread):
         "frame_period","trigger_mode","detector_size","roi_limits","roi","buffer_size"}
     def connect_device(self):
         with self.using_devclass("Andor.AndorSDK2Camera",host=self.remote) as cls:
-            self.device=cls(idx=self.idx)
+            self.device=cls(idx=self.idx)  # pylint: disable=not-callable
     def setup_task(self, idx=0, remote=None, misc=None):  # pylint: disable=arguments-differ
         self.idx=idx
         super().setup_task(remote=remote,misc=misc)

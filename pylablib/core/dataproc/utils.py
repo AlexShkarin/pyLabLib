@@ -206,7 +206,7 @@ def merge(ts, idx=None, as_array=True):
                 cut.append(t)
         wrapped=cut
     if result_type=="array":
-        ts=[np.column_stack((w[:])) if w.ndim()==1 else w[:,:] for w in wrapped]
+        ts=[np.column_stack((w[:])) if w.ndim()==1 else w[:,:] for w in wrapped]  # pylint: disable=not-callable
         return np.concatenate(ts,axis=1)
     else:
         columns,names=zip(*[(n,v) for w in wrapped for n,v in zip(w.c.get_names(),w.c)])

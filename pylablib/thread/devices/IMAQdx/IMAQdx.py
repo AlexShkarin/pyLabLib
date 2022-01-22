@@ -10,7 +10,7 @@ class IMAQdxCameraThread(camera.GenericCameraThread):
     parameter_variables=camera.GenericCameraThread.parameter_variables|{"detector_size","roi_limits","roi","buffer_size"}
     def connect_device(self):
         with self.using_devclass("IMAQdx.IMAQdxCamera",host=self.remote) as cls:
-            self.device=cls(name=self.imaqdx_name)
+            self.device=cls(name=self.imaqdx_name)  # pylint: disable=not-callable
     def _estimate_buffers_num(self):
         return self.min_buffer_size[1]
     def setup_task(self, name, remote=None, misc=None):  # pylint: disable=arguments-differ
@@ -26,4 +26,4 @@ class EthernetIMAQdxCameraThread(IMAQdxCameraThread):
     """
     def connect_device(self):
         with self.using_devclass("IMAQdx.EthernetIMAQdxCamera",host=self.remote) as cls:
-            self.device=cls(name=self.imaqdx_name)
+            self.device=cls(name=self.imaqdx_name)  # pylint: disable=not-callable

@@ -61,7 +61,7 @@ class ParamTable(container.QWidgetContainer):
         super()._set_main_layout()
         self.main_layout.setContentsMargins(5,5,5,5)
         self.main_layout.setColumnStretch(1,1)
-    def setup(self, name=None, add_indicator=True, gui_thread_safe=False, cache_values=False, change_focused_control=False):  # pylint: disable=arguments-differ
+    def setup(self, name=None, add_indicator=True, gui_thread_safe=False, cache_values=False, change_focused_control=False):  # pylint: disable=arguments-differ, arguments-renamed
         """
         Setup the table.
 

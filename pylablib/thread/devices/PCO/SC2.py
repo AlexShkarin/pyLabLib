@@ -12,7 +12,7 @@ class PCOSC2CameraThread(camera.GenericCameraThread):
     _frameinfo_include_fields={"frame_index"}
     def connect_device(self):
         with self.using_devclass("PCO.PCOSC2Camera",host=self.remote) as cls:
-            self.device=cls(idx=self.idx,cam_interface=self.cam_interface,reboot_on_fail=self.reboot_on_fail)
+            self.device=cls(idx=self.idx,cam_interface=self.cam_interface,reboot_on_fail=self.reboot_on_fail)  # pylint: disable=not-callable
     def setup_open_device(self):
         super().setup_open_device()
         try:

@@ -362,10 +362,10 @@ class IQWidgetContainer(IQLayoutManagedWidget, IQContainer):
     Abstract mix-in class, which needs to be added to a class inheriting from ``QWidget``.
     Alternatively, one can directly use :class:`QWidgetContainer`, which already inherits from ``QWidget``.
     """
-    def setup(self, layout="vbox", no_margins=False, name=None):  # pylint: disable=arguments-differ
+    def setup(self, layout="vbox", no_margins=False, name=None):  # pylint: disable=arguments-differ, arguments-renamed
         IQContainer.setup(self,name=name)
         IQLayoutManagedWidget.setup(self,layout=layout,no_margins=no_margins)
-    def add_child(self, name, widget, location=None, gui_values_path=True):  # pylint: disable=arguments-differ
+    def add_child(self, name, widget, location=None, gui_values_path=True):  # pylint: disable=arguments-differ, arguments-renamed
         """
         Add a contained child widget.
 
@@ -453,7 +453,7 @@ class QDialogContainer(IQWidgetContainer, QtWidgets.QDialog):
 
 class QGroupBoxContainer(IQWidgetContainer, QtWidgets.QGroupBox):
     """An extension of :class:`IQWidgetContainer` for a ``QGroupBox`` Qt base class"""
-    def setup(self, caption=None, layout="vbox", no_margins=False, name=None):  # pylint: disable=arguments-differ
+    def setup(self, caption=None, layout="vbox", no_margins=False, name=None):  # pylint: disable=arguments-differ, arguments-renamed
         super().setup(layout=layout,no_margins=no_margins,name=name)
         if caption is not None:
             self.setTitle(caption)
@@ -465,7 +465,7 @@ class QScrollAreaContainer(IQContainer, QtWidgets.QScrollArea):
     Due to Qt organization, this container is "intermediate": it contains only a single :class:`QWidgetContainer` widget (named ``"widget"``),
     which in turn has all of the standard container traits: layout, multiple widgets, etc.
     """
-    def setup(self, layout="vbox", no_margins=False, name=None):  # pylint: disable=arguments-differ
+    def setup(self, layout="vbox", no_margins=False, name=None):  # pylint: disable=arguments-differ, arguments-renamed
         super().setup(name=name)
         self.setFrameStyle(QtWidgets.QFrame.NoFrame)
         self.setWidgetResizable(True)

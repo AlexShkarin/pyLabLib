@@ -215,7 +215,7 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribute
         If the value doesn't exist or can not be written and ``error_on_missing==True``, raise error; otherwise, do nothing.
         """
         return super().set_attribute_value(name,value,error_on_missing=error_on_missing)
-    def get_all_attribute_values(self, enum_str=False):  # pylint: disable=arguments-differ
+    def get_all_attribute_values(self, enum_str=False):  # pylint: disable=arguments-differ, arguments-renamed
         """
         Get values of all attributes.
 

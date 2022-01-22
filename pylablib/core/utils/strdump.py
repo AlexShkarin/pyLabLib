@@ -50,9 +50,9 @@ class StrDumper:
             if sat:
                 if found is None:
                     found=n,cls
-                elif issubclass(cls,found[1]):
+                elif issubclass(cls,found[1]):  # pylint: disable=unsubscriptable-object
                     found=n,cls
-                elif not issubclass(found[1],cls):
+                elif not issubclass(found[1],cls):  # pylint: disable=unsubscriptable-object
                     raise ValueError("both {} and {} satisfy for a base class of {}".format(n,found[0],obj))  # pylint: disable=unsubscriptable-object
         return None if found is None else found[0]
     

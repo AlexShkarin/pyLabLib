@@ -14,9 +14,9 @@ class UC480CameraThread(camera.GenericCameraThread):
         with self.using_devclass("uc480.UC480Camera",host=self.remote) as cls:
             if self.sn is not None:
                 dev_id=uc480.find_by_serial(serial_number=self.sn,backend=self.backend)
-                self.device=cls(dev_id=dev_id,backend=self.backend)
+                self.device=cls(dev_id=dev_id,backend=self.backend)  # pylint: disable=not-callable
             else:
-                self.device=cls(cam_id=self.id,dev_id=self.dev_id,backend=self.backend)
+                self.device=cls(cam_id=self.id,dev_id=self.dev_id,backend=self.backend)  # pylint: disable=not-callable
     def setup_task(self, idx, dev_idx=None, sn=None, backend="uc480", remote=None, misc=None):  # pylint: disable=arguments-differ
         self.id=idx
         self.dev_id=dev_idx

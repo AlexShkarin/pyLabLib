@@ -41,7 +41,7 @@ class ImagePlotterCtl(QWidgetContainer):
     Args:
         parent: parent widget
     """
-    def setup(self, plotter, name=None, save_values=("colormap","img_lim_preset")):  # pylint: disable=arguments-differ
+    def setup(self, plotter, name=None, save_values=("colormap","img_lim_preset")):  # pylint: disable=arguments-differ, arguments-renamed
         """
         Setup the image plotter controller.
 
@@ -204,7 +204,7 @@ class ImagePlotter(QLayoutManagedWidget):
                 self.center=center
             if size:
                 self.size=size
-    def setup(self, name=None, img_size=(1024,1024), min_size=None):  # pylint: disable=arguments-differ
+    def setup(self, name=None, img_size=(1024,1024), min_size=None):  # pylint: disable=arguments-differ, arguments-renamed
         """
         Setup the image plotter.
 
@@ -617,7 +617,7 @@ class ImagePlotterCombined(QWidgetContainer):
     The plotter can be accessed as ``.plt`` attribute, and the controller as ``.ctl`` attribute.
     The ``"sidebar"`` sublayout can be used to add additional elements if necessary.
     """
-    def setup(self, img_size=(1024,1024), min_size=None, ctl_caption=None, name=None, save_values=("colormap","img_lim_preset")):  # pylint: disable=arguments-differ
+    def setup(self, img_size=(1024,1024), min_size=None, ctl_caption=None, name=None, save_values=("colormap","img_lim_preset")):  # pylint: disable=arguments-differ, arguments-renamed
         super().setup(layout="hbox",name=name)
         self.plt=ImagePlotter(self)
         self.add_to_layout(self.plt)

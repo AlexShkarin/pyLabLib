@@ -147,6 +147,7 @@ disable=print-statement,
         protected-access,
         unnecessary-pass,
         attribute-defined-outside-init,
+        unspecified-encoding,
         C,R
 
 # Enable the message, report, category or checker with the given id(s). You can

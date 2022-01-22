@@ -34,7 +34,7 @@ class PerformaxThread(device_thread.DeviceThread):
     def connect_device(self):
         cls_name="Arcus.Performax4EXStage" if self.stage_kind=="4EX" else "Arcus.Performax2EXStage"
         with self.using_devclass(cls_name,host=self.remote) as cls:
-            self.device=cls(idx=self.idx,conn=self.conn,enable=self.enable)
+            self.device=cls(idx=self.idx,conn=self.conn,enable=self.enable)  # pylint: disable=not-callable
             self.device.get_position()
     def setup_task(self, idx=0, conn=None, enable=True, kind="4EX", remote=None):  # pylint: disable=arguments-differ
         funcargparse.check_parameter_range(kind,"kind",["4EX","2EX"])
@@ -146,7 +146,7 @@ class PerformaxSingleAxisThread(device_thread.DeviceThread):
     def connect_device(self):
         cls_name="Arcus.PerformaxDMXJSAStage"
         with self.using_devclass(cls_name,host=self.remote) as cls:
-            self.device=cls(idx=self.idx,conn=self.conn,enable=self.enable,autoclear=self.autoclear)
+            self.device=cls(idx=self.idx,conn=self.conn,enable=self.enable,autoclear=self.autoclear)  # pylint: disable=not-callable
             self.device.get_position()
     def setup_task(self, idx=0, conn=None, enable=True, autoclear=True, remote=None):  # pylint: disable=arguments-differ
         self.device_reconnect_tries=5

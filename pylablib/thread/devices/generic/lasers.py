@@ -21,7 +21,7 @@ class IPumpLaserThread(device_thread.DeviceThread):
     _device_class=""
     def connect_device(self):
         with self.using_devclass(self._device_class,host=self.remote) as cls:
-            self.device=cls(conn=self.conn)
+            self.device=cls(conn=self.conn)  # pylint: disable=not-callable
             self.device.is_enabled()
     def setup_task(self, conn, remote=None):  # pylint: disable=arguments-differ
         self.conn=conn

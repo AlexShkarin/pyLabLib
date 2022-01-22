@@ -128,7 +128,7 @@ class TopticaIBeam(comm_backend.ICommBackendWrapper):
 
     def is_enabled(self):
         """Check if the output is enabled"""
-        return self.query("status laser").upper()=="ON"
+        return self.query("status laser").upper()=="ON"  # pylint: disable=no-member
     def enable(self, enabled=True):
         """Turn the output on or off"""
         self.query("laser {}".format("on" if enabled else "off"),reply=False)
@@ -137,7 +137,7 @@ class TopticaIBeam(comm_backend.ICommBackendWrapper):
     @muxchan
     def is_channel_enabled(self, channel="all"):
         """Check if the specific channel is enabled"""
-        return self.query("status channel {}".format(channel)).upper()=="ON"
+        return self.query("status channel {}".format(channel)).upper()=="ON"  # pylint: disable=no-member
     @muxchan(mux_argnames="enabled")
     def enable_channel(self, channel, enabled=True):
         """Turn the specific channel on or off"""

@@ -45,7 +45,7 @@ class IMAQPhotonFocusCameraThread(GenericPhotonFocusCameraThread):
     _default_min_buffer_size=(1,1000)
     def connect_device(self):
         with self.using_devclass("PhotonFocus.PhotonFocusIMAQCamera",host=self.remote) as cls:
-            self.device=cls(imaq_name=self.imaq_name,pfcam_port=self.pfcam_port)
+            self.device=cls(imaq_name=self.imaq_name,pfcam_port=self.pfcam_port)  # pylint: disable=not-callable
         
     def setup_task(self, imaq_name, pfcam_port, remote=None, misc=None):  # pylint: disable=arguments-differ
         self.imaq_name=imaq_name
@@ -64,7 +64,7 @@ class SiliconSoftwarePhotonFocusCameraThread(GenericPhotonFocusCameraThread):
     _default_min_buffer_size=(1,1000)
     def connect_device(self):
         with self.using_devclass("PhotonFocus.PhotonFocusSiSoCamera",host=self.remote) as cls:
-            self.device=cls(siso_board=self.siso_board,siso_applet=self.siso_applet,siso_port=self.siso_port,pfcam_port=self.pfcam_port)
+            self.device=cls(siso_board=self.siso_board,siso_applet=self.siso_applet,siso_port=self.siso_port,pfcam_port=self.pfcam_port)  # pylint: disable=not-callable
         
     def setup_task(self, siso_board, siso_applet, siso_port, pfcam_port, remote=None, misc=None):  # pylint: disable=arguments-differ
         self.siso_board=siso_board

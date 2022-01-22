@@ -27,7 +27,7 @@ class KinesisMotorThread(device_thread.DeviceThread):
     """
     def connect_device(self):
         with self.using_devclass("Thorlabs.KinesisMotor",host=self.remote) as cls:
-            self.device=cls(conn=self.conn,**self.dev_kwargs)
+            self.device=cls(conn=self.conn,**self.dev_kwargs)  # pylint: disable=not-callable
             self.device.get_position()
     def setup_task(self, conn, remote=None, **kwargs):  # pylint: disable=arguments-differ
         self.device_reconnect_tries=5
@@ -117,7 +117,7 @@ class KinesisPiezoMotorThread(device_thread.DeviceThread):
     """
     def connect_device(self):
         with self.using_devclass("Thorlabs.KinesisPiezoMotor",host=self.remote) as cls:
-            self.device=cls(conn=self.conn,**self.dev_kwargs)
+            self.device=cls(conn=self.conn,**self.dev_kwargs)  # pylint: disable=not-callable
             self.device.get_position()
     def setup_task(self, conn, remote=None, default_channels=1, **kwargs):  # pylint: disable=arguments-differ
         self.device_reconnect_tries=5
@@ -202,7 +202,7 @@ class MFFThread(device_thread.DeviceThread):
     """
     def connect_device(self):
         with self.using_devclass("Thorlabs.MFF",host=self.remote) as cls:
-            self.device=cls(conn=self.conn,**self.dev_kwargs)
+            self.device=cls(conn=self.conn,**self.dev_kwargs)  # pylint: disable=not-callable
             self.device.get_state()
     def setup_task(self, conn, remote=None, **kwargs):  # pylint: disable=arguments-differ
         self.device_reconnect_tries=5
@@ -240,7 +240,7 @@ class ThorlabsKinesisQuadDetectorThread(device_thread.DeviceThread):
     parameter_variables=default_parameter_values.keys()
     def connect_device(self):
         with self.using_devclass("Thorlabs.KinesisQuadDetector",host=self.remote) as cls:
-            self.device=cls(conn=self.conn)
+            self.device=cls(conn=self.conn)  # pylint: disable=not-callable
             self.device.get_readings()
     def setup_task(self, conn, remote=None):  # pylint: disable=arguments-differ
         self.device_reconnect_tries=5

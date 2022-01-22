@@ -62,7 +62,7 @@ def find_list_string(name, str_list, case_sensitive=True, as_prefix=False, first
                 if first_matched:
                     break
             else:
-                raise ValueError("{0} and {1} both satisfy name {2}".format(found_name[1],s,name))
+                raise ValueError("{0} and {1} both satisfy name {2}".format(found_name[1],s,name))  # pylint: disable=unsubscriptable-object
     if found_name is None:
         raise KeyError("can't find name in the container: {0}".format(name))
     return found_name

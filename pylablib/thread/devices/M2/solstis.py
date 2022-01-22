@@ -46,7 +46,7 @@ class M2Thread(device_thread.DeviceThread):
     """
     def connect_device(self):
         with self.using_devclass("M2.Solstis",host=self.remote) as cls:
-            self.device=cls(addr=self.addr,port=self.port,use_websocket=self.use_websocket,use_cavity=self.use_cavity,timeout=10.)
+            self.device=cls(addr=self.addr,port=self.port,use_websocket=self.use_websocket,use_cavity=self.use_cavity,timeout=10.)  # pylint: disable=not-callable
             self.device.set_timeout(120)
             self.device.get_coarse_wavelength()
     def setup_task(self, addr, port, use_websocket=True, use_cavity=True, wavemeter=None, remote=None):  # pylint: disable=arguments-differ

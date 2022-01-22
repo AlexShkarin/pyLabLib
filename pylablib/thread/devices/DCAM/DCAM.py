@@ -12,7 +12,7 @@ class DCAMCameraThread(camera.GenericCameraThread):
     _frameinfo_include_fields={"frame_index","framestamp","timestamp_us","camerastamp"}
     def connect_device(self):
         with self.using_devclass("DCAM.DCAMCamera",host=self.remote) as cls:
-            self.device=cls(idx=self.idx)
+            self.device=cls(idx=self.idx)  # pylint: disable=not-callable
     def setup_task(self, idx=0, remote=None, misc=None):  # pylint: disable=arguments-differ
         self.idx=idx
         super().setup_task(remote=remote,misc=misc)

@@ -110,7 +110,7 @@ class GenericAWG(SCPI.SCPIDevice):
             name=self._build_variable_name(name,channel)
             comm=self._build_channel_command(comm,channel,kind=comm_kind)
         return super()._modify_scpi_parameter(name,comm,kind=kind,parameter=parameter,set_delay=set_delay)
-    def _add_settings_variable(self, path, getter=None, setter=None, ignore_error=(), mux=None, multiarg=True, channel=None):  # pylint: disable=arguments-differ
+    def _add_settings_variable(self, path, getter=None, setter=None, ignore_error=(), mux=None, multiarg=True, channel=None):  # pylint: disable=arguments-differ, arguments-renamed
         if channel is not None and path not in self._all_channel_commands:
             if not self._can_add_command(path,channel):
                 return

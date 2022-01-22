@@ -11,7 +11,7 @@ class PicamCameraThread(camera.GenericCameraThread):
         "frame_period","detector_size","roi_limits","roi","buffer_size"}
     def connect_device(self):
         with self.using_devclass("PrincetonInstruments.PicamCamera",host=self.remote) as cls:
-            self.device=cls(serial_number=self.serial_number)
+            self.device=cls(serial_number=self.serial_number)  # pylint: disable=not-callable
     def setup_task(self, serial_number=None, remote=None, misc=None):  # pylint: disable=arguments-differ
         self.serial_number=serial_number
         super().setup_task(remote=remote,misc=misc)

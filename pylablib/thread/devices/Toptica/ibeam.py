@@ -24,7 +24,7 @@ class TopticaIBeamThread(lasers.IPumpLaserThread):
     """
     def connect_device(self):
         with self.using_devclass("Toptica.TopticaIBeam",host=self.remote) as cls:
-            self.device=cls(conn=self.conn)
+            self.device=cls(conn=self.conn)  # pylint: disable=not-callable
             self.device.is_enabled()
     def setup_task(self, conn, remote=None):
         self.conn=conn

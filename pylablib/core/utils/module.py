@@ -5,7 +5,7 @@ Library for dealing with python module properties.
 try:
     from importlib import reload
 except ImportError:
-    from imp import reload
+    from imp import reload  # pylint: disable=deprecated-module
 
 import pkg_resources
 import sys

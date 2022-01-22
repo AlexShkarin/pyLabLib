@@ -23,7 +23,7 @@ class FWThread(device_thread.DeviceThread):
     def connect_device(self):
         devclass="Thorlabs.FWv1" if self.version=="v1" else "Thorlabs.FW"
         with self.using_devclass(devclass,host=self.remote) as cls:
-            self.device=cls(conn=self.conn,**self.dev_kwargs)
+            self.device=cls(conn=self.conn,**self.dev_kwargs)  # pylint: disable=not-callable
             self.device.get_position()
     def setup_task(self, conn, version=None, remote=None, **kwargs):  # pylint: disable=arguments-differ
         self.device_reconnect_tries=5
@@ -58,7 +58,7 @@ class MDT69xAThread(device_thread.DeviceThread):
     """
     def connect_device(self):
         with self.using_devclass("Thorlabs.MDT69xA",host=self.remote) as cls:
-            self.device=cls(conn=self.conn)
+            self.device=cls(conn=self.conn)  # pylint: disable=not-callable
             self.device.get_voltage()
     def setup_task(self, conn, remote=None):  # pylint: disable=arguments-differ
         self.device_reconnect_tries=5

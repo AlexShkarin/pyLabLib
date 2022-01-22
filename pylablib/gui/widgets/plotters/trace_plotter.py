@@ -29,7 +29,7 @@ class TracePlotterCtl(QWidgetContainer):
     Args:
         parent: parent widget
     """
-    def setup(self, plotter, name=None):  # pylint: disable=arguments-differ
+    def setup(self, plotter, name=None):  # pylint: disable=arguments-differ, arguments-renamed
         """
         Setup the trace plotter controller.
 
@@ -94,7 +94,7 @@ class TracePlotter(QLayoutManagedWidget):
         super().__init__(parent)
         self.name=None
         self.ctl=None
-    def setup(self, name=None, add_end_marker=False, update_only_on_visible=True):  # pylint: disable=arguments-differ
+    def setup(self, name=None, add_end_marker=False, update_only_on_visible=True):  # pylint: disable=arguments-differ, arguments-renamed
         """
         Setup the image view.
 
@@ -318,7 +318,7 @@ class TracePlotterCombined(QWidgetContainer):
     The plotter can be accessed as ``.plt`` attribute, and the controller as ``.ctl`` attribute.
     The ``"sidebar"`` sublayout can be used to add additional elements if necessary.
     """
-    def setup(self, add_end_marker=False, update_only_on_visible=True, name=None):  # pylint: disable=arguments-differ
+    def setup(self, add_end_marker=False, update_only_on_visible=True, name=None):  # pylint: disable=arguments-differ, arguments-renamed
         super().setup(layout="hbox",no_margins=True,name=name)
         self.plt=TracePlotter(self)
         self.add_to_layout(self.plt)
