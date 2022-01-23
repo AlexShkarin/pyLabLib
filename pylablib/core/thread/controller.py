@@ -755,7 +755,7 @@ class QThreadController(QtCore.QObject):
             value: multicast value.
             src(str): multicast source; can be ``None`` (current thread name), a specific name, ``"all"`` (will pass all subscribers' source filters),
                 or ``"any"`` (will only be passed to subscribers specifically subscribed to multicast with ``"any"`` source).
-            filter_results: if ``True``, filter the results to exclude dummy synchronizers, which correspond to calls which do not return anythong
+            filter_results: if ``True``, filter the results to exclude dummy synchronizers, which correspond to calls which do not return anything
         """
         result=self._multicast_pool.send(src or self.name,dst,tag,value)
         if filter_results:
@@ -779,7 +779,7 @@ class QThreadController(QtCore.QObject):
             timeout: synchronization timeout (``None`` means waiting forever)
             default_result: default result value if synchronization failed (timed out, thread stopped, etc.)
             pass_exception: if ``True`` and the signal processor raised an exception, raise it in this thread as well
-            If ``pass_exception==True`` and the returned value represents exception, re-raise it in the caller thread; otherwise, return `default`.
+                If ``pass_exception==True`` and the returned value represents exception, re-raise it in the caller thread; otherwise, return `default`.
         """
         syncs=self.send_multicast(dst=dst,tag=tag,value=value,src=src)
         return [s.get_value_sync(timeout=timeout,default=default_result,pass_exception=pass_exception) for s in syncs]

@@ -24,6 +24,8 @@
 ..\pylablib\devices\PCO\sc2_camexport_lib.py
 ..\pylablib\devices\PCO\sc2_defs_defs.py
 ..\pylablib\devices\PCO\sc2_sdkstructures_defs.py
+..\pylablib\devices\Photometrics\pvcam_defs.py
+..\pylablib\devices\Photometrics\pvcam_lib.py
 ..\pylablib\devices\PhotonFocus\pfcam_defs.py
 ..\pylablib\devices\PhotonFocus\pfcam_lib.py
 ..\pylablib\devices\PrincetonInstruments\picam_defs.py

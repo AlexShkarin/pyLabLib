@@ -30,6 +30,7 @@ Subpackages
     pylablib.devices.Ophir
     pylablib.devices.PCO
     pylablib.devices.Pfeiffer
+    pylablib.devices.Photometrics
     pylablib.devices.PhotonFocus
     pylablib.devices.PrincetonInstruments
     pylablib.devices.SiliconSoftware

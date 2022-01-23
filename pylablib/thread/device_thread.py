@@ -296,7 +296,7 @@ class DeviceThread(controller.QTaskThread):
         """
         Get additional full info parts which are not returned by the class by default.
 
-        Ususally involves classes with complicated behavior which can not be saved in a files, e.g., camera attributes or parameter classes.
+        Usually involves classes with complicated behavior which can not be saved in a files, e.g., camera attributes or parameter classes.
         """
         return None
     def get_full_info(self, add_aux=False):
@@ -305,7 +305,7 @@ class DeviceThread(controller.QTaskThread):
         
         If the full info job is set up using :meth:`DeviceThread.setup_full_info_job`, use the last cached version of the full info;
         otherwise, request a new version from the device.
-        If ``add_aux==True``, include possbile custom info which involves non-savable classes, e.g., camera attribute classes.
+        If ``add_aux==True``, include possible custom info which involves non-savable classes, e.g., camera attribute classes.
         """
         if self.device:
             info=self.v["full_info"] if self._full_info_job else self._get_device_parameters_dictionary(include=self.full_info_variables)
