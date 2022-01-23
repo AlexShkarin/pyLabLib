@@ -9,6 +9,8 @@ class KinesisMotorThread(device_thread.DeviceThread):
     Device args:
         - ``conn``: serial connection parameters (usually an 8-digit device serial number)
         - ``**kwargs``: additional arguments supplied on the device creation (e.g., ``scale``)
+        - ``move_precision``: if not ``None``, can specify a move command precision;
+            if the current position is more than ``move_precision`` away from the last entered target and the motor is stopped, reinitialize the movement.
         - ``remote``: address of the remote host where the device is connected; ``None`` (default) for local device, or ``"disconnect"`` to not connect
 
     Variables:
@@ -29,10 +31,12 @@ class KinesisMotorThread(device_thread.DeviceThread):
         with self.using_devclass("Thorlabs.KinesisMotor",host=self.remote) as cls:
             self.device=cls(conn=self.conn,**self.dev_kwargs)  # pylint: disable=not-callable
             self.device.get_position()
-    def setup_task(self, conn, remote=None, **kwargs):  # pylint: disable=arguments-differ
+    def setup_task(self, conn, remote=None, move_precision=None, **kwargs):  # pylint: disable=arguments-differ
         self.device_reconnect_tries=5
         self.conn=conn
         self.remote=remote
+        self.move_precision=move_precision
+        self._last_move_to=None
         self.dev_kwargs=kwargs
         self.add_job("update_measurements",self.update_measurements,.5)
         self.add_job("update_parameters",self.update_parameters,2)
@@ -42,24 +46,34 @@ class KinesisMotorThread(device_thread.DeviceThread):
         self.add_command("home")
         self.add_command("stop_motion")
         self.add_command("set_velocity")
+    def _check_move_precision(self):
+        if (self.move_precision is not None) and (self._last_move_to is not None) and (not self.v["moving"]):
+            if abs(self.v["position"]-self._last_move_to)>self.move_precision:
+                self.move_to(self._last_move_to)
+            else:
+                self._last_move_to=None
     def update_measurements(self):
         if self.open():
             self.v["position"]=self.device.get_position()
             self.v["axis_status"]=self.device.get_status()
             self.v["moving"]=self.device.is_moving()
+            self._check_move_precision()
         else:
             self.v["position"]=0
             self.v["axis_status"]=[]
             self.v["moving"]=False
     
-    def _stop_wait(self):
+    def _stop_wait(self, reset_move_to=True):
         if self.device.is_moving():
             self.device.stop(sync=True)
+        if reset_move_to:
+            self._last_move_to=None
     def move_to(self, position):
         """Move to `position` (positive or negative)"""
         if self.open():
             self._stop_wait()
             self.device.move_to(position)
+            self._last_move_to=position
             self.update_measurements()
     def set_position_reference(self, position=0):
         """Reference to a new position (assign current position to `position`)"""

@@ -664,13 +664,14 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
     @interface.use_parameters(channel="channel_id")
     def _is_channel_enabled(self, channel=None):  # seems to not work for most devices when tested
         """Check if the given channel is enabled"""
-        data=self.query(0x0211,channel).data
-        return data==0x01
+        msg=self.query(0x0211,channel)
+        self.instr.read()  # sometimes extra \x00 bits are appended
+        return msg.param2==0x01
     @muxchannel(mux_argnames="enabled")
     @interface.use_parameters(channel="channel_id")
     def _enable_channel(self, enabled=True, channel=None):  # seems to not work for most devices when tested
         """Enable or disable the given channel"""
-        self.query(0x0210,channel,0x01 if enabled else 0x02)
+        self.send_comm(0x0210,channel,0x01 if enabled else 0x02)
         return self._wip._is_channel_enabled(channel)
 
 
