@@ -17,6 +17,7 @@ Currently supported sensors:
     HighFinesse
     Ophir
     Lakeshore
+    Cryocon
     Pfeiffer
     Leybold
     KJL
