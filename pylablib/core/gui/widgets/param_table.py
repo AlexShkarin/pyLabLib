@@ -167,11 +167,9 @@ class ParamTable(container.QWidgetContainer):
         if location!="skip":
             row,col,rowspan,colspan=location
             labelspan=1 if label is not None else 0
-            indspan=1 if add_indicator else 0
+            indspan=1 if (add_indicator and ilocation is None) else 0
             if colspan<indspan+labelspan+1:
                 raise ValueError("column span {} should be at least {} to accommodate the widget, the label, and the indicator".format(colspan,indspan+labelspan+1))
-            llname,llocation=self._normalize_location(llocation,default_location=(row,col,rowspan,1),default_layout=lname)
-            ilname,ilocation=self._normalize_location(ilocation,default_location=(row,col+colspan-1,rowspan,1),default_layout=lname)
         else:
             if label is not None:
                 raise ValueError("label can not be combined with 'skip' location")
@@ -179,21 +177,25 @@ class ParamTable(container.QWidgetContainer):
         if label is not None:
             wlabel=QtWidgets.QLabel(self)
             wlabel.setObjectName("{}__label".format(name))
+            llname,llocation=self._normalize_location(llocation,default_location=(row,col,rowspan,1),default_layout=lname)
             self._insert_layout_element(llname,wlabel,llocation)
             wlabel.setText(label)
         else:
             wlabel=None
+        if location!="skip":
+            self._insert_layout_element(lname,widget,(row,col+labelspan,rowspan,colspan-labelspan-indspan))
         value_handler=value_handler or value_handling.create_value_handler(widget)
         if add_indicator:
             windicator=QtWidgets.QLabel(self)
             windicator.setObjectName("{}__indicator".format(name))
+            if ilocation=="next_line":
+                ilocation=(row+1,col+labelspan,1,colspan-labelspan)
+            ilname,ilocation=self._normalize_location(ilocation,default_location=(row,col+colspan-1,rowspan,1),default_layout=lname)
             self._insert_layout_element(ilname,windicator,ilocation)
             indicator_handler=value_handling.LabelIndicatorHandler(windicator,formatter=value_handler if add_indicator==True else add_indicator)
         else:
             windicator=None
             indicator_handler=None
-        if location!="skip":
-            self._insert_layout_element(lname,widget,(row,col+labelspan,rowspan,colspan-labelspan-indspan))
         if tooltip is not None:
             if wlabel is not None:
                 wlabel.setToolTip(tooltip)
@@ -611,6 +613,9 @@ class StatusTable(ParamTable):
     """
     Expansion of :class:`ParamTable` which adds status lines, which automatically subscribe to signals and update values.
     """
+    def setup(self, name=None, add_indicator=True, gui_thread_safe=False, cache_values=False, change_focused_control=False):
+        super().setup(name=name,add_indicator=add_indicator,gui_thread_safe=gui_thread_safe,cache_values=cache_values,change_focused_control=change_focused_control)
+        self._status_line_params={}
     def add_status_line(self, name, label=None, srcs=None, tags=None, filt=None, fmt=None):
         """
         Add a status line to the table:
@@ -630,4 +635,22 @@ class StatusTable(ParamTable):
             else:
                 text=value
             self.v[name]=text
+        self._status_line_params[name]=(srcs,tags)
         threadprop.current_controller().subscribe_sync(update_text,srcs=srcs,tags=tags,filt=filt,limit_queue=10)
+    def update_status_line(self, name, thread=None, path=None):
+        """
+        Update status line to the variable with the given `path` from the thread with the given `thread` name.
+
+        If `thread` is ``None``, use ``srcs`` name provided upon creation.
+        If `path` is ``None``, use ``tags`` name provided upon creation.
+        """
+        srcs,tags=self._status_line_params[name]
+        thread=thread or srcs
+        path=path or tags
+        try:
+            ctl=controller.get_controller(thread,sync=False)
+            value=ctl.get_variable(path)
+            if value is not None:
+                self.v[name]=value
+        except threadprop.NoControllerThreadError:
+            pass
