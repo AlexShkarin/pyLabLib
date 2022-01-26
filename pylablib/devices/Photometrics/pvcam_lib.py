@@ -164,23 +164,22 @@ class PvcamLib:
 
         return
 
-        
-        #  rs_bool pl_io_script_control(int16 hcam, uns16 addr, flt64 state, uns32 location)
-        self.pl_io_script_control=wrapper(lib.pl_io_script_control)
-        #  rs_bool pl_io_clear_script_control(int16 hcam)
-        self.pl_io_clear_script_control=wrapper(lib.pl_io_clear_script_control)
-        #  rs_bool pl_md_frame_decode(ctypes.POINTER(md_frame) pDstFrame, ctypes.c_void_p pSrcBuf, uns32 srcBufSize)
-        self.pl_md_frame_decode=wrapper(lib.pl_md_frame_decode)
-        #  rs_bool pl_md_frame_recompose(ctypes.c_void_p pDstBuf, uns16 offX, uns16 offY, uns16 dstWidth, uns16 dstHeight, ctypes.POINTER(md_frame) pSrcFrame)
-        self.pl_md_frame_recompose=wrapper(lib.pl_md_frame_recompose)
-        #  rs_bool pl_md_create_frame_struct_cont(ctypes.POINTER(ctypes.POINTER(md_frame)) pFrame, uns16 roiCount)
-        self.pl_md_create_frame_struct_cont=wrapper(lib.pl_md_create_frame_struct_cont)
-        #  rs_bool pl_md_create_frame_struct(ctypes.POINTER(ctypes.POINTER(md_frame)) pFrame, ctypes.c_void_p pSrcBuf, uns32 srcBufSize)
-        self.pl_md_create_frame_struct=wrapper(lib.pl_md_create_frame_struct)
-        #  rs_bool pl_md_release_frame_struct(ctypes.POINTER(md_frame) pFrame)
-        self.pl_md_release_frame_struct=wrapper(lib.pl_md_release_frame_struct)
-        #  rs_bool pl_md_read_extended(ctypes.POINTER(md_ext_item_collection) pOutput, ctypes.c_void_p pExtMdPtr, uns32 extMdSize)
-        self.pl_md_read_extended=wrapper(lib.pl_md_read_extended)
+        # #  rs_bool pl_io_script_control(int16 hcam, uns16 addr, flt64 state, uns32 location)
+        # self.pl_io_script_control=wrapper(lib.pl_io_script_control)
+        # #  rs_bool pl_io_clear_script_control(int16 hcam)
+        # self.pl_io_clear_script_control=wrapper(lib.pl_io_clear_script_control)
+        # #  rs_bool pl_md_frame_decode(ctypes.POINTER(md_frame) pDstFrame, ctypes.c_void_p pSrcBuf, uns32 srcBufSize)
+        # self.pl_md_frame_decode=wrapper(lib.pl_md_frame_decode)
+        # #  rs_bool pl_md_frame_recompose(ctypes.c_void_p pDstBuf, uns16 offX, uns16 offY, uns16 dstWidth, uns16 dstHeight, ctypes.POINTER(md_frame) pSrcFrame)
+        # self.pl_md_frame_recompose=wrapper(lib.pl_md_frame_recompose)
+        # #  rs_bool pl_md_create_frame_struct_cont(ctypes.POINTER(ctypes.POINTER(md_frame)) pFrame, uns16 roiCount)
+        # self.pl_md_create_frame_struct_cont=wrapper(lib.pl_md_create_frame_struct_cont)
+        # #  rs_bool pl_md_create_frame_struct(ctypes.POINTER(ctypes.POINTER(md_frame)) pFrame, ctypes.c_void_p pSrcBuf, uns32 srcBufSize)
+        # self.pl_md_create_frame_struct=wrapper(lib.pl_md_create_frame_struct)
+        # #  rs_bool pl_md_release_frame_struct(ctypes.POINTER(md_frame) pFrame)
+        # self.pl_md_release_frame_struct=wrapper(lib.pl_md_release_frame_struct)
+        # #  rs_bool pl_md_read_extended(ctypes.POINTER(md_ext_item_collection) pOutput, ctypes.c_void_p pExtMdPtr, uns32 extMdSize)
+        # self.pl_md_read_extended=wrapper(lib.pl_md_read_extended)
 
 
     def get_enum_value(self, hcam, param_id, index):

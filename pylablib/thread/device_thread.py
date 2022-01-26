@@ -298,7 +298,10 @@ class DeviceThread(controller.QTaskThread):
 
         Usually involves classes with complicated behavior which can not be saved in a files, e.g., camera attributes or parameter classes.
         """
-        return None
+        aux_info={}
+        if self.device and hasattr(self.device,"_parameters"):
+            aux_info.update({"device_parameters":self.device._parameters})
+        return aux_info
     def get_full_info(self, add_aux=False):
         """
         Get full device info.

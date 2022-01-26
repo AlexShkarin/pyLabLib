@@ -10,10 +10,19 @@ import numpy as np
 import numba as nb
 import ctypes
 import collections
+import contextlib
 
 
 class PvcamTimeoutError(PvcamError):
-    "Pvcam frame timeout error"
+    """Pvcam frame timeout error"""
+class PvcamAttributeValueError(PvcamError):
+    """Pvcam attribute value error"""
+    def __init__(self, name, value, all_values):
+        self.name=name
+        self.value=value
+        self.all_values=all_values
+        self.msg="unsupported value '{}' for parameter {}; supported values are {}".format(self.value,self.name,self.all_values)
+        super().__init__(self.msg)
 
 
 class LibraryController(load_lib.LibraryController):
@@ -160,6 +169,8 @@ class PvcamAttribute:
         if truncate:
             value=self.truncate_value(value)
         value=self.labels.get(value,value)
+        if self._attr_type_n==pvcam_defs.PARAM_TYPE.TYPE_ENUM and value not in self.values:
+            raise PvcamAttributeValueError(self.name,value,self.values)
         lib.set_param(self.handle,self.pid,value,typ=self._attr_type_n)
 
     def __repr__(self):
@@ -174,6 +185,7 @@ class PvcamAttribute:
 
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["vendor","product","chip","system","part","serial"])
 TFrameInfo=collections.namedtuple("TFrameInfo",["frame_index","timestamp_start_ns","timestamp_end_ns","framestamp","flags","exposure_ns"])
+TReadoutInfo=collections.namedtuple("TReadoutInfo",["port_idx","port_name","speed_idx","speed_freq","gain_idx","gain_name"])
 class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttributeCamera):
     """
     Generic Pvcam camera interface.
@@ -201,7 +213,13 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         self._add_info_variable("pixel_distance",self.get_pixel_distance)
         self._add_info_variable("binning_modes",self.get_supported_binning_modes)
         self._add_settings_variable("metadata_enabled",self.is_metadata_enabled,self.enable_metadata)
+        self._add_settings_variable("clear_mode",self.get_clear_mode,self.set_clear_mode)
+        self._add_settings_variable("clear_cycles",self.get_clear_cycles,self.set_clear_cycles)
+        self._add_settings_variable("readout_mode",lambda: self.get_readout_mode(full=False),self.set_readout_mode)
+        self._add_info_variable("readout_modes",self.get_all_readout_modes)
+        self._add_settings_variable("trigger_mode",self.get_trigger_mode,self.set_trigger_mode)
         self._update_device_variable_order("exposure")
+        self._add_status_variable("clearing_time",self.get_clearing_time)
         self._add_status_variable("frame_period",self.get_frame_period)
 
 
@@ -221,13 +239,11 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
                 raise PvcamError("camera with name {} isn't present among available cameras: {}".format(self.name,cams))
             self.handle=lib.pl_cam_open(self.name,pvcam_defs.PL_OPEN_MODES.OPEN_EXCLUSIVE)
             self._opid=libctl.open().opid
-            try:
+            with self._close_on_error():
                 self._update_attributes()
                 self._setup_full_roi()
                 self._setup_bin_ranges()
-            except self.Error:
-                self.close()
-                raise
+                self._readout_modes=self._detect_readout_modes()
     def close(self):
         """Close connection to the camera"""
         if self.handle is not None:
@@ -271,6 +287,96 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         If ``truncate==True``, truncate value to lie within attribute range.
         """
         return super().set_all_attribute_values(settings,root=root,truncate=truncate)
+    @contextlib.contextmanager
+    def _setting_parameter_attribute(self, par):
+        try:
+            yield
+        except PvcamAttributeValueError as err:
+            par=self._as_parameter_class(par)
+            value=par.i(err.value,device=self) if par.check_value(err.value) else err.value
+            all_values=[par.i(v,device=self) for v in err.all_values]
+            raise PvcamAttributeValueError(err.name,value,all_values) from err
+    
+    def get_attribute_range(self, name, error_on_missing=True, default=None, parameter=None):
+        """
+        Return attribute range.
+
+        For numerical attributes it is a tuple ``(min, max)``, while for enum attributes it is a dictionary ``{index: name}``.
+        If ``parameter`` is specified, it is a parameter class used to convert the index for a enum attribute.
+        """
+        if name in self.attributes or error_on_missing:
+            att=self.ca[name]
+            att.update_limits()
+            if att.kind=="ENUM":
+                values=att.lvalues
+                if parameter is not None:
+                    parameter=self._as_parameter_class(parameter)
+                    values={parameter.i(v):n for v,n in values.items()}
+                return values
+            return (att.min,att.max)
+        return default
+    def _get_attr_lvalues(self, name, default):
+        if name in self.attributes:
+            self.ca[name].update_limits()
+            return self.ca[name].lvalues
+        return default
+    def _get_attr_rng(self, name, default):
+        if name in self.attributes:
+            self.ca[name].update_limits()
+            return self.ca[name].min,self.ca[name].max+1
+        return default
+    def _detect_readout_modes(self):
+        modes=[]
+        def rng(vmin, vmax):
+            return range(vmin,vmax+1)
+        for port_idx,port_name in self.get_attribute_range("READOUT_PORT",error_on_missing=False,default={0:"Default"}).items():
+            self.set_attribute_value("READOUT_PORT",port_idx,error_on_missing=False)
+            for speed_idx in rng(*self.get_attribute_range("SPDTAB_INDEX",error_on_missing=False,default=(0,1))):
+                self.set_attribute_value("SPDTAB_INDEX",speed_idx,error_on_missing=False)
+                speed_freq=1E9/self.get_attribute_value("PIX_TIME",error_on_missing=False,default=1E9)
+                for gain_idx in rng(*self.get_attribute_range("GAIN_INDEX",error_on_missing=False,default=(0,1))):
+                    self.set_attribute_value("GAIN_INDEX",gain_idx,error_on_missing=False)
+                    gain_name=self.get_attribute_value("GAIN_NAME",error_on_missing=False,default="Default")
+                    modes.append(TReadoutInfo(port_idx,port_name,speed_idx,speed_freq,gain_idx,gain_name))
+        self.set_attribute_value("READOUT_PORT",0,error_on_missing=False)
+        self.set_attribute_value("SPDTAB_INDEX",0,error_on_missing=False)
+        self.set_attribute_value("GAIN_INDEX",0,error_on_missing=False)
+        return modes
+    def get_all_readout_modes(self):
+        """
+        Get a list of all possible readout modes.
+
+        Return a list of tuples ``(port_idx, port_name, speed_idx, speed_freq, gain_idx, gain_name)``.
+        The indices (port, speed, and gain) can be used to set up a particular mode using :meth:`set_readout_mode`.
+        """
+        return list(self._readout_modes)
+    def get_readout_mode(self, full=True):
+        """
+        Get current readout mode.
+
+        If ``full==True``, return a full tuple ``(port_idx, port_name, speed_idx, speed_freq, gain_idx, gain_name)`` containing the descriptions;
+        otherwise, return only indices ``(port_idx, speed_idx, gain_idx)``.
+        """
+        port_idx=self.get_attribute_value("READOUT_PORT",error_on_missing=False,enum_as_str=False,default=0)
+        port_name=self.get_attribute_value("READOUT_PORT",error_on_missing=False,enum_as_str=True,default="Default")
+        speed_idx=self.get_attribute_value("SPDTAB_INDEX",error_on_missing=False,default=0)
+        speed_freq=1E9/self.get_attribute_value("PIX_TIME",error_on_missing=False,default=1E9)
+        gain_idx=self.get_attribute_value("GAIN_INDEX",error_on_missing=False,default=0)
+        gain_name=self.get_attribute_value("GAIN_NAME",error_on_missing=False,default="Default")
+        return TReadoutInfo(port_idx,port_name,speed_idx,speed_freq,gain_idx,gain_name) if full else (port_idx,speed_idx,gain_idx)
+    def set_readout_mode(self, port_idx=None, speed_idx=None, gain_idx=None):
+        """
+        Set the readout mode.
+
+        Any ``None`` value stays unchanged.
+        """
+        if port_idx is not None:
+            self.set_attribute_value("READOUT_PORT",port_idx,error_on_missing=False)
+        if speed_idx is not None:
+            self.set_attribute_value("SPDTAB_INDEX",speed_idx,error_on_missing=False)
+        if gain_idx is not None:
+            self.set_attribute_value("GAIN_INDEX",gain_idx,error_on_missing=False)
+        return self.get_readout_mode()
 
     def get_device_info(self):
         """
@@ -288,7 +394,7 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         """Get camera pixel distance (in m)"""
         return tuple([self.get_attribute_value(v,error_on_missing=False,default=0)*1E-9 for v in ["PIX_SER_DIST","PIX_PAR_DIST"]])
 
-    def is_metadata_enabled(self, individual=False):
+    def is_metadata_enabled(self):
         """Check if metadata is enabled"""
         return self.get_attribute_value("METADATA_ENABLED",error_on_missing=False,default=False)
     @camera.acqcleared
@@ -316,11 +422,99 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         self._set_min_exp_res()
         self._setup_acquisition(exposure=int(exposure/self._get_exp_res()))
         return self.get_exposure()
+    _p_clear_mode=interface.EnumParameterClass("clear_mode",
+        {   "never":pvcam_defs.PL_CLEAR_MODES.CLEAR_NEVER,
+            "pre_exp":pvcam_defs.PL_CLEAR_MODES.CLEAR_PRE_EXPOSURE,
+            "pre_seq":pvcam_defs.PL_CLEAR_MODES.CLEAR_PRE_SEQUENCE,
+            "post_seq":pvcam_defs.PL_CLEAR_MODES.CLEAR_POST_SEQUENCE,
+            "pre_post_seq":pvcam_defs.PL_CLEAR_MODES.CLEAR_PRE_POST_SEQUENCE,
+            "pre_exp_post_seq":pvcam_defs.PL_CLEAR_MODES.CLEAR_PRE_EXPOSURE_POST_SEQ})
+    @interface.use_parameters(_returns="clear_mode")
+    def get_clear_mode(self):
+        """Get sensor clear mode"""
+        return self.get_attribute_value("CLEAR_MODE",error_on_missing=False,default=pvcam_defs.PL_CLEAR_MODES.CLEAR_NEVER,enum_as_str=False)
+    @interface.use_parameters(mode="clear_mode")
+    def set_clear_mode(self, mode):
+        """Set sensor clear mode"""
+        with self._setting_parameter_attribute("clear_mode"):
+            self.set_attribute_value("CLEAR_MODE",mode,error_on_missing=False)
+        return self.get_clear_mode()
+    def get_clear_cycles(self):
+        """Get sensor clear cycles"""
+        return self.get_attribute_value("CLEAR_CYCLES",error_on_missing=False,default=0)
+    def set_clear_cycles(self, ncycles):
+        """Set sensor clear cycles"""
+        self.set_attribute_value("CLEAR_CYCLES",ncycles,error_on_missing=False)
+        return self.get_clear_cycles()
+    def get_clearing_time(self):
+        """Get sensor clearing time (regardless of the mode)"""
+        if not self.acquisition_in_progress():
+            self._setup_acquisition()
+        return self.get_attribute_value("CLEARING_TIME",error_on_missing=False,default=0)*1E-9
+    def get_readout_time(self, include_clear=True):
+        """
+        Get frame readout time.
+        
+        If ``include_clear==True`` and the clear mode is per-exposure (``"Pre-Exposure"`` or ``"Pre-Exposure and Post-Sequence"``), include it into this time.
+        """
+        ro_time=self.cav["READOUT_TIME"]*1E-6
+        if include_clear and self.get_clear_mode() in ["pre_exp","pre_exp_post_seq"]:
+            ro_time+=self.get_clearing_time()
+        return ro_time
     def get_frame_timings(self):
         exp=self.get_exposure()
-        return self._TAcqTimings(exp,self.cav["READOUT_TIME"]*1E-6+exp)
+        return self._TAcqTimings(exp,exp+self.get_readout_time())
 
-
+    _p_trigger_mode=interface.EnumParameterClass("trigger_mode",
+        {   "timed":pvcam_defs.PL_EXPOSURE_MODES.TIMED_MODE,
+            "strobe":pvcam_defs.PL_EXPOSURE_MODES.STROBED_MODE,
+            "bulb":pvcam_defs.PL_EXPOSURE_MODES.BULB_MODE,
+            "trig_first":pvcam_defs.PL_EXPOSURE_MODES.TRIGGER_FIRST_MODE,
+            "var_timed":pvcam_defs.PL_EXPOSURE_MODES.VARIABLE_TIMED_MODE,
+            "int_strobe":pvcam_defs.PL_EXPOSURE_MODES.INT_STROBE_MODE,
+            "e_int":pvcam_defs.PL_EXPOSURE_MODES.EXT_TRIG_INTERNAL,
+            "e_trig_first":pvcam_defs.PL_EXPOSURE_MODES.EXT_TRIG_TRIG_FIRST,
+            "e_rise_edge":pvcam_defs.PL_EXPOSURE_MODES.EXT_TRIG_EDGE_RISING,
+            "e_level":pvcam_defs.PL_EXPOSURE_MODES.EXT_TRIG_LEVEL,
+            "e_soft_first":pvcam_defs.PL_EXPOSURE_MODES.EXT_TRIG_SOFTWARE_FIRST,
+            "e_soft_edge":pvcam_defs.PL_EXPOSURE_MODES.EXT_TRIG_SOFTWARE_EDGE})
+    _p_trigger_out_mode=interface.EnumParameterClass("trigger_out_mode",
+        {   "first_row":pvcam_defs.PL_EXPOSE_OUT_MODES.EXPOSE_OUT_FIRST_ROW,
+            "all_rows":pvcam_defs.PL_EXPOSE_OUT_MODES.EXPOSE_OUT_ALL_ROWS,
+            "any_row":pvcam_defs.PL_EXPOSE_OUT_MODES.EXPOSE_OUT_ANY_ROW,
+            "rolling_shutter":pvcam_defs.PL_EXPOSE_OUT_MODES.EXPOSE_OUT_ROLLING_SHUTTER,
+            "line_trigger":pvcam_defs.PL_EXPOSE_OUT_MODES.EXPOSE_OUT_LINE_TRIGGER,
+            "global_shutter":pvcam_defs.PL_EXPOSE_OUT_MODES.EXPOSE_OUT_GLOBAL_SHUTTER,
+            None:None})
+    def _get_exposure_mode(self):
+        mode=self.get_attribute_value("EXPOSURE_MODE",error_on_missing=False,default=pvcam_defs.PL_EXPOSURE_MODES.TIMED_MODE,enum_as_str=False)
+        if mode>=0x100: # extended mode; mask exposure-out
+            mode&=0xFF00
+            mode|=self.get_attribute_value("EXPOSE_OUT_MODE",error_on_missing=False,default=pvcam_defs.PL_EXPOSE_OUT_MODES.EXPOSE_OUT_FIRST_ROW,enum_as_str=False)
+        return mode
+    @interface.use_parameters(_returns=("trigger_mode","trigger_out_mode"))
+    def get_trigger_mode(self):
+        """Get trigger mode"""
+        mode=self.get_attribute_value("EXPOSURE_MODE",error_on_missing=False,default=pvcam_defs.PL_EXPOSURE_MODES.TIMED_MODE,enum_as_str=False)
+        if mode>=0x100: # extended mode; mask exposure-out
+            mode&=0xFF00
+            omode=self.get_attribute_value("EXPOSE_OUT_MODE",error_on_missing=False,default=pvcam_defs.PL_EXPOSE_OUT_MODES.EXPOSE_OUT_FIRST_ROW,enum_as_str=False)
+        else:
+            omode=None
+        return (mode,omode)
+    @interface.use_parameters(mode="trigger_mode",out_mode="trigger_out_mode")
+    def set_trigger_mode(self, mode, out_mode=None):
+        """Set trigger mode"""
+        with self._setting_parameter_attribute("trigger_mode"):
+            att=self.ca["EXPOSURE_MODE"]
+            if mode not in att.values:
+                raise PvcamAttributeValueError(att.name,mode,att.values)
+        if mode>=0x100:
+            if out_mode is None:
+                out_mode=self.get_attribute_value("EXPOSE_OUT_MODE",error_on_missing=False,default=pvcam_defs.PL_EXPOSE_OUT_MODES.EXPOSE_OUT_FIRST_ROW,enum_as_str=False)
+            mode|=out_mode
+        self._setup_acquisition(exp_mode=mode)
+        return self.get_trigger_mode()
 
     def _get_data_dimensions_rc(self):
         roi=self.get_roi()
@@ -395,7 +589,7 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         if exposure is None:
             exposure=self.cav["EXPOSURE_TIME"]
         if exp_mode is None:
-            exp_mode=self.get_attribute_value("EXPOSURE_MODE",enum_as_str=False)
+            exp_mode=self._get_exposure_mode()
         r0,r1,c0,c1,rb,cb=roi
         return lib.pl_exp_setup_cont(self.handle,[(r0,r1-1,rb,c0,c1-1,cb)],exp_mode,exposure,pvcam_defs.PL_CIRC_MODES.CIRC_OVERWRITE) # TODO: snap mode
 
@@ -473,7 +667,7 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
             ptr+=byte_size+roi_header.extendedMdSize
             rois.append((roi_header,frame))
         return header,rois
-    def _md_to_frame_info(self, header, roi_header, frame_index):
+    def _md_to_frame_info(self, header, roi_header, frame_index):  # pylint: disable=unused-argument
         if header.version<3:
             timestamp_start_ns=int(header.timestampBOF)*int(header.timestampResNs)
             timestamp_end_ns=int(header.timestampEOF)*int(header.timestampResNs)

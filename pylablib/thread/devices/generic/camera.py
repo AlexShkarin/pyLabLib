@@ -176,9 +176,11 @@ class GenericCameraThread(device_thread.DeviceThread):
         else:
             return dictionary.Dictionary()
     def _get_aux_full_info(self):
+        aux_info=super()._get_aux_full_info()
         if self.device:
             if hasattr(self.device,"ca"):
-                return {"attribute_desc":self.device.ca[""]}
+                aux_info.update({"attribute_desc":self.device.ca[""]})
+        return aux_info
 
     def _reset_frame_counters(self):
         self.v["frames/acquired"]=0
