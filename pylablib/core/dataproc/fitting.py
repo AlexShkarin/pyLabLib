@@ -193,11 +193,11 @@ class Fitter:
         filtered_fit_paremeters=general_utils.filter_dict(fixed_parameters,self.fit_parameters,exclude=True) # to ensure self.fit_parameters < fixed_parameters
         fit_parameters=general_utils.merge_dicts(filtered_fit_paremeters,fit_parameters)
         fixed_parameters=general_utils.merge_dicts(self.fixed_parameters,fixed_parameters)
-        if scale=="default":
+        if isinstance(scale,str) and scale=="default":
             scale=self._default_scale
-        if limits=="default":
+        if isinstance(limits,str) and limits=="default":
             limits=self._default_limits
-        if weights=="default":
+        if isinstance(weights,str) and weights=="default":
             weights=self._default_weights
         unaccounted_parameters=self._get_unaccounted_parameters(fixed_parameters,fit_parameters)
         if len(unaccounted_parameters)>0:

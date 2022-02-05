@@ -257,6 +257,7 @@ def latching_trigger(wf, threshold_on, threshold_off, init_state="undef", result
     """
     if threshold_off>threshold_on:
         raise ValueError("the off threshold level should be below the on threshold level")
+    wf=np.asarray(wf)
     trace_pos=wf>threshold_on
     trace_rise=trace_pos[1:]&(~trace_pos[:-1])
     trace_neg=wf<threshold_off
