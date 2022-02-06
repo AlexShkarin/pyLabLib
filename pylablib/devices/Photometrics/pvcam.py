@@ -196,7 +196,6 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
     Error=PvcamError
     TimeoutError=PvcamTimeoutError
     _TFrameInfo=TFrameInfo
-    _frameinfo_fields=TFrameInfo._fields
     _clear_pausing_acquisition=True
     def __init__(self, name=None):
         super().__init__()
@@ -630,75 +629,70 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         return frame_info.FrameNr
     
 
-
+    _support_chunks=True
     def _get_frame_params(self):
         bypp=(self.cav["BIT_DEPTH"]-1)//8+1
         shape=self._get_data_dimensions_rc()
         return shape,bypp
-    def _parse_frame(self, ptr, shape, bypp):
-        height,width=shape
-        imsize=height*width*bypp
-        img=np.ctypeslib.as_array(ctypes.cast(ptr,ctypes.POINTER(ctypes.c_ubyte)),shape=(imsize,))
+    def _parse_frames_data(self, ptr, nframes, shape, bypp, off=0):
+        stride=self._frame_bytes
+        buffer=np.ctypeslib.as_array(ctypes.cast(ptr,ctypes.POINTER(ctypes.c_ubyte)),shape=(stride*nframes,))
+        size=shape[0]*shape[1]*bypp
         dtype="<u{}".format(bypp)
-        img=img.view(dtype).reshape((height,width)).copy()
-        img=self._convert_indexing(img,"rct")
-        return img
-    def _parse_md_frame(self, ptr):
-        pheader=ctypes.cast(ptr,pvcam_defs.Pmd_frame_header)
-        if pheader.contents.version==3:
-            pheader=ctypes.cast(ptr,pvcam_defs.Pmd_frame_header_v3)
-        header=pheader.contents
-        ptr+=ctypes.sizeof(header)
-        ptr+=header.extendedMdSize  # skip extended metadata
-        rois=[]
-        bypp=(header.bitDepth-1)//8+1
-        for _ in range(header.roiCount):
-            proi_header=ctypes.cast(ptr,pvcam_defs.Pmd_frame_roi_header)
-            roi_header=proi_header.contents
-            rgn=roi_header.roi
-            rgn_shape=(rgn.p2-rgn.p1+1)//rgn.pbin,(rgn.s2-rgn.s1+1)//rgn.sbin
-            byte_size=rgn_shape[0]*rgn_shape[1]*bypp
-            if header.version>1:
-                header_byte_size=roi_header.roiDataSize
-                if byte_size!=header_byte_size:
-                    raise PvcamError("received frame size {} does not agree with {}x{}x{}={} size from the header".format(header_byte_size,rgn_shape[0],rgn_shape[1],bypp,byte_size))
-            ptr+=ctypes.sizeof(pvcam_defs.md_frame_roi_header)
-            frame=self._parse_frame(ptr,rgn_shape,bypp)
-            ptr+=byte_size+roi_header.extendedMdSize
-            rois.append((roi_header,frame))
-        return header,rois
-    def _md_to_frame_info(self, header, roi_header, frame_index):  # pylint: disable=unused-argument
-        if header.version<3:
-            timestamp_start_ns=int(header.timestampBOF)*int(header.timestampResNs)
-            timestamp_end_ns=int(header.timestampEOF)*int(header.timestampResNs)
-            exposure_ns=int(header.exposureTime)*int(header.exposureTimeResNs)
+        if size==stride:
+            framedata=buffer.copy()
         else:
-            timestamp_start_ns=int(header.timestampBOF)//1000
-            timestamp_end_ns=int(header.timestampEOF)//1000
-            exposure_ns=int(header.exposureTime)//1000
-        flags=header.flags
-        framestamp=header.frameNr
-        return self._convert_frame_info(TFrameInfo(frame_index,timestamp_start_ns,timestamp_end_ns,framestamp,flags,exposure_ns))
-    def _parse_md_frame_info(self, ptr, frame_index):
-        header,rois=self._parse_md_frame(ptr)
-        return rois[0][1],self._md_to_frame_info(header,rois[0][0],frame_index)
+            framedata=np.empty(nframes*size,dtype="u1")
+            copy_strided(buffer,framedata,nframes,size,stride,off=off)
+        frames=framedata.view(dtype).reshape((nframes,)+shape)
+        frames=self._convert_indexing(frames,"rct",axes=(1,2))
+        return frames
+    def _parse_md_frames_data(self, ptr, nframes, start_index):
+        stride=self._frame_bytes
+        buffer=np.ctypeslib.as_array(ctypes.cast(ptr,ctypes.POINTER(ctypes.c_ubyte)),shape=(stride*nframes,))
+        roi_info=get_roi_parameters(buffer)
+        off=roi_info[0,0]
+        bypp=roi_info[0,1]
+        shape=tuple(roi_info[0,2:4])
+        frames=self._parse_frames_data(ptr,nframes,shape,bypp,off=off)
+        v3=buffer[4]>=3
+        metainfo=parse_metainfo_v3(buffer,nframes,stride) if v3 else parse_metainfo_v1(buffer,nframes,stride)
+        return frames,self._md_to_frame_info(metainfo,start_index,v3=v3)
+    def _md_to_frame_info(self, metainfo, start_index, v3=False):
+        if v3:
+            timestamp_start_ns=metainfo[:,1]//1000
+            timestamp_end_ns=metainfo[:,2]//1000
+            exposure_ns=metainfo[:,3]//1000
+        else:
+            timestamp_start_ns=metainfo[:,1].astype("u8")*metainfo[:,3]
+            timestamp_end_ns=metainfo[:,1].astype("u8")*metainfo[:,3]
+            exposure_ns=metainfo[:,4].astype("u8")*metainfo[:,5]
+        frame_indices=np.arange(len(metainfo),dtype=timestamp_start_ns.dtype)+start_index
+        return np.column_stack((frame_indices,timestamp_start_ns,timestamp_end_ns,metainfo[:,0],metainfo[:,-1],exposure_ns)).astype("i8")
     def _read_frames(self, rng, return_info=False):
         shape,bypp=self._get_frame_params()
         base=ctypes.addressof(self._buffer)
+        start=rng[0]%self._buffer_frames
+        stop=start+(rng[1]-rng[0])
+        if stop<=self._buffer_frames:
+            chunks=[(rng[0],start,stop-start)]
+        else:
+            l0=self._buffer_frames-start
+            chunks=[(rng[0],start,l0),(rng[0]+l0,0,stop-start-l0)]
         if self.is_metadata_enabled():
-            data=[self._parse_md_frame_info(base+(i%self._buffer_frames)*self._frame_bytes,i) for i in range(*rng)]
+            data=[self._parse_md_frames_data(base+s*self._frame_bytes,l,idx) for (idx,s,l) in chunks]
             frames=[f for f,_ in data]
             frame_info=[i for _,i in data]
         else:
-            frames=[self._parse_frame(base+(i%self._buffer_frames)*self._frame_bytes,shape,bypp=bypp) for i in range(*rng)]
-            frame_info=[None]*len(frames)
+            frames=[self._parse_frames_data(base+s*self._frame_bytes,l,shape,bypp) for (_,s,l) in chunks]
+            frame_info=None
         return frames,frame_info
     def _zero_frame(self, n):
         dim=self.get_data_dimensions()
         _,bypp=self._get_frame_params()
         dt="<u{}".format(bypp)
         return np.zeros((n,)+dim,dtype=dt)
-    def read_multiple_images(self, rng=None, peek=False, missing_frame="skip", return_info=False):
+    def read_multiple_images(self, rng=None, peek=False, missing_frame="skip", return_info=False, return_rng=False):
         """
         Read multiple images specified by `rng` (by default, all un-read images).
 
@@ -710,22 +704,114 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         If ``return_info==True``, return tuple ``(frames, infos)``, where ``infos`` is a list of :class:`TFrameInfo` instances
         describing frame index and frame metadata, which contains start and stop timestamps, framestamp, frame flags, and exposure;
         if some frames are missing and ``missing_frame!="skip"``, the corresponding frame info is ``None``.
+        if ``return_rng==True``, return the range covered resulting frames; if ``missing_frame=="skip"``, the range can be smaller
+        than the supplied `rng` if some frames are skipped.
         """
-        return super().read_multiple_images(rng=rng,peek=peek,missing_frame=missing_frame,return_info=return_info)
+        return super().read_multiple_images(rng=rng,peek=peek,missing_frame=missing_frame,return_info=return_info,return_rng=return_rng)
 
 
 
 
+u1_1_C=nb.types.Array(nb.u1,1,"C")
+u1_1_RC=nb.types.Array(nb.u1,1,"C",readonly=True)
 
-@nb.njit
-def copy_strided(src, dst, n, size, stride):
-    ipos=nb.uint64(0)
-    opos=nb.uint64(0)
+@nb.njit(nb.void(u1_1_RC,u1_1_C,nb.u8,nb.u8,nb.u8,nb.u8))
+def copy_strided(src, dst, n, size, stride, off=0):
+    opos=nb.u8(0)
     n=nb.uint64(n)
     size=nb.uint64(size)
     stride=nb.uint64(stride)
     for _ in range(n):
         for p in range(size):
-            dst[opos+p]=src[ipos+p]
+            dst[opos+p]=src[off+p]
         opos+=size
-        ipos+=stride
+        off+=stride
+
+@nb.njit(nb.u2(u1_1_RC,nb.u8))
+def au2(x, off):
+    """Extract a little-endian 2-byte unsigned integer from a numpy byte array at the given offset"""
+    return nb.u2((x[off+1]<<8)+x[off+0])
+@nb.njit(nb.u4(u1_1_RC,nb.u8))
+def au4(x, off):
+    """Extract a little-endian 4-byte unsigned integer from a numpy byte array at the given offset"""
+    return nb.u4((x[off+3]<<24)+(x[off+2]<<16)+(x[off+1]<<8)+x[off+0])
+@nb.njit(nb.u8(u1_1_RC,nb.u8))
+def au8(x, off):
+    """Extract a little-endian 8-byte unsigned integer from a numpy byte array at the given offset"""
+    return nb.u8((x[off+7]<<56)+(x[off+6]<<48)+(x[off+5]<<40)+(x[off+4]<<32)+(x[off+3]<<24)+(x[off+2]<<16)+(x[off+1]<<8)+x[off+0])
+
+def _get_img_size(buffer, roi_off):
+    s1=au2(buffer,roi_off+10)
+    s2=au2(buffer,roi_off+12)
+    sbin=au2(buffer,roi_off+14)
+    ssz=(s2-s1+1)//sbin
+    p1=au2(buffer,roi_off+16)
+    p2=au2(buffer,roi_off+18)
+    pbin=au2(buffer,roi_off+20)
+    psz=(p2-p1+1)//pbin
+    return np.array([ssz,psz])
+def get_roi_parameters(buffer):
+    """
+    Extract ROI parameters from the buffer.
+    
+    `buffer` is the buffer represented as bytes numpy byte array.
+    Return numpy array with one row per ROI and 4 columns:
+    data offset from the frame start, data bytes per pixel, ROI height, and ROI width.
+    """
+    nrois=au2(buffer,9)
+    roi_data=np.empty((nrois,4),dtype="u4")
+    bypp=(buffer[35]-1)//8+1
+    roi_off=48+au2(buffer,38)
+    for i in range(nrois):
+        ssz,psz=_get_img_size(buffer,roi_off)
+        resize=au2(buffer,roi_off+23)
+        roi_data[i,0]=roi_off+32
+        roi_data[i,1]=bypp
+        roi_data[i,2]=psz
+        roi_data[i,3]=ssz
+        imbytes=ssz*psz*bypp
+        roi_off=32+resize+imbytes
+    return roi_data
+@nb.njit(nb.u4[:,:](u1_1_RC,nb.u8,nb.u8))
+def parse_metainfo_v1(buffer, nframes, stride):
+    """
+    Extract frames metainfo for frames with v1 or v2 header.
+
+    `buffer` is the buffer represented as bytes numpy byte array, `nframes` is the number of frames in it,
+    and `stride` is the frame stride (in bytes).
+
+    Return a 2D array with `nframes` rows and 7 columns:
+    ``framestamp, timestampBOF, timestampEOF, timestampRes, exposure, exposureRes, flags``.
+    """
+    p=nb.u8(0)
+    metainfo=np.empty((nframes,7),dtype=nb.u4)
+    for f in range(nframes):
+        i=0
+        for o in [5,11,15,19,23,27]:
+            metainfo[f,i]=au4(buffer,p+o)
+            i+=1
+        metainfo[f,6]=buffer[p+37]
+        p+=stride
+    return metainfo
+@nb.njit(nb.u8[:,:](u1_1_RC,nb.u8,nb.u8))
+def parse_metainfo_v3(buffer, nframes, stride):
+    """
+    Extract frames metainfo for frames with v3 header.
+
+    `buffer` is the buffer represented as bytes numpy byte array, `nframes` is the number of frames in it,
+    and `stride` is the frame stride (in bytes).
+
+    Return a 2D array with `nframes` rows and 5 columns:
+    ``framestamp, timestampBOF, timestampEOF, exposure, flags``.
+    """
+    p=nb.u8(0)
+    metainfo=np.empty((nframes,5),dtype=nb.u8)
+    for f in range(nframes):
+        metainfo[f,0]=au4(buffer,p+5)
+        i=1
+        for o in [11,19,27]:
+            metainfo[f,i]=au8(buffer,p+o)
+            i+=1
+        metainfo[f,4]=buffer[p+37]
+        p+=stride
+    return metainfo

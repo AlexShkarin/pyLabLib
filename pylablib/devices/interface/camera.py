@@ -40,6 +40,8 @@ class ICamera(interface.IDevice):
         self._frame_counter=FrameCounter()
         self._image_indexing=self._default_image_indexing
         self._frame_format=self._default_frame_format
+        if self._frameinfo_fields is None:
+            self._frameinfo_fields=self._TFrameInfo._fields
         self._frameinfo_format=self._default_frameinfo_format
         self._frameinfo_include_fields=None
         self._frameinfo_fields_mask=None
@@ -279,35 +281,67 @@ class ICamera(interface.IDevice):
         """
         Get format for the returned images.
 
-        Can be ``"list"`` (list of 2D arrays, or 3D array for some ``fastbuff`` cameras), ``"array"`` (a single 3D array).
+        Can be ``"list"`` (list of 2D arrays), ``"array"`` (a single 3D array),
+        or ``"chunks"`` (list of 3D "chunk" arrays; supported for some cameras and provides the best performance).
         """
         return self._frame_format
-    _p_frame_format=interface.EnumParameterClass("frame_format",["list","array"])
+    _support_chunks=False
+    _p_frame_format=interface.EnumParameterClass("frame_format",["list","array","chunks","try_chunks"])
     @interface.use_parameters(fmt="frame_format")
     def set_frame_format(self, fmt):
         """
         Set format for the returned images.
 
-        Can be ``"list"`` (list of 2D arrays, or 3D array for some ``fastbuff`` cameras), ``"array"`` (a single 3D array).
-        Note that if the format is set to ``"array"``, the frame info format is also automatically set to ``"array"``.
+        Can be ``"list"`` (list of 2D arrays), ``"array"`` (a single 3D array),
+        ``"chunks"`` (list of 3D "chunk" arrays; supported for some cameras and provides the best performance),
+        or ``"try_chunks"`` (same as ``"chunks"``, but if chunks are not supported, set to ``"list"`` instead).
+        If format is ``"chunks"`` and chunks are not supported by the camera, it results in one frame per chunk.
+        Note that if the format is set to ``"array"`` or ``"chunks"``, the frame info format is also automatically set to ``"array"``.
+        If the format is set to ``"chunks"``, then the image info is also returned in chunks form (list of 2D info arrays with the same length oas the correpsonding frame chunks).
         """
+        if fmt=="try_chunks":
+            fmt="chunks" if self._support_chunks else "list"
         self._frame_format=fmt
-        if fmt=="array":
+        if fmt in ["array","chunks"]:
             self.set_frame_info_format("array")
         return self._frame_format
-    def _convert_frame_format(self, frames, info=None, fmt=None):
-        """Convert frames format from the given form to the resulting format"""
-        if fmt is None:
-            fmt=self._frame_format
-        if info is not None and fmt=="array":
-            if isinstance(info,list):
-                info=np.array(info) if info[0].ndim==1 else np.concatenate(info,axis=0)
-        if isinstance(frames,list):
-            if fmt=="array":
-                frames=np.array(frames) if frames[0].ndim==2 else np.concatenate(frames,axis=0)
-        if isinstance(frames,np.ndarray):
-            if fmt=="list":
-                frames=list(frames)
+    def _convert_frame_format(self, frames, info=None):
+        """
+        Convert frames and info into the currently specified format.
+
+        `frames` can be a list of 3D chunks or a list of 2D frames.
+        `info` can be ``None``, a list of single entries (named tuples or ``None``), or a list of 2D chunks.
+        If `info` is not ``None``, its length should agree with `frames`.
+        """
+        if self._frame_format=="chunks":
+            if frames and frames[0].ndim==2:
+                frames=[ch[None,:,:] for ch in frames]
+            if info is not None:
+                if info:
+                    if not isinstance(info[0],np.ndarray):
+                        info=[self._convert_frame_info(i)[None,:] for i in info]
+                    elif info[0].ndim==1:
+                        info=[i[None,:] for i in info]
+                if len(info)!=len(frames) or not all(len(i)==len(f) for i,f in zip(info,frames)):
+                    fullinfo=np.concatenate(info,axis=0) if len(info)>1 else info[0]
+                    info=_split_chunks_array(fullinfo,frames)
+        elif self._frame_format=="list":
+            if frames and frames[0].ndim!=2:
+                frames=[f for ch in frames for f in ch]
+            if info is not None:
+                if info and isinstance(info[0],np.ndarray) and info[0].ndim==2:
+                    info=[l for i in info for l in i]
+                if len(frames)!=len(info):
+                    raise ValueError("frames and infos have different lengths: {} and {}".format(len(frames),len(info)))
+                info=[self._convert_frame_info(i) for i in info]
+        else:
+            frames=np.array(frames) if frames and frames[0].ndim==2 else np.concatenate(frames,axis=0)
+            if info is not None:
+                if info and not isinstance(info[0],np.ndarray):
+                    info=[self._convert_frame_info(i) for i in info]
+                info=np.array(info) if info and info[0].ndim==1 else np.concatenate(info,axis=0)
+                if len(frames)!=len(info):
+                    raise ValueError("frames and infos have different lengths: {} and {}".format(len(frames),len(info)))
         return frames,info
     
     def get_frame_info_format(self):
@@ -316,7 +350,7 @@ class ICamera(interface.IDevice):
 
         Can be ``"namedtuple"`` (potentially nested named tuples; convenient to get particular values),
         ``"list"`` (flat list of values, with field names are given by :meth:`get_frame_info_fields`; convenient for building a table),
-        ``"array"`` (same as ``"list"``, but with a numpy array, which is easier to use for ``fastbuff`` readout supported by some cameras),
+        ``"array"`` (same as ``"list"``, but with a numpy array, which is easier to use for ``"chunks"`` frame format),
         or ``"dict"`` (flat dictionary with the same fields as the ``"list"`` format; more resilient to future format changes)
         """
         return self._frameinfo_format
@@ -328,9 +362,10 @@ class ICamera(interface.IDevice):
 
         Can be ``"namedtuple"`` (potentially nested named tuples; convenient to get particular values),
         ``"list"`` (flat list of values, with field names are given by :meth:`get_frame_info_fields`; convenient for building a table),
-        ``"array"`` (same as ``"list"``, but with a numpy array, which is easier to use for ``fastbuff`` readout supported by some cameras),
+        ``"array"`` (same as ``"list"``, but with a numpy array, which is easier to use for ``"chunks"`` frame format),
         or ``"dict"`` (flat dictionary with the same fields as the ``"list"`` format; more resilient to future format changes)
-        If `include_fields` is not ``None``, it specifies the fields included for non-``"tuple"`` formats.
+        If `include_fields` is not ``None``, it specifies the fields included for non-``"tuple"`` formats;
+        note that order or `include_fields` is ignored, and the resulting fields are always ordered same as in the original.
         """
         if self.get_frame_format()=="array":
             fmt="array"
@@ -374,25 +409,65 @@ class ICamera(interface.IDevice):
         if self._frameinfo_include_fields is not None:
             return list(self._frameinfo_include_fields)
         return list(self._frameinfo_fields)
-    def _convert_frame_info(self, info, fmt=None):
-        if fmt is None:
-            fmt=self._frameinfo_format
+    def _frame_info_to_namedtuple(self, info):
+        """Convert frame info array row into the named tuple format"""
+        return self._TFrameInfo(*info)
+    def _convert_frame_info(self, info):
+        """Convert a single frame info element (``None``, named tuple or array) into the current format"""
+        if info is None:
+            return self._empty_frame_info(1,"array")[0] if self._frameinfo_format=="array" else None
         fields=self._frameinfo_fields if self._frameinfo_include_fields is None else self._frameinfo_include_fields
-        if info is None or info[0]<0:
-            return np.zeros(len(fields))-1 if fmt=="array" else None
-        if fmt=="namedtuple":
-            return info
-        info=general_utils.flatten_list(info)
-        if self._frameinfo_include_fields is not None:
-            info=[v for v,inc in zip(info,self._frameinfo_fields_mask) if inc]
-        if fmt=="list":
-            return list(info)
+        if isinstance(info,np.ndarray):
+            if self._frameinfo_format=="array":
+                return info if self._frameinfo_include_fields is None else info[self._frameinfo_fields_mask]
+            if info[0]<0:
+                return None
+            if len(info)>1 and info[1]<0:
+                info=[info[0]]+[None]*(len(info)-1)
+            if self._frameinfo_format=="namedtuple":
+                return self._frame_info_to_namedtuple(info)
+            if self._frameinfo_include_fields is not None:
+                info=[v for v,inc in zip(info,self._frameinfo_fields_mask) if inc]
+            else:
+                info=list(info)
+            if self._frameinfo_format=="list":
+                return info
+            return dict(zip(fields,info))
+        if isinstance(info,tuple):
+            if self._frameinfo_format=="namedtuple":
+                return info
+            info=general_utils.flatten_list(info)
+            if self._frameinfo_include_fields is not None:
+                info=[v for v,inc in zip(info,self._frameinfo_fields_mask) if inc]
+            if self._frameinfo_format=="list":
+                return list(info)
+            if self._frameinfo_format=="array":
+                info=list(info)
+                return np.array(list(info))
+            return dict(zip(fields,info))
+    def _default_frame_info(self, idx, fmt):
+        """Create a default frame info array with the given frame indices and format"""
         if fmt=="array":
-            arr=np.array(list(info))
-            if arr.ndim==2:
-                arr=arr.T
-            return arr
-        return dict(zip(fields,info))
+            ncols=len(self._frameinfo_include_fields) if self._frameinfo_include_fields is not None else len(self._frameinfo_fields)
+            if self._frameinfo_include_fields is None or self._frameinfo_fields_mask[0]:
+                info=np.array(idx,dtype="i4")[:,None]
+                if ncols>1:
+                    info=np.pad(info,((0,0),(0,ncols-1)),constant_values=-1)
+            else:
+                info=np.zeros((len(idx),ncols),dtype="i4")-1
+        else:
+            if len(self._frameinfo_fields)==1:
+                info=[self._TFrameInfo(i) for i in idx]
+            else:
+                add=[None]*(len(self._frameinfo_fields)-1)
+                info=[self._frame_info_to_namedtuple([i]+add) for i in idx]
+        return info
+    def _empty_frame_info(self, n, fmt):
+        """Create an empty frame info array with the given length and format"""
+        if fmt=="array":
+            ncols=len(self._frameinfo_include_fields) if self._frameinfo_include_fields is not None else len(self._frameinfo_fields)
+            return np.zeros((n,ncols),dtype="i4")-1
+        return [None]*n
 
     def get_new_images_range(self):
         """
@@ -428,17 +503,21 @@ class ICamera(interface.IDevice):
         
         The range is always a tuple with at least a single frame in it, and is guaranteed to already be valid.
         Always return tuple ``(frames, infos)``; if ``return_info==False``, ``infos`` value is ignored, so it can be anything (e.g., ``None``).
+
+        Frames are either in "chunk" format (list of 3D array chunks) or "list" format (list of 2D array frames);
+        Infos are in "chunk" format (list of 2D info chunks), "list" format (list of named tuples or ``None``),
+        or ``None`` (when not used, or info is not available; filled with default if necessary).
         """
-        return [],[]
+        return [],None
     def _zero_frame(self, n):
         """Return `n` zero frames (as a list or 3D numpy array) for padding the :meth:`read_multiple_images` output when ``missing_frame=="zero"``"""
         return np.zeros((n,)+self.get_data_dimensions(),dtype=self._default_image_dtype)
     _TFrameInfo=TFrameInfo
-    _frameinfo_fields=TFrameInfo._fields
+    _frameinfo_fields=None
     _adjustable_frameinfo_period=False
     _p_missing_frame=interface.EnumParameterClass("missing_frame",["none","zero","skip"])
     @interface.use_parameters
-    def read_multiple_images(self, rng=None, peek=False, missing_frame="skip", return_info=False):
+    def read_multiple_images(self, rng=None, peek=False, missing_frame="skip", return_info=False, return_rng=False):
         """
         Read multiple images specified by `rng` (by default, all un-read images).
 
@@ -449,22 +528,46 @@ class ICamera(interface.IDevice):
         can be ``"none"`` (replacing them with ``None``), ``"zero"`` (replacing them with zero-filled frame), or ``"skip"`` (skipping them).
         If ``return_info==True``, return tuple ``(frames, infos)``, where ``infos`` is a list of frame info tuples (camera-dependent, by default, only the frame index);
         if some frames are missing and ``missing_frame!="skip"``, the corresponding frame info is ``None``.
+        if ``return_rng==True``, return the range covered resulting frames; if ``missing_frame=="skip"``, the range can be smaller
+        than the supplied `rng` if some frames are skipped.
         """
-        rng,skipped_frames=self._trim_images_range(rng)
-        if rng is None:
-            return (None,None) if return_info else None
+        if missing_frame=="none" and self._frame_format!="list":
+            raise ValueError("'none' missing frames mode is only supported for 'list' file format; current format is {}".format(self._frame_format))
+        rng=self._trim_images_range(rng)
+        if rng is None or rng[0] is None:
+            result=tuple([None for inc in [True,return_info,return_rng] if inc])
+            return result[0] if len(result)==1 else result
+        rng,skipped_frames=rng
         images,info=self._read_frames(rng,return_info=return_info)
+        chunks=images and images[0].ndim==3
+        if return_info and info is None:
+            if chunks:
+                info=[self._default_frame_info(range(s,e),"array") for s,e in _split_chunk_ranges(rng,images)]
+            else:
+                info=list(self._default_frame_info(range(*rng),self._frameinfo_format))
         if skipped_frames and missing_frame!="skip":
             if missing_frame=="zero":
-                images=list(self._zero_frame(skipped_frames))+images
+                zero_frame=self._zero_frame(skipped_frames)
+                images=([zero_frame] if chunks else list(zero_frame))+images
             else:
                 images=[None]*skipped_frames+images
             if return_info:
-                info=[None]*skipped_frames+info
+                if not info:
+                    info=self._empty_frame_info(skipped_frames,self._frameinfo_format)
+                elif isinstance(info[0],np.ndarray):
+                    info=[self._empty_frame_info(skipped_frames,"array")]+info
+                else:
+                    info=self._empty_frame_info(skipped_frames,"list")+info
         if not peek:
             self._frame_counter.advance_read_frames(rng)
-        images,info=self._convert_frame_format(images,info)
-        return (images,info) if return_info else images
+        images,info=self._convert_frame_format(images,(info if return_info else None))
+        rrng=rng if missing_frame=="skip" else (rng[0]-skipped_frames,rng[1])
+        result=(images,)
+        if return_info:
+            result=result+(info,)
+        if return_rng:
+            result=result+(rrng,)
+        return result[0] if len(result)==1 else result
     def read_oldest_image(self, peek=False, return_info=False):
         """
         Read the oldest un-read image.
@@ -509,7 +612,7 @@ class ICamera(interface.IDevice):
             return {"nframes":nframes,"mode":"snap"}
         else:
             return {"nframes":buff_size,"mode":"sequence"}
-    def grab(self, nframes=1, frame_timeout=5., missing_frame="none", return_info=False, buff_size=None):
+    def grab(self, nframes=1, frame_timeout=5., missing_frame="skip", return_info=False, buff_size=None):
         """
         Snap `nframes` images (with preset image read mode parameters)
         
@@ -521,28 +624,37 @@ class ICamera(interface.IDevice):
         If ``return_info==True``, return tuple ``(frames, infos)``, where ``infos`` is a list of frame info tuples (camera-dependent);
         if some frames are missing and ``missing_frame!="skip"``, the corresponding frame info is ``None``.
         """
+        if self.get_frame_format()=="array":
+            try:
+                self.set_frame_format("chunks")
+                result=self.grab(nframes=nframes,frame_timeout=frame_timeout,missing_frame=missing_frame,return_info=return_info,buff_size=buff_size)
+                return tuple(np.concatenate(r,axis=0) for r in result)
+            finally:
+                self.set_frame_format("array")
         acq_params=self._get_grab_acquisition_parameters(nframes,buff_size)
-        frames,info=[],[]
+        frames,info,nacq=[],[],0
         self.start_acquisition(**acq_params)
         try:
-            while len(frames)<nframes:
+            while nacq<nframes:
                 self.wait_for_frame(timeout=frame_timeout)
                 if return_info:
-                    new_frames,new_info=self.read_multiple_images(missing_frame=missing_frame,return_info=True)
-                    frames+=new_frames
+                    new_frames,new_info,rng=self.read_multiple_images(missing_frame=missing_frame,return_info=True,return_rng=True)
                     info+=new_info
                 else:
-                    frames+=self.read_multiple_images(missing_frame=missing_frame,return_info=False)
-            return (frames[:nframes],info[:nframes]) if return_info else frames[:nframes]
+                    new_frames,rng=self.read_multiple_images(missing_frame=missing_frame,return_rng=True)
+                frames+=new_frames
+                nacq+=rng[1]-rng[0]
+            frames,info=trim_frames(frames,nframes,(info if return_info else None))
+            return (frames,info) if return_info else frames
         finally:
             self.stop_acquisition()
     def snap(self, timeout=5., return_info=False):
         """Snap a single frame"""
         res=self.grab(frame_timeout=timeout,return_info=return_info)
         if return_info:
-            return res[0][0],res[1][0]
+            return _first_frame(*res)
         else:
-            return res[0]
+            return _first_frame(res)[0]
 
 
 
@@ -577,6 +689,40 @@ def acqcleared(*args, **kwargs):
 
 
 
+def _split_chunk_ranges(rng, frames):
+    chacc=np.cumsum([len(f) for f in frames])
+    starts=np.concatenate(([0],chacc[:-1]))+rng[0]
+    ends=chacc+rng[0]
+    if ends[-1]!=rng[1]:
+        raise ValueError("supplied range size {} does not agree with the sum of chunks {}".format(rng[1]-rng[0],ends[-1]-rng[0]))
+    return np.column_stack((starts,ends))
+def _split_chunks_array(a, frames):
+    return [a[s:e] for s,e in _split_chunk_ranges((0,len(frames)),frames)]
+def _first_frame(frames, info=None):
+    if isinstance(frames,list) and frames and frames[0].ndim==3:
+        f=frames[0][0]
+        i=info[0][0] if info is not None else None
+    else:
+        f=frames[0]
+        i=info[0] if info is not None else None
+    return f,i
+def _trim_chunks_list(lst, l):
+    trimmed=[]
+    for ch in lst:
+        trimmed.append(ch[:l])
+        l-=len(trimmed[-1])
+        if not l:
+            break
+    return trimmed
+def trim_frames(frames, l, info=None):
+    """Trim frames in different formats to the desired length"""
+    if isinstance(frames,list) and frames and frames[0].ndim==3:
+        frames=_trim_chunks_list(frames,l)
+        info=_trim_chunks_list(info,l) if info is not None else None
+    else:
+        frames=frames[:l]
+        info=info[:l] if info is not None else None
+    return frames,info
 
 
 class FrameCounter:

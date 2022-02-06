@@ -272,7 +272,6 @@ class PicamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
     Error=PicamError
     TimeoutError=PicamTimeoutError
     _TFrameInfo=TFrameInfo
-    _frameinfo_fields=TFrameInfo._fields
     def __init__(self, serial_number=None):
         super().__init__()
         self.serial_number=serial_number
@@ -562,13 +561,15 @@ class PicamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         base=ctypes.addressof(self._buffer)
         bpp=(self.cav["Pixel Bit Depth"]-1)//8+1
         data=[self._parse_frame(base+(i%self._buffer_frames)*self._frame_bytes,shape,bpp=bpp,metadata_sizes=metadata_sizes) for i in range(*rng)]
-        return [d[0] for d in data],[self._convert_frame_info(TFrameInfo(n,*d[1])) if d[1] else None for (n,d) in zip(range(*rng),data)]
+        frames=[d[0] for d in data]
+        frame_info=[TFrameInfo(n,*d[1]) for (n,d) in zip(range(*rng),data)] if metadata_sizes is not None else None
+        return frames,frame_info
     def _zero_frame(self, n):
         dim=self.get_data_dimensions()
         bpp=(self.cav["Pixel Bit Depth"]-1)//8+1
         dt="<u{}".format(bpp)
         return np.zeros((n,)+dim,dtype=dt)
-    def read_multiple_images(self, rng=None, peek=False, missing_frame="skip", return_info=False):
+    def read_multiple_images(self, rng=None, peek=False, missing_frame="skip", return_info=False, return_rng=False):
         """
         Read multiple images specified by `rng` (by default, all un-read images).
 
@@ -580,5 +581,7 @@ class PicamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         If ``return_info==True``, return tuple ``(frames, infos)``, where ``infos`` is a list of :class:`TFrameInfo` instances
         describing frame index and frame metadata, which contains start and stop timestamps, and framestamp;
         if some frames are missing and ``missing_frame!="skip"``, the corresponding frame info is ``None``.
+        if ``return_rng==True``, return the range covered resulting frames; if ``missing_frame=="skip"``, the range can be smaller
+        than the supplied `rng` if some frames are skipped.
         """
-        return super().read_multiple_images(rng=rng,peek=peek,missing_frame=missing_frame,return_info=return_info)
+        return super().read_multiple_images(rng=rng,peek=peek,missing_frame=missing_frame,return_info=return_info,return_rng=return_rng)

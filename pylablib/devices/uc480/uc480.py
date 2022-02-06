@@ -596,6 +596,8 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         return (roi[3]-roi[2])//roi[5],(roi[1]-roi[0])//roi[4]
 
     
+    def _frame_info_to_namedtuple(self, info):
+        return self._TFrameInfo(info[0],info[1],TTimestamp(*info[2:9]),info[9],camera.TFrameSize(*info[10:12]),*info[12:14])
     _np_dtypes={8:"u1",16:"<u2",32:"<u4"}
     def _read_buffer(self, n, return_info=False, nchan=None):
         buff,dim,bpp=self._buffers[(n-self._buff_offset)%len(self._buffers)]
@@ -611,7 +613,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
             ts=TTimestamp(ts.wYear,ts.wMonth,ts.wDay,ts.wHour,ts.wMinute,ts.wSecond,ts.wMilliseconds)
             size=camera.TFrameSize(frame_info.dwImageWidth,frame_info.dwImageHeight)
             frame_info=TFrameInfo(n,frame_info.u64FrameNumber,ts,frame_info.u64TimestampDevice,size,frame_info.dwIoStatus,frame_info.dwFlags)
-        return frame,self._convert_frame_info(frame_info)
+        return frame,frame_info
     def _read_frames(self, rng, return_info=False):
         nchan=self._get_pixel_mode_settings()[1]
         data=[self._read_buffer(n,return_info=return_info and (n%self._frameinfo_period==0),nchan=nchan) for n in range(rng[0],rng[1])]
@@ -626,7 +628,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
             buff_size=self._default_acq_params.get("nframes",100)
         return {"nframes":buff_size}
 
-    def read_multiple_images(self, rng=None, peek=False, missing_frame="skip", return_info=False):
+    def read_multiple_images(self, rng=None, peek=False, missing_frame="skip", return_info=False, return_rng=False):
         """
         Read multiple images specified by `rng` (by default, all un-read images).
 
@@ -639,6 +641,8 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         describing frame index, framestamp, global timestamp (real time),
         device timestamp (time from camera restart, in 0.1us steps), frame size, digital input state, and additional flags;
         if some frames are missing and ``missing_frame!="skip"``, the corresponding frame info is ``None``.
+        if ``return_rng==True``, return the range covered resulting frames; if ``missing_frame=="skip"``, the range can be smaller
+        than the supplied `rng` if some frames are skipped.
         Note that obtaining frame info might take about 2ms, so at high frame rates it will become a limiting factor.
         """
-        return super().read_multiple_images(rng=rng,peek=peek,missing_frame=missing_frame,return_info=return_info)
+        return super().read_multiple_images(rng=rng,peek=peek,missing_frame=missing_frame,return_info=return_info,return_rng=return_rng)

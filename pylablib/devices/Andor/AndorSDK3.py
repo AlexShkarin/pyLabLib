@@ -457,11 +457,6 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         """Enable or disable metadata streaming"""
         self.set_attribute_value("MetadataEnable",enable,error_on_missing=False)
         return self.is_metadata_enabled()
-    def _convert_frame_info(self, info, fmt=None):
-        info=super()._convert_frame_info(info,fmt=fmt)
-        if isinstance(info,np.ndarray) and info[1] is None:
-            info=np.array([info[0]]+[0]*(len(info)-1))
-        return info
     
     ### Frame management ###
     class BufferManager:
@@ -773,18 +768,22 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         if self._check_buffer_overflow():
             raise AndorTimeoutError("buffer overflow while waiting for a new frame")
         self._buffer_mgr.wait_for_frame(idx=idx,timeout=timeout)
+    def _frame_info_to_namedtuple(self, info):
+        return self._TFrameInfo(info[0],info[1],camera.TFrameSize(*info[2:4]),*info[4:])
     def _read_frames(self, rng, return_info=False):
         metadata_enabled=self.is_metadata_enabled()
         bpp=self.cav["BytesPerPixel"]
         stride=self.cav["AOIStride"]
         data=[self._parse_image(self._buffer_mgr.read(i),bpp=bpp,stride=stride,metadata_enabled=metadata_enabled) for i in range(*rng)]
-        return [d[0] for d in data],[self._convert_frame_info(TFrameInfo(n,*d[1])) for (n,d) in zip(range(*rng),data)]
+        frames=[d[0] for d in data]
+        info=[TFrameInfo(n,*d[1]) for (n,d) in zip(range(*rng),data)] if metadata_enabled else None
+        return frames,info
     def _zero_frame(self, n):
         dim=self.get_data_dimensions()
         bpp=self.cav["BytesPerPixel"]
         dt="<u{}".format(int(np.ceil(bpp))) # can be fractional (e.g., 1.5)
         return np.zeros((n,)+dim,dtype=dt)
-    def read_multiple_images(self, rng=None, peek=False, missing_frame="skip", return_info=False):
+    def read_multiple_images(self, rng=None, peek=False, missing_frame="skip", return_info=False, return_rng=False):
         """
         Read multiple images specified by `rng` (by default, all un-read images).
 
@@ -796,5 +795,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         If ``return_info==True``, return tuple ``(frames, infos)``, where ``infos`` is a list of :class:`TFrameInfo` instances
         describing frame index and frame metadata, which contains timestamp, image size, pixel format, and row stride;
         if some frames are missing and ``missing_frame!="skip"``, the corresponding frame info is ``None``.
+        if ``return_rng==True``, return the range covered resulting frames; if ``missing_frame=="skip"``, the range can be smaller
+        than the supplied `rng` if some frames are skipped.
         """
-        return super().read_multiple_images(rng=rng,peek=peek,missing_frame=missing_frame,return_info=return_info)
+        return super().read_multiple_images(rng=rng,peek=peek,missing_frame=missing_frame,return_info=return_info,return_rng=return_rng)

@@ -409,7 +409,7 @@ class IMAQFrameGrabber(camera.IROICamera):
 
     def _get_acquired_frames(self):
         if self._start_acq_count is None:
-            return 0
+            return None
         return max(self.get_grabber_attribute_value("FRAME_COUNT",0)-self._start_acq_count,-1)
     def _find_max_nbuff(self):
         frame_size=self._get_buffer_size()
@@ -531,78 +531,12 @@ class IMAQFrameGrabber(camera.IROICamera):
         cdt=ctypes.POINTER(np.ctypeslib.as_ctypes_type(dt))
         data=np.ctypeslib.as_array(ctypes.cast(buffer,cdt),shape=((nframes,r,c)))
         return data.copy()
-    def _read_multiple_images_raw(self, rng=None, peek=False):
-        """
-        Read multiple images specified by `rng` (by default, all un-read images).
-
-        If ``peek==True``, return images but not mark them as read.
-        Return tuple ``(first_frame, skipped_frames, raw_frames)``, where ``first_frame`` is the index of the first frame,
-        ``skipped_frames`` is the number of skipped frames among the read, and ``raw_frames`` is the raw frame data
-        (array of tuples ``[(nframes,data)]`` with the number of frames and the raw buffer data).
-        """
-        if not self._buffer_mgr:
-            return 0,0,None
-        rng,skipped_frames=self._trim_images_range(rng)
-        if rng is None:
-            return 0,0,[]
-        raw_frames=self._buffer_mgr.get_frames_data(rng[0],rng[1]-rng[0]) if rng[1]>rng[0] else []
-        if not peek:
-            self._frame_counter.advance_read_frames(rng)
-        return rng[0],skipped_frames,raw_frames
     
-    def read_multiple_images(self, rng=None, peek=False, missing_frame="skip", return_info=False, fastbuff=False):  # pylint: disable=arguments-differ
-        """
-        Read multiple images specified by `rng` (by default, all un-read images).
-
-        If `rng` is specified, it is a tuple ``(first, last)`` with images range (first inclusive).
-        If no new frames are available, return an empty list; if no acquisition is running, return ``None``.
-        If ``peek==True``, return images but not mark them as read.
-        `missing_frame` determines what to do with frames which are out of range (missing or lost):
-        can be ``"none"`` (replacing them with ``None``), ``"zero"`` (replacing them with zero-filled frame), or ``"skip"`` (skipping them).
-        If ``return_info==True``, return tuple ``(frames, infos)``, where ``infos`` is a list of ``TFrameInfo`` single-element tuples
-        containing frame index; if some frames are missing and ``missing_frame!="skip"``, the corresponding frame info is ``None``.
-        If ``fastbuff==False``, return a list of individual frames (2D numpy arrays).
-        Otherwise, return a list of 'chunks', which are 3D numpy arrays containing several frames;
-        in this case, if `return_info` is ``True``, then ``frame_info`` will automatically be in an ``"array"`` format, with the rows corresponding to the frames
-        within the chunks, and the columns corresponding to the frames.
-        Using ``fastbuff`` results in faster operation at high frame rates (>~1kFPS), at the expense of a more complicated frame processing in the following code.
-        """
-        funcargparse.check_parameter_range(missing_frame,"missing_frame",["none","zero","skip"])
-        if fastbuff and missing_frame=="none":
-            raise ValueError("'none' missing frames mode is not supported if fastbuff==True")
-        first_frame,skipped_frames,raw_data=self._read_multiple_images_raw(rng=rng,peek=peek)
-        if raw_data is None:
-            return (None,None) if return_info else None
-        dim=self._get_data_dimensions_rc()
-        dt=self._get_buffer_dtype()
-        parsed_data=[self._parse_buffer(b,nframes=n) for n,b in raw_data]
-        if not fastbuff:
-            parsed_data=[f for chunk in parsed_data for f in chunk]
-        frame_info=None
-        if return_info:
-            if fastbuff:
-                frame_info=[]
-                idx=first_frame
-                for d in parsed_data:
-                    frame_info.append(np.arange(len(d))[:,None]+idx)
-                    idx+=len(d)
-            else:
-                frame_info=[self._TFrameInfo(first_frame+n) for n in range(len(parsed_data))]
-        if skipped_frames and missing_frame!="skip":
-            if fastbuff: # only missing_frame=="zero" is possible
-                parsed_data=[np.zeros((skipped_frames,)+dim,dtype=dt)]+parsed_data
-                if return_info:
-                    frame_info=[np.zeros((skipped_frames,len(self._frameinfo_fields)))]+frame_info
-            else:
-                if missing_frame=="zero":
-                    parsed_data=list(np.zeros((skipped_frames,)+dim,dtype=dt))+parsed_data
-                else:
-                    parsed_data=[None]*skipped_frames+parsed_data
-                if return_info:
-                    frame_info=[None]*skipped_frames+frame_info
-        parsed_data,frame_info=self._convert_frame_format(parsed_data,frame_info)
-        parsed_data=self._convert_indexing(parsed_data,"rct",axes=(-2,-1))
-        return (parsed_data,frame_info) if return_info else parsed_data
+    _support_chunks=True
+    def _read_frames(self, rng, return_info=False):
+        raw_frames=self._buffer_mgr.get_frames_data(rng[0],rng[1]-rng[0])
+        parsed_frames=[self._convert_indexing(self._parse_buffer(b,nframes=n),"rct",axes=(-2,-1)) for n,b in raw_frames]
+        return parsed_frames,None
 
 
     def _get_grab_acquisition_parameters(self, nframes, buff_size):

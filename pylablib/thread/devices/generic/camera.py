@@ -93,7 +93,6 @@ class GenericCameraThread(device_thread.DeviceThread):
         self.misc=dictionary.Dictionary(misc)
         self.frames_src=stream_manager.StreamSource(stream_message.FramesMessage,sn=self.name)
         self.remote=remote
-        self._use_fastbuff=False
         self._max_chunk_size_bytes=2**20
         self._acquisition_loops={}
         self._running_loop=None
@@ -118,7 +117,6 @@ class GenericCameraThread(device_thread.DeviceThread):
         super().setup_open_device()
         self.TimeoutError=self.rpyc_obtain(self.device.TimeoutError)
         self.FrameTransferError=self.rpyc_obtain(self.device.FrameTransferError)
-        self.v["parameters/fastbuff"]=True
         self.v["parameters/add_info"]=False
         self.update_parameters()
     def close_device(self):
@@ -201,7 +199,7 @@ class GenericCameraThread(device_thread.DeviceThread):
     def _prepare_applied_parameters(self, parameters):
         pass
     def _apply_additional_parameters(self, parameters):
-        for k in ["fastbuff","add_info"]:
+        for k in ["add_info"]:
             if k in parameters:
                 self.v["parameters",k]=parameters.pop(k)
     def apply_parameters(self, parameters, update=True):
@@ -265,24 +263,22 @@ class GenericCameraThread(device_thread.DeviceThread):
         """Read and send new available images"""
         rng=self.device.get_new_images_range()
         nsent=0
-        fastbuff_kwargs={"fastbuff":True} if self._use_fastbuff else {}
-        as_array=self.device.get_frame_format()=="array"
+        frame_fmt=self.device.get_frame_format()
         if rng:
             if self.v["parameters/add_info"]:
-                frames,infos=self.device.read_multiple_images(rng,return_info=self.v["parameters/add_info"],**fastbuff_kwargs)
-                if as_array:
+                frames,infos=self.device.read_multiple_images(rng,return_info=self.v["parameters/add_info"])
+                if frame_fmt=="array":
                     infos=[self.rpyc_obtain(infos)]
                 else:
-                    infos=self.rpyc_obtain([inf for (inf,f) in zip(infos,frames) if f is not None and len(f)],direct=True)
+                    infos=self.rpyc_obtain(infos)
             else:
-                frames=self.device.read_multiple_images(rng,**fastbuff_kwargs)
+                frames=self.device.read_multiple_images(rng)
                 infos=None
-            if as_array:
+            if frame_fmt=="array":
                 frames=[self.rpyc_obtain(frames)]
             else:
-                frames=self.rpyc_obtain([f for f in frames if f is not None and len(f)])
-            if not self._use_fastbuff:
-                frames,infos=self._build_chunks(frames,infos)
+                frames=self.rpyc_obtain(frames)
+            frames,infos=self._build_chunks(frames,infos)
             if frames and frames[0].ndim==3:
                 lch=np.array([len(f) for f in frames])
                 nread=int(sum(lch))
@@ -344,8 +340,9 @@ class GenericCameraThread(device_thread.DeviceThread):
         self.update_parameters()
         if self.rpyc_serv is not None:
             self.device.set_frame_format("array")
+        else:
+            self.device.set_frame_format("try_chunks")
         self.device.set_frame_info_format("array",include_fields=self._frameinfo_include_fields)
-        self._use_fastbuff=self.v["parameters/fastbuff"] and ("fastbuff" in func_utils.funcsig(self.device.read_multiple_images).arg_names)
         self.update_parameters()
         self.device.start_acquisition()
         self._set_acquisition_status("acquiring")

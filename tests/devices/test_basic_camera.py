@@ -89,6 +89,41 @@ class CameraTester(DeviceTester):
         assert len(frames)==self.grab_size
         assert len(frames)==len(infos)
         assert [i.frame_index for i in infos]==list(range(self.grab_size))
+    @pytest.mark.devchange(1)
+    def test_frame_format(self, devopener):
+        """Test frame format consistency"""
+        device=devopener()
+        device.set_roi(*self.default_roi)
+        for meta_ena in [True,False]:
+            if hasattr(device,"enable_metadata"):
+                device.enable_metadata(meta_ena)
+            elif meta_ena:
+                continue
+            for ff,fif in [("list","namedtuple"),("list","dict"),("list","list"),("list","array"),("array","array"),("chunks","array")]:
+                device.set_frame_format(ff)
+                device.set_frame_info_format(fif)
+                frames,infos=device.grab(self.grab_size,return_info=True)
+                nframes=sum(len(ch) for ch in frames) if ff=="chunks" else len(frames)
+                assert nframes==self.grab_size
+                if ff=="array":
+                    assert isinstance(frames,np.ndarray)
+                else:
+                    assert isinstance(frames,list)
+                assert len(frames)==len(infos)
+                if fif=="namedtuple":
+                    fidx=[i.frame_index for i in infos]
+                elif fif=="dict":
+                    fidx=[i["frame_index"] for i in infos]
+                elif fif=="list":
+                    fidx=[i[0] for i in infos]
+                elif fif=="array":
+                    if ff=="list":
+                        fidx=[i[0] for i in infos]
+                    elif ff=="array":
+                        fidx=infos[:,0]
+                    elif ff=="chunks":
+                        fidx=np.concatenate([i[:,0] for i in infos])
+                    assert list(fidx)==list(range(self.grab_size))
     def check_acq_params(self, device, setup, running, new_images=None):
         if new_images is None:
             new_images=running

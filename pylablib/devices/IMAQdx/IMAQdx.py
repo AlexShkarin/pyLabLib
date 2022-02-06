@@ -416,7 +416,7 @@ class IMAQdxCamera(camera.IROICamera, camera.IAttributeCamera):
         frames=[self._parse_data(f,shape,pixel_format) for f in frames]
         if not self._raw_readout_format:
             frames=[self._convert_indexing(f,"rct") for f in frames]
-        return frames,[self._convert_frame_info(self._TFrameInfo(n)) for n in range(*rng)]
+        return frames,None
 
 
 
