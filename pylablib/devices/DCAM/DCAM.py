@@ -17,8 +17,14 @@ class DCAMTimeoutError(DCAMError):
 
 
 class LibraryController(load_lib.LibraryController):
+    def __init__(self, lib):
+        super().__init__(lib)
+        self.cameras=0
+    def _do_init(self):
+        self.cameras=self.lib.dcamapi_init()
     def _do_uninit(self):
         self.lib.dcamapi_uninit()
+        self.cameras=None
 libctl=LibraryController(lib)
 def restart_lib():
     libctl.shutdown()
@@ -27,9 +33,9 @@ def restart_lib():
 
 def get_cameras_number():
     """Get number of connected DCAM cameras"""
-    libctl.preinit()
     try:
-        return lib.dcamapi_init()
+        with libctl.temp_open():
+            return libctl.cameras
     except DCAMError:
         return 0
 
@@ -135,18 +141,19 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribute
         """Open connection to the camera"""
         if self.handle is not None:
             return
-        ncams=get_cameras_number()
-        if self.idx>=ncams:
-            raise DCAMError("camera index {} is not available ({} cameras exist)".format(self.idx,ncams))
-        try:
-            self.handle=lib.dcamdev_open(self.idx)
-            self._opid=libctl.open().opid
-            self.dcamwait=lib.dcamwait_open(self.handle)
-            self._update_attributes()
-            self._valid_binnings=self._get_valid_binnings()
-        except DCAMError:
-            self.close()
-            raise
+        with libctl.temp_open():
+            ncams=get_cameras_number()
+            if self.idx>=ncams:
+                raise DCAMError("camera index {} is not available ({} cameras exist)".format(self.idx,ncams))
+            try:
+                self.handle=lib.dcamdev_open(self.idx)
+                self._opid=libctl.open().opid
+                self.dcamwait=lib.dcamwait_open(self.handle)
+                self._update_attributes()
+                self._valid_binnings=self._get_valid_binnings()
+            except DCAMError:
+                self.close()
+                raise
     def close(self):
         """Close connection to the camera"""
         if self.handle:

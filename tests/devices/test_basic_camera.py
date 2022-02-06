@@ -157,6 +157,15 @@ class CameraTester(DeviceTester):
         if hasattr(device,"set_roi"):
             device.set_roi()
         assert device.get_data_dimensions()==device.get_detector_size()[::-1]
+    _exposure_precision=1E-6
+    def _assert_settings(self, old_settings, new_settings):
+        if "exposure" in old_settings:
+            assert "exposure" in new_settings
+            old_exp,new_exp=old_settings["exposure"],new_settings["exposure"]
+            assert abs(old_exp-new_exp)<abs(old_exp+new_exp)*self._exposure_precision
+            del old_settings["exposure"]
+            del new_settings["exposure"]
+        super()._assert_settings(old_settings,new_settings)
 
 
 

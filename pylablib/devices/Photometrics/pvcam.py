@@ -210,6 +210,9 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         self._add_info_variable("device_info",self.get_device_info)
         self._add_info_variable("pixel_size",self.get_pixel_size)
         self._add_info_variable("pixel_distance",self.get_pixel_distance)
+        self._add_settings_variable("temperature",self.get_temperature_setpoint,self.set_temperature)
+        self._add_status_variable("temperature_monitor",self.get_temperature)
+        self._add_settings_variable("fan_mode",self.get_fan_mode,self.set_fan_mode)
         self._add_info_variable("binning_modes",self.get_supported_binning_modes)
         self._add_settings_variable("metadata_enabled",self.is_metadata_enabled,self.enable_metadata)
         self._add_settings_variable("clear_mode",self.get_clear_mode,self.set_clear_mode)
@@ -243,6 +246,7 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
                 self._setup_full_roi()
                 self._setup_bin_ranges()
                 self._readout_modes=self._detect_readout_modes()
+                self.set_exposure(0)
     def close(self):
         """Close connection to the camera"""
         if self.handle is not None:
@@ -393,6 +397,34 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         """Get camera pixel distance (in m)"""
         return tuple([self.get_attribute_value(v,error_on_missing=False,default=0)*1E-9 for v in ["PIX_SER_DIST","PIX_PAR_DIST"]])
 
+    def get_temperature_setpoint(self):
+        """Get the temperature setpoint (in C)"""
+        temp=self.get_attribute_value("TEMP_SETPOINT",error_on_missing=False)
+        return temp/100 if temp is not None else None
+    def get_temperature(self):
+        """Get the current camera temperature (in C)"""
+        temp=self.get_attribute_value("TEMP",error_on_missing=False)
+        return temp/100 if temp is not None else None
+    def set_temperature(self, temp):
+        """Change the temperature setpoint (in C)"""
+        self.set_attribute_value("TEMP_SETPOINT",temp*100,error_on_missing=False)
+        return self.get_temperature_setpoint()
+    
+    _p_fan_mode=interface.EnumParameterClass("fan_mode",
+        {   "high":pvcam_defs.PL_FAN_SPEEDS.FAN_SPEED_HIGH,
+            "medium":pvcam_defs.PL_FAN_SPEEDS.FAN_SPEED_MEDIUM,
+            "low":pvcam_defs.PL_FAN_SPEEDS.FAN_SPEED_LOW,
+            "off":pvcam_defs.PL_FAN_SPEEDS.FAN_SPEED_OFF,
+            None:None})
+    @interface.use_parameters(_returns="fan_mode")
+    def get_fan_mode(self):
+        """Get current fan mode"""
+        return self.get_attribute_value("FAN_SPEED_SETPOINT",error_on_missing=False,enum_as_str=False)
+    @interface.use_parameters
+    def set_fan_mode(self, fan_mode="high"):
+        """Set current fan mode"""
+        self.set_attribute_value("FAN_SPEED_SETPOINT",fan_mode,error_on_missing=False)
+        return self.get_fan_mode()
     def is_metadata_enabled(self):
         """Check if metadata is enabled"""
         return self.get_attribute_value("METADATA_ENABLED",error_on_missing=False,default=False)

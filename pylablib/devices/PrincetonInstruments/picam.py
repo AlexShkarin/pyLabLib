@@ -433,7 +433,7 @@ class PicamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         return x,x+w,y,y+h,xb,yb
     def _limit_bin(self, b, bins, maxbin):
         if not bins:
-            return min(b,maxbin)
+            return max(1,min(b,maxbin))
         return min(bins[max(bisect.bisect_right(sorted(bins),b)-1,0)],maxbin)
     @camera.acqcleared
     def set_roi(self, hstart=0, hend=None, vstart=0, vend=None, hbin=1, vbin=1):
