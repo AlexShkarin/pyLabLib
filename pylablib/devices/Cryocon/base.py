@@ -47,7 +47,7 @@ class Cryocon1x(SCPI.SCPIDevice):
         return self.get_display_units(channel)
     def _read_raw_temperature(self, channel):
         value=self.ask("INP? {}".format(channel))
-        return None if value=="."*len(value) else float(value)
+        return None if all(c in ".-" for c in value) else float(value)
     @interface.use_parameters
     def get_temperature(self, channel, display_units=False):
         """
