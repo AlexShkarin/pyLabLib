@@ -8,6 +8,7 @@ def pytest_addoption(parser):
     parser.addoption("--dev-no-conn-fail",action="store_true",help="xfail instead of fail if could not connect to the device",)
     parser.addoption("--stressfactor",default=1,help="stress multiplication factor",)
     parser.addoption("--full",action="store_true",help="run maximally complete tests",)
+    parser.addoption("--fdl",action="append",default=[],help="combination of --devlists and --full",)
 
 
 @pytest.fixture(scope="session")

@@ -37,6 +37,8 @@ class DeviceTester:
         for _ in range(stress_factor):
             info=device.get_full_info(self.include)
             print(device,info)
+    def _assert_settings(self, old_settings, new_settings):
+        assert old_settings==new_settings
     @pytest.mark.devchange(2)
     def test_get_set_all(self, devopener, stress_factor):
         """Test getting and re-applying settings error"""
@@ -50,7 +52,7 @@ class DeviceTester:
             new_settings=device.get_settings(self.include)
             for k in self.get_set_all_exclude:
                 del new_settings[k]
-            assert new_settings==settings
+            self._assert_settings(settings,new_settings)
 
     def check_get_par(self, device, name, par_name=None):
         """

@@ -7,6 +7,9 @@ from pylablib.devices import PhotonFocus
 from pylablib.devices import PCO
 from pylablib.devices import uc480
 from pylablib.devices import Thorlabs
+from pylablib.devices import Photometrics
+from pylablib.devices import PrincetonInstruments
+
 
 from .test_basic_camera import ROICameraTester
 
@@ -15,12 +18,16 @@ import numpy as np
 
 
 
-def gen_rois(sz, bins=((),), max_factor=4):
+def gen_rois(sz, bins=((),), max_factor=4, symm=False):
+    if symm:
+        base_rois=[(sz//2,-sz//2,sz//2,-sz//2),(sz,-sz,sz//2,-sz//2),(sz//2,-sz//2,sz*2,-sz*2)]
+    else:
+        base_rois=[(0,sz,0,sz),(0,sz*4,0,sz*2),(sz*2,sz*4,sz,sz*4)]
     base_rois=[
         ((0,None,0,None),None),
-        ((0,sz,0,sz),("same" if max_factor>=1 else None)),
-        ((0,sz*4,0,sz*2),("same" if max_factor>=2 else None)),
-        ((sz*2,sz*4,sz,sz*4),("same" if max_factor>=4 else None)),
+        (base_rois[0],("same" if max_factor>=1 else None)),
+        (base_rois[1],("same" if max_factor>=2 else None)),
+        (base_rois[2],("same" if max_factor>=4 else None)),
         ((sz*2,sz*2,sz*2,sz*2),None),
         ((0,0,sz,sz*4),None),
         ((0,sz*2,10000,10000),None),
@@ -56,6 +63,9 @@ class TestAndorSDK3(ROICameraTester):
     devcls=Andor.AndorSDK3Camera
     grab_size=10
     rois=gen_rois(128,((1,1),(1,2),(2,2),((0,0),False),((3,3),False),((10,10),False),((100,100),False)))
+    @classmethod
+    def post_open(cls, device):
+        device.enable_metadata(True)
 
 
 
@@ -91,6 +101,7 @@ class TestPhotonFocusIMAQ(ROICameraTester):
     def test_large_acq(self, devopener):
         """Test large fast acquisition"""
         device=devopener()
+        device.set_frame_format("list")
         for roi,ngrab,nbuff in [((0,None,0,None),100,50),((0,32,0,32),10**5,5000)]:
             device.set_roi(*roi)
             device.set_exposure(0)
@@ -123,6 +134,7 @@ class TestPhotonFocusSiSo(ROICameraTester):
     def test_large_acq(self, devopener):
         """Test large fast acquisition"""
         device=devopener()
+        device.set_frame_format("list")
         device.gav["CAMERA_LINK_CAMTYP"]="FG_CL_DUALTAP_12_BIT"
         device.gav["FORMAT"]="FG_GRAY16"
         device.cav["DataResolution"]="12bit"
@@ -165,7 +177,7 @@ class TestPCO(ROICameraTester):
     """Testing class for PCO SC2 camera interface"""
     devname="pco_sc2"
     devcls=PCO.PCOSC2Camera
-    rois=gen_rois(320,((1,1),(1,2),(2,2),((0,0),False),((3,3),False),((10,10),False),((100,100),False)))
+    rois=gen_rois(320,((1,1),(1,2),(2,2),((0,0),False),((3,3),False),((10,10),False),((100,100),False)),symm=True)
 
 
 
@@ -177,3 +189,32 @@ class TestUC480(ROICameraTester):
     devcls=uc480.UC480Camera
     rois=gen_rois(128,((1,1),(1,2),(2,2),((0,0),False),((3,3),False),((10,10),False),((100,100),False)))
     default_roi=(0,512,0,512)
+
+
+
+
+
+class TestPvcam(ROICameraTester):
+    """Testing class for Photometrics camera interface"""
+    devname="pvcam"
+    devcls=Photometrics.PvcamCamera
+    rois=gen_rois(128,((1,1),((1,2),False),(2,2),((0,0),False),((3,3),False),((10,10),False),((100,100),False)))
+    default_roi=(0,512,0,512)
+    @classmethod
+    def post_open(cls, device):
+        device.enable_metadata(True)
+
+
+
+
+
+class TestPICam(ROICameraTester):
+    """Testing class for Princeton Instruments camera interface"""
+    devname="picam"
+    devcls=PrincetonInstruments.PicamCamera
+    rois=gen_rois(64,((1,1),((1,2),False),(2,2),((0,0),False),((3,3),False),((10,10),False),((100,100),False)))
+    default_roi=(0,256,0,256)
+    _exposure_precision=1E-4
+    @classmethod
+    def post_open(cls, device):
+        device.enable_metadata(True)

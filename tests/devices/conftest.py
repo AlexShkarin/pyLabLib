@@ -15,16 +15,17 @@ def read_devlist(name):
         lns=[ln.strip() for ln in f.readlines() if ln.strip()]
         return [ln for ln in lns if ln[0] not in "#;"]
 def get_device_list(config):
-    devs=[d for dl in config.getoption("devlists") for df in dl.split(";") for d in read_devlist(df)]
+    devlists=config.getoption("devlists") or config.getoption("fdl")
+    devs=[d for dl in devlists for df in dl.split(";") for d in read_devlist(df)]
     devs+=[d.strip() for dl in config.getoption("devices") for d in dl.split(";") if d.strip()]
     devdict=dict([parse_dev(d) for d in devs])
     return devdict
 
 
 def pytest_collection_modifyitems(config, items):
-    only_dev=(config.getoption("devlists") or config.getoption("devices")) and not config.getoption("full")
+    only_dev=(config.getoption("devlists") or config.getoption("devices")) and not (config.getoption("full") or config.getoption("fdl"))
     rootdir=config.rootdir
-    maxchange=5 if config.getoption("full") else int(config.getoption("maxchange"))
+    maxchange=5 if (config.getoption("full") or config.getoption("fdl")) else int(config.getoption("maxchange"))
     for item in items:
         devchange=item.get_closest_marker("devchange")
         if devchange and devchange.args[0]>maxchange:

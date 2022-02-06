@@ -11,6 +11,8 @@ def camera(device):
         device.set_roi()
     if hasattr(device,"set_exposure"):
         device.set_exposure(.1)
+    device.set_frame_format("list")
+    device.set_frame_info_format("namedtuple")
     yield device
 
 class CameraTester(DeviceTester):
@@ -161,6 +163,11 @@ class ROICameraTester(CameraTester):
         for i,(sr,gr) in enumerate(self.rois):
             print(i,sr)
             # Check setting and getting
+            def wrap(v, p, up):
+                if v is None:
+                    return None
+                return (v-1)%p+1 if up else v%p
+            sr=(wrap(sr[0],ds[0],False),wrap(sr[1],ds[0],True),wrap(sr[2],ds[1],False),wrap(sr[3],ds[1],True))+sr[4:]
             if gr=="same":
                 gr=sr
             device.set_roi(*sr)
