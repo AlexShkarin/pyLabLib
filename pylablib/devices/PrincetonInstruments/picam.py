@@ -519,8 +519,13 @@ class PicamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
             for _ in range(reps):
                 try:
                     avail,_=lib.Picam_WaitForAcquisitionUpdate(self.handle,timeout)
-                    assert avail.initial_readout==ctypes.addressof(self._buffer)+(self._waited_frames%self._buffer_frames)*self._frame_bytes
-                    self._waited_frames+=avail.readout_count
+                    if avail.initial_readout is not None:
+                        expected_next_frame=ctypes.addressof(self._buffer)+(self._waited_frames%self._buffer_frames)*self._frame_bytes
+                        if expected_next_frame!=avail.initial_readout:
+                            expected_next_buffer=(expected_next_frame-ctypes.addressof(self._buffer))/self._frame_bytes
+                            got_next_buffer=(avail.initial_readout-ctypes.addressof(self._buffer))/self._frame_bytes
+                            raise RuntimeError("expected address {} (buffer {}), got address {} (buffer {})".format(expected_next_frame,expected_next_buffer,avail.initial_readout,got_next_buffer))
+                        self._waited_frames+=avail.readout_count
                 except PicamLibError as err:
                     if err.code!=picam_defs.PicamError.PicamError_TimeOutOccurred:
                         raise

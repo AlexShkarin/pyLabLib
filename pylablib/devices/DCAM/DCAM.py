@@ -17,7 +17,7 @@ class DCAMTimeoutError(DCAMError):
 
 
 class LibraryController(load_lib.LibraryController):
-    def __init__(self, lib):
+    def __init__(self, lib):  # pylint: disable=redefined-outer-name
         super().__init__(lib)
         self.cameras=0
     def _do_init(self):

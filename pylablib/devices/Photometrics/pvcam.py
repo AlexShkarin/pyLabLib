@@ -206,6 +206,7 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         self._buffer_frames=None
         self._acq_in_progress=False
         self._cb=None
+        self._acq_nframes=0
         self.open()
         self._add_info_variable("device_info",self.get_device_info)
         self._add_info_variable("pixel_size",self.get_pixel_size)
@@ -614,15 +615,24 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         if self._cb is not None:
             lib.pl_cam_deregister_callback(self.handle,pvcam_defs.PL_CALLBACK_EVENT.PL_CALLBACK_EOF)
             self._cb=None
-    def _setup_acquisition(self, roi=None, exp_mode=None, exposure=None):
+    def _setup_acquisition(self, roi=None, exp_mode=None, exposure=None, acq_nframes=None):
         if roi is None:
             roi=self._roi
         if exposure is None:
             exposure=self.cav["EXPOSURE_TIME"]
         if exp_mode is None:
             exp_mode=self._get_exposure_mode()
+        if acq_nframes is None:
+            acq_nframes=self._acq_nframes
+        self._acq_nframes=acq_nframes
         r0,r1,c0,c1,rb,cb=roi
-        return lib.pl_exp_setup_cont(self.handle,[(r0,r1-1,rb,c0,c1-1,cb)],exp_mode,exposure,pvcam_defs.PL_CIRC_MODES.CIRC_OVERWRITE) # TODO: snap mode
+        if acq_nframes<=0:
+            return lib.pl_exp_setup_cont(self.handle,[(r0,r1-1,rb,c0,c1-1,cb)],exp_mode,exposure,pvcam_defs.PL_CIRC_MODES.CIRC_OVERWRITE)
+        else:
+            total_size=lib.pl_exp_setup_seq(self.handle,acq_nframes,[(r0,r1-1,rb,c0,c1-1,cb)],exp_mode,exposure)
+            if total_size%acq_nframes:
+                raise RuntimeError("sequence buffer size {} does not divide the number of frames {}".format(total_size,acq_nframes))
+            return total_size//acq_nframes
 
     @interface.use_parameters(mode="acq_mode")
     def setup_acquisition(self, mode="sequence", nframes=100):  # pylint: disable=arguments-differ
@@ -634,7 +644,7 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         """
         self.clear_acquisition()
         super().setup_acquisition(mode=mode,nframes=nframes)
-        buffsize=self._setup_acquisition()
+        buffsize=self._setup_acquisition(acq_nframes=self._acq_params["nframes"] if mode=="snap" else 0)
         self._allocate_buffer(buffsize,self._acq_params["nframes"])
     def clear_acquisition(self):
         self.stop_acquisition()
@@ -645,20 +655,37 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         super().start_acquisition(*args,**kwargs)
         self._frame_counter.reset(self._acq_params["nframes"])
         self.get_all_attribute_values()
-        lib.pl_exp_start_cont(self.handle,self._buffer,len(self._buffer)) # TODO: snap mode
+        if self._acq_nframes<=0:
+            lib.pl_exp_start_cont(self.handle,self._buffer,len(self._buffer))
+        else:
+            lib.pl_exp_start_seq(self.handle,self._buffer)
         self._acq_in_progress=True
+    def _abort_acquisition(self):
+        self._frame_counter.update_acquired_frames(self._get_acquired_frames())
+        lib.pl_exp_abort(self.handle,pvcam_defs.PL_CCS_ABORT_MODES.CCS_HALT_CLOSE_SHTR)
+        self._acq_in_progress=False
     def stop_acquisition(self):
         if self.acquisition_in_progress():
-            self._frame_counter.update_acquired_frames(self._get_acquired_frames())
-            lib.pl_exp_abort(self.handle,pvcam_defs.PL_CCS_ABORT_MODES.CCS_HALT_CLOSE_SHTR)
-            self._acq_in_progress=False
+            self._abort_acquisition()
         super().stop_acquisition()
     def acquisition_in_progress(self):
-        return self._acq_in_progress
+        if not self._acq_in_progress:
+            return False
+        if self._acq_nframes>0 and lib.pl_exp_check_status(self.handle)[0]==pvcam_defs.PL_IMAGE_STATUSES.READOUT_COMPLETE:
+            self._abort_acquisition()
+            return False
+        return True
     def _get_acquired_frames(self):
-        status=lib.pl_exp_check_cont_status_ex(self.handle) # TODO: snap mode
-        frame_info=status[-1]
-        return frame_info.FrameNr
+        if self._buffer is None:
+            return None
+        if self._acq_nframes<=0:
+            status=lib.pl_exp_check_cont_status_ex(self.handle)
+            frame_info=status[-1]
+            return frame_info.FrameNr
+        else:
+            status=lib.pl_exp_check_status(self.handle)
+            bytes_arrived=status[-1]
+            return bytes_arrived//self._frame_bytes
     
 
     _support_chunks=True
@@ -697,7 +724,7 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
             exposure_ns=metainfo[:,3]//1000
         else:
             timestamp_start_ns=metainfo[:,1].astype("u8")*metainfo[:,3]
-            timestamp_end_ns=metainfo[:,1].astype("u8")*metainfo[:,3]
+            timestamp_end_ns=metainfo[:,2].astype("u8")*metainfo[:,3]
             exposure_ns=metainfo[:,4].astype("u8")*metainfo[:,5]
         frame_indices=np.arange(len(metainfo),dtype=timestamp_start_ns.dtype)+start_index
         return np.column_stack((frame_indices,timestamp_start_ns,timestamp_end_ns,metainfo[:,0],metainfo[:,-1],exposure_ns)).astype("i8")

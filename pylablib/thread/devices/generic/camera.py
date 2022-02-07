@@ -1,6 +1,6 @@
 from ... import device_thread
 from ...stream import stream_manager, stream_message
-from ....core.utils import dictionary, functions as func_utils
+from ....core.utils import dictionary
 from ....devices.interface import camera as cam_utils
 
 import numpy as np

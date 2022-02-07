@@ -4,7 +4,7 @@ from .fgrab_prototyp_defs import MeCameraLinkFormat
 from .fgrab_define_defs import FG_STATUS, FG_GETSTATUS, FG_ACQ, FG_IMGFMT, FG_PARAM
 from .fgrab_prototyp_lib import wlib as lib, SiliconSoftwareError, SIFgrabLibError
 
-from ...core.utils import py3, funcargparse, general as general_utils, dictionary
+from ...core.utils import py3, general as general_utils, dictionary
 from ...core.devio import interface
 from ..interface import camera
 
