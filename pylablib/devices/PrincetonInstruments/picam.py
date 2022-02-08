@@ -25,9 +25,9 @@ class LibraryController(load_lib.LibraryController):
 libctl=LibraryController(lib)
 
 
-
 def _get_str(stype, value):
     return py3.as_str(lib.Picam_GetEnumerationString(stype,value))
+
 
 TCameraInfo=collections.namedtuple("TCameraInfo",["name","serial_number","model","interface"])
 def _parse_camid(camid):
@@ -36,16 +36,18 @@ def _parse_camid(camid):
     model=_get_str(PicamEnumeratedType.PicamEnumeratedType_Model,camid.model)
     computer_interface=_get_str(PicamEnumeratedType.PicamEnumeratedType_ComputerInterface,camid.computer_interface)
     return TCameraInfo(name,serial_number,model,computer_interface)
+
+
 def list_cameras():
     """List all cameras available through Picam interface"""
     with libctl.temp_open():
         camids=lib.Picam_GetAvailableCameraIDs()
         return [_parse_camid(ci) for ci in camids]
 
+
 def get_cameras_number():
     """Get number of connected Picam cameras"""
     return len(list_cameras())
-
 
 
 TROIConstraints=collections.namedtuple("TROIConstraints",["flags","nrois","xrng","wrng","xbins","yrng","hrng","ybins"])
@@ -255,11 +257,6 @@ class PicamAttribute:
 
 
 
-
-
-
-
-
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["name","serial_number","model","interface"])
 TFrameInfo=collections.namedtuple("TFrameInfo",["frame_index","timestamp_start","timestamp_end","framestamp"])
 class PicamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttributeCamera):
@@ -418,7 +415,6 @@ class PicamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         return self._TAcqTimings(self.cav["Exposure Time"]*1E-3,1./self.cav["Readout Rate Calculation"])
 
 
-
     def _get_data_dimensions_rc(self):
         roi=self.get_roi()
         w,h=(roi[1]-roi[0])//roi[4],(roi[3]-roi[2])//roi[5]
@@ -447,6 +443,7 @@ class PicamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         vstart,vend,_=self._truncate_roi_axis((vstart,vend,vbin),vlim)
         self.cav["ROIs"]=[(hstart,hend-hstart,hbin,vstart,vend-vstart,vbin)]
         return self.get_roi()
+
     def get_roi_limits(self, hbin=1, vbin=1):
         wdet,hdet=self.get_detector_size()
         self.ca["ROIs"].update_limits()
@@ -480,7 +477,7 @@ class PicamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         """
         self.clear_acquisition()
         super().setup_acquisition(mode=mode,nframes=nframes)
-        self._allocate_buffer(self.cav["Frame Stride"],nframes)
+        self._allocate_buffer(self.cav['Readout Stride'],nframes)
         if mode=="snap":
             self.cav["Readout Count"]=nframes
         else:
@@ -505,7 +502,7 @@ class PicamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
             lib.Picam_StopAcquisition(self.handle)
             while True:
                 try:
-                    _,status=lib.Picam_WaitForAcquisitionUpdate(self.handle,10)
+                    _ , status = lib.Picam_WaitForAcquisitionUpdate(self.handle,10)
                     if not status.running:
                         break
                 except PicamLibError as err:
