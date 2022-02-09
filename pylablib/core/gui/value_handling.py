@@ -377,7 +377,7 @@ class IBoolValueHandler(ISingleValueHandler):
         ISingleValueHandler.__init__(self,widget)
         self.labels=labels
     def repr_single_value(self, value):
-        return self.labels[value]
+        return self.labels[1 if value else 0]
 class CheckboxValueHandler(IBoolValueHandler):
     """Value handler for ``QCheckBox`` widget"""
     _focused_set_allowed=True
@@ -385,8 +385,12 @@ class CheckboxValueHandler(IBoolValueHandler):
         return self.widget.isChecked()
     def set_single_value(self, value):
         return self.widget.setChecked(value)
+    def repr_single_value(self, value):
+        if len(self.labels)<=2:
+            return self.labels[1 if value else 0]
+        return self.labels[value]
     def get_value_changed_signal(self):
-        return self.widget.stateChanged
+        return self.widget.stateChanged if self.widget.isTristate() else self.widget.toggled
 class PushButtonValueHandler(IBoolValueHandler):
     """Value handler for ``QPushButton`` widget"""
     _focused_set_allowed=True
