@@ -172,6 +172,20 @@ def get_library_name():
     module_name=__name__
     return ".".join(module_name.split(".")[:-3])
 
+def get_executable(console=False):
+    """
+    Get Python executable.
+
+    If ``console==True`` and the current executable is windowed (i.e., ``"pythonw.exe"``), return the corresponding ``"python.exe"`` instead.
+    """
+    folder,file=os.path.split(sys.executable)
+    if file.lower()=="pythonw.exe" and console:
+        return os.path.join(folder,"python.exe")
+    return sys.executable
+def get_python_folder():
+    """Return Python interpreter folder (the folder containing the python executable)"""
+    return os.path.split(os.path.abspath(sys.executable))[0]
+
 
 def pip_install(pkg, upgrade=False):
     """
@@ -180,9 +194,9 @@ def pip_install(pkg, upgrade=False):
     If ``upgrade==True``, call with ``--upgrade`` key (upgrade current version if it is already installed).
     """
     if upgrade:
-        subprocess.call([sys.executable, "-m", "pip", "install", "--upgrade", pkg])
+        subprocess.call([get_executable(console=True), "-m", "pip", "install", "--upgrade", pkg])
     else:
-        subprocess.call([sys.executable, "-m", "pip", "install", pkg])
+        subprocess.call([get_executable(console=True), "-m", "pip", "install", pkg])
 
 def install_if_older(pkg, min_ver=""):
     """
