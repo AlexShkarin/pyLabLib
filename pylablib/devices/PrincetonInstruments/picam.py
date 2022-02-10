@@ -278,9 +278,11 @@ class PicamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         self.handle=None
         self.devhandle=None
         self._buffer=None
+        self._readout_bytes=None
         self._frame_bytes=None
-        self._buffer_frames=None
-        self._waited_frames=0
+        self._frames_per_readout=1
+        self._buffer_readouts=None
+        self._waited_readouts=0
         self.open()
         self._add_info_variable("device_info",self.get_device_info)
         self._add_info_variable("pixel_size",self.get_pixel_size)
@@ -413,8 +415,24 @@ class PicamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
     def set_exposure(self, exposure):
         self.cav["Exposure Time"]=exposure*1E3
         return self.get_exposure()
-    def get_frame_timings(self):
-        return self._TAcqTimings(self.cav["Exposure Time"]*1E-3,1./self.cav["Readout Rate Calculation"])
+    def get_frame_period(self, per_readout=False):  # pylint: disable=arguments-differ
+        """
+        Get frame period (time between two consecutive frames in the internal trigger mode)
+
+        If ``per_readout==True``, return time difference between readouts, which can contain more than one frame;
+        otherwise, return average time per frame (keep in mind that the frames still come in single unbroken readout).
+        """
+        period=1./self.cav["Readout Rate Calculation"]
+        return period if per_readout else period/self.cav["Frames per Readout"]
+    def get_frame_timings(self, per_readout=False):  # pylint: disable=arguments-differ
+        """
+        Get acquisition timing.
+
+        Return tuple ``(exposure, frame_period)``.
+        If ``per_readout==True``, frame period difference between readouts, which can contain more than one frame;
+        otherwise, it is the time per frame (keep in mind that the frames still come in single unbroken readout).
+        """
+        return self._TAcqTimings(self.cav["Exposure Time"]*1E-3,self.get_frame_period(per_readout=per_readout))
 
 
 
@@ -460,12 +478,13 @@ class PicamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         if failed:
             failed=[_get_str(PicamEnumeratedType.PicamEnumeratedType_Parameter,p) for p in failed]
             raise PicamError("failed to commit following parameters: {}".format(failed))
-    def _allocate_buffer(self, frame_bytes, nframes):
+    def _allocate_buffer(self, readout_bytes, frame_bytes, nreadouts):
         self._deallocate_buffer()
+        self._readout_bytes=readout_bytes
         self._frame_bytes=frame_bytes
-        self._buffer_frames=nframes
-        self._buffer=ctypes.create_string_buffer(frame_bytes*nframes)
-        lib.PicamAdvanced_SetAcquisitionBuffer(self.devhandle,ctypes.addressof(self._buffer),frame_bytes*nframes)
+        self._buffer_readouts=nreadouts
+        self._buffer=ctypes.create_string_buffer(readout_bytes*nreadouts)
+        lib.PicamAdvanced_SetAcquisitionBuffer(self.devhandle,ctypes.addressof(self._buffer),readout_bytes*nreadouts)
     def _deallocate_buffer(self):
         lib.PicamAdvanced_SetAcquisitionBuffer(self.devhandle,0,0)
         self._buffer=None
@@ -475,13 +494,16 @@ class PicamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         Setup acquisition mode.
 
         `mode` can be either ``"snap"`` (single frame or a fixed number of frames) or ``"sequence"`` (continuous acquisition).
-        `nframes` sets up number of frame buffers.
+        `nframes` sets up number of frame buffers. If there are multiple frames per readout, it still means the number of frames,
+        and the number of readouts is set up to contain all required frames (e.g., 10 frames per readout and 15 frames result in 2 readouts).
         """
         self.clear_acquisition()
         super().setup_acquisition(mode=mode,nframes=nframes)
-        self._allocate_buffer(self.cav["Frame Stride"],nframes)
+        self._frames_per_readout=self.cav["Frames per Readout"]
+        nreadouts=(nframes-1)//self._frames_per_readout+1
+        self._allocate_buffer(self.cav["Readout Stride"],self.cav["Frame Stride"],nreadouts)
         if mode=="snap":
-            self.cav["Readout Count"]=nframes
+            self.cav["Readout Count"]=nreadouts
         else:
             self.cav["Readout Count"]=0
     def clear_acquisition(self):
@@ -490,17 +512,17 @@ class PicamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         super().clear_acquisition()
     def start_acquisition(self, *args, **kwargs):
         self.stop_acquisition()
-        if self._frame_bytes!=self.cav["Frame Stride"]:
+        if self._readout_bytes!=self.cav["Readout Stride"] or self._frame_bytes!=self.cav["Frame Stride"]:
             self.clear_acquisition()
         super().start_acquisition(*args,**kwargs)
-        self._waited_frames=0
-        self._frame_counter.reset(self._acq_params["nframes"])
+        self._waited_readouts=0
+        self._frame_counter.reset(self._buffer_readouts*self._frames_per_readout)
         self._commit_parameters()
         lib.Picam_StartAcquisition(self.handle)
     def stop_acquisition(self):
         if self.acquisition_in_progress():
             self._frame_counter.update_acquired_frames(self._get_acquired_frames())
-            self._waited_frames=0
+            self._waited_readouts=0
             lib.Picam_StopAcquisition(self.handle)
             while True:
                 try:
@@ -520,19 +542,19 @@ class PicamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
                 try:
                     avail,_=lib.Picam_WaitForAcquisitionUpdate(self.handle,timeout)
                     if avail.initial_readout is not None:
-                        expected_next_frame=ctypes.addressof(self._buffer)+(self._waited_frames%self._buffer_frames)*self._frame_bytes
+                        expected_next_frame=ctypes.addressof(self._buffer)+(self._waited_readouts%self._buffer_readouts)*self._readout_bytes
                         if expected_next_frame!=avail.initial_readout:
-                            expected_next_buffer=(expected_next_frame-ctypes.addressof(self._buffer))/self._frame_bytes
-                            got_next_buffer=(avail.initial_readout-ctypes.addressof(self._buffer))/self._frame_bytes
+                            expected_next_buffer=(expected_next_frame-ctypes.addressof(self._buffer))/self._readout_bytes
+                            got_next_buffer=(avail.initial_readout-ctypes.addressof(self._buffer))/self._readout_bytes
                             raise RuntimeError("expected address {} (buffer {}), got address {} (buffer {})".format(expected_next_frame,expected_next_buffer,avail.initial_readout,got_next_buffer))
-                        self._waited_frames+=avail.readout_count
+                        self._waited_readouts+=avail.readout_count
                 except PicamLibError as err:
                     if err.code!=picam_defs.PicamError.PicamError_TimeOutOccurred:
                         raise
                     break
     def _get_acquired_frames(self):
         self._wait_for_acquisition_update(reps=3)
-        return self._waited_frames
+        return self._waited_readouts*self._frames_per_readout
 
     def _wait_for_next_frame(self, timeout=20, idx=None):
         self._wait_for_acquisition_update(100)
@@ -548,26 +570,46 @@ class PicamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
                 vals.append(v)
                 ptr+=s
         return vals
-    def _parse_frame(self, ptr, shape, bpp=None, metadata_sizes=None):
+    def _parse_readout(self, ptr, shape, bpp=None, metadata_sizes=None, subrng=None):
         height,width=shape
         imsize=height*width*bpp
-        if metadata_sizes is not None:
-            metadata=self._parse_metadata(ptr+imsize,metadata_sizes)
-        else:
-            metadata=None
-        img=np.ctypeslib.as_array(ctypes.cast(ptr,ctypes.POINTER(ctypes.c_ubyte)),shape=(imsize,))
-        dtype="<u{}".format(bpp)
-        img=img.view(dtype).reshape((height,width)).copy()
-        img=self._convert_indexing(img,"rct")
-        return img,metadata
+        if subrng is None:
+            subrng=(0,self._frames_per_readout)
+        imgs=[]
+        metadatas=[]
+        for i in range(*subrng):
+            if metadata_sizes is not None:
+                metadata=self._parse_metadata(ptr+imsize+i*self._frame_bytes,metadata_sizes)
+            else:
+                metadata=None
+            metadatas.append(metadata)
+            img=np.ctypeslib.as_array(ctypes.cast(ptr+i*self._frame_bytes,ctypes.POINTER(ctypes.c_ubyte)),shape=(imsize,))
+            dtype="<u{}".format(bpp)
+            imgs.append(img.view(dtype).reshape((height,width)).copy())
+        imgs=[self._convert_indexing(img,"rct") for img in imgs]
+        return imgs,metadatas
     def _read_frames(self, rng, return_info=False):
+        if rng[1]<=rng[0]:
+            return [],[]
         metadata_sizes=self._get_metadata_sizes() if return_info else None
         shape=self._get_data_dimensions_rc()
         base=ctypes.addressof(self._buffer)
         bpp=(self.cav["Pixel Bit Depth"]-1)//8+1
-        data=[self._parse_frame(base+(i%self._buffer_frames)*self._frame_bytes,shape,bpp=bpp,metadata_sizes=metadata_sizes) for i in range(*rng)]
-        frames=[d[0] for d in data]
-        frame_info=[TFrameInfo(n,*d[1]) for (n,d) in zip(range(*rng),data)] if metadata_sizes is not None else None
+        fpr=self._frames_per_readout
+        rostart=rng[0]//fpr
+        roend=(rng[1]-1)//fpr
+        if roend==rostart:
+            readout_par=[(rostart,(rng[0]%fpr,(rng[1]-1)%fpr+1))]
+        else:
+            readout_par=[(rostart,(rng[0]%fpr,fpr))]+[(i,None) for i in range(rostart+1,roend)]+[(roend,(0,(rng[1]-1)%fpr+1))]
+        readouts=[self._parse_readout(base+(i%self._buffer_readouts)*self._readout_bytes,shape,bpp=bpp,metadata_sizes=metadata_sizes,subrng=subrng)
+            for i,subrng in readout_par]
+        frames=[f for d in readouts for f in d[0]]
+        if metadata_sizes is not None:
+            raw_frame_info=[fi for d in readouts for fi in d[1]]
+            frame_info=[TFrameInfo(n,*fi) for (n,fi) in zip(range(*rng),raw_frame_info)]
+        else:
+            frame_info=None
         return frames,frame_info
     def _zero_frame(self, n):
         dim=self.get_data_dimensions()
