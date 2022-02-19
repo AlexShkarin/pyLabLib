@@ -69,4 +69,5 @@ Known issues
 
 - Frame period obtained using :meth:`.PicamCamera.get_frame_period` can be an underestimate (i.e., it can overestimate the frame rate).
 - While the cameras support multiple ROIs, only single-ROI readout is currently supported.
+- Changing readout mode (``"Readout Control Mode"``) to ``"Kinetics"`` might invalidate the current ROI, if it was originally too large. Therefore, you would need to call ``set_roi`` again after setting this mode.
 - In principle, the cameras support a variety of different metainfos which can be enabled or disabled separately. However, for simplicity only two modes are supported in the camera class: either no metainfo, or full "standard" metainfo (frame stamp, and start and stop timestamps). Any time the metainfo is enabled, disabled, or queried, it is automatically "truncated" to one of these two modes.

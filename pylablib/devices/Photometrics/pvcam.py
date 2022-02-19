@@ -380,6 +380,7 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
             self.set_attribute_value("SPDTAB_INDEX",speed_idx,error_on_missing=False)
         if gain_idx is not None:
             self.set_attribute_value("GAIN_INDEX",gain_idx,error_on_missing=False)
+        self._setup_acquisition()
         return self.get_readout_mode()
 
     def get_device_info(self):
@@ -615,7 +616,7 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         if self._cb is not None:
             lib.pl_cam_deregister_callback(self.handle,pvcam_defs.PL_CALLBACK_EVENT.PL_CALLBACK_EOF)
             self._cb=None
-    def _setup_acquisition(self, roi=None, exp_mode=None, exposure=None, acq_nframes=None):
+    def _try_setup_acquisition(self, roi=None, exp_mode=None, exposure=None, acq_nframes=None):
         if roi is None:
             roi=self._roi
         if exposure is None:
@@ -633,6 +634,29 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
             if total_size%acq_nframes:
                 raise RuntimeError("sequence buffer size {} does not divide the number of frames {}".format(total_size,acq_nframes))
             return total_size//acq_nframes
+    def _setup_acquisition(self, roi=None, exp_mode=None, exposure=None, acq_nframes=None):
+        roi0=roi or self._roi
+        roi=roi0
+        roi_div=1
+        bin_invalid=False
+        def rrnd(v, up):
+            return ((v-1)//roi_div+1)*roi_div if up else (v//roi_div)*roi_div
+        for i in range(16):
+            try:
+                buffsize=self._try_setup_acquisition(roi=roi,exp_mode=exp_mode,exposure=exposure,acq_nframes=acq_nframes)
+                if roi_div>1 or bin_invalid:
+                    self.set_roi(*roi)
+                return buffsize
+            except PvcamLibError as err:
+                if i==15:
+                    raise
+                if err.code==181:  # PL_ERR_REGION_INVALID
+                    roi_div*=2
+                elif err.code==182:  # PL_ERR_BINNING_INVALID
+                    bin_invalid=True
+                else:
+                    raise
+            roi=(rrnd(roi0[0],False),rrnd(roi0[1],True),rrnd(roi0[2],False),rrnd(roi0[3],True))+((1,1) if bin_invalid else roi[4:])
 
     @interface.use_parameters(mode="acq_mode")
     def setup_acquisition(self, mode="sequence", nframes=100):  # pylint: disable=arguments-differ
@@ -645,6 +669,8 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         self.clear_acquisition()
         super().setup_acquisition(mode=mode,nframes=nframes)
         buffsize=self._setup_acquisition(acq_nframes=self._acq_params["nframes"] if mode=="snap" else 0)
+        if self._acq_params["nframes"]*buffsize>2**32-1:
+            return self.setup_acquisition(mode=mode,nframes=(2**32-1)//buffsize)
         self._allocate_buffer(buffsize,self._acq_params["nframes"])
     def clear_acquisition(self):
         self.stop_acquisition()
