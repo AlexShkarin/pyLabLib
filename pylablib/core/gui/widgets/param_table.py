@@ -455,8 +455,9 @@ class ParamTable(container.QWidgetContainer):
         Args:
             name (str): widget name (used to reference its value in the values table)
             value (bool): specifies initial value
-            options (list): list of strings specifying box options
-            index_values (list): list of values corresponding to box options; if supplied, these values are used when setting/getting values or sending signals
+            options (list): list of strings specifying box options or a dictionary ``{option: index_value}``
+            index_values (list): list of values corresponding to box options; if supplied, these values are used when setting/getting values or sending signals;
+                if `options` is a dictionary, this parameter is ignored
             out_of_range (str): behavior when out-of-range value is applied;
                 can be ``"error"`` (raise error), ``"reset"`` (reset to no-value position), or ``"ignore"`` (keep current value).
             virtual (bool): if ``True``, the widget is not added, and a virtual handler is added instead
@@ -473,6 +474,7 @@ class ParamTable(container.QWidgetContainer):
             if value is not None:
                 widget.set_value(value)
             else:
+                index_values=widget.get_index_values()
                 widget.set_value(index_values[0] if index_values else 0)
         return self.add_simple_widget(name,widget,label=label,add_indicator=add_indicator,location=location,tooltip=tooltip,add_change_event=add_change_event)
 

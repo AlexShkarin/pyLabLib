@@ -40,13 +40,15 @@ class ComboBox(QtWidgets.QComboBox):
         if self._index!=index:
             self._index=index
             self.value_changed.emit(self.index_to_value(self._index))
-    def set_index_values(self, index_values, value=None):
+    def set_index_values(self, index_values, value=None, index=None):
         """
         Set a list of values corresponding to combo box indices.
 
         Can be either a list of values, whose length must be equal to the number of options, or ``None`` (simply use indices).
         Note: if the number of combo box options changed (e.g., using ``addItem`` or ``insertItem`` methods),
         the index values need to be manually updated; otherwise, the errors might arise if the index is larger than the number of values.
+        If `value` is specified, set as the new values.
+        If `index` is specified, use it as the index of a new value; if both `value` and `index` are specified, the `value` takes priority.
         """
         if index_values is not None:
             if len(index_values)!=self.count():
@@ -57,6 +59,8 @@ class ComboBox(QtWidgets.QComboBox):
         self._index_values=index_values
         if value is not None:
             self.set_value(value)
+        elif index is not None:
+            self.set_value(self.get_index_values()[index])
         else:
             self._index=-1
             self.setCurrentIndex(-1)
@@ -64,16 +68,25 @@ class ComboBox(QtWidgets.QComboBox):
                 self.set_value(curr_value)
             except ValueError:
                 pass
-    def set_options(self, options, index_values=None, value=None):
+    def get_index_values(self):
+        """Return the list of values corresponding to combo box indices"""
+        return list(self._index_values) if self._index_values is not None else list(range(self.count()))
+    def set_options(self, options, index_values=None, value=None, index=None):
         """
         Set new set of options.
 
         If `index_values` is not ``None``, set these as the new index values; otherwise, index values are reset.
+        If `options` is a dictionary, interpret it as a mapping ``{option: index_value}``.
+        If `value` is specified, set as the new values.
+        If `index` is specified, use it as the index of a new value; if both `value` and `index` are specified, the `value` takes priority.
         """
         while self.count():
             self.removeItem(0)
+        if isinstance(options,dict):
+            index_values=list(options)
+            options=[options[v] for v in index_values]
         self.addItems(options)
-        self.set_index_values(index_values,value=value)
+        self.set_index_values(index_values,value=value,index=index)
 
     value_changed=Signal(object)
     """Signal emitted when value is changed"""
