@@ -34,6 +34,8 @@ class TableAccumulator:
             self.start=0
             self.end=0
             self.data=[]
+        def __len__(self):
+            return self.end
         def add_data(self, data):
             """Add data (list of values) to the buffer"""
             l=len(data)
@@ -55,6 +57,10 @@ class TableAccumulator:
             """Get last at most `l` samples from the buffer (if `l` is ``None``, get all samples)"""
             start=max(0,(self.end-self.start)-l) if l is not None else 0
             return self.data[self.start+start:self.end]
+    def __len__(self):
+        if self.data:
+            return len(self.data[0])
+        return 0
     def add_data(self, data):
         """
         Add new data to the table.

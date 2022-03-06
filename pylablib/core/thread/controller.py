@@ -165,15 +165,15 @@ def call_in_thread(thread_name, interrupt=True, pass_exception=True, silent=Fals
             return thread.call_in_thread_sync(func,args=args,kwargs=kwargs,sync=sync,same_thread_shortcut=True,interrupt=interrupt,pass_exception=pass_exception,silent=silent)
         return rem_func
     return wrapper
-def call_in_gui_thread(func=None, pass_exception=True, silent=False, sync=True):
+def call_in_gui_thread(func=None, interrupt=True, pass_exception=True, silent=False, sync=True):
     """Decorator that turns any function into a remote call in a GUI thread (call from a different thread is passed synchronously)"""
     if func is not None:
-        return call_in_gui_thread(pass_exception=pass_exception,silent=silent)(func)
+        return call_in_gui_thread(interrupt=interrupt,pass_exception=pass_exception,silent=silent)(func)
     def wrapper(func):
         @func_utils.getargsfrom(func)
         def rem_func(*args, **kwargs):
             if not threadprop.is_gui_thread():
-                return get_gui_controller().call_in_thread_sync(func,args=args,kwargs=kwargs,sync=sync,same_thread_shortcut=False,pass_exception=pass_exception,silent=silent)
+                return get_gui_controller().call_in_thread_sync(func,args=args,kwargs=kwargs,sync=sync,same_thread_shortcut=False,interrupt=interrupt,pass_exception=pass_exception,silent=silent)
             return func(*args,**kwargs)
         return rem_func
     return wrapper
@@ -451,11 +451,26 @@ class QThreadController(QtCore.QObject):
         if any(calls and self._is_postponed_executable(kind) for kind,calls in self._postponed_calls.items()):
             self._check_postponed_signals.emit()
     @contextlib.contextmanager
+    def allowing_toploop(self, depth=1):
+        """
+        Context manager which temporarily treats the current loop level and several deeper levels as a top loop.
+
+        All event loops which lie up to `depth` below this one are treated as top loops.
+        """
+        toploop_depth=self._toploop_depth
+        self._toploop_depth=self._loop_depth+depth
+        self._followup_postponed_signals()
+        try:
+            yield
+        finally:
+            self._toploop_depth=toploop_depth
+            self._followup_postponed_signals()
+    @contextlib.contextmanager
     def _inner_loop(self, as_toploop=False):
         self._loop_depth+=1
         toploop_depth=self._toploop_depth
         if as_toploop:
-            self._toploop_depth=self._loop_depth
+            self._toploop_depth=max(self._toploop_depth,self._loop_depth)
             self._followup_postponed_signals()
         try:
             yield

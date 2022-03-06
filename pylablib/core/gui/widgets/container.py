@@ -35,6 +35,7 @@ class IQContainer:
         self._timers={}
         self._timer_events={}
         self._running=False
+        self._stopping=False
         self._children=dictionary.Dictionary()
         self.gui_values=value_handling.GUIValues()
         self.ctl=None
@@ -239,7 +240,14 @@ class IQContainer:
                 ch.widget.start()
         for n in self._timers:
             self.start_timer(n)
+        self._stopping=False
         self._running=True
+    def _notify_stop(self):
+        if not self._stopping:
+            self._stopping=True
+            for ch in self._children.iternodes():
+                if _hasattr(ch.widget,"_notify_stop"):
+                    ch.widget._notify_stop()
     @controller.exsafe
     def stop(self):
         """
@@ -249,6 +257,7 @@ class IQContainer:
         """
         if not self._running:
             return
+        self._notify_stop()
         self._running=False
         for n in self._timers:
             self.stop_timer(n)
@@ -258,6 +267,9 @@ class IQContainer:
     def is_running(self):
         """Check if the container is running (started and not yet stopped)"""
         return self._running
+    def is_stopping(self):
+        """Check if the container is stopping (stopping initialized and not yet done)"""
+        return self._stopping
 
     def clear(self):
         """

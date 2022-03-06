@@ -439,28 +439,32 @@ class ImagePlotter(QLayoutManagedWidget):
     def get_line_positions(self):
         """Return lines positions referenced to the original image, taking into account flip/transpose"""
         values=self._get_values()
-        if not values.v["show_lines"]:
+        if not values.v["show_lines"] or self.img is None:
             return None
+        imshape=self.img.shape[::-1] if values.v["transpose"] else self.img.shape
         ipos,jpos=values.v["vlinepos"]*self.xbin,values.v["hlinepos"]*self.ybin
         if values.v["flip_x"]:
-            ipos=-ipos
+            ipos=imshape[0]-ipos
         if values.v["flip_y"]:
-            jpos=-jpos
+            jpos=imshape[1]-jpos
         if values.v["transpose"]:
             ipos,jpos=jpos,ipos
         return ipos,jpos
     def set_line_positions(self, ipos=None, jpos=None):
         """Set line positions referenced to the original image, taking into account flip/transpose"""
         values=self._get_values()
+        if self.img is None:
+            return None
+        imshape=self.img.shape[::-1] if values.v["transpose"] else self.img.shape
         if values.v["transpose"]:
             ipos,jpos=jpos,ipos
         if ipos is not None:
             if values.v["flip_x"]:
-                ipos=-ipos  # pylint: disable=invalid-unary-operand-type
+                ipos=imshape[0]-ipos  # pylint: disable=invalid-unary-operand-type
             self.vline.setPos(ipos/self.xbin)
         if jpos is not None:
             if values.v["flip_y"]:
-                jpos=-jpos  # pylint: disable=invalid-unary-operand-type
+                jpos=imshape[1]-jpos  # pylint: disable=invalid-unary-operand-type
             self.hline.setPos(jpos/self.ybin)
 
     # Update image controls based on PyQtGraph image window
