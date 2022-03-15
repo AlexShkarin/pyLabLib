@@ -257,7 +257,7 @@ class ParamTable(container.QWidgetContainer):
         value_handler=value_handling.VirtualValueHandler(value,multivalued=multivalued)
         if add_indicator is None:
             add_indicator=self.add_indicator
-        indicator_handler=value_handling.VirtualIndicatorHandler if add_indicator else None
+        indicator_handler=value_handling.VirtualIndicatorHandler(multivalued=multivalued) if add_indicator else None
         self._add_widget(name,self.ParamRow(None,None,None,value_handler,indicator_handler))
     def add_property_element(self, name, getter=None, setter=None, add_indicator=True):
         """

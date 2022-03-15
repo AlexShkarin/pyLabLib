@@ -156,7 +156,7 @@ class VirtualValueHandler(IValueHandler):
         multivalued (bool): if ``True``, the internal value is assumed to be complex, so it is forced to be a :class:`.Dictionary` every time it is set.
     """
     def __init__(self, value=None, multivalued=False):
-        IValueHandler.__init__(self,None)
+        super().__init__(None)
         self.multivalued=multivalued
         self.value=dictionary.Dictionary(value) if multivalued else value
     def get_value(self, name=None):
@@ -191,7 +191,7 @@ class PropertyValueHandler(IValueHandler):
         default_name(str): default name to be supplied to ``getter`` and ``setter`` methods if they require a name argument
     """
     def __init__(self, getter=None, setter=None, default_name=None):
-        IValueHandler.__init__(self,None)
+        super().__init__(None)
         self.getter=getter
         self.getter_kind=get_method_kind(getter)
         self.setter=setter
@@ -374,7 +374,7 @@ class LabelValueHandler(ISingleValueHandler):
 class IBoolValueHandler(ISingleValueHandler):
     """Generic value handler for widgets with boolean values"""
     def __init__(self, widget, labels=("Off","On")):
-        ISingleValueHandler.__init__(self,widget)
+        super().__init__(widget)
         self.labels=labels
     def repr_single_value(self, value):
         return self.labels[1 if value else 0]
@@ -513,7 +513,7 @@ class StandardIndicatorHandler(IIndicatorHandler):
         default_name(str): default name to be supplied to ``get/set_indicator`` methods if they require a name argument.
     """
     def __init__(self, widget, default_name=None):
-        IIndicatorHandler.__init__(self)
+        super().__init__()
         self.widget=widget
         self.get_indicator_kind=get_method_kind(getattr(self.widget,"get_indicator")) if _hasattr(self.widget,"get_indicator") else None
         self.get_all_indicators_kind="simple" if _hasattr(self.widget,"get_all_indicators") else None
@@ -570,7 +570,7 @@ class LabelIndicatorHandler(IIndicatorHandler):
         repr_value_name(str): default name to be supplied to `repr_value` if it requires a name argument and name is not supplied
     """
     def __init__(self, label, formatter=None, repr_value_name=None):
-        IIndicatorHandler.__init__(self)
+        super().__init__()
         if not isinstance(label,IValueHandler):
             label=create_value_handler(label)
         self.label_handler=label
@@ -787,7 +787,7 @@ class GUIValues:
         """
         h=self.add_handler(name,VirtualValueHandler(value,multivalued=multivalued))
         if add_indicator:
-            self.add_indicator_handler(name,VirtualIndicatorHandler(value))
+            self.add_indicator_handler(name,VirtualIndicatorHandler(value,multivalued=multivalued))
         return h
     def add_property_element(self, name, getter=None, setter=None, add_indicator=True):
         """

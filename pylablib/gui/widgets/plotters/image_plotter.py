@@ -56,6 +56,8 @@ class ImagePlotterCtl(QWidgetContainer):
         self.setMaximumWidth(200)
         self.plotter=plotter
         self.plotter._attach_controller(self)
+        self._update_paused=False
+        self._update_required=False
         self.params=ParamTable(self)
         self.add_child("params",self.params)
         self.params.setup(add_indicator=False)
@@ -89,7 +91,7 @@ class ImagePlotterCtl(QWidgetContainer):
         self.params.add_button("center_lines","Center lines").get_value_changed_signal().connect(plotter.center_lines)
         self.params.add_check_box("show_linecuts","Show line cuts",value=False).get_value_changed_signal().connect(self._setup_gui_state)
         self.params.add_num_edit("linecut_width",value=1,limiter=(1,None,"coerce","int"),formatter="int",label="Line cut width")
-        self.params.contained_value_changed.connect(lambda n: self.plotter.update_image(update_controls=(n=="normalize"),do_redraw=True),QtCore.Qt.DirectConnection)
+        self.params.contained_value_changed.connect(self._update_image,QtCore.Qt.DirectConnection)
         self.params.add_spacer(10)
         self.params.add_toggle_button("update_image","Updating",value=True).get_value_changed_signal().connect(plotter._set_image_update)
         def arm_single():
@@ -138,6 +140,25 @@ class ImagePlotterCtl(QWidgetContainer):
         self.params.set_enabled("vlinepos",show_lines and self.v["vlineon"])
         self.params.set_enabled("hlinepos",show_lines and self.v["hlineon"])
         self.params.set_enabled("linecut_width",show_lines and self.v["show_linecuts"])
+    def _update_image(self, name=None):
+        if self._update_paused:
+            self._update_required=True
+        else:
+            self._update_required=False
+            self.plotter.update_image(update_controls=(name=="normalize"),do_redraw=True)
+    @contextlib.contextmanager
+    def _pausing_update(self):
+        paused=self._update_paused
+        self._update_paused=True
+        try:
+            yield
+        finally:
+            self._update_paused=paused
+            if self._update_required:
+                self._update_image()
+    def set_all_values(self, value):
+        with self._pausing_update():
+            return super().set_all_values(value)
 
 
 
@@ -228,7 +249,7 @@ class ImagePlotter(QLayoutManagedWidget):
         self._last_curve_paint_cnt=[None,None]
         if min_size:
             self.setMinimumSize(QtCore.QSize(*min_size))
-        self.image_window=pyqtgraph.ImageView(self,imageItem=ImageItem())
+        self.image_window=pyqtgraph.ImageView(self,imageItem=ImageItem(image=self.img))
         self.add_to_layout(self.image_window)
         self.set_colormap("gray_sat")
         self.image_window.ui.roiBtn.hide()
@@ -473,12 +494,13 @@ class ImagePlotter(QLayoutManagedWidget):
         """Update image controls in the connected :class:`ImagePlotterCtl` object"""
         if self._updating_image:
             return
-        values=self._get_values()
-        if levels is not None:
-            values.v["minlim"],values.v["maxlim"]=levels
-        values.v["vlinepos"]=self.vline.getPos()[0]
-        values.v["hlinepos"]=self.hline.getPos()[1]
-        self._update_linecut_boundaries(values)
+        with self._while_updating():
+            values=self._get_values()
+            if levels is not None:
+                values.v["minlim"],values.v["maxlim"]=levels
+            values.v["vlinepos"]=self.vline.getPos()[0]
+            values.v["hlinepos"]=self.hline.getPos()[1]
+            self._update_linecut_boundaries(values)
     def _get_min_nonzero(self, img, default=0):
         img=img[img!=0]
         return default if np.all(np.isnan(img)) else np.nanmin(img)
