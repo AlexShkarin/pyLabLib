@@ -163,7 +163,14 @@ class FrameBinningThread(controller.QTaskThread):
                 frames=np.concatenate(frames,axis=0)
                 indices=np.asarray(indices)
                 frame_info=np.asarray(frame_info) if frame_info is not None else None
-            msg=msg.copy(frames=frames,indices=indices,frame_info=frame_info,source=self.name,step=msg.mi.step*self.v["params/time/bin"])
+            if "roi" in msg.metainfo:
+                spat_bin=self.v["params/spat/bin"]
+                roi=msg.mi.roi+(1,1)
+                roi=roi[:4]+(roi[4]*spat_bin[0],roi[5]*spat_bin[1])
+                mi={"roi":roi}
+            else:
+                mi={}
+            msg=msg.copy(frames=frames,indices=indices,frame_info=frame_info,source=self.name,step=msg.mi.step*self.v["params/time/bin"],metainfo=mi)
             self.send_multicast(dst="any",tag=self.tag_out,value=msg)
 
 
@@ -351,7 +358,7 @@ class BackgroundSubtractionThread(controller.QTaskThread):
         - ``setup_subtraction_method``: set the subtraction method (running or snapshot) and whether the subtraction is enabled at all
         - ``set_output_period``: set the period of output frames generation
     """
-    TStoredFrame=collections.namedtuple("TStoredFrame",["frame","index","info","status_line"])
+    TStoredFrame=collections.namedtuple("TStoredFrame",["frame","index","info","status_line","metainfo"])
     def setup_task(self, src, tag_in, tag_out=None):  # pylint: disable=arguments-differ
         self.frames_src=stream_manager.StreamSource(builder=stream_message.FramesMessage,use_mid=False)
         self.subscribe_commsync(self.process_input_frames,srcs=src,tags=tag_in,limit_queue=20,on_full_queue="skip_oldest")
@@ -359,7 +366,7 @@ class BackgroundSubtractionThread(controller.QTaskThread):
         self.v["enabled"]=False
         self.v["overridden"]=False
         self.v["method"]="snapshot"
-        self.last_frame=self.TStoredFrame(None,None,None,None)
+        self.last_frame=self.TStoredFrame(None,None,None,None,None)
         self._new_show_frame=False
         self.snapshot_buffer=[]
         self.v["snapshot/parameters"]={"count":1,"mode":"mean","dtype":None,"offset":False}
@@ -551,13 +558,14 @@ class BackgroundSubtractionThread(controller.QTaskThread):
         """Process and emit new frame"""
         if self._new_show_frame and not self.v["overridden"]:
             show_frame=self.process_frame(self.last_frame.frame,status_line=self.last_frame.status_line)
-            self.send_multicast(dst="any",tag=self.tag_out,value=self.frames_src.build_message(show_frame,self.last_frame.index,[self.last_frame.info],source=self.name))
+            self.send_multicast(dst="any",tag=self.tag_out,value=self.frames_src.build_message(show_frame,self.last_frame.index,[self.last_frame.info],
+                source=self.name,metainfo=self.last_frame.metainfo))
         self._new_show_frame=False
 
     def process_input_frames(self, src, tag, msg):   # pylint: disable=unused-argument
         """Process multicast message with input frames"""
         self.frames_src.receive_message(msg)
-        self.last_frame=self.TStoredFrame(msg.last_frame(),msg.last_frame_index(),msg.last_frame_info(),msg.metainfo.get("status_line"))
+        self.last_frame=self.TStoredFrame(msg.last_frame(),msg.last_frame_index(),msg.last_frame_info(),msg.metainfo.get("status_line"),msg.metainfo.copy())
         self._update_running_buffer(msg)
         self._update_snapshot_buffer(msg)
         if self.v["output_period"] is None:

@@ -250,6 +250,7 @@ class QThreadController(QtCore.QObject):
         self._toploop_depth=0
         self._postponed_calls={}
         self._blocked_message_kinds=set()
+        self._ignored_message_kinds=set()
         self._message_queue={}
         self._message_uid=0
         self._sync_queue={}
@@ -432,10 +433,15 @@ class QThreadController(QtCore.QObject):
         if kind=="toploop":
             return self._loop_depth<=self._toploop_depth
         return kind not in self._blocked_message_kinds
+    def _is_postponed_ignored(self, kind):
+        if isinstance(kind,(tuple,frozenset)):
+            return any(self._is_postponed_ignored(k) for k in kind)
+        return kind not in self._ignored_message_kinds
     def _postpone_call(self, kind, call):
         if self._is_postponed_executable(kind):
             return False
-        self._postponed_calls.setdefault(frozenset(kind),[]).append(call)
+        if not self._is_postponed_ignored(kind):
+            self._postponed_calls.setdefault(frozenset(kind),[]).append(call)
         return True
     _check_postponed_signals=Signal()
     @exsafeSlot()
@@ -480,25 +486,33 @@ class QThreadController(QtCore.QObject):
                 self._toploop_depth=toploop_depth
             self._followup_postponed_signals()
     @contextlib.contextmanager
-    def blocking_control_signals(self, kinds="all"):
+    def blocking_control_signals(self, kinds="all", ignore=None):
         """
         Context manager which temporarily blocks external control signals.
 
-        After leaving the wrapped code segment, all of the blocked calls are executed.
+        After leaving the wrapped code segment, all of the blocked but not ignored calls are executed.
         `kind` determines the kind of calls to block; it is a collection of elements among
         ``"message"``, ``"stop"``, and ``"call"`` and blocks, correspondingly, messages, stop signals,
         and any ``call_in_thread``-related requests; can be also be ``"all"``, which includes all of these categories.
+        `ignore` specifies kinds which are completely ignored if sent during the blocking interval;
+        can also be ``"all"``, which includes all of the `kinds` categories.
         Useful to temporarily "suspend" the thread communication with other threads, especially for the main GUI thread (e.g., to show a blocking message box).
         Local call method.
         """
         if kinds=="all":
             kinds={"message","stop","call"}
+        if ignore=="all":
+            ignore=kinds
         blocked_message_kinds=self._blocked_message_kinds
         self._blocked_message_kinds=blocked_message_kinds|set(kinds)
+        ignored_message_kinds=self._ignored_message_kinds
+        if ignore:
+            self._ignored_message_kinds=ignored_message_kinds|(set(ignore)&set(kinds))
         try:
             yield
         finally:
             self._blocked_message_kinds=blocked_message_kinds
+            self._ignored_message_kinds=ignored_message_kinds
             self._followup_postponed_signals()
 
     def _wait_in_process_loop(self, done_check, timeout=None, as_toploop=False):

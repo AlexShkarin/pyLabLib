@@ -225,9 +225,12 @@ class GenericCameraThread(device_thread.DeviceThread):
 
     def _get_metainfo(self, frames, indices, infos):  # pylint: disable=unused-argument
         metainfo={}
-        if self.v["parameters/add_info"]:
-            fields=self.v["parameters/frame_info_fields"]
+        parameters=self.v["parameters"]
+        if parameters["add_info"]:
+            fields=parameters["frame_info_fields"]
             metainfo["frame_info_fields"]=fields[:1]+["acq_timestamp_ms","width","height"]+fields[1:]
+        if "roi" in parameters:
+            metainfo["roi"]=parameters["roi"]
         return metainfo
     def _build_chunks(self, frames, infos, max_size=None):
         if infos is not None and not all(isinstance(inf,np.ndarray) for inf in infos):
