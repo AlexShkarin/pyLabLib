@@ -1114,3 +1114,4 @@ def virtual_gui_values(**kwargs):
     values=GUIValues()
     for k,v in kwargs.items():
         values.add_virtual_element(k,v)
+    return values

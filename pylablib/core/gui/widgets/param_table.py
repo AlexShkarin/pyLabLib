@@ -469,7 +469,7 @@ class ParamTable(container.QWidgetContainer):
         widget=combo_box.ComboBox(self)
         widget.setObjectName(self.name+"_"+name)
         widget.set_out_of_range(action=out_of_range)
-        if options:
+        if options is not None:
             widget.set_options(options,index_values=index_values)
             if value is not None:
                 widget.set_value(value)

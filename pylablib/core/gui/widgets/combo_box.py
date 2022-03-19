@@ -71,6 +71,9 @@ class ComboBox(QtWidgets.QComboBox):
     def get_index_values(self):
         """Return the list of values corresponding to combo box indices"""
         return list(self._index_values) if self._index_values is not None else list(range(self.count()))
+    def get_options(self):
+        """Return the list of labels corresponding to combo box indices"""
+        return [self.itemText(i) for i in range(self.count())]
     def set_options(self, options, index_values=None, value=None, index=None):
         """
         Set new set of options.
@@ -87,6 +90,24 @@ class ComboBox(QtWidgets.QComboBox):
             options=[options[v] for v in index_values]
         self.addItems(options)
         self.set_index_values(index_values,value=value,index=index)
+    def insert_option(self, option, index_value=None, index=None):
+        """
+        Insert or append a new option to the list
+        
+        Insertion (i.e., ``index is not None``) only works for index-valued combo boxes.
+        """
+        if self._index_values is None:
+            if index is not None:
+                raise ValueError("insertion only works for index-valued combo boxes")
+            self.set_options(self.get_options()+[option])
+        else:
+            if index_value is None:
+                raise ValueError("can not add None-valued element")
+            options,index_values=self.get_options(),self.get_index_values()
+            index=len(index_values) if index is None else index
+            options.insert(index,option)
+            index_values.insert(index,index_value)
+            self.set_options(options,index_values)
 
     value_changed=Signal(object)
     """Signal emitted when value is changed"""
