@@ -61,6 +61,9 @@ class PvcamAttribute:
 
     Attributes:
         name: attribute name
+        kind: attribute kind; can be ``"INT8"``, ``"INT16"``, ``"INT32"``, ``"INT64"``,
+            ``"UNS8"``, ``"UNS16"``, ``"UNS32"``, ``"UNS64"``, ``"FLT32"``, ``"FLT64"``, 
+            ``"ENUM"``, ``"BOOLEAN"``, or ``"CHAR_PTR"``
         kind: attribute kind (e.g., ``"INT8"`` or ``"FLT32"``)
         available (bool): whether attribute is available on the current hardware
         readable (bool): whether attribute is readable
@@ -68,9 +71,10 @@ class PvcamAttribute:
         min (float or int): minimal attribute value (if applicable)
         max (float or int): maximal attribute value (if applicable)
         inc (float or int): minimal attribute increment value (if applicable)
-        values: list of possible attribute numerical values (if applicable)
-        labels: list ``{label: number}`` which shows all possible values of an enumerated attribute and their corresponding numerical values
-        lvalues: list ``{number: label}`` which shows labels corresponding to numerical values of an enumerated attribute
+        ivalues: list of possible integer values for enum attributes
+        values: list of possible text values for enum attributes
+        labels: dict ``{label: index}`` which shows all possible values of an enumerated attribute and their corresponding numerical values
+        ilabels: dict ``{index: label}`` which shows labels corresponding to numerical values of an enumerated attribute
         default: default values of the attribute
     """
     def __init__(self, handle, pid, cam=None):
@@ -89,8 +93,9 @@ class PvcamAttribute:
         self.min=self.max=self.inc=None
         self._cache=None
         self.values=[]
+        self.ivalues=[]
         self.labels={}
-        self.lvalues={}
+        self.ilabels={}
         self.update_limits()
         self.default=self._get_default_value() if self.available else None
 
@@ -101,9 +106,10 @@ class PvcamAttribute:
         if self._attr_type_n==pvcam_defs.PARAM_TYPE.TYPE_ENUM:
             n=lib.get_param(self.handle,self.pid,pvcam_defs.PL_PARAM_ATTRIBUTES.ATTR_COUNT,pvcam_defs.PARAM_TYPE.TYPE_UNS32)
             evals=[lib.get_enum_value(self.handle,self.pid,v) for v in range(n)]
-            self.values=list([iv for iv,_ in evals])
-            self.labels={py3.as_str(sv):iv for iv,sv in evals}
-            self.lvalues={iv:py3.as_str(sv) for iv,sv in evals}
+            self.values=list([py3.as_str(sv) for _,sv in evals])
+            self.ivalues=list([iv for iv,_ in evals])
+            self.labels=dict(zip(self.values,self.ivalues))
+            self.ilabels=dict(zip(self.ivalues,self.values))
         if self._attr_type_n in lib.numeric_params:
             try:
                 self.min=lib.get_param(self.handle,self.pid,pvcam_defs.PL_PARAM_ATTRIBUTES.ATTR_MIN,self._attr_type_n)
@@ -130,7 +136,7 @@ class PvcamAttribute:
         except PvcamLibError:
             return None
         if enum_as_str and self._attr_type_n==pvcam_defs.PARAM_TYPE.TYPE_ENUM:
-            value=self.lvalues.get(value,value)
+            value=self.ilabels.get(value,value)
         if self._attr_type_n==pvcam_defs.PARAM_TYPE.TYPE_BOOLEAN:
             value=bool(value)
         return value
@@ -154,7 +160,7 @@ class PvcamAttribute:
                 raise
             self._cache=value
         if enum_as_str and self._attr_type_n==pvcam_defs.PARAM_TYPE.TYPE_ENUM:
-            value=self.lvalues[value]
+            value=self.ilabels[value]
         if self._attr_type_n==pvcam_defs.PARAM_TYPE.TYPE_BOOLEAN:
             value=bool(value)
         return value
@@ -169,8 +175,8 @@ class PvcamAttribute:
         if truncate:
             value=self.truncate_value(value)
         value=self.labels.get(value,value)
-        if self._attr_type_n==pvcam_defs.PARAM_TYPE.TYPE_ENUM and value not in self.values:
-            raise PvcamAttributeValueError(self.name,value,self.values)
+        if self._attr_type_n==pvcam_defs.PARAM_TYPE.TYPE_ENUM and value not in self.ivalues:
+            raise PvcamAttributeValueError(self.name,value,self.ivalues)
         lib.set_param(self.handle,self.pid,value,typ=self._attr_type_n)
 
     def __repr__(self):
@@ -202,6 +208,7 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         self.name=name
         self.handle=None
         self._buffer=None
+        self._max_buff_size=2**32
         self._frame_bytes=None
         self._buffer_frames=None
         self._acq_in_progress=False
@@ -312,22 +319,12 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
             att=self.ca[name]
             att.update_limits()
             if att.kind=="ENUM":
-                values=att.lvalues
+                values=att.ilabels
                 if parameter is not None:
                     parameter=self._as_parameter_class(parameter)
                     values={parameter.i(v):n for v,n in values.items()}
                 return values
             return (att.min,att.max)
-        return default
-    def _get_attr_lvalues(self, name, default):
-        if name in self.attributes:
-            self.ca[name].update_limits()
-            return self.ca[name].lvalues
-        return default
-    def _get_attr_rng(self, name, default):
-        if name in self.attributes:
-            self.ca[name].update_limits()
-            return self.ca[name].min,self.ca[name].max+1
         return default
     def _detect_readout_modes(self):
         modes=[]
@@ -446,7 +443,7 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         if "EXP_RES" in self.ca:
             att=self.ca["EXP_RES"]
             for er in [pvcam_defs.PL_EXP_RES_MODES.EXP_RES_ONE_MICROSEC,pvcam_defs.PL_EXP_RES_MODES.EXP_RES_ONE_MILLISEC,pvcam_defs.PL_EXP_RES_MODES.EXP_RES_ONE_SEC]:
-                if er in att.values:
+                if er in att.ivalues:
                     att.set_value(er)
                     break
     def get_exposure(self):
@@ -540,8 +537,8 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         """Set trigger mode"""
         with self._setting_parameter_attribute("trigger_mode"):
             att=self.ca["EXPOSURE_MODE"]
-            if mode not in att.values:
-                raise PvcamAttributeValueError(att.name,mode,att.values)
+            if mode not in att.ivalues:
+                raise PvcamAttributeValueError(att.name,mode,att.ivalues)
         if mode>=0x100:
             if out_mode is None:
                 out_mode=self.get_attribute_value("EXPOSE_OUT_MODE",error_on_missing=False,default=pvcam_defs.PL_EXPOSE_OUT_MODES.EXPOSE_OUT_FIRST_ROW,enum_as_str=False)
@@ -669,14 +666,14 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         self.clear_acquisition()
         super().setup_acquisition(mode=mode,nframes=nframes)
         buffsize=self._setup_acquisition(acq_nframes=self._acq_params["nframes"] if mode=="snap" else 0)
-        if self._acq_params["nframes"]*buffsize>2**32-1:
-            return self.setup_acquisition(mode=mode,nframes=(2**32-1)//buffsize)
+        if self._acq_params["nframes"]*buffsize>self._max_buff_size-1:
+            return self.setup_acquisition(mode=mode,nframes=(self._max_buff_size-1)//buffsize)
         self._allocate_buffer(buffsize,self._acq_params["nframes"])
     def clear_acquisition(self):
         self.stop_acquisition()
         self._deallocate_buffer()
         super().clear_acquisition()
-    def start_acquisition(self, *args, **kwargs):
+    def _try_start_acquisition(self, *args, **kwargs):
         self.stop_acquisition()
         super().start_acquisition(*args,**kwargs)
         self._frame_counter.reset(self._acq_params["nframes"])
@@ -686,6 +683,19 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         else:
             lib.pl_exp_start_seq(self.handle,self._buffer)
         self._acq_in_progress=True
+    def start_acquisition(self, *args, **kwargs):
+        while True:
+            try:
+                return self._try_start_acquisition(*args,**kwargs)
+            except PvcamLibError as err:
+                if err.code==199: # PL_ERR_DDI_DEVICE_IOCTL_FAILED
+                    self._max_buff_size//=2
+                    acq_params=self._acq_params
+                    lib.pl_exp_abort(self.handle,pvcam_defs.PL_CCS_ABORT_MODES.CCS_HALT_CLOSE_SHTR)
+                    self.clear_acquisition()
+                    self.setup_acquisition(**acq_params)
+                else:
+                    raise
     def _abort_acquisition(self):
         self._frame_counter.update_acquired_frames(self._get_acquired_frames())
         lib.pl_exp_abort(self.handle,pvcam_defs.PL_CCS_ABORT_MODES.CCS_HALT_CLOSE_SHTR)

@@ -3,7 +3,7 @@ from . import NIIMAQdx_lib
 from .NIIMAQdx_lib import IMAQdxAttributeType, IMAQdxAttributeVisibility, IMAQdxCameraControlMode, IMAQdxBufferNumberMode
 from .NIIMAQdx_lib import wlib as lib, IMAQdxError, IMAQdxLibError  # pylint: disable=unused-import
 
-from ...core.utils import py3
+from ...core.utils import py3, dictionary
 from ...core.devio import interface
 from ..interface import camera
 
@@ -68,16 +68,22 @@ class IMAQdxAttribute:
 
     Attributes:
         name: attribute name
+        kind: attribute kind; can be ``"u32"``, ``"i64"``, ``"f64"``, ``"str"``, ``"enum"``,
+            ``"bool"``, ``"command"``, or ``"blob"``
         display_name: attribute display name (short description name)
         tooltip: longer attribute description
         description: full attribute description (usually, same as `tooltip`)
         units: attribute units (if applicable)
+        visibility: attribute visibility (``"simple"``, ``"intermediate"``, or ``"advanced"``)
         readable (bool): whether attribute is readable
         writable (bool): whether attribute is writable
         min (float or int): minimal attribute value (if applicable)
         max (float or int): maximal attribute value (if applicable)
         inc (float or int): minimal attribute increment value (if applicable)
-        values: list of possible attribute values (if applicable)
+        ivalues: list of possible integer values for enum attributes
+        values: list of possible text values for enum attributes
+        labels: dict ``{label: index}`` which shows all possible values of an enumerated attribute and their corresponding numerical values
+        ilabels: dict ``{index: label}`` which shows labels corresponding to numerical values of an enumerated attribute
     """
     _attr_types={   IMAQdxAttributeType.IMAQdxAttributeTypeU32:"u32",
                     IMAQdxAttributeType.IMAQdxAttributeTypeI64:"i64",
@@ -87,12 +93,16 @@ class IMAQdxAttribute:
                     IMAQdxAttributeType.IMAQdxAttributeTypeBool:"bool",
                     IMAQdxAttributeType.IMAQdxAttributeTypeCommand:"command",
                     IMAQdxAttributeType.IMAQdxAttributeTypeBlob:"blob"}
+    _vis_types={    IMAQdxAttributeVisibility.IMAQdxAttributeVisibilitySimple:"simple",
+                    IMAQdxAttributeVisibility.IMAQdxAttributeVisibilityIntermediate:"intermediate",
+                    IMAQdxAttributeVisibility.IMAQdxAttributeVisibilityAdvanced:"advanced"}
     def __init__(self, sid, name):
         self.sid=sid
         self.name=py3.as_str(name)
         self.display_name=py3.as_str(lib.IMAQdxGetAttributeDisplayName(sid,name))
         self.tooltip=py3.as_str(lib.IMAQdxGetAttributeTooltip(sid,name))
         self.description=py3.as_str(lib.IMAQdxGetAttributeDescription(sid,name))
+        self.visibility=self._vis_types[lib.IMAQdxGetAttributeVisibility(sid,name)]
         self.units=py3.as_str(lib.IMAQdxGetAttributeUnits(sid,name))
         self.readable=lib.IMAQdxIsAttributeReadable(sid,name)
         self.writable=lib.IMAQdxIsAttributeWritable(sid,name)
@@ -101,13 +111,20 @@ class IMAQdxAttribute:
         self.min=None
         self.max=None
         self.inc=None
-        self.values=None
+        self.values=[]
+        self.ivalues=[]
+        self.labels={}
+        self.ilabels={}
         if self._attr_type_n in lib.numeric_attr_types:
             self.min=lib.IMAQdxGetAttributeMinimum(sid,name,self._attr_type_n)
             self.max=lib.IMAQdxGetAttributeMaximum(sid,name,self._attr_type_n)
             self.inc=lib.IMAQdxGetAttributeIncrement(sid,name,self._attr_type_n)
         if self._attr_type_n==IMAQdxAttributeType.IMAQdxAttributeTypeEnum:
-            self.values=lib.IMAQdxEnumerateAttributeValues(sid,name)
+            attr_values=lib.IMAQdxEnumerateAttributeValues(sid,name)
+            self.values=[av.Name for av in attr_values]
+            self.ivalues=[av.Value for av in attr_values]
+            self.labels=dict(zip(self.values,self.ivalues))
+            self.ilabels=dict(zip(self.ivalues,self.values))
     
     def update_limits(self):
         """Update minimal and maximal attribute limits and return tuple ``(min, max, inc)``"""
@@ -139,8 +156,8 @@ class IMAQdxAttribute:
         if not self.readable:
             raise IMAQdxError("Attribute {} is not readable".format(self.name))
         val=lib.IMAQdxGetAttribute(self.sid,self.name,self._attr_type_n)
-        if self._attr_type_n==IMAQdxAttributeType.IMAQdxAttributeTypeEnum and enum_as_str:
-            val=val.Name
+        if self._attr_type_n==IMAQdxAttributeType.IMAQdxAttributeTypeEnum:
+            val=val.Name if enum_as_str else val.Value
         return val
     def set_value(self, value, truncate=True):
         """
@@ -200,18 +217,17 @@ class IMAQdxCamera(camera.IROICamera, camera.IAttributeCamera):
             return
         mode=self._p_connection_mode(self.mode)
         self.sid=lib.IMAQdxOpenCamera(self.name,mode)
-        try:
+        with self._close_on_error():
             self._update_attributes()
-        except self.Error:
-            self.close()
-            raise
-        self.post_open()
+            self.post_open()
     def close(self):
         """Close connection to the camera"""
         if self.sid is not None:
-            self.clear_acquisition()
-            lib.IMAQdxCloseCamera(self.sid)
-            self.sid=None
+            try:
+                self.clear_acquisition()
+            finally:
+                lib.IMAQdxCloseCamera(self.sid)
+                self.sid=None
     def reset(self):
         """Reset connection to the camera"""
         self.close()
@@ -262,9 +278,17 @@ class IMAQdxCamera(camera.IROICamera, camera.IAttributeCamera):
         If ``truncate==True``, truncate value to lie within attribute range.
         """
         return super().set_attribute_value(name,value,truncate=truncate,error_on_missing=error_on_missing)
-    def get_all_attribute_values(self, root="", enum_as_str=True):  # pylint: disable=arguments-differ
+    def get_all_attribute_values(self, root="", enum_as_str=True, ignore_errors=True):  # pylint: disable=arguments-differ
         """Get values of all attributes with the given `root`"""
-        return super().get_all_attribute_values(root=root,enum_as_str=enum_as_str)
+        values=dictionary.Dictionary()
+        for n,att in self.get_attribute(root).as_dict("flat").items():
+            if att.readable:
+                try:
+                    values[n]=att.get_value(enum_as_str=enum_as_str)
+                except IMAQdxLibError:  # sometimes nominally implemented features still raise errors
+                    if not ignore_errors:
+                        raise
+        return values
     def set_all_attribute_values(self, settings, root="", truncate=True):  # pylint: disable=arguments-differ
         """
         Set values of all attributes with the given `root`.

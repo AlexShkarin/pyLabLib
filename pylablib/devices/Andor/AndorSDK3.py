@@ -49,13 +49,16 @@ class AndorSDK3Attribute:
 
     Attributes:
         name: attribute name
+        kind: attribute kind; can be ``"float"``, ``"int"``, ``"str"``, ``"bool"``, ``"enum"``, or ``"comm"`` (command)
         implemented (bool): whether attribute is implemented
         readable (bool): whether attribute is readable
         writable (bool): whether attribute is writable
         min (float or int): minimal attribute value (if applicable)
         max (float or int): maximal attribute value (if applicable)
-        values: list of possible attribute values (if applicable)
-        kind (str): attribute kind (autodetected or supplied upon creation)
+        ivalues: list of possible integer values for enum attributes
+        values: list of possible text values for enum attributes
+        labels: dict ``{label: index}`` which shows all possible values of an enumerated attribute and their corresponding numerical values
+        ilabels: dict ``{index: label}`` which shows labels corresponding to numerical values of an enumerated attribute
         is_command (bool): whether attribute is a command (same as ``kind=="comm"``)
     """
     def __init__(self, handle, name, kind="auto"):
@@ -73,7 +76,10 @@ class AndorSDK3Attribute:
         self.writable=self.implemented and not self.is_command and bool(lib.AT_IsWritable(self.handle,self.name))
         self.min=None
         self.max=None
-        self.values=None
+        self.values=[]
+        self.ivalues=[]
+        self.labels={}
+        self.ilabels={}
         if self.kind in {"int","float"}:
             try:
                 self.min,self.max=self.get_range()
@@ -82,6 +88,9 @@ class AndorSDK3Attribute:
         elif self.kind=="enum":
             try:
                 self.values=self.get_range()
+                self.ivalues=self.get_range(enum_as_str=False)
+                self.labels=dict(zip(self.values,self.ivalues))
+                self.ilabels=dict(zip(self.ivalues,self.values))
             except AndorError:
                 pass
     def __repr__(self):
@@ -96,11 +105,11 @@ class AndorSDK3Attribute:
             self.update_limits()
         except AndorError:
             pass
-    def get_value(self, enum_str=True, not_implemented_error=True, default=None):
+    def get_value(self, enum_as_str=True, not_implemented_error=True, default=None):
         """
         Get current value.
         
-        If ``enum_str==True``, return enum values as strings; otherwise, return as indices.
+        If ``enum_as_str==True``, return enum values as strings; otherwise, return as indices.
         If ``not_implemented_error==True`` and the feature is not implemented, raise :exc:`.AndorError`;
         otherwise, return `default` if it is not implemented.
         """
@@ -122,7 +131,7 @@ class AndorSDK3Attribute:
             return bool(lib.AT_GetBool(self.handle,self.name))
         if self.kind=="enum":
             val=lib.AT_GetEnumIndex(self.handle,self.name)
-            if enum_str:
+            if enum_as_str:
                 val=lib.AT_GetEnumStringByIndex(self.handle,self.name,val,512)
             return val
         raise AndorError("can't read feature '{}' with kind '{}'".format(self.name,self.kind))
@@ -159,12 +168,12 @@ class AndorSDK3Attribute:
         if not self.implemented:
             raise AndorError("command is not implemented: {}".format(self.name))
         lib.AT_Command(self.handle,self.name)
-    def get_range(self, enum_str=True):
+    def get_range(self, enum_as_str=True):
         """
         Get allowed range of the given value.
         
         For ``"int"`` or ``"float"`` values return tuple ``(min, max)`` (inclusive); for ``"enum"`` return list of possible values
-        (if ``enum_str==True``, return list of string values, otherwise return list of indices).
+        (if ``enum_as_str==True``, return list of string values, otherwise return list of indices).
         For all other value kinds return ``None``.
         """
         if not self.implemented:
@@ -176,7 +185,7 @@ class AndorSDK3Attribute:
         if self.kind=="enum":
             count=lib.AT_GetEnumCount(self.handle,self.name)
             available=[i for i in range(count) if lib.AT_IsEnumIndexAvailable(self.handle,self.name,i)]
-            if enum_str:
+            if enum_as_str:
                 available=[lib.AT_GetEnumStringByIndex(self.handle,self.name,i,512) for i in available]
             return available
     def update_limits(self):
@@ -278,7 +287,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         if att is not None and update_properties:
             att.update_properties()
         return att
-    def get_attribute_value(self, name, update_properties=False, error_on_missing=True, default=None):  # pylint: disable=arguments-differ
+    def get_attribute_value(self, name, enum_as_str=True, update_properties=False, error_on_missing=True, default=None):  # pylint: disable=arguments-differ
         """
         Get value of an attribute with the given name.
         
@@ -288,7 +297,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         """
         error_on_missing=error_on_missing and (default is None)
         attr=self.get_attribute(name,update_properties=update_properties,error_on_missing=error_on_missing)
-        return default if attr is None else attr.get_value(not_implemented_error=error_on_missing,default=default)
+        return default if attr is None else attr.get_value(not_implemented_error=error_on_missing,enum_as_str=enum_as_str,default=default)
     def set_attribute_value(self, name, value, update_properties=True, error_on_missing=True):  # pylint: disable=arguments-differ
         """
         Set value of an attribute with the given name.
@@ -299,7 +308,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         attr=self.get_attribute(name,update_properties=update_properties,error_on_missing=error_on_missing)
         if attr is not None:
             attr.set_value(value,not_implemented_error=error_on_missing)
-    def get_all_attribute_values(self, update_properties=False):  # pylint: disable=arguments-differ, arguments-renamed
+    def get_all_attribute_values(self, root="", enum_as_str=True, update_properties=False):  # pylint: disable=arguments-differ, arguments-renamed, unused-argument
         """
         Get values of all attributes.
         
@@ -311,7 +320,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
                 att.update_properties()
             if att.readable:
                 try:
-                    values[n]=att.get_value()
+                    values[n]=att.get_value(enum_as_str=enum_as_str)
                 except AndorSDK3LibError:  # sometimes nominally implemented features still raise errors
                     pass
         return values

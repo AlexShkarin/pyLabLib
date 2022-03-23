@@ -4,7 +4,7 @@ from .fgrab_prototyp_defs import MeCameraLinkFormat
 from .fgrab_define_defs import FG_STATUS, FG_GETSTATUS, FG_ACQ, FG_IMGFMT, FG_PARAM
 from .fgrab_prototyp_lib import wlib as lib, SiliconSoftwareError, SIFgrabLibError
 
-from ...core.utils import py3, general as general_utils, dictionary
+from ...core.utils import py3, dictionary
 from ...core.devio import interface
 from ..interface import camera
 
@@ -116,10 +116,15 @@ class FGrabAttribute:
 
     Attributes:
         name: attribute name
+        kind: attribute kind; can be ``"i32"``, ``"i64"``, ``"u32"``, ``"u64"``,
+            ``"f64"``, or ``"str"``
         min (float or int): minimal attribute value (if applicable)
         max (float or int): maximal attribute value (if applicable)
         inc (float or int): minimal attribute increment value (if applicable)
-        values: dictionary ``{i: name}`` of possible attribute values (if applicable)
+        ivalues: list of possible integer values for enum attributes
+        values: list of possible text values for enum attributes
+        labels: dict ``{label: index}`` which shows all possible values of an enumerated attribute and their corresponding numerical values
+        ilabels: dict ``{index: label}`` which shows labels corresponding to numerical values of an enumerated attribute
     """
     _attr_types={   FgParamTypes.FG_PARAM_TYPE_INT32_T: "i32",
                     FgParamTypes.FG_PARAM_TYPE_UINT32_T: "u32",
@@ -146,11 +151,15 @@ class FGrabAttribute:
         self.min=None
         self.max=None
         self.inc=None
-        self.values=None
-        self._ivalues=None
+        self.values=[]
+        self.ivalues=[]
+        self.labels={}
+        self.ilabels={}
         if not self.system:
-            self.values=self._get_enum_values()
-            self._ivalues=general_utils.invert_dict(self.values) if self.values else None
+            self.ilabels=self._get_enum_values()
+            self.ivalues=list(self.ilabels)
+            self.values=[self.ilabels[i] for i in self.ivalues]
+            self.labels=dict(zip(self.values,self.ivalues))
             self.update_limits()
     
     def _get_property(self, prop):
@@ -174,7 +183,7 @@ class FGrabAttribute:
         except fgrab_prototyp_lib.SIFgrabLibError as err:
             if err.code!=FG_STATUS.FG_INVALID_TYPE:
                 raise
-            return None
+            return {}
         vstr=self._get_property(FgProperty.PROP_ID_ENUM_VALUES)
         values={}
         while vstr:
@@ -190,7 +199,7 @@ class FGrabAttribute:
     def truncate_value(self, value):
         """Truncate value to lie within attribute limits"""
         self.update_limits()
-        if self.kind in ["i32","u32","i64","u64","f64"] and self._ivalues is None:
+        if self.kind in ["i32","u32","i64","u64","f64"] and not self.values:
             if value<self.min:
                 value=self.min
             elif value>self.max:
@@ -219,8 +228,8 @@ class FGrabAttribute:
             val=lib.Fg_getParameterWithType_auto(self.fg,self.aid,self.siso_port,ptype=self._attr_type_n)
         if self.kind=="str":
             val=py3.as_str(val)
-        if enum_as_str and self.values:
-            val=self.values.get(val,val)
+        if enum_as_str and self.ilabels:
+            val=self.ilabels.get(val,val)
         return val
     def set_value(self, value, truncate=True):
         """
@@ -232,8 +241,8 @@ class FGrabAttribute:
             raise ValueError("system property {} can not be set".format(self.name))
         if truncate:
             value=self.truncate_value(value)
-        if self._ivalues:
-            value=self._ivalues.get(value,value)
+        if self.labels:
+            value=self.labels.get(value,value)
         lib.Fg_setParameterWithType_auto(self.fg,self.aid,value,self.siso_port,ptype=self._attr_type_n)
 
     def __repr__(self):
@@ -488,11 +497,11 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
     def get_available_camlink_pixel_formats(self):
         """Get all available CamLink pixel formats and the output pixel formats as a tuple of 2 lists"""
         try:
-            clfmts=list(self.get_grabber_attribute("CAMERA_LINK_CAMTYP").values.values())
+            clfmts=list(self.get_grabber_attribute("CAMERA_LINK_CAMTYP").values)
         except KeyError:
             clfmts=None
         try:
-            pxfmts=list(self.get_grabber_attribute("FORMAT").values.values())
+            pxfmts=list(self.get_grabber_attribute("FORMAT").values)
         except KeyError:
             pxfmts=None
         return pxfmts,clfmts

@@ -84,12 +84,16 @@ class PFCamAttribute:
 
     Attributes:
         name: attribute name
+        kind: attribute kind; can be ``"INT"``, ``"UINT"``, ``"FLOAT"``, ``"BOOL"``, ``"MODE"``, ``"STRING"``, or ``"COMMAND"``
         readable (bool): whether attribute is readable
         writable (bool): whether attribute is writable
         is_command (bool): whether attribute is a command
         min (float or int): minimal attribute value (if applicable)
         max (float or int): maximal attribute value (if applicable)
-        values: list of possible attribute values (if applicable)
+        ivalues: list of possible integer values for enum attributes
+        values: list of possible text values for enum attributes
+        labels: dict ``{label: index}`` which shows all possible values of an enumerated attribute and their corresponding numerical values
+        ilabels: dict ``{index: label}`` which shows labels corresponding to numerical values of an enumerated attribute
     """
     def __init__(self, port, name):
         self.port=port
@@ -100,6 +104,7 @@ class PFCamAttribute:
         self._type=lib.get_ptype_name(port,lib.pfProperty_GetType(port,self._token))
         if self._type not in pfcam_lib.ValuePropertyTypes|{"PF_COMMAND"}:
             raise PFCamError("attribute type {} not supported".format(self._type))
+        self.kind=self._type[3:]
         self._flags=lib.pfProperty_GetFlags(port,self._token)
         if self._flags&0x02:
             raise PFCamError("attribute {} is private".format(self.name))
@@ -111,20 +116,20 @@ class PFCamAttribute:
             self.max=lib.get_property_by_name(port,self.name+".Max")
         else:
             self.min=self.max=None
+        self.values=[]
+        self.ivalues=[]
+        self.labels={}
+        self.ilabels={}
         if self._type=="PF_MODE":
-            self._values_dict={}
-            self._values_dict_inv={}
             nodes=lib.collect_properties(port,self._token,backbone=False)
             for tok,val in nodes:
                 val=py3.as_str(val)
                 if lib.pfProperty_GetType(port,tok)==2: # integer token, means one of possible values
                     ival=lib.pfDevice_GetProperty(port,tok)
-                    self._values_dict[val]=ival
-                    self._values_dict_inv[ival]=val
-            self.values=list(self._values_dict)
-        else:
-            self._values_dict=self._values_dict_inv={}
-            self.values=None
+                    self.values.append(val)
+                    self.ivalues.append(ival)
+            self.labels=dict(zip(self.values,self.ivalues))
+            self.ilabels=dict(zip(self.ivalues,self.values))
     
     def update_limits(self):
         """Update minimal and maximal attribute limits and return tuple ``(min, max)``"""
@@ -151,7 +156,7 @@ class PFCamAttribute:
             raise PFCamError("attribute {} is not readable".format(self.name))
         val=lib.pfDevice_GetProperty(self.port,self._token)
         if self._type=="PF_MODE" and enum_as_str:
-            val=self._values_dict_inv[val]
+            val=self.ilabels[val]
         return val
     def set_value(self, value, truncate=True):
         """
@@ -164,7 +169,7 @@ class PFCamAttribute:
         if truncate:
             value=self.truncate_value(value)
         if isinstance(value,py3.anystring) and self._type=="PF_MODE":
-            value=self._values_dict[value]
+            value=self.labels[value]
         for t in range(2):
             try:
                 lib.pfDevice_SetProperty(self.port,self._token,value)

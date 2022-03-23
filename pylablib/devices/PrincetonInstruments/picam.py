@@ -62,7 +62,8 @@ class PicamAttribute:
 
     Attributes:
         name: attribute name
-        kind: attribute kind (e.g., ``"Integer"`` or ``"Enumeration"``)
+        kind: attribute kind; can be ``"Integer"``, ``"Large Integer"``, ``"Floating Point"``,
+            ``"Enumeration"``, ``"Boolean"``, or ``"Rois"``
         exists (bool): whether attribute is available on the current hardware
         relevant (bool): whether attribute value is applicable to the hardware
         read_directly (bool): whether value can be read directly from the device;
@@ -81,8 +82,10 @@ class PicamAttribute:
         inc (float or int): minimal attribute increment value (if applicable)
         cons_excluded: list of special parameters which are within the range but are excluded
         cons_included: list of special parameters which are outside the range but are included
-        values: list of possible attribute numerical values (if applicable)
-        labels: list ``{label: number}`` which shows all possible values of an enumerated parameter and their corresponding numerical values
+        ivalues: list of possible integer values for enum attributes
+        values: list of possible text values for enum attributes
+        labels: dict ``{label: index}`` which shows all possible values of an enumerated attribute and their corresponding numerical values
+        ilabels: dict ``{index: label}`` which shows labels corresponding to numerical values of an enumerated attribute
     """
     def __init__(self, handle, pid):
         self.handle=handle
@@ -113,7 +116,9 @@ class PicamAttribute:
         self.cons_excluded=[]
         self.cons_included=[]
         self.values=[]
+        self.ivalues=[]
         self.labels={}
+        self.ilabels={}
         self.cons_roi=None
         self.update_limits(force=True)
 
@@ -205,8 +210,10 @@ class PicamAttribute:
             cons=lib.Picam_GetParameterCollectionConstraint(self.handle,self.pid,picam_defs.PicamConstraintCategory.PicamConstraintCategory_Required)
             self.cons_permanent=(cons[0]==picam_defs.PicamConstraintScope.PicamConstraintScope_Independent)
             self.cons_error=(cons[1]==picam_defs.PicamConstraintSeverity.PicamConstraintSeverity_Error)
-            self.values=[self._as_type(v) for v in cons[2]]
-            self.labels={self._as_text(v):v for v in self.values}
+            self.ivalues=[self._as_type(v) for v in cons[2]]
+            self.values=[self._as_text(v) for v in self.ivalues]
+            self.labels=dict(zip(self.values,self.ivalues))
+            self.ilabels=dict(zip(self.ivalues,self.values))
         elif self.cons_type=="ROIs":
             cons=lib.Picam_GetParameterRoisConstraint(self.handle,self.pid,picam_defs.PicamConstraintCategory.PicamConstraintCategory_Required)
             self.cons_permanent=(cons[0]==picam_defs.PicamConstraintScope.PicamConstraintScope_Independent)
@@ -215,6 +222,19 @@ class PicamAttribute:
             self.cons_roi=TROIConstraints(cons[3],cons[4],
                 tuple(int(v) for v in cons[5][3:6]),tuple(int(v) for v in cons[6][3:6]),cons[7] or None,
                 tuple(int(v) for v in cons[8][3:6]),tuple(int(v) for v in cons[9][3:6]),cons[10] or None)
+        elif self.cons_type=="None" and self.kind=="Enumeration":
+            i=0
+            while True:
+                try:
+                    t=self._as_text(i)
+                    self.values.append(t)
+                    self.ivalues.append(self._as_type(i))
+                except PicamLibError:
+                    if i>10:
+                        break
+                i+=1
+            self.labels=dict(zip(self.values,self.ivalues))
+            self.ilabels=dict(zip(self.ivalues,self.values))
     def truncate_value(self, value):
         """Truncate value to lie within attribute limits"""
         self.update_limits()
@@ -378,9 +398,9 @@ class PicamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         """Enable or disable metadata"""
         tsattr=self.ca["Time Stamps"]
         tsval=self._ts_exposure_start|self._ts_exposure_end
-        tsattr.set_value(tsval if enable and (tsval in tsattr.values) else 0)
+        tsattr.set_value(tsval if enable and (tsval in tsattr.ivalues) else 0)
         fsattr=self.ca["Track Frames"]
-        fsattr.set_value(True if enable and (True in fsattr.values) else False)
+        fsattr.set_value(True if enable and (True in fsattr.ivalues) else False)
         self.set_attribute_value("Gate Tracking",False,error_on_missing=False)
         self.set_attribute_value("Modulation Tracking",False,error_on_missing=False)
     def is_metadata_enabled(self, individual=False):

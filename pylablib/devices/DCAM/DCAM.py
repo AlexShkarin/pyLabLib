@@ -1,4 +1,4 @@
-from . import dcamapi4_lib
+from . import dcamapi4_lib, dcamprop_defs
 from .dcamapi4_lib import wlib as lib, DCAMError, DCAMLibError
 
 from ...core.devio import interface
@@ -56,10 +56,17 @@ class DCAMAttribute:
 
     Attributes:
         name: attribute name
+        kind (str): attribute kind; can be ``"int"``, ``"float"``, ``"enum"``, or ``"none"`` (can't determine)
+        readable (bool): whether attribute is readable
+        writable (bool): whether attribute is writable
         min (float): minimal attribute value (if applicable)
         max (float): maximal attribute value (if applicable)
         step (float): attribute value step (if applicable)
         unit (int): attribute units (index value)
+        ivalues: list of possible integer values for enum attributes
+        values: list of possible text values for enum attributes
+        labels: dict ``{label: index}`` which shows all possible values of an enumerated attribute and their corresponding numerical values
+        ilabels: dict ``{index: label}`` which shows labels corresponding to numerical values of an enumerated attribute
     """
     def __init__(self, handle, pid):
         self.handle=handle
@@ -71,10 +78,34 @@ class DCAMAttribute:
         self.step=props.valuestep
         self.default=props.valuedefault
         self.unit=props.iUnit
+        self._attributes_n=props.attribute%0x100000000
+        self.readable=bool(self._attributes_n&dcamprop_defs.DCAMPROPATTRIBUTE.DCAMPROP_ATTR_READABLE)
+        self.writable=bool(self._attributes_n&dcamprop_defs.DCAMPROPATTRIBUTE.DCAMPROP_ATTR_WRITABLE)
+        kinds={dcamprop_defs.DCAMPROPATTRIBUTE.DCAMPROP_TYPE_LONG:"int",dcamprop_defs.DCAMPROPATTRIBUTE.DCAMPROP_TYPE_REAL:"float",dcamprop_defs.DCAMPROPATTRIBUTE.DCAMPROP_TYPE_MODE:"enum"}
+        self.kind=kinds.get(self._attributes_n&dcamprop_defs.DCAMPROPATTRIBUTE.DCAMPROP_TYPE_MASK,"none")
+        self.values=[]
+        self.ivalues=[]
+        self.labels={}
+        self.ilabels={}
+        if self.kind=="enum":
+            for v in range(int(self.min),int(self.max)+1):
+                try:
+                    tv=self.as_text(v)
+                    self.values.append(tv)
+                    self.ivalues.append(v)
+                except DCAMLibError:
+                    pass
+            self.labels=dict(zip(self.values,self.ivalues))
+            self.ilabels=dict(zip(self.ivalues,self.values))
+        if self.kind in ["enum","int"]:
+            self.min=int(self.min)
+            self.max=int(self.max)
+            self.step=int(self.step)
+            self.default=int(self.default)
     def as_text(self, value=None):
         """Get the given attribute value as text (by default, current value)"""
         if value is None:
-            return self.get_value(enum_str=True)
+            return self.get_value(enum_as_str=True)
         return py3.as_str(lib.dcamprop_getvaluetext(self.handle,self.pid,value))
     def update_limits(self):
         """Update minimal and maximal attribute limits and return tuple ``(min, max)``"""
@@ -82,15 +113,17 @@ class DCAMAttribute:
         self.min=props.valuemin
         self.max=props.valuemax
         return (self.min,self.max)
-    def get_value(self, enum_str=False):
+    def get_value(self, enum_as_str=False):
         """
         Get current attribute value.
         
-        If ``enum_str==True``, try to represent enums as their string values;
+        If ``enum_as_str==True``, try to represent enums as their string values;
         otherwise, return their integer values (only integers can be used for setting).
         """
         value=lib.dcamprop_getvalue(self.handle,self.pid)
-        if enum_str:
+        if self.kind in ["enum","int"]:
+            value=int(value)
+        if enum_as_str:
             try:
                 return self.as_text(value)
             except DCAMLibError:
@@ -100,7 +133,7 @@ class DCAMAttribute:
         """Set attribute value"""
         return lib.dcamprop_setgetvalue(self.handle,self.pid,value)
     def __repr__(self):
-        return "{}(name='{}', id={}, min={}, max={}, unit={})".format(self.__class__.__name__,self.name,self.pid,self.min,self.max,self.unit)
+        return "{}(name='{}', kind={}, id={}, min={}, max={}, unit={})".format(self.__class__.__name__,self.name,self.kind,self.pid,self.min,self.max,self.unit)
 
 
 
@@ -205,16 +238,16 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribute
         return [DCAMAttribute(self.handle,pid) for pid in ids]
     def _normalize_attribute_name(self, name):
         return name.lower().replace(" ","_")
-    def get_attribute_value(self, name, enum_str=False, error_on_missing=True, default=None):  # pylint: disable=arguments-differ
+    def get_attribute_value(self, name, enum_as_str=False, error_on_missing=True, default=None):  # pylint: disable=arguments-differ
         """
         Get value of an attribute with the given name.
         
         If the value doesn't exist or can not be read and ``error_on_missing==True``, raise error; otherwise, return `default`.
         If `default` is not ``None``, assume that ``error_on_missing==False``.
-        If ``enum_str==True``, try to represent enums as their string values;
+        If ``enum_as_str==True``, try to represent enums as their string values;
         otherwise, return their integer values (only integers can be used for setting).
         """
-        return super().get_attribute_value(name,enum_str=enum_str,error_on_missing=error_on_missing,default=default)
+        return super().get_attribute_value(name,enum_as_str=enum_as_str,error_on_missing=error_on_missing,default=default)
     def set_attribute_value(self, name, value, error_on_missing=True):  # pylint: disable=arguments-differ
         """
         Set value of an attribute with the given name.
@@ -222,14 +255,14 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribute
         If the value doesn't exist or can not be written and ``error_on_missing==True``, raise error; otherwise, do nothing.
         """
         return super().set_attribute_value(name,value,error_on_missing=error_on_missing)
-    def get_all_attribute_values(self, enum_str=False):  # pylint: disable=arguments-differ, arguments-renamed
+    def get_all_attribute_values(self, root="", enum_as_str=False):  # pylint: disable=arguments-differ, arguments-renamed
         """
         Get values of all attributes.
 
-        If ``enum_str==True``, try to represent enums as their string values;
+        If ``enum_as_str==True``, try to represent enums as their string values;
         otherwise, return their integer values (only integers can be used for setting).
         """
-        return super().get_all_attribute_values(enum_str=enum_str)
+        return super().get_all_attribute_values(root=root,enum_as_str=enum_as_str)
     def set_all_attribute_values(self, settings):  # pylint: disable=arguments-differ
         """Set values of all attribute in the given dictionary"""
         return super().set_all_attribute_values(settings)
@@ -314,8 +347,9 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribute
             lib.dcambuf_alloc(self.handle,nframes)
         self._alloc_nframes=nframes
     def _deallocate_buffer(self):
-        lib.dcambuf_release(self.handle,0)
-        self._alloc_nframes=0
+        if self._alloc_nframes:
+            lib.dcambuf_release(self.handle,0)
+            self._alloc_nframes=0
     def _read_buffer(self, buffer):
         return lib.dcambuf_lockframe(self.handle,buffer)
     def _buffer_to_array(self, buffer): # TODO: different packing / color modes (generic for all cameras)
@@ -411,6 +445,7 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribute
         """
         super().setup_acquisition(mode=mode,nframes=nframes)
         if self._acq_params["nframes"]!=self._alloc_nframes:
+            self.stop_acquisition()
             self._allocate_buffer(nframes)
     def clear_acquisition(self):
         self.stop_acquisition()
