@@ -476,12 +476,35 @@ class QScrollAreaContainer(IQContainer, QtWidgets.QScrollArea):
     
     Due to Qt organization, this container is "intermediate": it contains only a single :class:`QWidgetContainer` widget (named ``"widget"``),
     which in turn has all of the standard container traits: layout, multiple widgets, etc.
+    Hence, when dealing with any container methods (adding children, changing layout, etc.), this widget (accessible with ``.widget()`` method) should be used.
     """
-    def setup(self, layout="vbox", no_margins=False, name=None):  # pylint: disable=arguments-differ, arguments-renamed
+    class QContainedWidget(QWidgetContainer):
+        @controller.exsafe
+        def resizeEvent(self, event):
+            scroll_container=getattr(self,"scroll_container",None)
+            if scroll_container is not None:
+                margins=scroll_container.getContentsMargins()
+                if getattr(self,"hfix",False):
+                    scroll_container.setMinimumWidth(self.minimumSizeHint().width()+scroll_container.verticalScrollBar().width()+margins[0]+margins[2])
+                if getattr(self,"vfix",False):
+                    scroll_container.setMinimumHeight(self.minimumSizeHint().height()+scroll_container.horizontalScrollBar().height()+margins[1]+margins[3])
+            return super().resizeEvent(event)
+    def setup(self, layout="vbox", no_margins=False, name=None, fix_width=True, fix_height=False):  # pylint: disable=arguments-differ, arguments-renamed
+        """
+        Setup the container.
+
+        `layout` specifies the container layout, `no_margins` determines whether margins within the container are removed,
+        `name` specifies the widget name (if not specified yet).
+        `fix_width` and `fix_height` determine whether the corresponding direction behaves as a scroll window (i.e., the size is fixed when the content changes),
+        or as a standard widget container (the size is determined by the content).
+        """
         super().setup(name=name)
         self.setFrameStyle(QtWidgets.QFrame.NoFrame)
         self.setWidgetResizable(True)
-        self._cont=QWidgetContainer(self)
+        self._cont=self.QContainedWidget(self)
+        self._cont.scroll_container=self
+        self._cont.hfix=fix_width
+        self._cont.vfix=fix_height
         self._cont.setup(layout=layout,no_margins=no_margins,name="widget")
         self.add_child("widget",self._cont)
         self.setWidget(self._cont)

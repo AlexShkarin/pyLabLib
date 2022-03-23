@@ -174,6 +174,8 @@ class ParamTable(container.QWidgetContainer):
             if label is not None:
                 raise ValueError("label can not be combined with 'skip' location")
             add_indicator=False
+        if add_indicator and ilocation!="next_line":
+            ilname,ilocation=self._normalize_location(ilocation,default_location=(row,col+colspan-1,rowspan,1),default_layout=lname)
         if label is not None:
             wlabel=QtWidgets.QLabel(self)
             wlabel.setObjectName("{}__label".format(name))
@@ -189,8 +191,7 @@ class ParamTable(container.QWidgetContainer):
             windicator=QtWidgets.QLabel(self)
             windicator.setObjectName("{}__indicator".format(name))
             if ilocation=="next_line":
-                ilocation=(row+1,col+labelspan,1,colspan-labelspan)
-            ilname,ilocation=self._normalize_location(ilocation,default_location=(row,col+colspan-1,rowspan,1),default_layout=lname)
+                ilname,ilocation=self._normalize_location((row+1,col+labelspan,1,colspan-labelspan),default_location=(row,col+colspan-1,rowspan,1),default_layout=lname)
             self._insert_layout_element(ilname,windicator,ilocation)
             indicator_handler=value_handling.LabelIndicatorHandler(windicator,formatter=value_handler if add_indicator==True else add_indicator)
         else:
@@ -372,6 +373,26 @@ class ParamTable(container.QWidgetContainer):
         widget=widget_label.TextLabel(self,value=value)
         widget.setObjectName(self.name+"_"+name)
         return self.add_simple_widget(name,widget,label=label,add_indicator=False,location=location,tooltip=tooltip,add_change_event=add_change_event)
+    def add_enum_label(self, name, options, value=None, out_of_range="error", prep=None, label=None, location=None, tooltip=None, add_change_event=False, virtual=False):
+        """
+        Add a text label to the table.
+
+        Args:
+            name (str): widget name (used to reference its value in the values table)
+            options (list): dictionary ``{option: index_value}`` which converts values into text
+            out_of_range (str): behavior when out-of-range value is applied;
+                can be ``"error"`` (raise error), ``"text"`` (convert value into text), or ``"ignore"`` (keep current value).
+            prep: a function which takes a single value argument and converts into an option; useful for "fuzzy" options (e.g., when 0 and ``False`` mean the same thing)
+            virtual (bool): if ``True``, the widget is not added, and a virtual handler is added instead
+            
+        Rest of the arguments and the return value are the same as :meth:`add_simple_widget`.
+        """
+        if virtual:
+            return self.add_virtual_element(name,value=value)
+        widget=widget_label.EnumLabel(self,options=options,value=value,prep=prep)
+        widget.set_out_of_range(out_of_range)
+        widget.setObjectName(self.name+"_"+name)
+        return self.add_simple_widget(name,widget,label=label,add_indicator=False,location=location,tooltip=tooltip,add_change_event=add_change_event)
     def add_num_label(self, name, value=0, limiter=None, formatter=None, label=None, tooltip=None, location=None, add_change_event=False, virtual=False):
         """
         Add a numerical label to the table.
@@ -392,20 +413,21 @@ class ParamTable(container.QWidgetContainer):
         widget=widget_label.NumLabel(self,value=value,limiter=limiter,formatter=formatter)
         widget.setObjectName(self.name+"_"+name)
         return self.add_simple_widget(name,widget,label=label,add_indicator=False,location=location,tooltip=tooltip,add_change_event=add_change_event)
-    def add_text_edit(self, name, value="", label=None, add_indicator=None, location=None, tooltip=None, add_change_event=True, virtual=False):
+    def add_text_edit(self, name, value="", label=None, multiline=False, add_indicator=None, location=None, tooltip=None, add_change_event=True, virtual=False):
         """
         Add a text edit to the table.
 
         Args:
             name (str): widget name (used to reference its value in the values table)
             value (bool): specifies initial value
+            multiline (bool): if ``True``, use multi-line text edit widget; otherwise, use a standard single-line edit
             virtual (bool): if ``True``, the widget is not added, and a virtual handler is added instead
             
         Rest of the arguments and the return value are the same as :meth:`add_simple_widget`.
         """
         if virtual:
             return self.add_virtual_element(name,value=value,add_indicator=add_indicator)
-        widget=edit.TextEdit(self,value=value)
+        widget=edit.TextEdit(self,value=value) if not multiline else edit.MultilineTextEdit(self,value=value)
         widget.setObjectName(self.name+"_"+name)
         return self.add_simple_widget(name,widget,label=label,add_indicator=add_indicator,location=location,tooltip=tooltip,add_change_event=add_change_event)
     def add_num_edit(self, name, value=None, limiter=None, formatter=None, custom_steps=None, label=None, add_indicator=None, location=None, tooltip=None, add_change_event=True, virtual=False):
@@ -454,7 +476,7 @@ class ParamTable(container.QWidgetContainer):
 
         Args:
             name (str): widget name (used to reference its value in the values table)
-            value (bool): specifies initial value
+            value: specifies initial value
             options (list): list of strings specifying box options or a dictionary ``{option: index_value}``
             index_values (list): list of values corresponding to box options; if supplied, these values are used when setting/getting values or sending signals;
                 if `options` is a dictionary, this parameter is ignored

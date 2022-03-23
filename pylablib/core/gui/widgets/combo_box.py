@@ -13,6 +13,8 @@ class ComboBox(QtWidgets.QComboBox):
         self._index=-1
         self._index_values=None
         self._out_of_range_action="error"
+    def wheelEvent(self, event):
+        event.ignore()
     def set_out_of_range(self, action="error"):
         """
         Set behavior when out-of-range value is applied.

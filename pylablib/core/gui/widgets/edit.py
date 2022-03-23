@@ -103,11 +103,11 @@ class TextEdit(QtWidgets.QLineEdit):
     value_changed=Signal(object)
     """Signal emitted when value is changed"""
     def get_value(self):
-        """Get current numerical value"""
+        """Get current text value"""
         return self._value
     def show_value(self, interrupt_edit=False):
         """
-        Display currently stored numerical value
+        Display currently stored text value
         
         If ``interrupt_edit==True`` and the edit is currently being modified by the user, don't update the display.
         """
@@ -115,7 +115,68 @@ class TextEdit(QtWidgets.QLineEdit):
             self.setText(self._value)
     def set_value(self, value, notify_value_change=True, interrupt_edit=False):
         """
-        Set current numerical value.
+        Set current text value.
+        
+        If ``notify_value_change==True``, emit the `value_changed` signal; otherwise, change value silently.
+        If ``interrupt_edit==True`` and the edit is currently being modified by the user, don't update the display (but still update the internally stored value).
+        """
+        value_changed=False
+        value=str(value)
+        if self._value!=value:
+            self._value=value
+            if notify_value_change:
+                self.value_changed.emit(self._value)
+            value_changed=True
+        self.show_value(interrupt_edit=interrupt_edit)
+        return value_changed
+
+
+class MultilineTextEdit(QtWidgets.QPlainTextEdit):
+    """
+    Multi-line text edit.
+
+    Maintains internally stored consistent value (which can be, e.g., accessed from different threads).
+    If ``continuous_update==True``, update signals are sent any time the content is edited;
+    otherwise, they are sent only when the edit is done (i.e., focus is lost).
+    """
+    def __init__(self, parent, value=None, continuous_update=False):
+        super().__init__(parent)
+        self._value=None
+        self._continuous_update=continuous_update
+        if value is not None:
+            self.set_value(value)
+        self.textChanged.connect(self._on_change_text)
+    def _on_text_update(self):
+        text=self.toPlainText()
+        if text!=self._value:
+            self._value=text
+            self.value_changed.emit(self._value)
+        self.value_entered.emit(self._value)
+    def _on_change_text(self):
+        if self._continuous_update:
+            self._on_text_update()
+    def focusOutEvent(self, evt):
+        if not self._continuous_update:
+            self._on_text_update()
+        super().focusOutEvent(evt)
+    value_entered=Signal(object)
+    """Signal emitted when value is entered (regardless of whether it stayed the same)"""
+    value_changed=Signal(object)
+    """Signal emitted when value is changed"""
+    def get_value(self):
+        """Get current text value"""
+        return self._value
+    def show_value(self, interrupt_edit=False):
+        """
+        Display currently stored text value
+        
+        If ``interrupt_edit==True`` and the edit is currently being modified by the user, don't update the display.
+        """
+        if (not self.hasFocus()) or interrupt_edit:
+            self.setPlainText(self._value)
+    def set_value(self, value, notify_value_change=True, interrupt_edit=False):
+        """
+        Set current text value.
         
         If ``notify_value_change==True``, emit the `value_changed` signal; otherwise, change value silently.
         If ``interrupt_edit==True`` and the edit is currently being modified by the user, don't update the display (but still update the internally stored value).

@@ -12,10 +12,14 @@ class TextLabel(QtWidgets.QLabel):
     The main difference from the standard ``QLabel`` is the changed event.
     """
     def __init__(self, parent, value=None):
-        QtWidgets.QLabel.__init__(self, parent)
+        super().__init__(parent)
         self._value=None
         if value is not None:
             self.set_value(value)
+    clicked=Signal()
+    def mousePressEvent(self, ev):
+        self.clicked.emit()
+        return super().mousePressEvent(ev)
     value_changed=Signal(object)
     """Signal emitted when value is changed"""
     def get_value(self):
@@ -28,6 +32,87 @@ class TextLabel(QtWidgets.QLabel):
                 self._value=value
                 self.setText(str(self._value))
                 self.value_changed.emit(self._value)
+
+
+
+class EnumLabel(QtWidgets.QLabel):
+    """
+    Labview-style label for enumerated values.
+
+    Can automatically convert input enum values into corresponding text labels based on the `options` dictionary.
+    Can also specify a function which takes a single value argument and converts into a enum value before checking `options`;
+    useful for "fuzzy" options (e.g., when 0 and ``False`` mean the same thing)
+    """
+    def __init__(self, parent, options, value=None, prep=None):
+        super().__init__(parent)
+        self._value=None
+        self._options=options if isinstance(options,dict) else dict(zip(range(len(options)),options))
+        self._out_of_range_action="error"
+        self._prep=prep
+        if value is not None:
+            self.set_value(value)
+    clicked=Signal()
+    def mousePressEvent(self, ev):
+        self.clicked.emit()
+        return super().mousePressEvent(ev)
+    def set_out_of_range(self, action="error"):
+        """
+        Set behavior when out-of-range value is applied.
+
+        Can be ``"error"`` (raise error), ``"text"`` (turn value into text and display it), or ``"ignore"`` (keep current value).
+        """
+        if action not in ["error","text","ignore"]:
+            raise ValueError("unrecognized out-of-range action: {}".format(action))
+        self._out_of_range_action=action
+    def set_options(self, options, value=None, index=None):
+        """
+        Set new set of options.
+
+        If `index_values` is not ``None``, set these as the new index values; otherwise, index values are reset.
+        If `options` is a dictionary, interpret it as a mapping ``{option: index_value}``.
+        If `value` is specified, set as the new values.
+        If `index` is specified, use it as the index of a new value; if both `value` and `index` are specified, the `value` takes priority.
+        """
+        self._options=options if isinstance(options,dict) else dict(zip(range(len(options)),options))
+        if value is not None:
+            self.set_value(value)
+        elif index is not None:
+            self.set_value(list(self._options)[index])
+        else:
+            self.set_value(self._value)
+    value_changed=Signal(object)
+    """Signal emitted when value is changed"""
+    def get_value(self):
+        """Get current numerical value"""
+        return self._value
+    def _prepare_value(self, value):
+        if self._prep is not None:
+            value=self._prep(value)
+        if value not in self._options:
+            if self._out_of_range_action=="ignore":
+                return None
+            elif self._out_of_range_action=="error":
+                raise ValueError("value {} is not among available option {}".format(value,list(self._options)))
+            else:
+                value=str(value)
+        return value
+    def set_value(self, value):
+        """Set and display current text value"""
+        if value is not None:
+            value=self._prepare_value(value)
+            if value is None:
+                return
+            self.setText(self._options.get(value,value))
+            if self._value!=value:
+                self._value=value
+                self.value_changed.emit(self._value)
+    def repr_value(self, value):
+        """Return representation of `value` as a combo box text"""
+        if value is not None:
+            value=self._prepare_value(value)
+            if value is None:
+                return None
+            return self._options.get(value,value)
 
 
 
@@ -45,7 +130,7 @@ class NumLabel(QtWidgets.QLabel):
         allow_text: if ``True``, can also take text values (which are displayed as is); otherwise, raise an error.
     """
     def __init__(self, parent, value=None, limiter=None, formatter=None, allow_text=True):
-        QtWidgets.QLabel.__init__(self, parent)
+        super().__init__(parent)
         self.limiter=as_limiter(limiter)
         self.formatter=as_formatter(formatter)
         self._value=None
@@ -53,6 +138,10 @@ class NumLabel(QtWidgets.QLabel):
         if value is not None:
             self.set_value(value)
             
+    clicked=Signal()
+    def mousePressEvent(self, ev):
+        self.clicked.emit()
+        return super().mousePressEvent(ev)
     def set_limiter(self, limiter, new_value=None):
         """
         Change current numerical limiter.
