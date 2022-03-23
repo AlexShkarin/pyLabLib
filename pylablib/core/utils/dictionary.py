@@ -620,6 +620,24 @@ class Dictionary:
         subtree=self[path]
         del self[path]
         return subtree
+    def collect(self, paths, detach=False, ignore_missing=True):
+        """
+        Collect a set of subpaths into a separate dictionary.
+
+        Args:
+            paths: list or set of paths
+            detach: if ``True``, added branches are removed from this dictionary
+            ignore_missing: if ``True``, ignore paths from the list which are not present in this dictionary; otherwise, raise a :exc:`KeyError`.
+        """
+        result=self._make_similar_dict()
+        for p in paths:
+            try:
+                v=self.detach(p) if detach else self[p]
+                result[p]=v
+            except KeyError:
+                if not ignore_missing:
+                    raise
+        return result
         
     @staticmethod
     def _deep_copy(leaf):

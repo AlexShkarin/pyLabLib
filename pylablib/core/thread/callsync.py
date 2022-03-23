@@ -25,6 +25,9 @@ class QCallResultSynchronizer(QThreadNotifier):
         if tag=="result":
             return "done"
         return tag
+    def is_call_done(self):
+        """Check if the call is done"""
+        return self.get_progress()=="done"
     def skipped(self):
         """Check if the call was skipped"""
         return self.get_progress()=="skip"
@@ -83,6 +86,9 @@ class QDirectResultSynchronizer:
     def get_progress(self):
         """Get the progress of the call execution (always return ``"done"``)"""
         return "done"
+    def is_call_done(self):
+        """Check if the call is done (always return ``True``)"""
+        return True
     def skipped(self):
         """Check if the call was skipped (always return ``False``)"""
         return False
