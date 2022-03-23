@@ -1,7 +1,8 @@
 from .pvcam_lib import wlib as lib, PvcamError, PvcamLibError
 from . import pvcam_defs
 
-from ...core.utils import py3
+from ...core.utils import py3, nbtools
+from ...core.utils.nbtools import au2, au4, au8
 from ...core.devio import interface
 from ..utils import load_lib
 from ..interface import camera
@@ -734,10 +735,10 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         buffer=np.ctypeslib.as_array(ctypes.cast(ptr,ctypes.POINTER(ctypes.c_ubyte)),shape=(stride*nframes,))
         size=shape[0]*shape[1]*bypp
         dtype="<u{}".format(bypp)
+        framedata=np.empty(nframes*size,dtype="u1")
         if size==stride:
-            framedata=buffer.copy()
+            copy_simple(buffer,framedata,nframes,size)
         else:
-            framedata=np.empty(nframes*size,dtype="u1")
             copy_strided(buffer,framedata,nframes,size,stride,off=off)
         frames=framedata.view(dtype).reshape((nframes,)+shape)
         frames=self._convert_indexing(frames,"rct",axes=(1,2))
@@ -806,34 +807,10 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
 
 
 
-
-u1_1_C=nb.types.Array(nb.u1,1,"C")
-u1_1_RC=nb.types.Array(nb.u1,1,"C",readonly=True)
-
-@nb.njit(nb.void(u1_1_RC,u1_1_C,nb.u8,nb.u8,nb.u8,nb.u8))
-def copy_strided(src, dst, n, size, stride, off=0):
-    opos=nb.u8(0)
-    n=nb.uint64(n)
-    size=nb.uint64(size)
-    stride=nb.uint64(stride)
-    for _ in range(n):
-        for p in range(size):
-            dst[opos+p]=src[off+p]
-        opos+=size
-        off+=stride
-
-@nb.njit(nb.u2(u1_1_RC,nb.u8))
-def au2(x, off):
-    """Extract a little-endian 2-byte unsigned integer from a numpy byte array at the given offset"""
-    return nb.u2((x[off+1]<<8)+x[off+0])
-@nb.njit(nb.u4(u1_1_RC,nb.u8))
-def au4(x, off):
-    """Extract a little-endian 4-byte unsigned integer from a numpy byte array at the given offset"""
-    return nb.u4((x[off+3]<<24)+(x[off+2]<<16)+(x[off+1]<<8)+x[off+0])
-@nb.njit(nb.u8(u1_1_RC,nb.u8))
-def au8(x, off):
-    """Extract a little-endian 8-byte unsigned integer from a numpy byte array at the given offset"""
-    return nb.u8((x[off+7]<<56)+(x[off+6]<<48)+(x[off+5]<<40)+(x[off+4]<<32)+(x[off+3]<<24)+(x[off+2]<<16)+(x[off+1]<<8)+x[off+0])
+_par=False
+copy_strided=nbtools.copy_array_strided(par=_par)
+copy_simple=nbtools.copy_array_chunks(par=_par)
+u1_1_RC=nbtools.c_array("u1",ndim=1,readonly=True)
 
 def _get_img_size(buffer, roi_off):
     s1=au2(buffer,roi_off+10)

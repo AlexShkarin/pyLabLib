@@ -133,7 +133,7 @@ class ICamera(interface.IDevice):
         raise NotImplementedError("ICamera.acquisition_in_progress")
 
     @contextlib.contextmanager
-    def pausing_acquisition(self, clear=None):
+    def pausing_acquisition(self, clear=None, stop=True):
         """
         Context manager which temporarily pauses acquisition during execution of ``with`` block.
 
@@ -145,7 +145,8 @@ class ICamera(interface.IDevice):
             clear=self._clear_pausing_acquisition
         acq_in_progress=self.acquisition_in_progress()
         acq_params=self.get_acquisition_parameters()
-        self.stop_acquisition()
+        if stop or clear:
+            self.stop_acquisition()
         if clear:
             self.clear_acquisition()
         try:
@@ -297,7 +298,7 @@ class ICamera(interface.IDevice):
         or ``"try_chunks"`` (same as ``"chunks"``, but if chunks are not supported, set to ``"list"`` instead).
         If format is ``"chunks"`` and chunks are not supported by the camera, it results in one frame per chunk.
         Note that if the format is set to ``"array"`` or ``"chunks"``, the frame info format is also automatically set to ``"array"``.
-        If the format is set to ``"chunks"``, then the image info is also returned in chunks form (list of 2D info arrays with the same length oas the correpsonding frame chunks).
+        If the format is set to ``"chunks"``, then the image info is also returned in chunks form (list of 2D info arrays with the same length as the corresponding frame chunks).
         """
         if fmt=="try_chunks":
             fmt="chunks" if self._support_chunks else "list"
@@ -538,7 +539,10 @@ class ICamera(interface.IDevice):
             result=tuple([None for inc in [True,return_info,return_rng] if inc])
             return result[0] if len(result)==1 else result
         rng,skipped_frames=rng
-        images,info=self._read_frames(rng,return_info=return_info)
+        if rng[0]==rng[1]:
+            images,info=[],[]
+        else:
+            images,info=self._read_frames(rng,return_info=return_info)
         chunks=images and images[0].ndim==3
         if return_info and info is None:
             if chunks:

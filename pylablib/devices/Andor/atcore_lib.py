@@ -176,7 +176,7 @@ class AndorSDK3Lib:
             try:
                 self.AT_WaitBuffer(handle,0)
             except AndorSDK3LibError as e:
-                if e.code==AT_ERR.AT_ERR_TIMEDOUT:
+                if e.code in {AT_ERR.AT_ERR_TIMEDOUT,AT_ERR.AT_ERR_NODATA}:
                     break
                 raise
         self.AT_Flush(handle)

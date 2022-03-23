@@ -511,7 +511,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
                     if size!=self.size:
                         raise AndorError("unexpected buffer size: expected {}, got {}".format(self.size,size))
                 except AndorSDK3LibError as e:
-                    if e.code!=atcore_lib.AT_ERR.AT_ERR_TIMEDOUT:
+                    if e.code not in {atcore_lib.AT_ERR.AT_ERR_TIMEDOUT,atcore_lib.AT_ERR.AT_ERR_NODATA}:
                         raise
                     continue
                 next_buff=self.buffers[(self._frame_notifier.counter+self.queued_buffers)%len(self.buffers)]
