@@ -40,7 +40,7 @@ class LinearTransform:
             raise ValueError("method only applies to dimensions {}".format(ndims))
     
     def inverted(self):
-        """Retrun inverted transformation"""
+        """Return inverted transformation"""
         tmatr=np.linalg.inv(self.tmatr)
         shift=-np.dot(tmatr,self.shift)
         return self._build_new(tmatr,shift)
@@ -87,7 +87,7 @@ class LinearTransform:
 
 class Indexed2DTransform(LinearTransform):
     """
-    A restriction of :class:`LinearTransform` which only appleis to 2D and only allows rotations by multiples of 90 degrees.
+    A restriction of :class:`LinearTransform` which only applies to 2D and only allows rotations by multiples of 90 degrees.
 
     Args:
         tmatr: translational matrix (if ``None``, use a unity matrix)

@@ -316,7 +316,7 @@ class ImagePlotter(QLayoutManagedWidget):
             return updated
     class CoordinateSystem:
         """
-        Describes corrdinate system.
+        Describes a coordinate system.
         
         Args:
             trans: transform connecting this coordinate system to an already defined one
