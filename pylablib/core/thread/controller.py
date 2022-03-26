@@ -849,7 +849,7 @@ class QThreadController(QtCore.QObject):
                 for ctl in lst:
                     ctl.send_interrupt(self._variable_change_tag,val)
         if notify:
-            notify_tag.replace("*",name)
+            notify_tag=notify_tag.replace("*",name)
             self.send_multicast("any",notify_tag,value)
     def delete_variable(self, name, missing_error=False):
         """

@@ -264,7 +264,7 @@ class DeviceThread(controller.QTaskThread):
             parameters=self._get_parameters()
         else:
             parameters=self._get_disconnected_parameters()
-        self.set_variable("parameters",parameters,update=True)
+        self.set_variable("parameters",parameters,update=True,notify=True)
         return parameters
     def apply_parameters(self, parameters, update=True):
         """Apply device parameters"""
