@@ -1,6 +1,6 @@
 from ... import device_thread
 from ...stream import stream_manager, stream_message
-from ....core.utils import dictionary
+from ....core.utils import dictionary, funcargparse
 from ....devices.interface import camera as cam_utils
 
 import numpy as np
@@ -85,6 +85,8 @@ class GenericCameraThread(device_thread.DeviceThread):
     TAcqLoop=collections.namedtuple("TAcqLoop",["loop","finalize"])
     _default_min_buffer_size=(1.,100)
     _default_min_poll_period=0.05
+    _default_parameters_update_time=1.
+    _default_updated_camera_attributes={}
     _frameinfo_include_fields=None
     TimeoutError=cam_utils.ICamera.TimeoutError
     FrameTransferError=cam_utils.ICamera.FrameTransferError
@@ -97,16 +99,21 @@ class GenericCameraThread(device_thread.DeviceThread):
         self._acquisition_loops={}
         self._running_loop=None
         self.min_poll_period=self.misc.get("loop/min_poll_period",self._default_min_poll_period)
+        self.parameters_update_time=self.misc.get("loop/parameters_update_time",self._default_parameters_update_time)
+        self._on_attribute_error="error"
         self._last_obtained_parameters={}
         def_time,def_frames=self._default_min_buffer_size
         self.min_buffer_size=self.misc.get("buffer/min_size/time",def_time),self.misc.get("buffer/min_size/frames",def_frames)
         self.fps_calc=RateCalculator(1.)
         self.open()
-        self.add_job("update_parameters",self.update_parameters,2.)
+        self.add_job("update_parameters",self.update_parameters,self.parameters_update_time)
         self.add_command("add_acq_loop",self.add_acq_loop)
         self.add_command("remove_acq_loop",self.remove_acq_loop)
         self.add_command("acq_start",self.acq_start)
         self.add_command("acq_stop",self.acq_stop)
+        self.add_command("modify_updated_camera_attributes",self.modify_updated_camera_attributes)
+        self.add_command("set_camera_attributes_error_action",self.set_camera_attributes_error_action)
+        self.add_command("clear_camera_attributes_error",self.clear_camera_attributes_error)
         self.add_batch_job("acq_loop",self.acq_loop,self.acq_finalize)
         self.add_acq_loop("regular",self.acq_loop_regular,self.acq_finalize_regular)
         self.v["stream/sn"]=self.name
@@ -118,7 +125,12 @@ class GenericCameraThread(device_thread.DeviceThread):
         self.TimeoutError=self.rpyc_obtain(self.device.TimeoutError)
         self.FrameTransferError=self.rpyc_obtain(self.device.FrameTransferError)
         self.v["parameters/add_info"]=False
+        if self._default_updated_camera_attributes=="all":
+            self._updated_camera_attributes={a:True for a in self.device.get_all_attributes()}
+        else:
+            self._updated_camera_attributes=dict(self._default_updated_camera_attributes)
         self.update_parameters()
+        self._set_acquisition_status("stopped")
     def close_device(self):
         try:
             self.acq_stop()
@@ -145,10 +157,15 @@ class GenericCameraThread(device_thread.DeviceThread):
             self.device.clear_acquisition()
         self._set_acquisition_status("stopped")
     @contextlib.contextmanager
-    def _pausing_acq(self):
-        self._reset_frame_counters()
-        with self.device.pausing_acquisition() as (acq_in_progress,acq_params):
-            yield (acq_in_progress,acq_params)
+    def _pausing_acq(self, kind="default"):
+        if kind=="none":
+            with self.device.pausing_acquisition(clear=False,stop=False) as (acq_in_progress,acq_params):
+                yield (acq_in_progress,acq_params)
+        else:
+            self._reset_frame_counters()
+            clear={"default":None,"pause":False,"clear":True}[kind]
+            with self.device.pausing_acquisition(clear=clear) as (acq_in_progress,acq_params):
+                yield (acq_in_progress,acq_params)
     def _update_frozen_parameters(self, parameters):
         for k,v in self._last_obtained_parameters.items():
             if k not in parameters:
@@ -156,16 +173,47 @@ class GenericCameraThread(device_thread.DeviceThread):
         self._last_obtained_parameters={k:parameters[k] for k in self.parameter_freeze_running if k in parameters}
     def _update_additional_parameters(self, parameters):
         pass
-    def _get_parameters(self, pause=False):  # pylint: disable=arguments-differ
+    def _get_camera_attributes(self, **kwargs):
+        attrs={k for k,v in self._updated_camera_attributes.items() if v}
+        self._updated_camera_attributes.update({k:False for k,v in self._updated_camera_attributes.items() if v=="single"})
+        return {a:self.device.get_attribute_value(a,**kwargs) for a in attrs}
+    def modify_updated_camera_attributes(self, attributes="all", mode=True):
+        """
+        Change attribute update properties.
+
+        `attributes` can be either a list of modified attributes or ``"all"``.
+        `mode` can be ``True`` (always update with other parameters), ``False`` (never update),
+        or ``"single"`` (update once at the next parameter update).
+        """
+        if attributes=="all":
+            attributes=list(self.device.get_all_attributes()) if self.device is not None else list(self._updated_camera_attributes)
+        if not isinstance(attributes,(tuple,list,set)):
+            attributes={attributes}
+        funcargparse.check_parameter_range(mode,"mode",[True,False,"single"])
+        self._updated_camera_attributes.update({a:mode for a in attributes})
+    def set_camera_attributes_error_action(self, action="error"):
+        """
+        Set action of the attribute assignment error.
+
+        Can be ``"error"`` (raise the error as usual), or ``"report"``
+        (set the corresponding ``"parameters/errors/camera_attributes/<att>"`` thread variable to the raised error value).
+        """
+        funcargparse.check_parameter_range(action,"action",["error","report"])
+        self._on_attribute_error=action
+    def clear_camera_attributes_error(self, attributes):
+        """Clear reported error states for the given attributes"""
+        if not isinstance(attributes,(tuple,list,set)):
+            attributes={attributes}
+        for att in attributes:
+            self.v["parameters/errors/camera_attributes",att]=None
+    def _get_parameters(self, pause="none"):  # pylint: disable=arguments-differ
         if self.device:
             include=self.parameter_variables
-            if self.device.acquisition_in_progress() and not pause:
+            if self.device.acquisition_in_progress() and pause=="none":
                 include=set(include)-(set(self.parameter_freeze_running)&set(self._last_obtained_parameters))
-            if pause:
-                with self._pausing_acq():
-                    parameters=self.device.get_full_info(include=include)
-            else:
+            with self._pausing_acq(kind=pause):
                 parameters=self.device.get_full_info(include=include)
+                parameters.update({"camera_attributes":self._get_camera_attributes()})
             parameters=dictionary.Dictionary(self.rpyc_obtain(parameters))
             parameters.filter_self(lambda x: x is not None)
             self._update_frozen_parameters(parameters)
@@ -177,7 +225,7 @@ class GenericCameraThread(device_thread.DeviceThread):
         aux_info=super()._get_aux_full_info()
         if self.device:
             if hasattr(self.device,"ca"):
-                aux_info.update({"attribute_desc":self.device.ca[""]})
+                aux_info.update({"camera_attributes_desc":self.device.ca[""]})
         return aux_info
 
     def _reset_frame_counters(self):
@@ -198,11 +246,25 @@ class GenericCameraThread(device_thread.DeviceThread):
         return None
     def _prepare_applied_parameters(self, parameters):
         pass
+    def _set_camera_attribute(self, name, value):
+        self.device.cav[name]=value
     def _apply_additional_parameters(self, parameters):
         for k in ["add_info"]:
             if k in parameters:
                 self.v["parameters",k]=parameters.pop(k)
-    def apply_parameters(self, parameters, update=True):
+        parameters=dictionary.Dictionary(parameters)
+        if "camera_attributes" in parameters:
+            for attr,val in parameters["camera_attributes"].as_dict("flat").items():
+                try:
+                    self._set_camera_attribute(attr,val)
+                    if self._on_attribute_error=="report":
+                        self.v["parameters/errors/camera_attributes",attr]=None
+                except self.device.Error as err:
+                    if self._on_attribute_error=="error":
+                        raise
+                    if self._on_attribute_error=="report":
+                        self.v["parameters/errors/camera_attributes",attr]=err
+    def apply_parameters(self, parameters, update=True, pause="default"):
         """
         Apply camera parameters.
 
@@ -211,17 +273,21 @@ class GenericCameraThread(device_thread.DeviceThread):
         if self.device:
             status=self.sv["status/acquisition"]
             self._set_acquisition_status("setup")
-            with self._pausing_acq() as (_,acq_params):
+            with self._pausing_acq(kind=pause) as (_,acq_params):
                 self._prepare_applied_parameters(parameters)
                 super().apply_parameters(parameters,update=False)
                 self._apply_additional_parameters(parameters)
                 nframes=self._estimate_buffers_num()
                 acq_nframes=acq_params.get("nframes") if acq_params else None
                 if nframes and (acq_nframes is None or acq_nframes<nframes*0.9 or acq_nframes>nframes*2):
+                    self._reset_frame_counters()
                     self.setup_acquisition(nframes=nframes,force_setup=True)
                 if update:
                     self.update_parameters()
             self._set_acquisition_status(status)
+            parameters=dictionary.Dictionary(parameters)
+            if "tag" in parameters:
+                self.v["parameters/tag"]=parameters["tag"]
 
     def _get_metainfo(self, frames, indices, infos):  # pylint: disable=unused-argument
         metainfo={}
@@ -295,7 +361,7 @@ class GenericCameraThread(device_thread.DeviceThread):
             self.v["frames/buffer_filled"]=rng[1]-rng[0]
             self.v["frames/last_idx"]=rng[1]-1
             nsent=len(frames)
-            if frames:
+            if nsent:
                 msg=self.frames_src.build_message(frames,indices,infos,source="camera",metainfo=self._get_metainfo(frames,indices,infos),sn=self.name)
                 self.send_multicast("any","frames/new",msg)
                 self.v["frames/last_frame"]=frames[-1] if frames[-1].ndim==2 else frames[-1][-1]

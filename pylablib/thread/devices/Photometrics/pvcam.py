@@ -9,6 +9,8 @@ class PvcamCameraThread(camera.GenericCameraThread):
     """
     parameter_variables=camera.GenericCameraThread.parameter_variables|{"exposure","frame_period","clear_mode","clear_cycles","clearing_time","trigger_mode",
         "readout_mode","detector_size","roi_limits","roi","buffer_size"}
+    def _get_camera_attributes(self):
+        return super()._get_camera_attributes(enum_as_str=False)
     def connect_device(self):
         with self.using_devclass("Photometrics.PvcamCamera",host=self.remote) as cls:
             self.device=cls(name=self.cam_name)  # pylint: disable=not-callable

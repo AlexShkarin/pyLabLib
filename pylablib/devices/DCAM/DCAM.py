@@ -162,6 +162,7 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribute
         self._add_settings_variable("ext_trigger",self.get_ext_trigger_parameters,self.setup_ext_trigger)
         self._add_settings_variable("readout_speed",self.get_readout_speed,self.set_readout_speed,ignore_error=ValueError)
         self._add_info_variable("all_readout_speeds",self.get_all_readout_speeds)
+        self._add_settings_variable("defect_correct_mode",self.get_defect_correct_mode,self.set_defect_correct_mode,ignore_error=ValueError)
         self._add_status_variable("readout_time",self.get_frame_readout_time)
         self._add_status_variable("acq_status",self.get_status)
         self._add_status_variable("transfer_info",self.get_transfer_info)
