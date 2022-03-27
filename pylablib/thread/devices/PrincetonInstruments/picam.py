@@ -9,7 +9,7 @@ class PicamCameraThread(camera.GenericCameraThread):
     """
     parameter_variables=camera.GenericCameraThread.parameter_variables|{"exposure",
         "frame_period","detector_size","roi_limits","roi","buffer_size"}
-    def _get_camera_attributes(self):
+    def _get_camera_attributes(self):  # pylint: disable=arguments-differ
         return super()._get_camera_attributes(enum_as_str=False)
     def _set_camera_attribute(self, name, value):
         old_value=self.device.cav[name]

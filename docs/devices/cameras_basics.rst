@@ -98,7 +98,8 @@ Acquisition loop
 
 A typical simple acquisition loop has already been shown above::
 
-    cam.setup_acquisition(nframes=100)  # could be combined with start_acquisition, or kept separate
+    # nframes=100 relates to the size of the frame buffer; the acquisition will continue indefinitely
+    cam.setup_acquisition(mode="sequence", nframes=100)  # could be combined with start_acquisition, or kept separate
     cam.start_acquisition()
     while True:  # acquisition loop
         cam.wait_for_frame()  # wait for the next available frame

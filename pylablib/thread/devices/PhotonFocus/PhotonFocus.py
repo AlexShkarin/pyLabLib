@@ -20,13 +20,13 @@ class GenericPhotonFocusCameraThread(camera.GenericCameraThread):
             metainfo["status_line"]=("photon_focus",(0,-1,row,-1)) if transp else ("photon_focus",(row,-1,0,-1))
         return metainfo
     
-    def apply_parameters(self, parameters, update=True):
+    def apply_parameters(self, parameters, update=True, pause="default"):
         if self.device and list(parameters)==["roi"]:
             par_roi=parameters["roi"]
             dev_roi=self.device.get_roi()
             if dev_roi[1]-dev_roi[0]==par_roi[1]-par_roi[0] and dev_roi[3]-dev_roi[2]==par_roi[3]-par_roi[2]:
                 parameters["fast_roi"]=parameters.pop("roi")
-        super().apply_parameters(parameters,update=update)
+        super().apply_parameters(parameters,update=update,pause=pause)
     def _apply_additional_parameters(self, parameters):
         super()._apply_additional_parameters(parameters)
         if "fast_roi" in parameters:

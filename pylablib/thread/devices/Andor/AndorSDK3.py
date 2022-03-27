@@ -10,7 +10,7 @@ class AndorSDK3CameraThread(camera.GenericCameraThread):
     parameter_variables=camera.GenericCameraThread.parameter_variables|{"exposure","frame_period",
         "trigger_mode","detector_size","roi_limits","roi","temperature","temperature_monitor","buffer_size","frame_counter_status","missed_frames"}
     _frameinfo_include_fields={"frame_index","timestamp_dev"}
-    def _get_camera_attributes(self):
+    def _get_camera_attributes(self):  # pylint: disable=arguments-differ
         return super()._get_camera_attributes(enum_as_str=False)
     def connect_device(self):
         with self.using_devclass("Andor.AndorSDK3Camera",host=self.remote) as cls:

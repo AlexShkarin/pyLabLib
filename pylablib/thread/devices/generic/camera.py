@@ -264,7 +264,7 @@ class GenericCameraThread(device_thread.DeviceThread):
                         raise
                     if self._on_attribute_error=="report":
                         self.v["parameters/errors/camera_attributes",attr]=err
-    def apply_parameters(self, parameters, update=True, pause="default"):
+    def apply_parameters(self, parameters, update=True, pause="default"):  # pylint: disable=arguments-differ
         """
         Apply camera parameters.
 
