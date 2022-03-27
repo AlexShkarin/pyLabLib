@@ -408,12 +408,16 @@ class QThreadController(QtCore.QObject):
             self._stop_notifiers=[]
             for sid in self._multicast_pool_sids:
                 self._multicast_pool.unsubscribe(sid)
+            self._multicast_pool_sids=set()
             self.notify_exec_point("stop")
             _unregister_controller(self)
             self.thread.quit() # stop event loop (no regular messages processed after this call)
             self.poke()  # add a message into the event loop, so that it executed and detects that the thread.quit was called
             with self._lifetime_state_lock:
                 self._lifetime_state="stopped"
+            if self.thread_kind=="main":
+                threadprop.get_app().aboutToQuit.disconnect(self._on_finish_event)
+                threadprop.get_app().lastWindowClosed.disconnect(self._on_last_window_closed)
     @Slot()
     def _on_last_window_closed(self):
         if threadprop.get_app().quitOnLastWindowClosed():
