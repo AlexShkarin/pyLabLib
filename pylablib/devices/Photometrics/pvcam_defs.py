@@ -466,6 +466,8 @@ class PL_EXPOSURE_MODES(enum.IntEnum):
     EXT_TRIG_LEVEL         =_int32(((7+3)<<8))
     EXT_TRIG_SOFTWARE_FIRST=_int32(((7+4)<<8))
     EXT_TRIG_SOFTWARE_EDGE =_int32(((7+5)<<8))
+    EXT_TRIG_LEVEL_OVERLAP =_int32(((7+6)<<8))
+    EXT_TRIG_LEVEL_PULSED  =_int32(((7+7)<<8))
 dPL_EXPOSURE_MODES={a.name:a.value for a in PL_EXPOSURE_MODES}
 drPL_EXPOSURE_MODES={a.value:a.name for a in PL_EXPOSURE_MODES}
 

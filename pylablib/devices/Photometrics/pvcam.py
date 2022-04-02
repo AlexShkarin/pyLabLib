@@ -508,7 +508,9 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
             "e_rise_edge":pvcam_defs.PL_EXPOSURE_MODES.EXT_TRIG_EDGE_RISING,
             "e_level":pvcam_defs.PL_EXPOSURE_MODES.EXT_TRIG_LEVEL,
             "e_soft_first":pvcam_defs.PL_EXPOSURE_MODES.EXT_TRIG_SOFTWARE_FIRST,
-            "e_soft_edge":pvcam_defs.PL_EXPOSURE_MODES.EXT_TRIG_SOFTWARE_EDGE})
+            "e_soft_edge":pvcam_defs.PL_EXPOSURE_MODES.EXT_TRIG_SOFTWARE_EDGE,
+            "e_level_overlap":pvcam_defs.PL_EXPOSURE_MODES.EXT_TRIG_LEVEL_OVERLAP,
+            "e_level_pulsed":pvcam_defs.PL_EXPOSURE_MODES.EXT_TRIG_LEVEL_PULSED})
     _p_trigger_out_mode=interface.EnumParameterClass("trigger_out_mode",
         {   "first_row":pvcam_defs.PL_EXPOSE_OUT_MODES.EXPOSE_OUT_FIRST_ROW,
             "all_rows":pvcam_defs.PL_EXPOSE_OUT_MODES.EXPOSE_OUT_ALL_ROWS,
