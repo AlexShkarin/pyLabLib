@@ -1,4 +1,4 @@
-from . import qdelete, QtWidgets
+from . import qdelete, QtWidgets, QtCore
 
 import collections
 
@@ -283,3 +283,69 @@ def compress_grid_layout(layout):
                 filled_rows-=1
             else:
                 curr_row+=1
+
+
+def get_relative_position(widget, origin=None):
+    """Get widget's position relative to the origin (top-level parent if ``None``)"""
+    if origin is None:
+        origin=get_top_parent(widget)
+    return origin.mapFromGlobal(widget.parentWidget().mapToGlobal(widget.pos()))
+
+def _expand_rectangle(rect, border, bound_size=None):
+    if isinstance(border,tuple):
+        bx0,bx1,by0,by1=border if len(border)==4 else (border[0],border[0],border[1],border[1])
+    else:
+        bx0,bx1,by0,by1=(border,)*4
+    x0,y0=rect.x()-bx0,rect.y()-by0
+    x1,y1=rect.x()+rect.width()+bx1,rect.y()+rect.height()+by1
+    if bound_size is not None:
+        x0=max(x0,0)
+        y0=max(y0,0)
+        x1=max(min(x1,bound_size.width()),x0)
+        y1=max(min(y1,bound_size.height()),y0)
+    return QtCore.QRect(x0,y0,x1-x0,y1-y0)
+def get_relative_rectangle(widget, origin=None, border=0, trim_border=True):
+    """
+    Get widget rectangle area relative to the origin (top-level parent if ``None``).
+
+    If `border` is non-zero, it specifies a border (integer or 2-tuple) around the widget to add to the rectangle.
+    If ``trim_border==True``, the resulting rectangle is trimmed to lie withing the origin area.
+    Return ``QRect`` object.
+    """
+    if origin is None:
+        origin=get_top_parent(widget)
+    pos=origin.mapFromGlobal(widget.parentWidget().mapToGlobal(widget.pos()))
+    rect=QtCore.QRect(pos,widget.size())
+    if border:
+        rect=_expand_rectangle(rect,border,bound_size=origin.size() if trim_border else None)
+    return rect
+
+def get_screenshot(window=None, rect=None, widget=None, border=0, include_titlebar=True):
+    """
+    Take a screenshot of a given window or a given widget.
+
+    Either `window` or `widget` must be defined.
+    If `rect` (type ``QRect``) or `widget` are defined, they specify the area to include into screenshot;
+    in this case, `border` can define an additional border to add to the rectangle.
+    If rectangle is not defined, then `include_titlebar` specifies whether the window titlebar is included.
+    """
+    if window is None and widget is None:
+        raise ValueError("either window or widget must be defined")
+    if window is None:
+        window=get_top_parent(widget)
+    screen=window.screen()
+    if widget is None and rect is None:
+        pos=window.pos() if include_titlebar else window.geometry()
+        size=window.frameSize() if include_titlebar else window.size()
+        rect=QtCore.QRect(QtCore.QPoint(0,0),size)
+        if border:
+            rect=_expand_rectangle(rect,border=border,bound_size=size)
+    else:
+        pos=window.geometry()
+        if rect is None:
+            if get_top_parent(widget) is not window:
+                raise ValueError("window should be a top parent of the widget")
+            rect=get_relative_rectangle(widget,origin=window)
+        if border:
+            rect=_expand_rectangle(rect,border=border,bound_size=window.size())
+    return screen.grabWindow(0,pos.x()+rect.x(),pos.y()+rect.y(),rect.width(),rect.height())

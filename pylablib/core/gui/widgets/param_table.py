@@ -47,6 +47,8 @@ class ParamTable(container.QWidgetContainer):
         super().__init__(parent,name=name)
         self.h=dictionary.ItemAccessor(self.get_handler)
         self.w=dictionary.ItemAccessor(self.get_widget)
+        self.iw=dictionary.ItemAccessor(self.get_indicator_widget)
+        self.lw=dictionary.ItemAccessor(self.get_label_widget)
         self.wv=dictionary.ItemAccessor(self.get_value,self.set_value)
         self.v=self.wv
         self.cv=dictionary.ItemAccessor(lambda name: self.current_values[name],self.set_value)
@@ -579,6 +581,14 @@ class ParamTable(container.QWidgetContainer):
             return self.params[name].widget
         except KeyError:
             return super().get_widget(name)
+    def get_indicator_widget(self, name):
+        """Get indicator widget for a parameter with the given name, or ``None`` if this parameter has no indicator label"""
+        name=self._normalize_name(name)
+        return self.params[name].indicator
+    def get_label_widget(self, name):
+        """Get label widget for a parameter with the given name, or ``None`` if this parameter has no label"""
+        name=self._normalize_name(name)
+        return self.params[name].label
 
     def get_child(self, name):
         name=self._normalize_name(name)
