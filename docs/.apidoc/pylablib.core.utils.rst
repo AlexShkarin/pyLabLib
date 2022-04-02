@@ -103,6 +103,15 @@ pylablib.core.utils.module module
     :undoc-members:
     :show-inheritance:
 
+pylablib.core.utils.nbtools module
+----------------------------------
+
+.. automodule:: pylablib.core.utils.nbtools
+    :members:
+    :inherited-members:
+    :undoc-members:
+    :show-inheritance:
+
 pylablib.core.utils.net module
 ------------------------------
 

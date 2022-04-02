@@ -94,6 +94,15 @@ pylablib.core.dataproc.table\_wrap module
     :undoc-members:
     :show-inheritance:
 
+pylablib.core.dataproc.transform module
+---------------------------------------
+
+.. automodule:: pylablib.core.dataproc.transform
+    :members:
+    :inherited-members:
+    :undoc-members:
+    :show-inheritance:
+
 pylablib.core.dataproc.utils module
 -----------------------------------
 
