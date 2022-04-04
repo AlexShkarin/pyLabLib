@@ -63,6 +63,13 @@ To see all available attributes, you can call :meth:`.PvcamCamera.get_all_attrib
 Since these properties vary a lot between different cameras, it is challenging to write a universal class covering a large range of cameras. Hence, currently the universal class only has the basic camera parameter control such as ROI (without binning), exposure, and acquisition status. For many specific cameras you might need to explore the attributes tree using the Python class and operate them directly in your code.
 
 
+Fast buffer readout mode
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+At high frame rates (above ~10kFPS) dealing with each frame individually becomes too slow for Python. Hence, there is an option to read out and process frames in larger 'chunks', which are 3D numpy arrays with the first axis enumerating the frame index. This approach leverages the ability to store several frame buffers in the contiguous memory locations (resulting in a single 3D array), and it essentially eliminates the overhead for dealing with multiple frames at high frame rates, as long as the total data rate is manageable (typically below 600Mb/s).
+
+This option can be accessed by calling using :meth:`.PvcamCamera.set_frame_format` method to set frames format to ``"chunks"``. In this case, instead of a list of individual frames (which is the standard behavior), the method returns list of chunks, which contain several consecutive frames.
+
 Known issues
 --------------------
 

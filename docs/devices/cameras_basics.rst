@@ -116,6 +116,14 @@ Second are the methods for checking on the acquisition process. The method used 
 Finally, there are methods for reading out the frames. The simplest method is ``read_oldest_image``, which return the oldest image which hasn't been read yet, and marks it as read. A more powerful is the ``read_multiple_images`` method, which can return a range of images (by default, all unread images). Both of these methods also take a ``peek`` argument, which allows one to read the frames without marking them as read.
 
 
+Returned frame format
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+:meth:`.ICamera.read_multiple_images` method described above has several different formats for returning the frames, which can be controlled using :meth:`.ICamera.set_frame_format` and checked :meth:`.ICamera.get_frame_format`. The default format is ``"list"``, which returns a list of individual frames. The second possibility is ``"array"``, which returns a single 3D numpy array with all the frames. Finally, ``"chunks"`` returns a list of 3D arrays, each containing several consecutive frames.
+
+While ``"chunks"`` format is the hardest to work with, it provides the best performance. First, it does not require any extra memory copies, which negatively affect performance at very high data rates, above ~1Gb/s. Second, it can combine multiple small frames together into a single array, which makes further processing faster, as it does require explicit Python loop over every frame. This usually becomes important at frames rates above ~10kFPS, where treating each frame as an individual 2D array leads to significant overhead.
+
+
 Frame indexing
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
