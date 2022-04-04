@@ -1,7 +1,7 @@
 from . import sc2_camexport_lib
 from .sc2_camexport_lib import wlib as lib, PCO_ERR, PCOSC2Error, PCOSC2LibError, PCO_INTERFACE, sc2_defs, CAPS1, MAX_SCHEDULED_BUFFERS
 
-from ...core.utils import dictionary, py3, general
+from ...core.utils import dictionary, py3, general, nbtools
 from ...core.utils.ctypes_wrap import class_tuple_to_dict
 from ...core.devio import interface
 from ..interface import camera
@@ -84,7 +84,7 @@ def reset_api():
 
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["model","interface","sensor","serial_number"])
 TCameraStatus=collections.namedtuple("TCameraStatus",["status","warnings","errors"])
-TInternalBufferStatus=collections.namedtuple("TInternalBufferStatus",["scheduled","scheduled_max"])
+TInternalBufferStatus=collections.namedtuple("TInternalBufferStatus",["scheduled","scheduled_max","overruns"])
 # TFrameInfo=collections.namedtuple("TFrameInfo",["frame_index","raw_metadata"])
 TFrameInfo=collections.namedtuple("TFrameInfo",["frame_index"])
 class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
@@ -110,10 +110,13 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         self.reboot_on_fail=reboot_on_fail
         self._full_camera_data=dictionary.Dictionary()
         self._buffers=None
+        self._full_buffer=None
         self._buffer_looping=False
         self._buffer_loop_thread=None
         self._next_schedule_buffer=0
         self._frame_notifier=camera.FrameNotifier()
+        self._buffer_overruns=None
+        self._status_line_enabled=False
         self.v=dictionary.ItemAccessor(lambda n:self._full_camera_data[n])
         self.open()
 
@@ -328,8 +331,8 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
     ### Acquisition controls ###
     class Buffer:
         """Single frame buffer object, which controls setup, cleanup, and synchronization"""
-        def __init__(self, size, metadata_size=0):
-            self.buff=ctypes.create_string_buffer(size)
+        def __init__(self, buff, size, metadata_size=0):
+            self.buff=buff
             self.event=lib.CreateEvent()
             self.size=size
             self.status=sc2_camexport_lib.DWORD()
@@ -341,6 +344,8 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
             wait_res=lib.WaitForSingleObject(self.event,(-1 if timeout is None else np.int32(timeout*1000)))==0
             self.lock.release()
             return wait_res
+        def is_done(self):
+            return lib.WaitForSingleObject(self.event,0)==0
         def reset(self):
             with self.lock:
                 lib.ResetEvent(self.event)
@@ -357,7 +362,9 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         return dim[0]*dim[1]*2,mm_size
     def _allocate_buffers(self, n):
         frame_size,metadata_size=self._get_buffer_size()
-        self._buffers=[self.Buffer(frame_size+metadata_size,metadata_size=metadata_size) for _ in range(n)]
+        self._full_buffer=ctypes.create_string_buffer((frame_size+metadata_size)*n)
+        buff_ptr=ctypes.addressof(self._full_buffer)
+        self._buffers=[self.Buffer(buff_ptr+(frame_size+metadata_size)*i,frame_size+metadata_size,metadata_size=metadata_size) for i in range(n)]
         self._frame_notifier.reset()
         self._next_schedule_buffer=0
         return n
@@ -378,6 +385,7 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
             for b in self._buffers:
                 b.release()
             self._buffers=None
+            self._full_buffer=None
     def _get_acquired_frames(self):
         return self._frame_notifier.counter
         
@@ -402,6 +410,7 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
                 time.sleep(0.001)
     def _start_reading_loop(self):
         self._stop_reading_loop()
+        self._buffer_overruns=0 if self._status_line_enabled else None
         self._buffer_loop_thread=threading.Thread(target=self._loop_schedule_refresh_buffers,daemon=True)
         self._buffer_looping=True
         self._buffer_loop_thread.start()
@@ -413,11 +422,11 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
     def get_internal_buffer_status(self):
         """Get the status of the internal smaller API buffer, showing the number of scheduled frames there, and the maximal number that can be scheduled"""
         if self._buffers is None:
-            return TInternalBufferStatus(0,0)
+            return TInternalBufferStatus(0,0,0)
         size=len(self._buffers)
         scheduled=self._next_schedule_buffer-self._frame_notifier.counter
         scheduled_max=min(size,MAX_SCHEDULED_BUFFERS)
-        return TInternalBufferStatus(scheduled,scheduled_max)
+        return TInternalBufferStatus(scheduled,scheduled_max,self._buffer_overruns)
         
     
 
@@ -513,6 +522,7 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         super().start_acquisition(*args,**kwargs)
         self._allocate_buffers(n=self._acq_params["nframes"])
         self._arm()
+        self._status_line_enabled=self.get_status_line_mode()[0]
         if self._is_pco_edge() and self._is_camlink():
             self._schedule_all_buffers(set_idx=True)
             self._start_reading_loop()
@@ -721,24 +731,40 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
 
     def _wait_for_next_frame(self, timeout=20., idx=None):
         self._frame_notifier.wait(idx=idx,timeout=timeout)
-    def _read_buffer(self, idx, dim):
-        buff=self._buffers[idx%len(self._buffers)]
-        npx=dim[0]*dim[1]
-        frame=np.frombuffer(buff.buff,dtype="<u2",count=npx).copy().reshape(dim)
-        frame=self._convert_indexing(frame,"rct")
-        # raw_metadata=buff.buff[-buff.metadata_size:] if buff.metadata_size>0 else None  # TODO: parse metadata
-        # return frame,TFrameInfo(idx,raw_metadata)
-        return frame,TFrameInfo(idx)
+    _support_chunks=True
+    def _parse_frames_data(self, ptr, nframes, shape):
+        stride=self._buffers[0].size
+        buffer=np.ctypeslib.as_array(ctypes.cast(ptr,ctypes.POINTER(ctypes.c_ubyte)),shape=(stride*nframes,))
+        size=shape[0]*shape[1]*2
+        framedata=np.empty(nframes*size,dtype="u1")
+        copy_strided(buffer,framedata,nframes,size,stride,0)
+        frames=framedata.view("<u2").reshape((nframes,)+shape)
+        frames=self._convert_indexing(frames,"rct",axes=(1,2))
+        return frames
     def _read_frames(self, rng, return_info=False):
-        dim=self._get_data_dimensions_rc()
-        data=[self._read_buffer(n,dim) for n in range(rng[0],rng[1])]
-        return [d[0] for d in data],[d[1] for d in data]
+        shape=self._get_data_dimensions_rc()
+        base=ctypes.addressof(self._full_buffer)
+        stride=self._buffers[0].size
+        buffer_frames=len(self._buffers)
+        start=rng[0]%buffer_frames
+        stop=start+(rng[1]-rng[0])
+        if stop<=buffer_frames:
+            chunks=[(rng[0],start,stop-start)]
+        else:
+            l0=buffer_frames-start
+            chunks=[(rng[0],start,l0),(rng[0]+l0,0,stop-start-l0)]
+        frames=[self._parse_frames_data(base+s*stride,l,shape) for (_,s,l) in chunks]
+        if self._status_line_enabled and frames and len(frames[-1]):
+            self._buffer_overruns=max(self._buffer_overruns,get_status_line(frames[-1][-1,:,:]).framestamp-rng[-1]-1)
+        return frames,None
 
     def _get_grab_acquisition_parameters(self, nframes, buff_size):
         if buff_size is None:
             buff_size=self._default_acq_params.get("nframes",100)
         return {"nframes":buff_size}
 
+
+copy_strided=nbtools.copy_array_strided(par=False)
 
 
 
