@@ -121,22 +121,26 @@ class PFCamAttribute:
         self.labels={}
         self.ilabels={}
         if self._type=="PF_MODE":
-            nodes=lib.collect_properties(port,self._token,backbone=False)
-            for tok,val in nodes:
-                val=py3.as_str(val)
-                if lib.pfProperty_GetType(port,tok)==2: # integer token, means one of possible values
-                    ival=lib.pfDevice_GetProperty(port,tok)
-                    self.values.append(val)
-                    self.ivalues.append(ival)
-            self.labels=dict(zip(self.values,self.ivalues))
-            self.ilabels=dict(zip(self.ivalues,self.values))
+            self._update_enum_limits()
     
+    def _update_enum_limits(self):
+        nodes=lib.collect_properties(self.port,self._token,backbone=False)
+        for tok,val in nodes:
+            val=py3.as_str(val)
+            if lib.pfProperty_GetType(self.port,tok)==2: # integer token, means one of possible values
+                ival=lib.pfDevice_GetProperty(self.port,tok)
+                self.values.append(val)
+                self.ivalues.append(ival)
+        self.labels=dict(zip(self.values,self.ivalues))
+        self.ilabels=dict(zip(self.ivalues,self.values))
     def update_limits(self):
         """Update minimal and maximal attribute limits and return tuple ``(min, max)``"""
         if self._type in {"PF_INT","PF_UINT","PF_FLOAT"}:
             self.min=lib.get_property_by_name(self.port,self.name+".Min")
             self.max=lib.get_property_by_name(self.port,self.name+".Max")
             return (self.min,self.max)
+        if self._type=="PF_MODE":
+            self._update_enum_limits()
     def truncate_value(self, value):
         """Truncate value to lie within attribute limits"""
         self.update_limits()

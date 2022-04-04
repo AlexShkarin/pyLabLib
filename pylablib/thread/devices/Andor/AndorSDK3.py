@@ -11,7 +11,25 @@ class AndorSDK3CameraThread(camera.GenericCameraThread):
         "trigger_mode","detector_size","roi_limits","roi","temperature","temperature_monitor","buffer_size","frame_counter_status","missed_frames"}
     _frameinfo_include_fields={"frame_index","timestamp_dev"}
     def _get_camera_attributes(self):  # pylint: disable=arguments-differ
-        return super()._get_camera_attributes(enum_as_str=False)
+        attrs={k for k,v in self._updated_camera_attributes.items() if v}
+        self._updated_camera_attributes.update({k:False for k,v in self._updated_camera_attributes.items() if v=="single"})
+        values={}
+        for n in attrs:
+            att=self.device.get_attribute(n)
+            if att.readable:
+                try:
+                    values[n]=att.get_value(enum_as_str=False)
+                except self.device.Error:  # sometimes nominally implemented features still raise errors
+                    pass
+        return values
+    def _get_camera_attribute_descriptions(self):
+        attrs=self.device.ca[""]
+        for a in attrs.values():
+            try:
+                a.update_limits()
+            except self.device.Error:
+                pass
+        return attrs
     def connect_device(self):
         with self.using_devclass("Andor.AndorSDK3Camera",host=self.remote) as cls:
             self.device=cls(idx=self.idx)  # pylint: disable=not-callable

@@ -115,16 +115,7 @@ class IMAQdxAttribute:
         self.ivalues=[]
         self.labels={}
         self.ilabels={}
-        if self._attr_type_n in lib.numeric_attr_types:
-            self.min=lib.IMAQdxGetAttributeMinimum(sid,name,self._attr_type_n)
-            self.max=lib.IMAQdxGetAttributeMaximum(sid,name,self._attr_type_n)
-            self.inc=lib.IMAQdxGetAttributeIncrement(sid,name,self._attr_type_n)
-        if self._attr_type_n==IMAQdxAttributeType.IMAQdxAttributeTypeEnum:
-            attr_values=lib.IMAQdxEnumerateAttributeValues(sid,name)
-            self.values=[av.Name for av in attr_values]
-            self.ivalues=[av.Value for av in attr_values]
-            self.labels=dict(zip(self.values,self.ivalues))
-            self.ilabels=dict(zip(self.ivalues,self.values))
+        self.update_limits()
     
     def update_limits(self):
         """Update minimal and maximal attribute limits and return tuple ``(min, max, inc)``"""
@@ -133,6 +124,12 @@ class IMAQdxAttribute:
             self.max=lib.IMAQdxGetAttributeMaximum(self.sid,self.name,self._attr_type_n)
             self.inc=lib.IMAQdxGetAttributeIncrement(self.sid,self.name,self._attr_type_n)
             return (self.min,self.max,self.inc)
+        if self._attr_type_n==IMAQdxAttributeType.IMAQdxAttributeTypeEnum:
+            attr_values=lib.IMAQdxEnumerateAttributeValues(self.sid,self.name)
+            self.values=[av.Name for av in attr_values]
+            self.ivalues=[av.Value for av in attr_values]
+            self.labels=dict(zip(self.values,self.ivalues))
+            self.ilabels=dict(zip(self.ivalues,self.values))
     def truncate_value(self, value):
         """Truncate value to lie within attribute limits"""
         self.update_limits()

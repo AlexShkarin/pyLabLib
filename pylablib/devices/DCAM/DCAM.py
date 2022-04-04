@@ -88,15 +88,7 @@ class DCAMAttribute:
         self.labels={}
         self.ilabels={}
         if self.kind=="enum":
-            for v in range(int(self.min),int(self.max)+1):
-                try:
-                    tv=self.as_text(v)
-                    self.values.append(tv)
-                    self.ivalues.append(v)
-                except DCAMLibError:
-                    pass
-            self.labels=dict(zip(self.values,self.ivalues))
-            self.ilabels=dict(zip(self.ivalues,self.values))
+            self._update_enum_limits()
         if self.kind in ["enum","int"]:
             self.min=int(self.min)
             self.max=int(self.max)
@@ -107,11 +99,25 @@ class DCAMAttribute:
         if value is None:
             return self.get_value(enum_as_str=True)
         return py3.as_str(lib.dcamprop_getvaluetext(self.handle,self.pid,value))
+    def _update_enum_limits(self):
+        self.values=[]
+        self.ivalues=[]
+        for v in range(int(self.min),int(self.max)+1):
+            try:
+                tv=self.as_text(v)
+                self.values.append(tv)
+                self.ivalues.append(v)
+            except DCAMLibError:
+                pass
+        self.labels=dict(zip(self.values,self.ivalues))
+        self.ilabels=dict(zip(self.ivalues,self.values))
     def update_limits(self):
         """Update minimal and maximal attribute limits and return tuple ``(min, max)``"""
         props=lib.dcamprop_getattr(self.handle,self.pid)
         self.min=props.valuemin
         self.max=props.valuemax
+        if self.kind=="enum":
+            self._update_enum_limits()
         return (self.min,self.max)
     def get_value(self, enum_as_str=False):
         """

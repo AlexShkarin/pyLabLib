@@ -87,10 +87,7 @@ class AndorSDK3Attribute:
                 pass
         elif self.kind=="enum":
             try:
-                self.values=self.get_range()
-                self.ivalues=self.get_range(enum_as_str=False)
-                self.labels=dict(zip(self.values,self.ivalues))
-                self.ilabels=dict(zip(self.ivalues,self.values))
+                self._update_enum_limits()
             except AndorError:
                 pass
     def __repr__(self):
@@ -188,11 +185,18 @@ class AndorSDK3Attribute:
             if enum_as_str:
                 available=[lib.AT_GetEnumStringByIndex(self.handle,self.name,i,512) for i in available]
             return available
+    def _update_enum_limits(self):
+        self.values=self.get_range()
+        self.ivalues=self.get_range(enum_as_str=False)
+        self.labels=dict(zip(self.values,self.ivalues))
+        self.ilabels=dict(zip(self.ivalues,self.values))
     def update_limits(self):
         """Update minimal and maximal attribute limits and return tuple ``(min, max)``"""
         if self.kind in {"int","float"}:
             self.min,self.max=self.get_range()
             return (self.min,self.max)
+        elif self.kind=="enum":
+            self._update_enum_limits()
     def truncate_value(self, value):
         """Limit value to lie within the allowed range"""
         if self.kind in {"int","float"}:
@@ -370,7 +374,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         
 
     _p_trigger_mode=interface.EnumParameterClass("trigger_mode",
-        {"int":"Internal","ext":"External","software":"Software","ext_start":"External start","ext_exp":"External Exposure"})
+        {"int":"Internal","ext":"External","software":"Software","ext_start":"External Start","ext_exp":"External Exposure"})
     @interface.use_parameters(_returns="trigger_mode")
     def get_trigger_mode(self):
         """

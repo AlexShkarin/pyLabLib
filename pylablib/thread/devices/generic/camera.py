@@ -87,6 +87,7 @@ class GenericCameraThread(device_thread.DeviceThread):
     _default_min_poll_period=0.05
     _default_parameters_update_time=1.
     _default_updated_camera_attributes={}
+    _update_camera_attribute_limits=True
     _frameinfo_include_fields=None
     TimeoutError=cam_utils.ICamera.TimeoutError
     FrameTransferError=cam_utils.ICamera.FrameTransferError
@@ -107,6 +108,7 @@ class GenericCameraThread(device_thread.DeviceThread):
         self.fps_calc=RateCalculator(1.)
         self.open()
         self.add_job("update_parameters",self.update_parameters,self.parameters_update_time)
+        self._update_aux_parameters()
         self.add_command("add_acq_loop",self.add_acq_loop)
         self.add_command("remove_acq_loop",self.remove_acq_loop)
         self.add_command("acq_start",self.acq_start)
@@ -130,6 +132,7 @@ class GenericCameraThread(device_thread.DeviceThread):
         else:
             self._updated_camera_attributes=dict(self._default_updated_camera_attributes)
         self.update_parameters()
+        self._update_aux_parameters()
         self._set_acquisition_status("stopped")
     def close_device(self):
         try:
@@ -177,6 +180,13 @@ class GenericCameraThread(device_thread.DeviceThread):
         attrs={k for k,v in self._updated_camera_attributes.items() if v}
         self._updated_camera_attributes.update({k:False for k,v in self._updated_camera_attributes.items() if v=="single"})
         return {a:self.device.get_attribute_value(a,**kwargs) for a in attrs}
+    def _get_camera_attribute_descriptions(self):
+        attrs=self.device.ca[""]
+        if self._update_camera_attribute_limits:
+            for a in attrs.values():
+                if hasattr(a,"update_limits"):
+                    a.update_limits()
+        return attrs
     def modify_updated_camera_attributes(self, attributes="all", mode=True):
         """
         Change attribute update properties.
@@ -221,6 +231,11 @@ class GenericCameraThread(device_thread.DeviceThread):
             return parameters
         else:
             return dictionary.Dictionary()
+    def _update_aux_parameters(self):
+        aux_info=dictionary.Dictionary()
+        if self.device and hasattr(self.device,"ca"):
+            aux_info["camera_attributes_desc"]=self._get_camera_attribute_descriptions()
+        self.set_variable("parameters/aux",aux_info,update=True)
     def _get_aux_full_info(self):
         aux_info=super()._get_aux_full_info()
         if self.device:
@@ -284,6 +299,7 @@ class GenericCameraThread(device_thread.DeviceThread):
                     self.setup_acquisition(nframes=nframes,force_setup=True)
                 if update:
                     self.update_parameters()
+                    self._update_aux_parameters()
             self._set_acquisition_status(status)
             parameters=dictionary.Dictionary(parameters)
             if "tag" in parameters:
@@ -406,13 +422,13 @@ class GenericCameraThread(device_thread.DeviceThread):
     def acq_loop_regular(self):
         """Regular acquisition loop"""
         self.device.stop_acquisition()
-        self.update_parameters()
         if self.rpyc_serv is not None:
             self.device.set_frame_format("array")
         else:
             self.device.set_frame_format("try_chunks")
         self.device.set_frame_info_format("array",include_fields=self._frameinfo_include_fields)
         self.update_parameters()
+        self._update_aux_parameters()
         self.device.start_acquisition()
         self._set_acquisition_status("acquiring")
         yield

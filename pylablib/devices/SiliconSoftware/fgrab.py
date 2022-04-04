@@ -116,8 +116,7 @@ class FGrabAttribute:
 
     Attributes:
         name: attribute name
-        kind: attribute kind; can be ``"i32"``, ``"i64"``, ``"u32"``, ``"u64"``,
-            ``"f64"``, or ``"str"``
+        kind: attribute kind; can be ``"i32"``, ``"i64"``, ``"u32"``, ``"u64"``, ``"f64"``, or ``"str"``
         min (float or int): minimal attribute value (if applicable)
         max (float or int): maximal attribute value (if applicable)
         inc (float or int): minimal attribute increment value (if applicable)

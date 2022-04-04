@@ -36,6 +36,8 @@ class ICamera(interface.IDevice):
     def __init__(self, *args, **kwargs):  # pylint: disable=unused-argument
         super().__init__()
         self._acq_params=None
+        self._restart_acq_after_pause=True
+        self._acq_setup_requested=(False,False)
         self._default_acq_params=function_utils.funcsig(self.setup_acquisition).defaults
         self._frame_counter=FrameCounter()
         self._image_indexing=self._default_image_indexing
@@ -133,16 +135,27 @@ class ICamera(interface.IDevice):
         raise NotImplementedError("ICamera.acquisition_in_progress")
 
     @contextlib.contextmanager
-    def pausing_acquisition(self, clear=None, stop=True):
+    def pausing_acquisition(self, clear=None, stop=True, setup_after=None, start_after=True, combine_nested=True):
         """
         Context manager which temporarily pauses acquisition during execution of ``with`` block.
 
         Useful for applying certain settings which can't be changed during the acquisition.
-        If ``clear==True``, clear acquisition in addition to pausing (by default, use the class default specified as ``_clear_pausing_acquisition`` attribute).
+        If ``clear==True``, clear acquisition in addition to stopping (by default, use the class default specified as ``_clear_pausing_acquisition`` attribute).
+        If ``stop==True``, stop the acquisition (if ``clear==True``, stop regardless).
+        If ``setup_after==True``, setup the acquisition after pause if necessary (``None`` means setup only if clearing was required).
+        If ``start_after==True``, start the acquisition after pause if necessary (``None`` means start only if stopping was required).
+        If ``combine_nested==True``, then any nested ``pausing_acquisition`` calls will stop/clear acquisition as necessary,
+        but won't setup/start it again until this ``pausing_acquisition`` call is complete.
+
         Yields tuple ``(acq_in_progress, acq_params)``, which indicates whether acquisition is currently in progress, and what are the current acquisition parameters.
         """
+        restart_acq_after_pause=self._restart_acq_after_pause
+        if combine_nested:
+            self._restart_acq_after_pause=False
         if clear is None:
             clear=self._clear_pausing_acquisition
+        setup_after=clear if setup_after is None else setup_after
+        start_after=stop if start_after is None else start_after
         acq_in_progress=self.acquisition_in_progress()
         acq_params=self.get_acquisition_parameters()
         if stop or clear:
@@ -152,11 +165,18 @@ class ICamera(interface.IDevice):
         try:
             yield acq_in_progress, acq_params
         finally:
-            if clear and acq_params is not None and self.get_acquisition_parameters() is None:
-                self.setup_acquisition(**acq_params)
-            if acq_in_progress and not self.acquisition_in_progress():
-                start_params=acq_params if self.get_acquisition_parameters() is None else {}
-                self.start_acquisition(**start_params)
+            self._restart_acq_after_pause=restart_acq_after_pause
+            setup_req=acq_params is not None and self.get_acquisition_parameters() is None
+            start_req=acq_in_progress and not self.acquisition_in_progress()
+            if self._restart_acq_after_pause:
+                if (setup_after or self._acq_setup_requested[0]) and setup_req:
+                    self.setup_acquisition(**acq_params)
+                if (start_after or self._acq_setup_requested[1]) and start_req:
+                    start_params=acq_params if self.get_acquisition_parameters() is None else {}
+                    self.start_acquisition(**start_params)
+                self._acq_setup_requested=(False,False)
+            else:
+                self._acq_setup_requested=(self._acq_setup_requested[0] or (setup_after and setup_req)),(self._acq_setup_requested[1] or (start_after and start_req))
 
     ### Camera info ###
     def get_detector_size(self):
