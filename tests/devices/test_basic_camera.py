@@ -123,7 +123,7 @@ class CameraTester(DeviceTester):
                         fidx=infos[:,0]
                     elif ff=="chunks":
                         fidx=np.concatenate([i[:,0] for i in infos])
-                    assert list(fidx)==list(range(self.grab_size))
+                assert list(fidx)==list(range(self.grab_size))
     def check_acq_params(self, device, setup, running, new_images=None):
         if new_images is None:
             new_images=running

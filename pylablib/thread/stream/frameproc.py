@@ -166,7 +166,7 @@ class FrameBinningThread(controller.QTaskThread):
             if "roi" in msg.metainfo:
                 spat_bin=self.v["params/spat/bin"]
                 roi=msg.mi.roi+(1,1)
-                roi=roi[:4]+(roi[4]*spat_bin[0],roi[5]*spat_bin[1])
+                roi=roi[:4]+(roi[4]*spat_bin[1],roi[5]*spat_bin[0])
                 mi={"roi":roi}
             else:
                 mi={}

@@ -205,7 +205,7 @@ class Performax4EXStage(GenericPerformaxStage):
     @interface.use_parameters(_returns="baudrate")
     def get_baudrate(self):
         """Get current baud rate"""
-        return self.query("DB")
+        return int(self.query("DB"))
     @interface.use_parameters
     def set_baudrate(self, baudrate, store=True):
         """

@@ -1239,6 +1239,9 @@ class QTaskThread(QThreadController):
     Attributes:
         ca: asynchronous command accessor, which makes calls more function-like;
             ``ctl.ca.comm(*args,**kwarg)`` is equivalent to ``ctl.call_command("comm",args,kwargs,sync=False)``
+        cai: asynchronous command accessor which ignores and silences any exceptions (including missing /stopped controller)
+            useful for sending queries during thread finalizing / application shutdown, when it's not guaranteed that the command recipient is running
+            ``ctl.cai.comm(*args,**kwarg)`` is equivalent to ``ctl.call_command("comm",args,kwargs,sync=False,ignore_errors=True)``
         cad: asynchronous command accessor returning a result synchronizer, which makes calls more function-like;
             ``ctl.cad.comm(*args,**kwarg)`` is equivalent to ``ctl.call_command("comm",args,kwargs,sync="delayed")``
         cs: synchronous command accessor, which makes calls more function-like;
@@ -1247,8 +1250,6 @@ class QTaskThread(QThreadController):
             ``ctl.css.comm(*args,**kwarg)`` is equivalent to ``with exint(): ctl.call_command("comm",args,kwargs,sync=True)``
         csi: synchronous command accessor which ignores and silences any exceptions (including missing /stopped controller)
             useful for sending queries during thread finalizing / application shutdown, when it's not guaranteed that the command recipient is running
-            (commands already ignore any errors, unless their results are specifically requested);
-            useful for synchronous commands in finalizing functions, where other threads might already be stopped
         m: method accessor; directly calls the method corresponding to the command;
             ``ctl.m.comm(*args,**kwarg)`` is equivalent to ``ctl.call_command("comm",*args,**kwargs)``, which is often also equivalent to ``ctl.comm(*args,**kwargs)``;
             for most practical purposes it's the same as directly invoking the class method, but it makes intent more explicit
@@ -1288,6 +1289,7 @@ class QTaskThread(QThreadController):
         self._command_warned=set()
         self._pause_lock=synchronizing.QLockNotifier()
         self.ca=self.CommandAccess(self,sync=False)
+        self.cai=self.CommandAccess(self,sync=False,ignore_errors=True)
         self.cad=self.CommandAccess(self,sync="delayed")
         self.cs=self.CommandAccess(self,sync=True)
         self.css=self.CommandAccess(self,sync=True,safe=True)

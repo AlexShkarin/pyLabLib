@@ -78,7 +78,7 @@ class DropdownButton(QtWidgets.QToolButton):
         super().__init__(parent)
         menu=QtWidgets.QMenu("menu",parent=self)
         self.setPopupMode(QtWidgets.QToolButton.InstantPopup)
-        self.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
+        self.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         self.setStyleSheet('QToolButton::menu-indicator {image: none}')
         self.setMenu(menu)
         menu.triggered.connect(self._on_clicked)

@@ -74,10 +74,10 @@ class ImagePlotterCtl(QWidgetContainer):
             self.params.add_button("save_preset","Save preset")
             self.params.add_button("load_preset","Load preset")
             @controller.exsafe
-            def save_img_lim_preset(self):
+            def save_img_lim_preset():
                 self.img_lim_preset=self.v["minlim"],self.v["maxlim"]
             @controller.exsafe
-            def load_img_lim_preset(self):
+            def load_img_lim_preset():
                 self.v["minlim"],self.v["maxlim"]=self.img_lim_preset
             self.params.vs["save_preset"].connect(save_img_lim_preset,QtCore.Qt.DirectConnection)
             self.params.vs["load_preset"].connect(load_img_lim_preset,QtCore.Qt.DirectConnection)

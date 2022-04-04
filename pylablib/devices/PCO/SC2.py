@@ -85,7 +85,8 @@ def reset_api():
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["model","interface","sensor","serial_number"])
 TCameraStatus=collections.namedtuple("TCameraStatus",["status","warnings","errors"])
 TInternalBufferStatus=collections.namedtuple("TInternalBufferStatus",["scheduled","scheduled_max"])
-TFrameInfo=collections.namedtuple("TFrameInfo",["frame_index","raw_metadata"])
+# TFrameInfo=collections.namedtuple("TFrameInfo",["frame_index","raw_metadata"])
+TFrameInfo=collections.namedtuple("TFrameInfo",["frame_index"])
 class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
     """
     PCO SC2 camera.
@@ -725,8 +726,9 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         npx=dim[0]*dim[1]
         frame=np.frombuffer(buff.buff,dtype="<u2",count=npx).copy().reshape(dim)
         frame=self._convert_indexing(frame,"rct")
-        raw_metadata=buff.buff[-buff.metadata_size:] if buff.metadata_size>0 else None  # TODO: parse metadata
-        return frame,TFrameInfo(idx,raw_metadata)
+        # raw_metadata=buff.buff[-buff.metadata_size:] if buff.metadata_size>0 else None  # TODO: parse metadata
+        # return frame,TFrameInfo(idx,raw_metadata)
+        return frame,TFrameInfo(idx)
     def _read_frames(self, rng, return_info=False):
         dim=self._get_data_dimensions_rc()
         data=[self._read_buffer(n,dim) for n in range(rng[0],rng[1])]
