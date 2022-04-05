@@ -369,7 +369,8 @@ class BackgroundSubtractionThread(controller.QTaskThread):
         self.last_frame=self.TStoredFrame(None,None,None,None,None)
         self._new_show_frame=False
         self.snapshot_buffer=[]
-        self.v["snapshot/parameters"]={"count":1,"mode":"mean","dtype":None,"offset":False}
+        self._snapshot_frame_offset=0
+        self.v["snapshot/parameters"]={"count":1,"step":1,"mode":"mean","dtype":None,"offset":False}
         self.v["snapshot/grabbed"]=0
         self.v["snapshot/background/frame"]=None
         self.v["snapshot/background/offset"]=None
@@ -377,7 +378,8 @@ class BackgroundSubtractionThread(controller.QTaskThread):
         self.v["snapshot/background/state"]="none"
         self.v["snapshot/background/saving"]="none"
         self.running_buffer=[]
-        self.v["running/parameters"]={"count":1,"mode":"mean","dtype":None,"offset":False}
+        self._running_frame_offset=0
+        self.v["running/parameters"]={"count":1,"step":1,"mode":"mean","dtype":None,"offset":False}
         self.v["running/grabbed"]=0
         self.v["running/background/frame"]=None
         self.v["running/background/offset"]=None
@@ -417,10 +419,10 @@ class BackgroundSubtractionThread(controller.QTaskThread):
     def _update_snapshot_buffer(self, msg):
         """Update snapshot background buffer and calculate the background if the buffer is filled"""
         if self.v["snapshot/background/state"]=="acquiring":
-            par=self.v["snapshot/parameters"]
-            count=par["count"]
+            count=self.v["snapshot/parameters/count"]
+            step=self.v["snapshot/parameters/step"]
             if len(self.snapshot_buffer)<count:
-                self.snapshot_buffer+=msg.get_frames_stack(count-len(self.snapshot_buffer))
+                self.snapshot_buffer+=msg.get_frames_stack((count-len(self.snapshot_buffer))*step)[self._snapshot_frame_offset::step]
                 if self.snapshot_buffer[0].shape!=self.snapshot_buffer[-1].shape:
                     self.snapshot_buffer=[]
             self.snapshot_buffer=self.snapshot_buffer[:count]
@@ -429,21 +431,27 @@ class BackgroundSubtractionThread(controller.QTaskThread):
                 self.v["snapshot/background/buffer"]=self.snapshot_buffer
                 self._calculate_snapshot_background(self.snapshot_buffer)
                 self.snapshot_buffer=[]
-    def setup_snapshot_subtraction(self, n=1, mode="mean", dtype=None, offset=False, update_buffer_count=False):
+            self._snapshot_frame_offset=(self._snapshot_frame_offset-msg.nframes())%step
+    def setup_snapshot_subtraction(self, n=1, mode="mean", step=1, dtype=None, offset=False, update_buffer_count=False):
         """
         Setup snapshot background parameters.
 
         Args:
             n: number of frames in the buffer
             mode: calculation mode; can be ``"mean"``, ``"median"``, ``"min"``, or ``"max"``
+            step: the distance between the frames are taken from the stream to form a background
             dtype: numpy dtype of the final background and the output frames; ``None`` means ``int32`` for integer input frames and ``float`` otherwise
             offset: if ``True``, subtract the median background value from it, so that the background subtracted frames stay roughly in the same
                 range as the original; otherwise, keep it the same, which shifts the background subtracted frames range towards zero.
             update_buffer_count: if ``True`` and `n` was changed, cut the buffer down to `n` if it was longer, or initiate grab if it was shorter;
                 otherwise, keep the background buffer the same until the grab is explicitly initiated
         """
-        self.v["snapshot/parameters"]={"count":n,"mode":mode,"dtype":dtype,"offset":offset}
-        if self.v["snapshot/background/frame"] is not None:
+        step_updated=self.v["snapshot/parameters/step"]!=step
+        self.v["snapshot/parameters"]={"count":n,"step":step,"mode":mode,"dtype":dtype,"offset":offset}
+        if step_updated:
+            self.grab_snapshot_background()
+            self._snapshot_frame_offset=0
+        elif self.v["snapshot/background/frame"] is not None:
             if update_buffer_count:
                 buffer=self.v["snapshot/background/buffer"]
                 if len(buffer)>=n:
@@ -477,7 +485,10 @@ class BackgroundSubtractionThread(controller.QTaskThread):
 
     def _update_running_buffer(self, msg):
         count=self.v["running/parameters/count"]
-        updated_frames=msg.get_frames_stack(count+1,reverse=True) # need to take one extra frame, since the last frame in the buffer shouldn't be subtracted
+        step=self.v["running/parameters/step"]
+        self._running_frame_offset=(self._running_frame_offset-msg.nframes())%step
+        # need to take one extra frame, since the last frame in the buffer shouldn't be subtracted
+        updated_frames=msg.get_frames_stack((count+1)*step,reverse=True)[step-self._running_frame_offset-1::step]
         if self.running_buffer and updated_frames and self.running_buffer[0].shape!=updated_frames[0].shape:
             self.running_buffer=[]
         if len(updated_frames)==count+1:
@@ -485,18 +496,23 @@ class BackgroundSubtractionThread(controller.QTaskThread):
         else:
             self.running_buffer=updated_frames+self.running_buffer[:count+1-len(updated_frames)]
         self.v["running/grabbed"]=max(len(self.running_buffer)-1,0)
-    def setup_running_subtraction(self, n=1, mode="mean", dtype=None, offset=False):
+    def setup_running_subtraction(self, n=1, mode="mean", step=1, dtype=None, offset=False):
         """
         Setup running background parameters.
 
         Args:
             n: number of frames in the buffer
             mode: calculation mode; can be ``"mean"``, ``"median"``, ``"min"``, or ``"max"``
+            step: the distance between the frames are taken from the stream to form a background
             dtype: numpy dtype of the final background and the output frames; ``None`` means ``int32`` for integer input frames and ``float`` otherwise
             offset: if ``True``, subtract the median background value from it, so that the background subtracted frames stay roughly in the same
                 range as the original; otherwise, keep it the same, which shifts the background subtracted frames range towards zero.
         """
-        self.v["running/parameters"]={"count":n,"mode":mode,"dtype":dtype,"offset":offset}
+        step_updated=self.v["running/parameters/step"]!=step
+        self.v["running/parameters"]={"count":n,"step":step,"mode":mode,"dtype":dtype,"offset":offset}
+        if step_updated:
+            self.running_buffer=[]
+            self._running_frame_offset=0
     
     def setup_subtraction_method(self, method=None, enabled=None, overridden=None):
         """
@@ -564,7 +580,8 @@ class BackgroundSubtractionThread(controller.QTaskThread):
 
     def process_input_frames(self, src, tag, msg):   # pylint: disable=unused-argument
         """Process multicast message with input frames"""
-        self.frames_src.receive_message(msg)
+        if self.frames_src.receive_message(msg):
+            self._snapshot_frame_offset=self._running_frame_offset=0
         self.last_frame=self.TStoredFrame(msg.last_frame(),msg.last_frame_index(),msg.last_frame_info(),msg.metainfo.get("status_line"),msg.metainfo.copy())
         self._update_running_buffer(msg)
         self._update_snapshot_buffer(msg)

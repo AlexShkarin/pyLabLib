@@ -454,6 +454,9 @@ class FramesMessage(DataStreamMessage):
             if copy:
                 frames=[f.copy() for f in frames]
         return frames,indices,frame_info
+    def cut_to_slice(self, start, end, step=1):
+        """Cut the frame message to only contain frames given by the slice"""
+        self.frames,self.indices,self.frame_info=self.get_slice(start,end,step=step)
     def cut_to_size(self, n, from_end=False):
         """
         Cut contained data to contain at most `n` frames.
@@ -467,7 +470,7 @@ class FramesMessage(DataStreamMessage):
             self.frame_info=None if self.frame_info is None else []
             return True
         start,end=(-n,None) if from_end else (0,n)
-        self.frames,self.indices,self.frame_info=self.get_slice(start,end)
+        self.cut_to_slice(start,end)
         return self.nframes()==n
         
     def first_frame_index(self):
