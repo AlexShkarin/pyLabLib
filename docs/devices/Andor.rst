@@ -72,7 +72,7 @@ The operation of these cameras is relatively standard. They support all the stan
 Andor SDK 3
 -----------------------
 
-This is a newer SDK, which covers the newer cameras. It has been tested with Andor Zyla.
+This is a newer SDK, which covers the newer cameras. It has been tested with Andor and Neo.
 
 The code is located in :mod:`pylablib.devices.Andor`, and the main camera class is :class:`pylablib.devices.Andor.AndorSDK3Camera<.AndorSDK3.AndorSDK3Camera>`.
 

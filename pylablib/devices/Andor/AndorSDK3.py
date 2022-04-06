@@ -205,7 +205,7 @@ class AndorSDK3Attribute:
         return value
 
 
-TDeviceInfo=collections.namedtuple("TDeviceInfo",["camera_model","serial_number","firmware_version","software_version"])
+TDeviceInfo=collections.namedtuple("TDeviceInfo",["camera_name","camera_model","serial_number","firmware_version","software_version"])
 TMissedFramesStatus=collections.namedtuple("TMissedFramesStatus",["skipped","overflows"])
 TFrameInfo=collections.namedtuple("TFrameInfo",["frame_index","timestamp_dev","size","pixeltype","stride"])
 class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttributeCamera):
@@ -363,14 +363,15 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         """
         Get camera info.
 
-        Return tuple ``(camera_model, serial_number, firmware_version, software_version)``.
+        Return tuple ``(camera_name, camera_model, serial_number, firmware_version, software_version)``.
         """
+        camera_name=self.cav["CameraName"]
         camera_model=self.cav["CameraModel"]
         serial_number=self.cav["SerialNumber"]
         firmware_version=self.cav["FirmwareVersion"]
         strlen=lib.AT_GetStringMaxLength(1,"SoftwareVersion")
         software_version=lib.AT_GetString(1,"SoftwareVersion",strlen)
-        return TDeviceInfo(camera_model,serial_number,firmware_version,software_version)
+        return TDeviceInfo(camera_name,camera_model,serial_number,firmware_version,software_version)
         
 
     _p_trigger_mode=interface.EnumParameterClass("trigger_mode",
@@ -465,10 +466,13 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
 
     def is_metadata_enabled(self):
         """Check if the metadata enabled"""
-        return self.get_attribute_value("MetadataEnable",default=False)
+        return self.get_attribute_value("MetadataEnable",error_on_missing=False,default=False)
     def enable_metadata(self, enable=True):
         """Enable or disable metadata streaming"""
-        self.set_attribute_value("MetadataEnable",enable,error_on_missing=False)
+        updated=self.get_attribute_value("MetadataEnable",error_on_missing=False,default=enable)!=enable
+        if updated:
+            with self.pausing_acquisition(clear=True):
+                self.set_attribute_value("MetadataEnable",enable,error_on_missing=False)
         return self.is_metadata_enabled()
     
     ### Frame management ###
@@ -493,10 +497,16 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
             with self._cnt_lock:
                 self.deallocate_buffers()
                 self.buffers=[ctypes.create_string_buffer(size) for _ in range(nbuff)]
-                self.queued_buffers=queued_buffers or len(self.buffers)
+                self.queued_buffers=queued_buffers if queued_buffers is not None else len(self.buffers)
                 self.size=size
                 for b in self.buffers[:self.queued_buffers]:
                     lib.AT_QueueBuffer(self.cam.handle,ctypes.cast(b,ctypes.POINTER(ctypes.c_uint8)),self.size)
+        def queue_buffer(self, queued_buffers):
+            """Queue extra buffers (only before any buffers are read)"""
+            with self._cnt_lock:
+                for b in self.buffers[self.queued_buffers:self.queued_buffers+queued_buffers]:
+                    lib.AT_QueueBuffer(self.cam.handle,ctypes.cast(b,ctypes.POINTER(ctypes.c_uint8)),self.size)
+                self.queued_buffers+=queued_buffers
         def deallocate_buffers(self):
             """Deallocated buffers (flushing should be done manually)"""
             with self._cnt_lock:
@@ -554,7 +564,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
                 return self._frame_notifier.counter,len(self.buffers or [])
     def _register_events(self):
         self._unregister_events()
-        if self.get_attribute("EventEnable",error_on_missing=False) is not None:
+        if self.get_attribute_value("EventEnable",error_on_missing=False) is not None:
             self.cav["EventSelector"]="BufferOverflowEvent"
             self.cav["EventEnable"]=True
             buff_cb=lib.AT_RegisterFeatureCallback(self.handle,"BufferOverflowEvent",lambda *args: self._buffer_mgr.on_overflow())
@@ -688,8 +698,8 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
             raise AndorError("unexpected stride: expected at least {}x{}={}, got {}".format(width,bpp,int(np.ceil(width*bpp)),stride))
         exp_len=int(stride*height)
         if len(img)!=exp_len:
-            if len(img)<exp_len or len(img)>=exp_len+8: # sometimes image size gets rounded to nearest 4/8 bytes
-                raise AndorError("unexpected image byte size: expected {}x{}={}, got {}".format(stride,height,int(stride*height),len(img)))
+            if len(img)<exp_len or len(img)>exp_len+8+stride: # sometimes image size gets rounded to nearest 4/8/stride (CL) bytes
+                raise AndorError("unexpected image byte size: expected {}x{}={}, got {}".format(stride,height,exp_len,len(img)))
         img=img[:exp_len]
         if bpp==1.5:
             img=read_uint12(img.reshape(-1,stride),width=width)
@@ -714,8 +724,8 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
 
         Return tuple ``(hstart, hend, vstart, vend, hbin, vbin)``.
         """
-        hbin=int(self.cav["AOIHBin"])
-        vbin=int(self.cav["AOIVBin"])
+        hbin=int(self.get_attribute_value("AOIHBin",default=1))
+        vbin=int(self.get_attribute_value("AOIVBin",default=1))
         hstart=int(self.cav["AOILeft"])-1
         hend=hstart+int(self.cav["AOIWidth"])*hbin
         vstart=int(self.cav["AOITop"])-1
@@ -735,10 +745,10 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         self.cav["AOITop"]=1
         self.cav["AOIWidth"]=hlim.min
         self.cav["AOIHeight"]=vlim.min
-        self.cav["AOIHBin"]=hbin
-        self.cav["AOIVBin"]=vbin
-        hbin=self.cav["AOIHBin"]
-        vbin=self.cav["AOIVBin"]
+        self.set_attribute_value("AOIHBin",hbin,error_on_missing=False)
+        self.set_attribute_value("AOIVBin",vbin,error_on_missing=False)
+        hbin=int(self.get_attribute_value("AOIHBin",default=1))
+        vbin=int(self.get_attribute_value("AOIVBin",default=1))
         hlim,vlim=self.get_roi_limits(hbin=hbin,vbin=vbin)
         hstart,hend,_=self._truncate_roi_axis((hstart,hend,hbin),hlim)
         vstart,vend,_=self._truncate_roi_axis((vstart,vend,vbin),vlim)
@@ -759,11 +769,24 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         For more accurate results, is it only after setting up the binning.
         """
         wdet,hdet=self.get_detector_size()
-        params=[self._get_feature(p) for p in ["AOIWidth","AOIHeight","AOIHBin","AOIVBin"]]
-        minp=[p.min for p in params]
-        maxp=[p.max for p in params]
-        hlim=camera.TAxisROILimit(minp[0]*hbin,wdet,1,hbin,maxp[2])
-        vlim=camera.TAxisROILimit(minp[1]*vbin,hdet,1,vbin,maxp[3])
+        try:
+            wmin=self._get_feature("AOIWidth").min or wdet
+        except AndorNotSupportedError:
+            wmin=wdet
+        try:
+            hmin=self._get_feature("AOIHeight").min or hdet
+        except AndorNotSupportedError:
+            hmin=hdet,hdet
+        try:
+            hbinmax=self._get_feature("AOIHBin").max or 1
+        except AndorNotSupportedError:
+            hbinmax=1
+        try:
+            vbinmax=self._get_feature("AOIVBin").max or 1
+        except AndorNotSupportedError:
+            vbinmax=1
+        hlim=camera.TAxisROILimit(wmin*hbin,wdet,1,hbin,hbinmax)
+        vlim=camera.TAxisROILimit(hmin*vbin,hdet,1,vbin,vbinmax)
         return hlim,vlim
     
     def _check_buffer_overflow(self):

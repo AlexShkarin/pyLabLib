@@ -10,6 +10,7 @@ class AndorSDK3CameraThread(camera.GenericCameraThread):
     parameter_variables=camera.GenericCameraThread.parameter_variables|{"exposure","frame_period",
         "trigger_mode","detector_size","roi_limits","roi","temperature","temperature_monitor","buffer_size","frame_counter_status","missed_frames"}
     _frameinfo_include_fields={"frame_index","timestamp_dev"}
+    _enable_cooler_on_start=True
     def _get_camera_attributes(self):  # pylint: disable=arguments-differ
         attrs={k for k,v in self._updated_camera_attributes.items() if v}
         self._updated_camera_attributes.update({k:False for k,v in self._updated_camera_attributes.items() if v=="single"})
@@ -36,6 +37,11 @@ class AndorSDK3CameraThread(camera.GenericCameraThread):
     def setup_open_device(self):
         super().setup_open_device()
         self.device.set_overflow_behavior("restart")
+        if self._enable_cooler_on_start:
+            try:
+                self.device.set_cooler(True)
+            except self.device.Error:
+                pass
     def setup_task(self, idx=0, remote=None, misc=None):  # pylint: disable=arguments-differ
         self.idx=idx
         super().setup_task(remote=remote,misc=misc)
@@ -54,6 +60,10 @@ class AndorSDK3ZylaThread(AndorSDK3CameraThread):
 
     See :class:`.camera.GenericCameraThread`.
     """
-    def setup_open_device(self):
-        super().setup_open_device()
-        self.device.set_cooler(True)
+
+class AndorSDK3NeoThread(AndorSDK3ZylaThread):
+    """
+    Andor Neo camera device thread.
+
+    See :class:`.camera.GenericCameraThread`.
+    """
