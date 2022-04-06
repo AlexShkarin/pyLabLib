@@ -1,4 +1,6 @@
 from ..generic import camera
+from ....devices.interface.camera import TStatusLineDescription
+from ....devices.PCO import StatusLineChecker
 
 
 class PCOSC2CameraThread(camera.GenericCameraThread):
@@ -22,7 +24,7 @@ class PCOSC2CameraThread(camera.GenericCameraThread):
     def _get_metainfo(self, frames, indices, infos):
         metainfo=super()._get_metainfo(frames,indices,infos)
         if self._status_line_enabled:
-            metainfo["status_line"]=("pco_sc2",(0,0,0,13))
+            metainfo["status_line"]=TStatusLineDescription("pco_sc2",(0,0,0,13),StatusLineChecker())
         return metainfo
     def setup_task(self, idx=0, cam_interface=None, reboot_on_fail=True, remote=None, misc=None):  # pylint: disable=arguments-differ
         self.idx=idx

@@ -1,4 +1,6 @@
 from ..generic import camera
+from ....devices.interface.camera import TStatusLineDescription
+from ....devices.PhotonFocus import StatusLineChecker
 from ....devices import PhotonFocus
 
 
@@ -12,13 +14,15 @@ class GenericPhotonFocusCameraThread(camera.GenericCameraThread):
     """
     parameter_variables=camera.GenericCameraThread.parameter_variables|{"exposure","frame_period","cfr","trigger_interleave",
         "status_line","bl_offset","buffer_status","buffer_size","detector_size","roi_limits","roi"}
-    _update_camera_attribute_limits=False
+    def _get_camera_attributes(self):  # pylint: disable=arguments-differ
+        return super()._get_camera_attributes(enum_as_str=False)
     def _get_metainfo(self, frames, indices, infos):
         metainfo=super()._get_metainfo(frames,indices,infos)
         sline_pos=PhotonFocus.get_status_line_position(frames[0][0] if frames[0].ndim==3 else frames[0])
         if sline_pos:
             row,transp=sline_pos
-            metainfo["status_line"]=("photon_focus",(0,-1,row,-1)) if transp else ("photon_focus",(row,-1,0,-1))
+            line_rect=(0,-1,row,-1) if transp else (row,-1,0,-1)
+            metainfo["status_line"]=TStatusLineDescription("photon_focus",line_rect,StatusLineChecker())
         return metainfo
     
     def apply_parameters(self, parameters, update=True, pause="default"):

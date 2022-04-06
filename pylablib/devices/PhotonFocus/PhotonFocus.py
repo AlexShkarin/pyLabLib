@@ -281,15 +281,16 @@ class IPhotonFocusCamera(camera.IAttributeCamera): # pylint: disable=abstract-me
                 pass
         return pfprops
 
-    def get_attribute_value(self, name, error_on_missing=True, default=None):  # pylint: disable=arguments-differ
+    def get_attribute_value(self, name, enum_as_str=True, error_on_missing=True, default=None):  # pylint: disable=arguments-differ
         """
         Get value of an attribute with the given name.
         
         If the value doesn't exist or can not be read and ``error_on_missing==True``, raise error; otherwise, return `default`.
         If `default` is not ``None``, assume that ``error_on_missing==False``.
+        If ``enum_as_str==True``, try to represent enums as their string values;
         If `name` points at a dictionary branch, return a dictionary with all values in this branch.
         """
-        return super().get_attribute_value(name,error_on_missing=error_on_missing,default=default)
+        return super().get_attribute_value(name,enum_as_str=enum_as_str,error_on_missing=error_on_missing,default=default)
     def set_attribute_value(self, name, value, truncate=True, error_on_missing=True):  # pylint: disable=arguments-differ
         """
         Set value of an attribute with the given name.
@@ -299,9 +300,9 @@ class IPhotonFocusCamera(camera.IAttributeCamera): # pylint: disable=abstract-me
         If ``truncate==True``, truncate value to lie within attribute range.
         """
         return super().set_attribute_value(name,value,truncate=truncate,error_on_missing=error_on_missing)
-    def get_all_attribute_values(self, root=""):  # pylint: disable=arguments-differ
+    def get_all_attribute_values(self, root="", enum_as_str=True):  # pylint: disable=arguments-differ
         """Get values of all attributes with the given `root`"""
-        return super().get_all_attribute_values(root=root)
+        return super().get_all_attribute_values(root=root,enum_as_str=enum_as_str)
     def set_all_attribute_values(self, settings, root="", truncate=True):  # pylint: disable=arguments-differ
         """
         Set values of all attributes with the given `root`.
@@ -637,7 +638,7 @@ def get_status_lines(frames, check_transposed=True, drop_magic=True):
     """
     Extract status lines (up to first 6 entries) from the given frames.
     
-    `frames` can be 2D array (one frame), 3D array (stack of frames, first index is frame number), or list of array.
+    `frames` can be 2D array (one frame), 3D array (stack of frames, first index is frame number), or list of 1D or 2D arrays.
     Automatically check if the status line is present; return ``None`` if it's not.
     If ``check_transposed==True``, check for the case where the image is transposed (i.e., line becomes a column).
     If ``drop_magic==True``, remove the first status line entry, which is simply a special number marking the status line presence.
@@ -740,3 +741,11 @@ def find_skipped_frames(lines, step=1):
     skipped_idx=(dfs!=step)
     skipped_idx=skipped_idx.nonzero()[0]
     return list(zip(skipped_idx,dfs[skipped_idx])) if len(skipped_idx) else []
+
+
+class StatusLineChecker(camera.StatusLineChecker):
+    def get_framestamp(self, frames):
+        lines=get_status_lines(frames,check_transposed=False)
+        return None if lines is None or lines.shape[-1]<1 else lines[...,0].astype("i4")
+    def _prepare_dfs(self, dfs):
+        return (dfs+2**23)%2**24-2**23

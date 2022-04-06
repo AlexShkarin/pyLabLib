@@ -11,6 +11,7 @@ import collections
 import time
 import ctypes
 import threading
+import warnings
 
 
 
@@ -779,9 +780,34 @@ def get_status_line(frame):
 
     Assume that the status line is present; if it isn't, the returned frame info will be a random noise.
     """
+    warnings.warn(DeprecationWarning("PCO.get_status_line will be removed soon; use PCO.get_status_lines instead"))
     if frame.ndim==3:
         return [get_status_line(f) for f in frame]
     sline=frame[0,:14]
     sline=(sline&0x0F)+(sline>>4)*10
     framestamp=sline[0]*10**6+sline[1]*10**4+sline[2]*10**2+sline[3]
     return TStatusLine(framestamp-1)
+
+def get_status_lines(frames):
+    """
+    Get frame info from the binary status line.
+
+    `frames` can be 2D array (one frame), 3D array (stack of frames, first index is frame number), or list of 1D or 2D arrays.
+    Assume that the status line is present; if it isn't, the returned frame info will be a random noise.
+    Return a 1D or 2D numpy array, where the first axis (if present) is the frame number, and the last is the status line entry.
+    """
+    if isinstance(frames,list):
+        return [get_status_lines(f) for f in frames]
+    sline=frames[...,0,:14]
+    sline=(sline&0x0F)+(sline>>4)*10
+    framestamp=sline[...,0]*10**6+sline[...,1]*10**4+sline[...,2]*10**2+sline[...,3]
+    return (framestamp-1)[...,None]
+
+
+
+class StatusLineChecker(camera.StatusLineChecker):
+    def get_framestamp(self, frames):
+        return get_status_lines(frames)[...,0].astype("i4")
+    def _prepare_dfs(self, dfs):
+        dfs[dfs==-99999998]=1  # overflow from 99999999 to 1
+        return dfs

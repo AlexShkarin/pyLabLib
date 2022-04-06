@@ -179,7 +179,7 @@ class GenericCameraThread(device_thread.DeviceThread):
     def _get_camera_attributes(self, **kwargs):
         attrs={k for k,v in self._updated_camera_attributes.items() if v}
         self._updated_camera_attributes.update({k:False for k,v in self._updated_camera_attributes.items() if v=="single"})
-        return {a:self.device.get_attribute_value(a,**kwargs) for a in attrs}
+        return {a:self.device.get_attribute_value(a,**kwargs) for a in attrs if getattr(self.device.ca[a],"readable",True)}
     def _get_camera_attribute_descriptions(self):
         attrs=self.device.ca[""]
         if self._update_camera_attribute_limits:

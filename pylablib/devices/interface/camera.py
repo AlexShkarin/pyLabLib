@@ -1368,8 +1368,31 @@ def _get_partial_frame(frame, excl_area):
     else:
         return frame[:,:,c1+1:] if c0==0 else frame[:,:,:c0]
 
+TStatusLineDescription=collections.namedtuple("TStatusLineDescription",["kind","roi","framestamp_checker"])
+class StatusLineChecker:
+    """Class responsible for checking status line consistency"""
+    def get_framestamp(self, frames):
+        """Get framestamps from status lines in the given frames"""
+        raise NotImplementedError("StatusLineChecker.get_framestamp")
+    def _prepare_dfs(self, dfs):
+        return dfs
+    def _check_dfs(self, dfs, step):
+        if np.any(dfs<0) or np.any((dfs>0)&(dfs<step)):
+            return "out_of_oder"
+        if np.any(dfs==0):
+            return "still"
+        if np.any(dfs<step): # step smaller than should be
+            return "out_of_oder"
+        if np.any(dfs>step):
+            return "skip"
+        return "ok"
+    def check_indices(self, indices, step=1):
+        """Check if indices are consistent with the given step"""
+        dfs=self._prepare_dfs(indices[1:]-indices[:-1])
+        return self._check_dfs(dfs,step)
+
 def _normalize_sline_pos(status_line, shape):
-    _,(r0,r1,c0,c1)=status_line
+    (r0,r1,c0,c1)=status_line[1]
     nr,nc=shape[-2:]
     r0=r0%nr if r0<0 else min(r0,nr)
     r1=r1%nr if r1<0 else min(r1,nr)
