@@ -333,7 +333,10 @@ def get_screenshot(window=None, rect=None, widget=None, border=0, include_titleb
         raise ValueError("either window or widget must be defined")
     if window is None:
         window=get_top_parent(widget)
-    screen=window.screen()
+    try:
+        screen=window.screen()
+    except AttributeError:
+        screen=window.windowHandle().screen()
     if widget is None and rect is None:
         pos=window.pos() if include_titlebar else window.geometry()
         size=window.frameSize() if include_titlebar else window.size()

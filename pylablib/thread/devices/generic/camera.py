@@ -300,6 +300,8 @@ class GenericCameraThread(device_thread.DeviceThread):
                 if update:
                     self.update_parameters()
                     self._update_aux_parameters()
+            if "buffer_size" in self.parameter_variables:
+                self.v["parameters/buffer_size"]=self.device.dv["buffer_size"]
             self._set_acquisition_status(status)
             parameters=dictionary.Dictionary(parameters)
             if "tag" in parameters:
@@ -430,6 +432,8 @@ class GenericCameraThread(device_thread.DeviceThread):
         self.update_parameters()
         self._update_aux_parameters()
         self.device.start_acquisition()
+        if "buffer_size" in self.parameter_variables:
+            self.v["parameters/buffer_size"]=self.device.dv["buffer_size"]
         self._set_acquisition_status("acquiring")
         yield
         while True:

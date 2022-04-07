@@ -664,12 +664,8 @@ class StatusTable(ParamTable):
         """
         self.add_text_label(name,label=label)
         def update_text(src, tag, value):
-            if fmt is not None:
-                text=fmt(src,tag,value)
-            else:
-                text=value
-            self.v[name]=text
-        self._status_line_params[name]=(srcs,tags)
+            self.v[name]=fmt(src,tag,value) if fmt is not None else value
+        self._status_line_params[name]=(srcs,tags,update_text)
         threadprop.current_controller().subscribe_sync(update_text,srcs=srcs,tags=tags,filt=filt,limit_queue=10)
     def update_status_line(self, name, thread=None, path=None):
         """
@@ -678,13 +674,13 @@ class StatusTable(ParamTable):
         If `thread` is ``None``, use ``srcs`` name provided upon creation.
         If `path` is ``None``, use ``tags`` name provided upon creation.
         """
-        srcs,tags=self._status_line_params[name]
+        srcs,tags,update_text=self._status_line_params[name]
         thread=thread or srcs
         path=path or tags
         try:
             ctl=controller.get_controller(thread,sync=False)
             value=ctl.get_variable(path)
             if value is not None:
-                self.v[name]=value
+                self.v[name]=update_text(srcs,tags,value) if update_text is not None else value
         except threadprop.NoControllerThreadError:
             pass
