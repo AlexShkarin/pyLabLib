@@ -2,6 +2,7 @@ from ...core.gui import QtCore, QtWidgets, Signal
 
 from ...core.gui.widgets.param_table import ParamTable
 from ...core.utils.numerical import limit_to_range
+from ...core.utils import funcargparse
 
 import collections
 
@@ -180,10 +181,12 @@ class ROICtl(QtWidgets.QWidget):
             ylim (tuple): limit for y-axis min and max values
             sizelim (int or tuple): minimal allowed size (int implies same for both axes)
             maxsize (int or tuple): maximal allowed size (int implies same for both axes)
-            kind (str): can be either ``"minmax"`` (each axis control are min, max, and bin) or ``"minsize"`` (each axis control are min, size and bin)
+            kind (str): can be ``"minmax"`` (each axis control are min, max, and bin), ``"minsize"`` (each axis control are min, size and bin),
+                or ``"centersize"`` (each axis control are center, size and bin)
             validate: if not ``None``, a function which takes tuple ``(xparams, yparams)`` of two axes parameters (each is a 3-tuple ``(min, max, bin)``)
                 and return their constrained versions.
         """
+        funcargparse.check_parameter_range(kind,"kind",["minmax","minsize","centersize"])
         self.kind=kind
         self.setMinimumSize(QtCore.QSize(110,70))
         self.setMaximumSize(QtCore.QSize(2**16,60))
@@ -196,7 +199,7 @@ class ROICtl(QtWidgets.QWidget):
         self.params.main_layout.setContentsMargins(5,5,5,5)
         self.params.main_layout.setSpacing(4)
         self.params.add_decoration_label("ROI",(0,0))
-        self.params.add_decoration_label("Min",(0,1))
+        self.params.add_decoration_label("Center" if kind=="centersize" else "Min",(0,1))
         self.params.add_decoration_label("Max" if kind=="minmax" else "Size",(0,2))
         self.params.add_decoration_label(labels[0],(1,0))
         self.params.add_decoration_label(labels[1],(2,0))
@@ -249,20 +252,30 @@ class ROICtl(QtWidgets.QWidget):
         if self.kind=="minmax":
             xparams=TAxisParams(self.params.v["x_min"],self.params.v["x_max"])
             yparams=TAxisParams(self.params.v["y_min"],self.params.v["y_max"])
-        else:
+        elif self.kind=="minsize":
             xmin=self.params.v["x_min"]
             ymin=self.params.v["y_min"]
+            xparams=TAxisParams(xmin,xmin+self.params.v["x_max"])
+            yparams=TAxisParams(ymin,ymin+self.params.v["y_max"])
+        elif self.kind=="centersize":
+            xmin=int(self.params.v["x_min"]-self.params.v["x_max"]/2)
+            ymin=int(self.params.v["y_min"]-self.params.v["y_max"]/2)
             xparams=TAxisParams(xmin,xmin+self.params.v["x_max"])
             yparams=TAxisParams(ymin,ymin+self.params.v["y_max"])
         return self.validateROI(xparams,yparams)
     def _show_values(self, xparams, yparams):
         if self.kind=="minmax":
+            xmin,ymin=xparams.min,yparams.min
             xmax,ymax=xparams.max,yparams.max
-        else:
+        elif self.kind=="minsize":
+            xmin,ymin=xparams.min,yparams.min
             xmax,ymax=xparams.max-xparams.min,yparams.max-yparams.min
-        self.params.w["x_min"].set_value(xparams.min,notify_value_change=False)
+        elif self.kind=="centersize":
+            xmin,ymin=(xparams.max+xparams.min+1)//2,(yparams.max+yparams.min+1)//2
+            xmax,ymax=xparams.max-xparams.min,yparams.max-yparams.min
+        self.params.w["x_min"].set_value(xmin,notify_value_change=False)
         self.params.w["x_max"].set_value(xmax,notify_value_change=False)
-        self.params.w["y_min"].set_value(yparams.min,notify_value_change=False)
+        self.params.w["y_min"].set_value(ymin,notify_value_change=False)
         self.params.w["y_max"].set_value(ymax,notify_value_change=False)
     def set_value(self, roi, notify_value_change=True):
         """
@@ -338,10 +351,12 @@ class BinROICtl(QtWidgets.QWidget):
             maxbin (int or tuple): maximal allowed binning (int implies same for both axes)
             minsize (int or tuple): minimal allowed size (int implies same for both axes)
             maxsize (int or tuple): maximal allowed size (int implies same for both axes)
-            kind (str): can be either ``"minmax"`` (each axis control are min, max, and bin) or ``"minsize"`` (each axis control are min, size and bin)
+            kind (str): can be ``"minmax"`` (each axis control are min, max, and bin), ``"minsize"`` (each axis control are min, size and bin),
+                or ``"centersize"`` (each axis control are center, size and bin)
             validate: if not ``None``, a function which takes tuple ``(xparams, yparams)`` of two axes parameters (each is a 3-tuple ``(min, max, bin)``)
                 and return their constrained versions.
         """
+        funcargparse.check_parameter_range(kind,"kind",["minmax","minsize","centersize"])
         self.kind=kind
         self.setMinimumSize(QtCore.QSize(110,70))
         self.setMaximumSize(QtCore.QSize(2**16,60))
@@ -354,7 +369,7 @@ class BinROICtl(QtWidgets.QWidget):
         self.params.main_layout.setContentsMargins(5,5,5,5)
         self.params.main_layout.setSpacing(4)
         self.params.add_decoration_label("ROI",(0,0))
-        self.params.add_decoration_label("Min",(0,1))
+        self.params.add_decoration_label("Center" if kind=="centersize" else "Min",(0,1))
         self.params.add_decoration_label("Max" if kind=="minmax" else "Size",(0,2))
         self.params.add_decoration_label("Bin",(0,3))
         self.params.add_decoration_label(labels[0],(1,0))
@@ -414,21 +429,31 @@ class BinROICtl(QtWidgets.QWidget):
         if self.kind=="minmax":
             xparams=TBinAxisParams(self.params.v["x_min"],self.params.v["x_max"],self.params.v["x_bin"])
             yparams=TBinAxisParams(self.params.v["y_min"],self.params.v["y_max"],self.params.v["y_bin"])
-        else:
+        elif self.kind=="minsize":
             xmin=self.params.v["x_min"]
             ymin=self.params.v["y_min"]
+            xparams=TBinAxisParams(xmin,xmin+self.params.v["x_max"],self.params.v["x_bin"])
+            yparams=TBinAxisParams(ymin,ymin+self.params.v["y_max"],self.params.v["y_bin"])
+        elif self.kind=="centersize":
+            xmin=int(self.params.v["x_min"]-self.params.v["x_max"]/2)
+            ymin=int(self.params.v["y_min"]-self.params.v["y_max"]/2)
             xparams=TBinAxisParams(xmin,xmin+self.params.v["x_max"],self.params.v["x_bin"])
             yparams=TBinAxisParams(ymin,ymin+self.params.v["y_max"],self.params.v["y_bin"])
         return self.validateROI(xparams,yparams)
     def _show_values(self, xparams, yparams):
         if self.kind=="minmax":
+            xmin,ymin=xparams.min,yparams.min
             xmax,ymax=xparams.max,yparams.max
-        else:
+        elif self.kind=="minsize":
+            xmin,ymin=xparams.min,yparams.min
             xmax,ymax=xparams.max-xparams.min,yparams.max-yparams.min
-        self.params.w["x_min"].set_value(xparams.min,notify_value_change=False)
+        elif self.kind=="centersize":
+            xmin,ymin=(xparams.max+xparams.min+1)//2,(yparams.max+yparams.min+1)//2
+            xmax,ymax=xparams.max-xparams.min,yparams.max-yparams.min
+        self.params.w["x_min"].set_value(xmin,notify_value_change=False)
         self.params.w["x_max"].set_value(xmax,notify_value_change=False)
         self.params.w["x_bin"].set_value(xparams.bin,notify_value_change=False)
-        self.params.w["y_min"].set_value(yparams.min,notify_value_change=False)
+        self.params.w["y_min"].set_value(ymin,notify_value_change=False)
         self.params.w["y_max"].set_value(ymax,notify_value_change=False)
         self.params.w["y_bin"].set_value(yparams.bin,notify_value_change=False)
     def set_value(self, roi, notify_value_change=True):

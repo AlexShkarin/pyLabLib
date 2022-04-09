@@ -798,7 +798,7 @@ def get_status_lines(frames):
     """
     if isinstance(frames,list):
         return [get_status_lines(f) for f in frames]
-    sline=frames[...,0,:14]
+    sline=frames[...,0,:14].astype("i4")
     sline=(sline&0x0F)+(sline>>4)*10
     framestamp=sline[...,0]*10**6+sline[...,1]*10**4+sline[...,2]*10**2+sline[...,3]
     return (framestamp-1)[...,None]
@@ -807,7 +807,7 @@ def get_status_lines(frames):
 
 class StatusLineChecker(camera.StatusLineChecker):
     def get_framestamp(self, frames):
-        return get_status_lines(frames)[...,0].astype("i4")
+        return get_status_lines(frames)[...,0]
     def _prepare_dfs(self, dfs):
         dfs[dfs==-99999998]=1  # overflow from 99999999 to 1
         return dfs
