@@ -446,9 +446,12 @@ class BackgroundSubtractionThread(controller.QTaskThread):
             update_buffer_count: if ``True`` and `n` was changed, cut the buffer down to `n` if it was longer, or initiate grab if it was shorter;
                 otherwise, keep the background buffer the same until the grab is explicitly initiated
         """
-        step_updated=self.v["snapshot/parameters/step"]!=step
-        self.v["snapshot/parameters"]={"count":n,"step":step,"mode":mode,"dtype":dtype,"offset":offset}
-        if step_updated:
+        new_parameters={"count":n,"step":step,"mode":mode,"dtype":dtype,"offset":offset}
+        updated={p for p,v in new_parameters.items() if self.v["snapshot/parameters",p]!=v}
+        if not updated:
+            return
+        self.v["snapshot/parameters"]=new_parameters
+        if "step" in updated:
             self.grab_snapshot_background()
             self._snapshot_frame_offset=0
         elif self.v["snapshot/background/frame"] is not None:

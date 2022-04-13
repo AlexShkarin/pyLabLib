@@ -878,7 +878,7 @@ class ImagePlotter(QLayoutManagedWidget):
         if self._updating_image:
             return
         dt=min(time.time()-self._last_paint_time,0.1) if self._last_paint_time else 0.1
-        if not self._check_paint_done(dt*0.1):
+        if not self._check_paint_done(dt*0.1) and not do_redraw:
             return
         with self._while_updating():
             values=self._get_values()
