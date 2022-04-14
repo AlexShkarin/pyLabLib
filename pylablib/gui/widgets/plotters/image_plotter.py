@@ -23,6 +23,7 @@ from ....core.gui import QtCore, Signal
 import numpy as np
 import contextlib
 import time
+import collections
 
 _pre_0p11=module.cmp_package_version("pyqtgraph","0.11.0")=="<"
 
@@ -240,6 +241,7 @@ try:
         pyqtgraph.graphicsItems.GradientEditorItem.Gradients[cm]={"ticks":ticks,"mode":"rgb"}
 except (TypeError,AttributeError):  # sphinx autodoc Mock can't handle assignment
     pass
+TRectangle=collections.namedtuple("TRectangle",["center","size","visible"])
 class ImagePlotter(QLayoutManagedWidget):
     """
     Image plotter object.
@@ -632,20 +634,31 @@ class ImagePlotter(QLayoutManagedWidget):
         """Delete a rectangle with a given name"""
         if name in self.rectangles:
             rect=self.rectangles.pop(name)
-            self.image_window.getView().removeItem(rect)
+            self.image_window.getView().removeItem(rect.rect)
+    def _get_rect_names(self, names, include_special=False):
+        if names is None:
+            return [n for n in self.rectangles if include_special or not (isinstance(n,tuple) and n[0]=="special")]
+        return [n for n in funcargparse.as_sequence(names) if n in self.rectangles]
     def show_rectangles(self, show=True, names=None):
         """
         Toggle showing rectangles on or off
         
         If `names` is given, it specifies names of rectangles to show or hide (by default, all rectangles).
         """
-        if names is None:
-            names=self.rectangles
-        else:
-            names=funcargparse.as_sequence(names)
-            names=[n for n in names if n in self.rectangles]
-        updated=any([self.set_rectangle(n,visible=show) for n in names])
-        return updated
+        names=self._get_rect_names(names)
+        return any([self.set_rectangle(n,visible=show) for n in names])
+    def get_rectangles(self, names=None, coord_system="image", include_special=False):
+        """
+        Get a dictionary of rectangle properties.
+        
+        Return dictionary of tuple ``(center, size, visible)``.
+        `coord_system` specifies the coordinate system for the positions and sizes.
+        If ``include_special==True``, include special rectangles such as selection frame.
+        """
+        names=self._get_rect_names(names,include_special=include_special)
+        rects=[self.rectangles[n] for n in names]
+        geom=[self._convert_rectangle(r.center,r.size,src=r.coord_system,dst=coord_system) for r in rects]
+        return {n:TRectangle(g[0],g[1],r.visible) for n,r,g in zip(names,rects,geom)}
     @controller.exsafe
     def _update_dummy_frame(self, rng):
         (l,r),(b,t)=rng

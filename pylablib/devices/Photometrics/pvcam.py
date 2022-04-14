@@ -83,11 +83,21 @@ class PvcamAttribute:
         self.pid=pid
         self.cam=cam
         self.name=_lstrip(pvcam_defs.drPARAM.get(pid,"UNKNOWN"),"PARAM_")
-        self._attr_type_n=lib.get_param(self.handle,self.pid,pvcam_defs.PL_PARAM_ATTRIBUTES.ATTR_TYPE,pvcam_defs.PARAM_TYPE.TYPE_UNS16)
-        self.kind=_lstrip(pvcam_defs.drPARAM_TYPE.get(self._attr_type_n,"UNKNOWN"),"TYPE_")
-        self.available=lib.get_param(self.handle,self.pid,pvcam_defs.PL_PARAM_ATTRIBUTES.ATTR_AVAIL,pvcam_defs.PARAM_TYPE.TYPE_BOOLEAN)
-        self._value_access_n=lib.get_param(self.handle,self.pid,pvcam_defs.PL_PARAM_ATTRIBUTES.ATTR_ACCESS,pvcam_defs.PARAM_TYPE.TYPE_UNS16)
-        self.value_access=_lstrip(pvcam_defs.drPL_PARAM_ACCESS.get(self._value_access_n,"UNKNOWN"),"ACC_")
+        try:
+            self.available=lib.get_param(self.handle,self.pid,pvcam_defs.PL_PARAM_ATTRIBUTES.ATTR_AVAIL,pvcam_defs.PARAM_TYPE.TYPE_BOOLEAN)
+            self._attr_type_n=lib.get_param(self.handle,self.pid,pvcam_defs.PL_PARAM_ATTRIBUTES.ATTR_TYPE,pvcam_defs.PARAM_TYPE.TYPE_UNS16)
+            self.kind=_lstrip(pvcam_defs.drPARAM_TYPE.get(self._attr_type_n,"UNKNOWN"),"TYPE_")
+            self._value_access_n=lib.get_param(self.handle,self.pid,pvcam_defs.PL_PARAM_ATTRIBUTES.ATTR_ACCESS,pvcam_defs.PARAM_TYPE.TYPE_UNS16)
+            self.value_access=_lstrip(pvcam_defs.drPL_PARAM_ACCESS.get(self._value_access_n,"UNKNOWN"),"ACC_")
+        except PvcamLibError as err:
+            if err.code==25: # PL_NOT_AVAILABLE
+                self.available=False
+                self._attr_type_n=0
+                self.kind="UNKNOWN"
+                self._value_access_n=0
+                self.value_access="UNKNOWN"
+            else:
+                raise
         self.readable=self.value_access in {"READ_ONLY","READ_WRITE"}
         self.writable=self.value_access in {"WRITE_ONLY","READ_WRITE"}
         
@@ -806,6 +816,11 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         than the supplied `rng` if some frames are skipped.
         """
         return super().read_multiple_images(rng=rng,peek=peek,missing_frame=missing_frame,return_info=return_info,return_rng=return_rng)
+    def _get_grab_acquisition_parameters(self, nframes, buff_size):
+        params=super()._get_grab_acquisition_parameters(nframes,buff_size)
+        if params["mode"]=="snap":
+            params["nframes"]+=2+int(.05/self.get_frame_period())  # looks like the first/last several frame get missing sometimes
+        return params
 
 
 
