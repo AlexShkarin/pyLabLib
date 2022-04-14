@@ -23,6 +23,16 @@ you can write
     import pylablib.legacy as pll
     from pylablib.legacy.aux_libs.devices import Lakeshore
 
+1.4.0
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Added Photometrics cameras and Cryocon temperature controllers.
+- More consistent cameras interface: attributes properties, fast chunks (former ``fastbuff``) readout, frame info formats.
+- Added new simple GUI elements: multiline edits, enum labels.
+- Expanded image and trace plotting widgets.
+- Added linear transforms to data processing.
+- Minor bugfixes in threading, GUI, devices.
+
 1.3.3
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
