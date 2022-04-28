@@ -222,7 +222,7 @@ class GenericCameraThread(device_thread.DeviceThread):
             if self.device.acquisition_in_progress() and pause=="none":
                 include=set(include)-(set(self.parameter_freeze_running)&set(self._last_obtained_parameters))
             with self._pausing_acq(kind=pause):
-                parameters=self.device.get_full_info(include=include)
+                parameters=self.rpyc_obtain(self.device.get_full_info(include=include))
                 parameters.update({"camera_attributes":self._get_camera_attributes()})
             parameters=dictionary.Dictionary(self.rpyc_obtain(parameters))
             parameters.filter_self(lambda x: x is not None)

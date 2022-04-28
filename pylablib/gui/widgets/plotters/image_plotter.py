@@ -634,7 +634,8 @@ class ImagePlotter(QLayoutManagedWidget):
         """Delete a rectangle with a given name"""
         if name in self.rectangles:
             rect=self.rectangles.pop(name)
-            self.image_window.getView().removeItem(rect.rect)
+            if rect.rect in self.image_window.getView().scene().items():
+                self.image_window.getView().removeItem(rect.rect)
     def _get_rect_names(self, names, include_special=False):
         if names is None:
             return [n for n in self.rectangles if include_special or not (isinstance(n,tuple) and n[0]=="special")]

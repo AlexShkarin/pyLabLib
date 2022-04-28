@@ -114,6 +114,9 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         self._add_settings_variable("color_mode",self.get_color_mode,self.set_color_mode)
         self._add_settings_variable("frame_period",self.get_frame_period,self.set_frame_period)
 
+    @staticmethod
+    def find_by_serial(serial_number, backend="uc480"):
+        return find_by_serial(serial_number,backend=backend)
     def _get_connection_parameters(self):
         return (self.id,"dev_id" if self.is_dev_id else "cam_id",self.backend)
     def open(self):
