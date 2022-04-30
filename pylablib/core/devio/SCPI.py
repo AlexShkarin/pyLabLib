@@ -93,7 +93,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
     def _instr_write(self, msg):
         return self.instr.write(msg)
 
-    def _add_scpi_parameter(self, name, comm, kind="float", parameter=None, set_delay=0, add_variable=False):
+    def _add_scpi_parameter(self, name, comm, kind="float", parameter=None, set_delay=0, set_echo=False, add_variable=False):
         """
         Add a new SCPI parameter description for easier access.
 
@@ -109,10 +109,11 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
         """
         funcargparse.check_parameter_range(kind,"kind",["string","int","float","param","bool"])
         parameter=self._parameters.get(parameter,parameter)
-        self._scpi_parameters[name]=(comm,kind,parameter,set_delay)
+        self._scpi_parameters[name]=(comm,kind,parameter,set_delay,set_echo)
         if add_variable:
-            self._add_device_variable(name,"settings",lambda: self._get_scpi_parameter(name),lambda v: self._set_scpi_parameter(name,v),multiarg=False)
-    def _modify_scpi_parameter(self, name, comm=None, kind=None, parameter=None, set_delay=None):
+            setter=(lambda v: self._set_scpi_parameter(name,v)) if add_variable!="readonly" else None
+            self._add_device_variable(name,"settings",lambda: self._get_scpi_parameter(name),setter,multiarg=False)
+    def _modify_scpi_parameter(self, name, comm=None, kind=None, parameter=None, set_delay=None, set_echo=None):
         """
         Modify the properties of the existing SCPI parameter.
 
@@ -126,10 +127,11 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
             kind=cpar[1]
         parameter=cpar[2] if parameter is None else self._parameters.get(parameter,parameter)
         set_delay=cpar[3] if set_delay is None else set_delay
-        self._scpi_parameters[name]=(comm,kind,parameter,set_delay)
+        set_echo=cpar[4] if set_echo is None else set_echo
+        self._scpi_parameters[name]=(comm,kind,parameter,set_delay,set_echo)
     def _get_scpi_parameter(self, name):
         """Get SCPI parameter with a given name"""
-        comm,kind,parameter,_=self._scpi_parameters[name]
+        comm,kind,parameter,_,_=self._scpi_parameters[name]
         if kind in ["string","int","float","bool"]:
             return self.ask(comm+"?",kind)
         elif kind=="param":
@@ -137,13 +139,15 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
             return parameter.i(value)
     def _set_scpi_parameter(self, name, value, result=False):
         """Set SCPI parameter with a given name"""
-        comm,kind,parameter,set_delay=self._scpi_parameters[name]
+        comm,kind,parameter,set_delay,set_echo=self._scpi_parameters[name]
         if kind in ["string","int","float","bool"]:
             self.write(comm,value,kind)
         elif kind=="param":
             self.write(comm,parameter(value),"string")
         if set_delay>0:
             self.sleep(set_delay)
+        if set_echo:
+            self.read()
         if result:
             return self._get_scpi_parameter(name)
     
@@ -460,7 +464,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
             try:
                 return bool(int(msg))
             except ValueError:
-                return msg!="off"
+                return msg not in ["off","false"]
         elif isinstance(data_type,dict):
             if msg in data_type:
                 return data_type(msg)

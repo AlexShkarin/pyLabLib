@@ -1,9 +1,10 @@
 from .wlmData_lib import WlmDataLib, HighFinesseError, WlmDataLibError
-from .wlmData_lib import ECtrlMode, EBaseOperation, EGetError, EMeasUnit, ECalibration, EAutocalibration, EEvent
+from .wlmData_lib import EInst, ECtrlMode, EBaseOperation, EGetError, EMeasUnit, ECalibration, EAutocalibration, EEvent
 from ...core.devio import interface
 from ...core.utils import general
 
 import collections
+import time
 
 
 
@@ -46,6 +47,7 @@ class WLM(interface.IDevice):
         self.open()
 
         self._add_info_variable("device_info",self.get_device_info)
+        self._add_settings_variable("read_mode",self.get_read_mode,self.set_read_mode)
         self._add_status_variable("measurement_running",self.is_measurement_running)
         self._add_info_variable("channels_number",self.get_channels_number)
         self._add_settings_variable("default_channel",self.get_default_channel,self.set_default_channel)
@@ -69,6 +71,7 @@ class WLM(interface.IDevice):
             raise HighFinesseError("could not start wavemeter server {} for device {}".format(self.app_path or "''",self.version or "N/A"))
         if self.autostart:
             self.start_measurement()
+        self.set_read_mode("latest")
         self._opened=True
     def close(self):
         """Close the connection to the wavemeter"""
@@ -93,6 +96,28 @@ class WLM(interface.IDevice):
     def is_measurement_running(self):
         """Check if the measurement is running"""
         return self.lib.GetOperationState(0)==EBaseOperation.cCtrlStartMeasurement
+    _p_read_mode=interface.EnumParameterClass("read_mode",{"latest":0,"single":1})
+    @interface.use_parameters(mode="read_mode")
+    def set_read_mode(self, mode):
+        """
+        Set value read mode, which applies to :meth:`get_frequency` and :meth:`get_wavelength`.
+
+        Can be ``"latest"`` (always return the latest measurement result; default),
+        or ``"single"`` (if there's no new measurement since the last call, the result is ``"noval"``
+        which, depending on the arguments, causes wait, is returned as is, or raises an error).
+        """
+        self.lib.Instantiate(EInst.cInstReturnMode,mode,0,0)
+        self._read_mode=mode
+    @interface.use_parameters(_returns="read_mode")
+    def get_read_mode(self):
+        """
+        Get value read mode, which applies to :meth:`get_frequency` and :meth:`get_wavelength`.
+
+        Can be ``"latest"`` (always return the latest measurement result; default),
+        or ``"single"`` (if there's no new measurement since the last call, the result is ``"noval"``
+        which, depending on the arguments, causes wait, is returned as is, or raises an error).
+        """
+        return self._read_mode
 
     def get_channels_number(self, refresh=True):
         """Get number of channels in the wavemeter"""
@@ -119,37 +144,51 @@ class WLM(interface.IDevice):
                         EGetError.ErrLowSignal:"under",
                         EGetError.ErrBigSignal:"over"}
     @muxchannel
-    def get_frequency(self, channel=None, error_on_invalid=True):
+    def get_frequency(self, channel=None, error_on_invalid=True, wait=True, timeout=5.):
         """
         Get the wavemeter readings (in Hz) on a given channel.
 
         `channel` is the measurement channel (starting from 1); if ``None``, use the default channel.
         If ``error_on_invalid==True``, raise an error if the measurement is invalid (e.g., over- or underexposure);
         otherwise, the method can return ``"under"`` if the meter is underexposed or ``"over"`` is it is overexposed,
-        ``"badsig"`` if there is no calculable signal, ``"noval"`` if there are no values acquire yet, or ``"nosig"`` if there is no signal.
+        ``"badsig"`` if there is no calculable signal, ``"noval"`` if there are no values acquired yet, or ``"nosig"`` if there is no signal.
+        If ``wait==True`` and the result is ``"noval"`` (e.g., if the read mode is ``"single"`` and no new value has been acquired since the last call),
+        wait for at most ``timeout`` until a new value appears; if the ``timeout`` has passed, use the default behavior (error or ``"noval"`` result).
         """
-        try:
-            return self.lib.GetFrequencyNum(self._get_channel(channel),0.)*1E12
-        except WlmDataLibError as err:
-            if (not error_on_invalid) and err.code in self._get_error_codes:
-                return self._get_error_codes[err.code]
-            raise
+        ctd=general.Countdown(timeout)
+        while True:
+            try:
+                return self.lib.GetFrequencyNum(self._get_channel(channel),0.)*1E12
+            except WlmDataLibError as err:
+                if err.code==EGetError.ErrNoValue and wait and not ctd.passed():
+                    time.sleep(1E-3)
+                    continue
+                if (not error_on_invalid) and err.code in self._get_error_codes:
+                    return self._get_error_codes[err.code]
+                raise
     @muxchannel
-    def get_wavelength(self, channel=None, error_on_invalid=True):
+    def get_wavelength(self, channel=None, error_on_invalid=True, wait=True, timeout=5.):
         """
         Get the wavemeter readings (in m, and in vacuum).
 
         `channel` is the measurement channel (starting from 1); if ``None``, use the default channel.
         If ``error_on_invalid==True``, raise an error if the measurement is invalid (e.g., over- or underexposure);
         otherwise, the method can return ``"under"`` if the meter is underexposed or ``"over"`` is it is overexposed,
-        ``"badsig"`` if there is no calculable signal, or ``"nosig"`` if there is no signal.
+        ``"badsig"`` if there is no calculable signal, ``"noval"`` if there are no values acquired yet, or ``"nosig"`` if there is no signal.
+        If ``wait==True`` and the result is ``"noval"`` (e.g., if the read mode is ``"single"`` and no new value has been acquired since the last call),
+        wait for at most ``timeout`` until a new value appears; if the ``timeout`` has passed, use the default behavior (error or ``"noval"`` result).
         """
-        try:
-            return self.lib.GetWavelengthNum(self._get_channel(channel),0.)*1E-9
-        except WlmDataLibError as err:
-            if (not error_on_invalid) and err.code in self._get_error_codes:
-                return self._get_error_codes[err.code]
-            raise
+        ctd=general.Countdown(timeout)
+        while True:
+            try:
+                return self.lib.GetWavelengthNum(self._get_channel(channel),0.)*1E-9
+            except WlmDataLibError as err:
+                if err.code==EGetError.ErrNoValue and wait and not ctd.passed():
+                    time.sleep(1E-3)
+                    continue
+                if (not error_on_invalid) and err.code in self._get_error_codes:
+                    return self._get_error_codes[err.code]
+                raise
 
     _p_exposure_mode=interface.EnumParameterClass("exposure_mode",{"manual":0,"auto":1})
     @muxchannel
