@@ -534,3 +534,95 @@ def fourier_filter_bandstop(stop_range_min, stop_range_max):
     def response(freq):
         return (abs(freq)<stop_range_min)+(abs(freq)>=stop_range_max)
     return response
+    
+
+
+##### Real-time filtering #####
+
+class RunningDecimationFilter:
+    """
+    Running decimation filter.
+
+    Remembers last ``n`` samples and returns their averages, median, etc.
+
+    Args:
+        n: decimation length
+        mode: decimation mode (``"mean"``, ``"median"``, ``"min"``, or ``"max"``)
+        on_incomplete: determines what to return while the filter window is not yet full;
+            can be ``"none"`` (default, return ``None``), or ``"partial"`` (operate on the partial accumulated data)
+    """
+    def __init__(self, n, mode="mean", on_incomplete="none"):
+        self.n=n
+        funcargparse.check_parameter_range(mode,"mode",["mean","min","max","median"])
+        self.mode=mode
+        self._buffer=[]
+        self._p=0
+        funcargparse.check_parameter_range(on_incomplete,"on_incomplete",["none","partial"])
+        self.on_incomplete=on_incomplete
+    def _dec_func(self):
+        if self.mode=="mean":
+            return np.mean
+        if self.mode=="min":
+            return np.min
+        if self.mode=="max":
+            return np.max
+        if self.mode=="median":
+            return np.median
+    def get(self):
+        """Get the filtered result"""
+        if len(self._buffer)<self.n and self.on_incomplete=="none":
+            return None
+        return self._dec_func()(self._buffer)
+    def add(self, x):
+        """Add a new sample"""
+        if len(self._buffer)<self.n:
+            self._buffer.append(x)
+        else:
+            self._buffer[self._p]=x
+            self._p=(self._p+1)%self.n
+        return self.get()
+    def reset(self):
+        """Reset the filter"""
+        self._buffer=[]
+        self._p=0
+
+class RunningDebounceFilter:
+    """
+    Running debounce filter.
+
+    "Sticks" to the current value and only switches when a new value remains constant (withing a given precision) for a given number of samples.
+    Filters out temporary spikes and short changes, conceptually similar to a running median filter.
+
+    Args:
+        n: length of the required constant period
+        precision: comparison precision (``None`` means that the values should be exactly equal)
+        initial: initial value; ``None`` means that the first sample sets this value
+    """
+    def __init__(self, n, precision=None, initial=None):
+        self.n=n
+        self.precision=precision
+        self.initial=initial
+        self.value=self.initial
+        self._candidate=None
+        self._cnt=0
+    def get(self):
+        """Get the filtered result"""
+        return self.value
+    def add(self, x):
+        """Add a new sample"""
+        if self.value is None:
+            self.value=self._candidate=x
+        else:
+            cont=abs(x-self._candidate)<self.precision if self.precision is not None else x==self._candidate
+            if cont:
+                self._cnt+=1
+            else:
+                self._cnt=0
+                self._candidate=x
+            if self._cnt+1>=self.n:
+                self.value=self._candidate=x
+                self._cnt=0
+        return self.get()
+    def reset(self):
+        """Reset the filter"""
+        self.value=self.initial
