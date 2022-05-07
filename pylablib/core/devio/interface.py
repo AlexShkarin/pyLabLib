@@ -42,11 +42,13 @@ class IDevice:
         self.close()
         return False
     @contextlib.contextmanager
-    def _close_on_error(self):
+    def _close_on_error(self, errors=None):
         """Context manager, which closes the device if the code inside raises an error"""
+        if errors is None:
+            errors=getattr(self,"Error",DeviceError)
         try:
             yield
-        except getattr(self,"Error",DeviceError):
+        except errors:
             self.close()
             raise
     

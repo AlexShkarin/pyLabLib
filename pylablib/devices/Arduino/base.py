@@ -23,10 +23,15 @@ class IArduinoDevice(comm_backend.ICommBackendWrapper):
     """
     Error=ArduinoError
     def __init__(self, port, rate=9600, timeout=10., term_write="\n", term_read="\n", flush_before_op=True):
-        instr=comm_backend.new_backend((port,rate),"serial",term_write=term_write,term_read=term_read,timeout=timeout,no_dtrrts=True,reraise_error=ArduinoBackendError)
+        self._get_new_instr=lambda: comm_backend.new_backend((port,rate),"serial",term_write=term_write,term_read=term_read,timeout=timeout,no_dtrrts=True,reraise_error=ArduinoBackendError)
         self._flush_before_op=flush_before_op
-        super().__init__(instr)
+        super().__init__(self._get_new_instr())
     
+    def reopen(self):
+        """Close and reopen the device connection"""
+        self.instr.close()
+        time.sleep(0.2)
+        self.instr=self._get_new_instr()
     def reset_board(self):
         """Reset the board by pulsing the DTR and RTS lines"""
         self.instr.instr.setDTR(1)
