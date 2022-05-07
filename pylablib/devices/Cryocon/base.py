@@ -29,6 +29,8 @@ class Cryocon1x(SCPI.SCPIDevice):
             self._nchannels=nchannels
         channels=range(self._nchannels)
         self._add_status_variable("temperature",self.get_all_temperatures)
+        self._add_status_variable("sensor_reading",self.get_all_sensor_readings)
+        self._add_status_variable("sensor_kind",self.get_all_sensor_kinds)
     
     @interface.use_parameters
     def _is_channel_connected(self, channel):
@@ -81,3 +83,36 @@ class Cryocon1x(SCPI.SCPIDevice):
         If sensor is disconnected, return ``None``.
         """
         return [self.get_temperature(ch,display_units=display_units) for ch in range(self._nchannels)]
+    
+    @interface.use_parameters
+    def get_sensor_reading(self, channel):
+        """Get readings (in sensor units) on a given channel (1 to 8)"""
+        value=self.ask("INP {}:SENP?".format(channel))
+        return None if all(c in ".-" for c in value) else float(value)
+    def get_all_sensor_readings(self):
+        """Get readings (in sensor units) on all channels"""
+        return [self.get_sensor_reading(ch) for ch in range(self._nchannels)]
+    
+    _p_sensor_kind=interface.EnumParameterClass("sensor_kind",
+        {"none":0,"S900":1,"DT670":2,"DT470":3,"S950":4,"SI410":5,"Pt100":20,"Pt1k":21,"Pt10k":22,"ThFe":23,"RO105":31,"RO600":32},
+        allowed_alias="all",allowed_value="all")
+    @interface.use_parameters(channel="channel",_returns="sensor_kind")
+    def get_sensor_kind(self, channel):
+        """Get sensor kind of a given channel (1 to 8)"""
+        return self.ask("INP {}:SENS?".format(channel),"int")
+    def get_all_sensor_kinds(self):
+        """Get readings (in sensor units) on all channels"""
+        return [self.get_sensor_kind(ch) for ch in range(self._nchannels)]
+    @interface.use_parameters(channel="channel",kind="sensor_kind")
+    def set_sensor_kind(self, channel, kind):
+        """
+        Set sensor kind of a given channel (1 to 8).
+        
+        Can be an integer using internal classification (see manual),
+        or one of ``"none"``, ``"S900"``, ``"DT670"``, ``"DT470"``, ``"S950"``, ``"SI410"``, ``"Pt100"``, ``"Pt1k"``, ``"Pt10k"``, ``"ThFe"``, ``"RO105"``, ``"RO600"``.
+        Setting kind to ``"none"`` disables the sensor.
+        """
+        if not isinstance(kind,int):
+            raise ValueError("unrecognized sensor kind: {}; allowed kinds are {}".format(kind,list(self._p_sensor_kind._alias_map)))
+        self.write("INP {}:SENS".format(channel),kind)
+        return self.get_sensor_kind(channel)
