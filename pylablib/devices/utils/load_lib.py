@@ -9,6 +9,8 @@ import contextlib
 import collections
 
 
+_store_loaded_dlls=False
+_loaded_dlls=[]
 
 def get_os_lib_folder():
     """Get default Windows DLL folder (``System32`` or ``SysWOW64``, depending on Python and Windows bitness)"""
@@ -137,6 +139,8 @@ def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, depe
                     if call_conv in ["cdecl","stdcall"]:
                         try:
                             dlls.append(_load_dll(p,call_conv,add_environ_paths=add_environ_paths))
+                            if _store_loaded_dlls:
+                                _loaded_dlls.append((p,dlls[-1]))
                         except OSError:
                             if depends_required or p==paths[-1]:
                                 raise

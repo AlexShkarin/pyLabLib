@@ -1497,7 +1497,7 @@ _backends["recorded"]=RecordedDeviceBackend
 
     
     
-_serial_re=re.compile(r"^com\d+",re.IGNORECASE)
+_serial_re=re.compile(r"^(com\d+|(/dev|/)?tty.*)",re.IGNORECASE)
 def _is_serial_addr(addr):
     return isinstance(addr,py3.anystring) and bool(_serial_re.match(addr))
 _network_re=re.compile(r"(\d+\.){3}\d+(:\d+)?",re.IGNORECASE)

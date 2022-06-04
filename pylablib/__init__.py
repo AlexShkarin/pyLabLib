@@ -45,5 +45,4 @@ def unload_all():
 def load_par(path):
     """Load library parameters from a file"""
     lpar=loadfile.load_dict(path)
-    for k,v in lpar.items():
-        par[k]=v
+    par.update(lpar)

@@ -74,16 +74,16 @@ class IDevice:
         if par_class.name in self._parameters:
             raise ValueError("parameter {} is already defined".format(par_class.name))
         self._parameters[par_class.name]=par_class
-    def _replace_parameter_class(self, pc):
+    def _replace_parameter_class(self, par_class):
         """
         Replace a parameter class.
 
         `par_class` should be an instance of :class:`IParameterClass`.
         If the class with this name does not exist, add an error.
         """
-        if pc.name not in self._parameters:
-            raise ValueError("parameter {} does not exist".format(pc.name))
-        self._parameters[pc.name]=pc
+        if par_class.name not in self._parameters:
+            raise ValueError("parameter {} does not exist".format(par_class.name))
+        self._parameters[par_class.name]=par_class
     def _call_without_parameters(self, name, kind, args, kwargs):
         """
         Call a method with the given name without making parameter substitutions.

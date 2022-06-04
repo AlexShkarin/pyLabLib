@@ -17,7 +17,7 @@ class OphirDevice(comm_backend.ICommBackendWrapper):
     """
     Error=OphirError
     def __init__(self, conn):
-        instr=comm_backend.new_backend(conn,"serial",term_read="\r\n",term_write="\r\n",defaults={"serial":("COM1",9600)},reraise_error=OphirBackendError)
+        instr=comm_backend.new_backend(conn,("auto","serial"),term_read="\r\n",term_write="\r\n",defaults={"serial":("COM1",9600)},reraise_error=OphirBackendError)
         comm_backend.ICommBackendWrapper.__init__(self,instr)
     
     def _parse_response(self, comm, resp):

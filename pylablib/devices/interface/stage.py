@@ -46,6 +46,9 @@ class IMultiaxisStage(IStage):  # pylint: disable=abstract-method
         self._mapped_axes=axes
         self._replace_parameter_class(interface.EnumParameterClass(self._axis_parameter_name,self._axes,value_case=self._axis_value_case))
         self._original_axis_parameter=None
+    def _resolve_axis(self, axis):
+        """Check if the axis value is valid and return the un-mapped name"""
+        return self._parameters[self._axis_parameter_name](axis)
     def remap_axes(self, mapping, accept_original=True):
         """
         Rename axes to the new labels.
