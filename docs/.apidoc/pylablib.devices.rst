@@ -32,6 +32,7 @@ Subpackages
     pylablib.devices.Pfeiffer
     pylablib.devices.Photometrics
     pylablib.devices.PhotonFocus
+    pylablib.devices.PhysikInstrumente
     pylablib.devices.PrincetonInstruments
     pylablib.devices.SiliconSoftware
     pylablib.devices.SmarAct

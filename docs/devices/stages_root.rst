@@ -21,3 +21,4 @@ Currently supported stages:
     Arcus_performax
     Trinamic
     SmarAct
+    PhysikInstrumente
