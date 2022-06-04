@@ -13,7 +13,7 @@ The code is located in :mod:`pylablib.devices.DCAM`, and the main camera class i
 Software requirements
 -----------------------
 
-These cameras require ``dcamapi.dll``, which is installed with most of Hamamatsu software (such as HoKaWo or HiPic), as well as with the freely available `DCAM API <https://dcam-api.com/>`__, which also includes all the necessary drivers. Keep in mind, that you also need to install the drivers for required corresponding camera type (USB, Ethernet, IEEE 1394). These drivers are in the same installer, but need to be installed separately. After installation, the DLL is automatically added to the ``System32`` folder, where pylablib looks for it by default. If the DLL is located elsewhere, the path can be specified using the library parameter ``devices/dlls/dcamapi``::
+These cameras require ``dcamapi.dll``, which is installed with most of Hamamatsu software (such as HoKaWo or HiPic), as well as with the freely available `DCAM API <https://dcam-api.com/>`__, which also includes all the necessary drivers. Keep in mind, that you also need to install the drivers for required corresponding camera type (USB, Ethernet, IEEE 1394). These drivers are in the same installer, but need to be installed separately. You should also pay attention to the cameras supported by the given DCAM driver version, since newer version do not support older cameras (e.g., ImageEM C9100 cameras are only supported up to version 15). After installation, the DLL is automatically added to the ``System32`` folder, where pylablib looks for it by default. If the DLL is located elsewhere, the path can be specified using the library parameter ``devices/dlls/dcamapi``::
 
     import pylablib as pll
     pll.par["devices/dlls/dcamapi"] = "path/to/dlls"

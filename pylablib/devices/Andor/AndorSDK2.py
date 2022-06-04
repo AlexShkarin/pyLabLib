@@ -49,6 +49,7 @@ def _camfunc(*args, **kwargs):
     sel=kwargs.get("sel",True)
     setpar=kwargs.get("setpar",None)
     getpar=kwargs.get("getpar",None)
+    defpar=kwargs.get("defpar",None)
     par_lookup=(getpar is not None) and not option
     if (setpar is not None) and (getpar is not None):
         raise ValueError("a method is either a setpar or a getpar")
@@ -56,15 +57,15 @@ def _camfunc(*args, **kwargs):
         @functools.wraps(func)
         def wrapped(self, *args, **kwargs):
             if par_lookup:
-                return self._cpar[getpar]
+                return self._cpar.get(getpar,defpar)
             with _camsel_lock:
                 if sel:
                     self._select_camera()
                 for opt in option:
                     if not self._check_option(*opt):
-                        return
+                        return defpar
                 if getpar is not None:
-                    return self._cpar[getpar]
+                    return self._cpar.get(getpar,defpar)
                 else:
                     res=func(self,*args,**kwargs)
                     if setpar is not None:
@@ -526,7 +527,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         close_time=min_close_time if close_time is None else close_time
         lib.SetShutter(ttl_mode,mode,open_time,close_time)
         return (mode,ttl_mode,open_time,close_time)
-    @_camfunc(getpar="shutter")
+    @_camfunc(getpar="shutter",defpar=(None,None,None,None))
     def get_shutter_parameters(self):
         """Return shutter parameters as a tuple ``(mode, ttl_mode, open_time, close_time)``"""
     def get_shutter(self):
@@ -791,7 +792,12 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
     @_camfunc
     def get_readout_time(self):
         """Get frame readout time"""
-        return lib.GetReadOutTime()
+        try:
+            return lib.GetReadOutTime()
+        except AndorSDK2LibError as err:
+            if err.code==DRV_STATUS.DRV_ERROR_CODES: # occasional Andor Luca error
+                return None
+            raise
     @_camfunc
     def get_keepclean_time(self):
         """Get sensor keep-clean time"""

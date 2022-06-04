@@ -51,7 +51,7 @@ class WLM(interface.IDevice):
         self._add_status_variable("measurement_running",self.is_measurement_running)
         self._add_info_variable("channels_number",self.get_channels_number)
         self._add_settings_variable("default_channel",self.get_default_channel,self.set_default_channel)
-        self._add_status_variable("frequency",lambda: self.get_frequency(channel="all",error_on_invalid=False))
+        self._add_status_variable("frequency",lambda: self.get_frequency(channel="all",error_on_invalid=False,wait=False))
         self._add_settings_variable("exposure_mode",lambda: self.get_exposure_mode(channel="all"),lambda v: self.set_exposure_mode(v,channel="all"))
         self._add_settings_variable("exposure",lambda: self.get_exposure(sensor="all",channel="all"),lambda v: self.set_exposure(v,sensor="all",channel="all"))
         self._add_settings_variable("switcher_mode",self.get_switcher_mode,self.set_switcher_mode)
