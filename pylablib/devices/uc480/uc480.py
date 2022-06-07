@@ -620,7 +620,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
     def _read_frames(self, rng, return_info=False):
         nchan=self._get_pixel_mode_settings()[1]
         data=[self._read_buffer(n,return_info=return_info and (n%self._frameinfo_period==0),nchan=nchan) for n in range(rng[0],rng[1])]
-        return [d[0] for d in data],[d[1] for d in data]
+        return [d[0] for d in data],[d[1] for d in data],(0 if nchan==1 else 1)
     def _zero_frame(self, n):
         bpp,nchan=self._get_pixel_mode_settings()
         shape=self.get_data_dimensions()+((nchan,) if nchan>1 else ())

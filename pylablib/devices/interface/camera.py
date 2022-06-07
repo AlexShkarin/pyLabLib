@@ -326,16 +326,17 @@ class ICamera(interface.IDevice):
         if fmt in ["array","chunks"]:
             self.set_frame_info_format("array")
         return self._frame_format
-    def _convert_frame_format(self, frames, info=None):
+    def _convert_frame_format(self, frames, info=None, chdim=0):
         """
         Convert frames and info into the currently specified format.
 
         `frames` can be a list of 3D chunks or a list of 2D frames.
         `info` can be ``None``, a list of single entries (named tuples or ``None``), or a list of 2D chunks.
         If `info` is not ``None``, its length should agree with `frames`.
+        `chdim` specifies the number of additional channel (e.g., color) dimensions used to distinguish between frames and chunks.
         """
         if self._frame_format=="chunks":
-            if frames and frames[0].ndim==2:
+            if frames and frames[0].ndim==2+chdim:
                 frames=[ch[None,:,:] for ch in frames]
             if info is not None:
                 if info:
@@ -347,7 +348,7 @@ class ICamera(interface.IDevice):
                     fullinfo=np.concatenate(info,axis=0) if len(info)>1 else info[0]
                     info=_split_chunks_array(fullinfo,frames)
         elif self._frame_format=="list":
-            if frames and frames[0].ndim!=2:
+            if frames and frames[0].ndim>2+chdim:
                 frames=[f for ch in frames for f in ch]
             if info is not None:
                 if info and isinstance(info[0],np.ndarray) and info[0].ndim==2:
@@ -356,7 +357,7 @@ class ICamera(interface.IDevice):
                     raise ValueError("frames and infos have different lengths: {} and {}".format(len(frames),len(info)))
                 info=[self._convert_frame_info(i) for i in info]
         else:
-            frames=np.array(frames) if frames and frames[0].ndim==2 else np.concatenate(frames,axis=0)
+            frames=np.array(frames) if frames and frames[0].ndim==2+chdim else np.concatenate(frames,axis=0)
             if info is not None:
                 if info and not isinstance(info[0],np.ndarray):
                     info=[self._convert_frame_info(i) for i in info]
@@ -560,10 +561,12 @@ class ICamera(interface.IDevice):
             return result[0] if len(result)==1 else result
         rng,skipped_frames=rng
         if rng[0]==rng[1]:
-            images,info=[],[]
+            images,info,chdim=[],[],0
         else:
-            images,info=self._read_frames(rng,return_info=return_info)
-        chunks=images and images[0].ndim==3
+            frames_data=self._read_frames(rng,return_info=return_info)
+            images,info=frames_data[:2]
+            chdim=frames_data[2] if len(frames_data)>2 else 0
+        chunks=images and images[0].ndim>2+chdim
         if return_info and info is None:
             if chunks:
                 info=[self._default_frame_info(range(s,e),"array") for s,e in _split_chunk_ranges(rng,images)]
@@ -584,7 +587,7 @@ class ICamera(interface.IDevice):
                     info=self._empty_frame_info(skipped_frames,"list")+info
         if not peek:
             self._frame_counter.advance_read_frames(rng)
-        images,info=self._convert_frame_format(images,(info if return_info else None))
+        images,info=self._convert_frame_format(images,(info if return_info else None),chdim=chdim)
         rrng=rng if missing_frame=="skip" else (rng[0]-skipped_frames,rng[1])
         result=(images,)
         if return_info:
@@ -652,7 +655,7 @@ class ICamera(interface.IDevice):
             try:
                 self.set_frame_format("chunks")
                 result=self.grab(nframes=nframes,frame_timeout=frame_timeout,missing_frame=missing_frame,return_info=return_info,buff_size=buff_size)
-                return tuple(np.concatenate(r,axis=0) for r in result)
+                return tuple(np.concatenate(r,axis=0) for r in result) if return_info else np.concatenate(result,axis=0)
             finally:
                 self.set_frame_format("array")
         acq_params=self._get_grab_acquisition_parameters(nframes,buff_size)
@@ -668,7 +671,7 @@ class ICamera(interface.IDevice):
                     new_frames,rng=self.read_multiple_images(missing_frame=missing_frame,return_rng=True)
                 frames+=new_frames
                 nacq+=rng[1]-rng[0]
-            frames,info=trim_frames(frames,nframes,(info if return_info else None))
+            frames,info=trim_frames(frames,nframes,(info if return_info else None),chunks=self.get_frame_format()=="chunks")
             return (frames,info) if return_info else frames
         finally:
             self.stop_acquisition()
@@ -676,9 +679,9 @@ class ICamera(interface.IDevice):
         """Snap a single frame"""
         res=self.grab(frame_timeout=timeout,return_info=return_info)
         if return_info:
-            return _first_frame(*res)
+            return _first_frame(*res,chunks=self.get_frame_format()=="chunks")
         else:
-            return _first_frame(res)[0]
+            return _first_frame(res,chunks=self.get_frame_format()=="chunks")[0]
 
 
 
@@ -722,8 +725,10 @@ def _split_chunk_ranges(rng, frames):
     return np.column_stack((starts,ends))
 def _split_chunks_array(a, frames):
     return [a[s:e] for s,e in _split_chunk_ranges((0,len(frames)),frames)]
-def _first_frame(frames, info=None):
-    if isinstance(frames,list) and frames and frames[0].ndim==3:
+def _first_frame(frames, info=None, chunks="auto"):
+    if chunks=="auto":
+        chunks=frames and frames[0].ndim==3
+    if isinstance(frames,list) and chunks:
         f=frames[0][0]
         i=info[0][0] if info is not None else None
     else:
@@ -738,9 +743,11 @@ def _trim_chunks_list(lst, l):
         if not l:
             break
     return trimmed
-def trim_frames(frames, l, info=None):
+def trim_frames(frames, l, info=None, chunks="auto"):
     """Trim frames in different formats to the desired length"""
-    if isinstance(frames,list) and frames and frames[0].ndim==3:
+    if chunks=="auto":
+        chunks=frames and frames[0].ndim==3
+    if isinstance(frames,list) and chunks:
         frames=_trim_chunks_list(frames,l)
         info=_trim_chunks_list(info,l) if info is not None else None
     else:
