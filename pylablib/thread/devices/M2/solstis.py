@@ -145,7 +145,7 @@ class M2Thread(device_thread.DeviceThread):
             self.update_operation_status("coarse_tuning")
             try:
                 self.device.coarse_tune_wavelength(wavelength,sync=False)
-            except self.device.Error:
+            except self.DeviceError:  # pylint: disable=catching-non-exception
                 pass
             self.update_operation_status("idle")
     def tune_element(self, element, value):
@@ -192,7 +192,7 @@ class M2Thread(device_thread.DeviceThread):
             self.set_wavemeter_connection(True)
             try:
                 self.device.fine_tune_wavelength(wavelength,sync=False)
-            except self.device.Error:
+            except self.DeviceError:  # pylint: disable=catching-non-exception
                 return
             tune_start=time.time()
             tune_timeout=30.
@@ -362,7 +362,7 @@ class M2Thread(device_thread.DeviceThread):
             self.device.stop_all_operation()
         try:
             self.device.start_fast_scan(scan_type,width,time,sync=True)
-        except self.device.Error:
+        except self.DeviceError:  # pylint: disable=catching-non-exception
             return
         self.update_scan_status("running")
         while True:

@@ -19,7 +19,7 @@ class PCOSC2CameraThread(camera.GenericCameraThread):
         super().setup_open_device()
         try:
             self._status_line_enabled=self.device.get_status_line_mode()[0]
-        except self.device.Error:
+        except self.DeviceError:  # pylint: disable=catching-non-exception
             pass
     def _get_metainfo(self, frames, indices, infos):
         metainfo=super()._get_metainfo(frames,indices,infos)

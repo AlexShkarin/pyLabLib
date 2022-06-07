@@ -274,7 +274,7 @@ class GenericCameraThread(device_thread.DeviceThread):
                     self._set_camera_attribute(attr,val)
                     if self._on_attribute_error=="report":
                         self.v["parameters/errors/camera_attributes",attr]=None
-                except self.device.Error as err:
+                except self.DeviceError as err:  # pylint: disable=catching-non-exception
                     if self._on_attribute_error=="error":
                         raise
                     if self._on_attribute_error=="report":

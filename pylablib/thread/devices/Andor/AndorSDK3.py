@@ -18,9 +18,9 @@ class AndorSDK3CameraThread(camera.GenericCameraThread):
         for n in attrs:
             att=self.device.get_attribute(n)
             if att.readable:
-                try:
+                try:  # sometimes nominally implemented features still raise errors
                     values[n]=att.get_value(enum_as_str=False)
-                except self.device.Error:  # sometimes nominally implemented features still raise errors
+                except self.DeviceError:  # pylint: disable=catching-non-exception
                     pass
         return values
     def _get_camera_attribute_descriptions(self):
@@ -28,7 +28,7 @@ class AndorSDK3CameraThread(camera.GenericCameraThread):
         for a in attrs.values():
             try:
                 a.update_limits()
-            except self.device.Error:
+            except self.DeviceError:  # pylint: disable=catching-non-exception
                 pass
         return attrs
     def connect_device(self):
@@ -40,7 +40,7 @@ class AndorSDK3CameraThread(camera.GenericCameraThread):
         if self._enable_cooler_on_start:
             try:
                 self.device.set_cooler(True)
-            except self.device.Error:
+            except self.DeviceError:  # pylint: disable=catching-non-exception
                 pass
     def setup_task(self, idx=0, remote=None, misc=None):  # pylint: disable=arguments-differ
         self.idx=idx

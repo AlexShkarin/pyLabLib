@@ -16,7 +16,7 @@ class PicamCameraThread(camera.GenericCameraThread):
         try:
             self.device.cav[name]=value
             self.device._commit_parameters()
-        except self.device.Error:
+        except self.DeviceError:  # pylint: disable=catching-non-exception
             self.device.cav[name]=old_value
             raise
     def connect_device(self):
