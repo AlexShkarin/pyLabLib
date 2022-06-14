@@ -36,8 +36,7 @@ class BasicKinesisDevice(comm_backend.ICommBackendWrapper):
 
     Args:
         conn: serial connection parameters (usually an 8-digit device serial number).
-        is_rack_system: specify whether the device is a rack system or a standalone USB device (default mode);
-            if set to ``"auto"``, attempt to detect it automatically.
+        is_rack_system: specify whether the device is a rack system or a standalone USB device (default mode).
     """
     Error=ThorlabsError
     def __init__(self, conn, timeout=3., is_rack_system=False):
@@ -53,8 +52,7 @@ class BasicKinesisDevice(comm_backend.ICommBackendWrapper):
         super().__init__(instr)
         self._add_info_variable("device_info",self.get_device_info)
         self._bg_msg_counters={}
-        with self._close_on_error():
-            self._is_rack_system=self._detect_rack_system() if is_rack_system=="auto" else is_rack_system
+        self._is_rack_system=is_rack_system
 
     @staticmethod
     def _cycle_rts(instr):
@@ -79,19 +77,14 @@ class BasicKinesisDevice(comm_backend.ICommBackendWrapper):
             time.sleep(0.05)
         else:
             warnings.warn("could not cycle RTS with backend '{}'; some devices might not work properly".format(be))
-    def _detect_rack_system(self):
-        self.send_comm(0x05,dest=0x50)
-        self.send_comm(0x05,dest=0x11)
-        comm=self.recv_comm(0x05)
-        time.sleep(0.05)
-        self.instr.read()
-        return comm.source==0x11
     def _make_dest(self, dest):
         if dest=="host":
             return 0x11 if self._is_rack_system else 0x50
         if isinstance(dest,tuple) and len(dest)==2 and dest[0]=="channel":
             return 0x21+dest[1] if self._is_rack_system else 0x50
         return dest
+    def _make_channel(self, channel):
+        return channel if not self._is_rack_system else 1
     def _find_bays(self):
         return [b for b in range(10) if self.query(0x0060,b).param2==0x01]
     @staticmethod
@@ -242,6 +235,17 @@ TPZMotorDriveParams=collections.namedtuple("TPZMotorDriveParams",["max_voltage",
 TPZMotorJogParams=collections.namedtuple("TPZMotorJogParams",["mode","step_size_fw","step_size_bk","velocity","acceleration"])
 muxchannel=lambda *args,**kwargs: muxaxis(*args,argname="channel",**kwargs)
 class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
+    """
+    Overarching Kinesis class containing all of the necessary private methods.
+
+    Subclasses are expected to make some of them visible by renaming, and to define device variables and opening behavior accordingly.
+
+    Args:
+        conn: serial connection parameters (usually an 8-digit device serial number).
+        timeout: device communication timeout.
+        default_channel: starting default channel used when no channel is supplied to a channel-level command (such as ``move_to`` or ``get_position``).
+        is_rack_system: specify whether the device is a rack system or a standalone USB device (default mode).
+    """
     def __init__(self, conn, timeout=3., default_channel=1, is_rack_system=False):
         super().__init__(conn,timeout=timeout,is_rack_system=is_rack_system,default_axis=default_channel)
         self._remove_device_variable("axes")
@@ -269,7 +273,7 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
 
         For details, see APT communications protocol.
         """
-        data=self.query(0x0429,channel,dest=("channel",channel)).data
+        data=self.query(0x0429,self._make_channel(channel),dest=("channel",channel)).data
         return struct.unpack("<I",data[2:6])[0]
     status_bits=[(1<<0,"sw_bk_lim"),(1<<1,"sw_fw_lim"),
                 (1<<4,"moving_bk"),(1<<5,"moving_fw"),(1<<6,"jogging_bk"),(1<<7,"jogging_fw"),
@@ -321,7 +325,7 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         """
         if self._is_homed() and not force:
             return
-        self.send_comm(0x0443,channel,dest=("channel",channel))
+        self.send_comm(0x0443,self._make_channel(channel),dest=("channel",channel))
         if sync:
             self._wait_for_home(channel=channel,timeout=timeout)
     @muxchannel
@@ -370,7 +374,7 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         
         If ``scale==True``, return value in the physical units (see class description); otherwise, return it in the device internal units (steps).
         """
-        data=self.query(0x0411,channel,dest=("channel",channel)).data
+        data=self.query(0x0411,self._make_channel(channel),dest=("channel",channel)).data
         pos=struct.unpack("<i",data[2:6])[0]
         return self._d2p(pos,"p",scale=scale)
     @muxchannel(mux_argnames="position")
@@ -380,7 +384,7 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         
         If ``scale==True``, assume that the position is in the physical units (see class description); otherwise, assume it is in the device internal units (steps).
         """
-        self.send_comm_data(0x0410,struct.pack("<Hi",channel,self._p2d(position,"p",scale=scale)),dest=("channel",channel))
+        self.send_comm_data(0x0410,struct.pack("<Hi",self._make_channel(channel),self._p2d(position,"p",scale=scale)),dest=("channel",channel))
         return self._get_position(channel=channel)
     @muxchannel(mux_argnames="distance")
     def _move_by(self, distance=1, channel=None, scale=True):
@@ -389,14 +393,14 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         
         If ``scale==True``, assume that the distance is in the physical units (see class description); otherwise, assume it is in the device internal units (steps).
         """
-        self.send_comm_data(0x0448,struct.pack("<Hi",channel,self._p2d(distance,"p",scale=scale)),dest=("channel",channel))
+        self.send_comm_data(0x0448,struct.pack("<Hi",self._make_channel(channel),self._p2d(distance,"p",scale=scale)),dest=("channel",channel))
     @muxchannel(mux_argnames="position")
     def _move_to(self, position, channel=None, scale=True):
         """Move to `position` (positive or negative).
         
         If ``scale==True``, assume that the position is in the physical units (see class description); otherwise, assume it is in the device internal units (steps).
         """
-        self.send_comm_data(0x0453,struct.pack("<Hi",channel,self._p2d(position,"p",scale=scale)),dest=("channel",channel))
+        self.send_comm_data(0x0453,struct.pack("<Hi",self._make_channel(channel),self._p2d(position,"p",scale=scale)),dest=("channel",channel))
     _forward_positive=False
     @muxchannel(mux_argnames="direction")
     @interface.use_parameters
@@ -411,7 +415,7 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         funcargparse.check_parameter_range(kind,"kind",["continuous","builtin"])
         _jog_fw=(self._forward_positive==bool(direction))
         comm=0x0457 if kind=="continuous" else 0x046A
-        self.send_comm(comm,channel,1 if _jog_fw else 2,dest=("channel",channel))
+        self.send_comm(comm,self._make_channel(channel),1 if _jog_fw else 2,dest=("channel",channel))
     _moving_status=["moving_fw","moving_bk","jogging_fw","jogging_bk"]
     @muxchannel
     def _is_moving(self, channel=None):
@@ -430,7 +434,7 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         If ``immediate==True`` make an abrupt stop; otherwise, slow down gradually.
         If ``sync==True``, wait until the motion is stopped.
         """
-        self.send_comm(0x0465,channel,1 if immediate else 2,dest=("channel",channel))
+        self.send_comm(0x0465,self._make_channel(channel),1 if immediate else 2,dest=("channel",channel))
         if sync:
             self._wait_for_stop(channel=channel,timeout=timeout)
     def _wait_for_stop(self, channel=None, timeout=None):
@@ -445,7 +449,7 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         
         If ``scale==True``, return values in the physical units (see class description); otherwise, return it in the device internal units.
         """
-        data=self.query(0x0414,channel,dest=("channel",channel)).data
+        data=self.query(0x0414,self._make_channel(channel),dest=("channel",channel)).data
         min_velocity,acceleration,max_velocity=struct.unpack("<iii",data[2:14])
         min_velocity=self._d2p(min_velocity,"v",scale=scale)
         acceleration=self._d2p(acceleration,"a",scale=scale)
@@ -463,7 +467,7 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         min_velocity=current_parameters.min_velocity if min_velocity is None else self._p2d(min_velocity,"v",scale=scale)
         acceleration=current_parameters.acceleration if acceleration is None else self._p2d(acceleration,"a",scale=scale)
         max_velocity=current_parameters.max_velocity if max_velocity is None else self._p2d(max_velocity,"v",scale=scale)
-        data=struct.pack("<Hiii",channel,min_velocity,acceleration,max_velocity)
+        data=struct.pack("<Hiii",self._make_channel(channel),min_velocity,acceleration,max_velocity)
         self.send_comm_data(0x0413,data,dest=("channel",channel))
         return self._get_velocity_parameters(channel=channel,scale=scale)
 
@@ -477,7 +481,7 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         
         If ``scale==True``, return values in the physical units (see class description); otherwise, return it in the device internal units.
         """
-        data=self.query(0x0417,channel,dest=("channel",channel)).data
+        data=self.query(0x0417,self._make_channel(channel),dest=("channel",channel)).data
         mode,step_size,min_velocity,acceleration,max_velocity,stop_mode=struct.unpack("<HiiiiH",data[2:22])
         step_size=self._d2p(step_size,"p",scale=scale)
         min_velocity=self._d2p(min_velocity,"v",scale=scale)
@@ -500,7 +504,7 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         acceleration=current_parameters.acceleration if acceleration is None else self._p2d(acceleration,"a",scale=scale)
         max_velocity=current_parameters.max_velocity if max_velocity is None else self._p2d(max_velocity,"v",scale=scale)
         stop_mode=current_parameters.stop_mode if stop_mode is None else stop_mode
-        data=struct.pack("<HHiiiiH",channel,mode,step_size,min_velocity,acceleration,max_velocity,stop_mode)
+        data=struct.pack("<HHiiiiH",self._make_channel(channel),mode,step_size,min_velocity,acceleration,max_velocity,stop_mode)
         self.send_comm_data(0x0416,data,dest=("channel",channel))
         return self._get_jog_parameters(channel=channel,scale=scale)
 
@@ -511,7 +515,7 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         
         If ``scale==True``, return values in volts; otherwise, return in internal units (0 to 32768).
         """
-        data=self.query(0x042B,channel,dest=("channel",channel)).data
+        data=self.query(0x042B,self._make_channel(channel),dest=("channel",channel)).data
         input1,input2=struct.unpack("<HH",data[2:6])
         if scale:
             input1/=2**15/5.
@@ -525,7 +529,7 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         
         If ``scale==True``, return values in the physical units (see class description); otherwise, return it in the device internal units.
         """
-        data=self.query(0x043B,channel,dest=("channel",channel)).data
+        data=self.query(0x043B,self._make_channel(channel),dest=("channel",channel)).data
         backlash_distance,=struct.unpack("<i",data[2:6])
         backlash_distance=self._d2p(backlash_distance,"p",scale=scale)
         return TGenMoveParams(backlash_distance)
@@ -539,7 +543,7 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         """
         current_parameters=self._get_gen_move_parameters(channel=channel,scale=False)
         backlash_distance=current_parameters.backlash_distance if backlash_distance is None else self._p2d(backlash_distance,"p",scale=scale)
-        data=struct.pack("<Hi",channel,backlash_distance)
+        data=struct.pack("<Hi",self._make_channel(channel),backlash_distance)
         self.send_comm_data(0x043A,data,dest=("channel",channel))
         return self._get_gen_move_parameters(channel=channel,scale=scale)
 
@@ -553,7 +557,7 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         
         If ``scale==True``, return values are in the physical units (see class description); otherwise, return it in the device internal units.
         """
-        data=self.query(0x0441,channel,dest=("channel",channel)).data
+        data=self.query(0x0441,self._make_channel(channel),dest=("channel",channel)).data
         home_direction,limit_switch,velocity,offset_distance=struct.unpack("<HHii",data[2:14])
         velocity=self._d2p(velocity,"v",scale=scale)
         offset_distance=self._d2p(offset_distance,"p",scale=scale)
@@ -572,7 +576,7 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         limit_switch=current_parameters.limit_switch if limit_switch is None else limit_switch
         velocity=current_parameters.velocity if velocity is None else self._p2d(velocity,"v",scale=scale)
         offset_distance=current_parameters.offset_distance if offset_distance is None else self._p2d(offset_distance,"p",scale=scale)
-        data=struct.pack("<HHHii",channel,home_direction,limit_switch,velocity,offset_distance)
+        data=struct.pack("<HHHii",self._make_channel(channel),home_direction,limit_switch,velocity,offset_distance)
         self.send_comm_data(0x0440,data,dest=("channel",channel))
         return self._get_homing_parameters(channel=channel,scale=scale)
 
@@ -586,7 +590,7 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         
         If ``scale==True``, return values in the physical units (see class description); otherwise, return it in the device internal units (steps).
         """
-        data=self.query(0x0424,channel,dest=("channel",channel)).data
+        data=self.query(0x0424,self._make_channel(channel),dest=("channel",channel)).data
         hw_kind_cw,hw_kind_ccw,sw_position_cw,sw_position_ccw,sw_kind=struct.unpack("<HHiiH",data[2:16])
         swapped_cw=bool(hw_kind_cw&0x80)
         swapped_ccw=bool(hw_kind_ccw&0x80)
@@ -613,7 +617,7 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         sw_position_cw=current_parameters.sw_position_cw if sw_position_cw is None else self._p2d(sw_position_cw,"p",scale=scale)
         sw_position_ccw=current_parameters.sw_position_ccw if sw_position_ccw is None else self._p2d(sw_position_ccw,"p",scale=scale)
         sw_kind=current_parameters.sw_kind if sw_kind is None else sw_kind
-        data=struct.pack("<HHHiiH",channel,hw_kind_cw,hw_kind_ccw,sw_position_cw,sw_position_ccw,sw_kind)
+        data=struct.pack("<HHHiiH",self._make_channel(channel),hw_kind_cw,hw_kind_ccw,sw_position_cw,sw_position_ccw,sw_kind)
         self.send_comm_data(0x0423,data,dest=("channel",channel))
         return self._get_limit_switch_parameters(channel=channel,scale=scale)
 
@@ -684,14 +688,14 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
     @interface.use_parameters(channel="channel_id")
     def _is_channel_enabled(self, channel=None):  # seems to not work for most devices when tested
         """Check if the given channel is enabled"""
-        msg=self.query(0x0211,channel,dest=("channel",channel))
+        msg=self.query(0x0211,self._make_channel(channel),dest=("channel",channel))
         self.instr.read()  # sometimes extra \x00 bits are appended
         return msg.param2==0x01
     @muxchannel(mux_argnames="enabled")
     @interface.use_parameters(channel="channel_id")
     def _enable_channel(self, enabled=True, channel=None):  # seems to not work for most devices when tested
         """Enable or disable the given channel"""
-        self.send_comm(0x0210,channel,0x01 if enabled else 0x02,dest=("channel",channel))
+        self.send_comm(0x0210,self._make_channel(channel),0x01 if enabled else 0x02,dest=("channel",channel))
         return self._wip._is_channel_enabled(channel)
 
 
@@ -994,9 +998,11 @@ class KinesisMotor(KinesisDevice):
             (useful for new or unrecognized controllers or stages, as no autodetection is required);
             in the case of unrecognized devices, use internal units (same as setting ``scale=(1,1,1)``);
             if the scale can't be autodetected, it can be obtained from the APT manual knowing the device and the stage model
+        default_channel: starting default channel used when no channel is supplied to a channel-level command (such as ``move_to`` or ``get_position``).
+        is_rack_system: specify whether the device is a rack system or a standalone USB device (default mode).
     """
-    def __init__(self, conn, scale="step"):
-        super().__init__(conn)
+    def __init__(self, conn, scale="step", default_channel=1, is_rack_system=False):
+        super().__init__(conn,default_channel=default_channel,is_rack_system=is_rack_system)
         self.add_background_comm(0x0464) # move completed
         self.add_background_comm(0x0466) # move stopped
         self.add_background_comm(0x0444) # homed
