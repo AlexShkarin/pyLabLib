@@ -81,7 +81,7 @@ class BasicKinesisDevice(comm_backend.ICommBackendWrapper):
         if dest=="host":
             return 0x11 if self._is_rack_system else 0x50
         if isinstance(dest,tuple) and len(dest)==2 and dest[0]=="channel":
-            return 0x21+dest[1] if self._is_rack_system else 0x50
+            return 0x20+dest[1] if self._is_rack_system else 0x50
         return dest
     def _make_channel(self, channel):
         return channel if not self._is_rack_system else 1
@@ -266,6 +266,15 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
             yield
         finally:
             self._default_axis=current_channel
+    def _set_supported_channels(self, channels=1):
+        """
+        Set the channels in the device.
+
+        Can be either a list of channels, a single number defining the number of channels numbered from 1 to ``channels`` (inclusive).
+        """
+        if not isinstance(channels,list):
+            channels=list(range(1,channels+1))
+        self._update_axes(channels)
     @muxchannel
     def _get_status_n(self, channel=None):
         """
@@ -1151,6 +1160,8 @@ class KinesisMotor(KinesisDevice):
         If the stake is unknown, return ``None``
         """
         return self._stage
+
+    set_supported_channels=KinesisDevice._set_supported_channels
 
     get_status_n=KinesisDevice._get_status_n
     get_status=KinesisDevice._get_status
