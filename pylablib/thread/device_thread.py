@@ -166,7 +166,7 @@ class DeviceThread(controller.QTaskThread):
         """Error which can be raised on opening failure"""
 
     @contextlib.contextmanager
-    def using_devclass(self, cls, host, timeout=3., attempts=2):
+    def using_devclass(self, cls, host=None, timeout=3., attempts=2):
         """
         Context manager for simplifying device opening.
 

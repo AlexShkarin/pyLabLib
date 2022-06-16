@@ -31,8 +31,16 @@ class VegaPowerMeterThread(device_thread.DeviceThread):
     def update_measurements(self):
         """Update current measurements"""
         if self.open():
-            power=self.device.get_power()
-            self.v["power"]=self.device.get_range() if power=="over" else power
+            try:
+                power=self.device.get_power()
+                if power=="over":
+                    range_info=self.device.get_range_info()
+                    power=range_info.curr_range if range_info.curr_idx>=0 else max(range_info.ranges)
+                self.v["power"]=power
+            except (self.DeviceError,ValueError):  # non-float or error response
+                if "power" not in self.v:
+                    self.v["power"]=0
+                self.sleep(0.1)
         else:
             self.v["power"]=0
             self.sleep(1.)

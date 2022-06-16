@@ -103,7 +103,11 @@ class ANC350Thread(device_thread.DeviceThread):
             self._stop_wait(axis=axis)
             self.update_measurements()
     def set_axis_parameters(self, voltage=None, frequency=None, offset=None, axis="all"):
-        """Move to `position` (positive or negative)"""
+        """
+        Set axis parameters (voltage, frequency, offset) for a given axis.
+        
+        ``None`` values are ignored.
+        """
         if self.open():
             self._stop_wait(axis=axis)
             if voltage is not None:

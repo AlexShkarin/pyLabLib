@@ -18,6 +18,7 @@ class SCU3DThread(device_thread.DeviceThread):
     Commands:
         - ``move_by``: move the given axis by a given number of steps of the given size
         - ``stop_motion``: stop motion at the given axis
+        - ``jog``: start jogging on the given axis (only one can be done at a time) in the given direction with the given step size
     """
     def connect_device(self):
         with self.using_devclass("SmarAct.SCU3D",host=self.remote) as cls:
@@ -32,6 +33,8 @@ class SCU3DThread(device_thread.DeviceThread):
         self.add_job("update_parameters",self.update_parameters,2)
         self.add_command("move_by")
         self.add_command("stop_motion")
+        self.add_command("jog")
+        self.add_batch_job("jog_loop",self.jog_loop)
 
     def update_measurements(self):
         axes=["x","y","z"]
@@ -57,8 +60,20 @@ class SCU3DThread(device_thread.DeviceThread):
             self._stop_wait(axis=axis)
             self.device.move_by(axis,steps,stepsize=stepsize)
             self.update_measurements()
-    def stop_motion(self, axis):
+    def stop_motion(self, axis="all"):
         """Stop motion at a given axis"""
+        self.stop_batch_job("jog_loop")
         if self.open():
             self._stop_wait(axis=axis)
             self.update_measurements()
+
+    def jog(self, axis, d, stepsize=10):
+        """Start jogging on the given axis (only one can be done at a time) in the given direction with the given step size"""
+        if self.open():
+            self.start_batch_job("jog_loop",0.1,axis,d,stepsize)
+    def jog_loop(self, axis, d, stepsize=10):
+        while True:
+            if not self.device.is_moving(axis):
+                self.device.move_by(axis,d,stepsize=stepsize)
+                self.update_measurements()
+            yield
