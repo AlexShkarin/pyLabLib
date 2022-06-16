@@ -35,6 +35,7 @@ Subpackages
     pylablib.devices.PhysikInstrumente
     pylablib.devices.PrincetonInstruments
     pylablib.devices.SiliconSoftware
+    pylablib.devices.Sirah
     pylablib.devices.SmarAct
     pylablib.devices.Tektronix
     pylablib.devices.Thorlabs

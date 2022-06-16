@@ -13,7 +13,7 @@ class GenericSirahBackendError(GenericSirahError,comm_backend.DeviceBackendError
 
 
 TThinetCtlParameters=collections.namedtuple("TThinetCtlParameters",["setpoint","P","I","avg"])
-TPiezoetDriveParameters=collections.namedtuple("TPiezoetCtlParameters",["amplitude","rate","oversamp"])
+TPiezoetDriveParameters=collections.namedtuple("TPiezoetDriveParameters",["amplitude","rate","oversamp"])
 TPiezoetFeedbackParameters=collections.namedtuple("TPiezoetFeedbackParameters",["P","avg","phase"])
 TPiezoetFeedforwardParameters=collections.namedtuple("TPiezoetFeedforwardParameters",["ampl","phase"])
 TSlowpiezoCtlParameters=collections.namedtuple("TSlowpiezoCtlParameters",["setpoint","P","I","freeP"])
@@ -116,6 +116,7 @@ class SirahMatisse(SCPI.SCPIDevice):
         self._add_status_variable("refcell_position",self.get_refcell_position,ignore_error=GenericSirahError)
         self._add_settings_variable("refcell_waveform_params",self.get_refcell_waveform_params,self.set_refcell_waveform_params,ignore_error=GenericSirahError)
         self._add_settings_variable("scan_status",self.get_scan_status,self.set_scan_status)
+        self._add_settings_variable("scan_position",self.get_scan_position,self.set_scan_position)
         self._add_settings_variable("scan_params",self.get_scan_params,self.set_scan_params)
 
     _id_comm="IDN?"

@@ -19,6 +19,7 @@ Currently supported devices:
     basic_lasers
     M2
     Toptica
+    Sirah
     Tektronix
     nidaq
     generic_awgs
