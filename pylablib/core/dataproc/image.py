@@ -3,7 +3,7 @@ from ..utils import funcargparse
 
 
 _default_indexing={"rc":"rcb","xy":"xyt"}
-def convert_shape_indexing(shape, src, dst):
+def convert_shape_indexing(shape, src, dst, axes=(0,1)):
     """
     Convert image indexing style.
 
@@ -19,7 +19,9 @@ def convert_shape_indexing(shape, src, dst):
     if src[:2]==dst[:2]:
         return shape
     else:
-        return shape[::-1]
+        shape=list(shape)
+        shape[axes[0]],shape[axes[1]]=shape[axes[1]],shape[axes[0]]
+        return tuple(shape)
     
 def _flip(img, axis):
     """Flip an image along the given axis"""

@@ -132,13 +132,13 @@ class DeviceThread(controller.QTaskThread):
             timeout: remote connection timeout per attempt
             attempts: total number of connection attempts
         """
+        module_name,cls_name=cls.rsplit(".",maxsplit=1)  # import module even for RPyC to make sure that specific classes are available
+        try:
+            module=importlib.import_module(module_name)
+        except ImportError:
+            module=importlib.import_module(module_utils.get_library_name()+".devices."+module_name)
         if host is None:
-            module,cls=cls.rsplit(".",maxsplit=1)
-            try:
-                module=importlib.import_module(module)
-            except ImportError:
-                module=importlib.import_module(module_utils.get_library_name()+".devices."+module)
-            cls=getattr(module,cls)
+            cls=getattr(module,cls_name)
         else:
             self.rpyc_serv=rpyc_utils.connect_device_service(host,port=port,timeout=timeout,attempts=attempts,error_on_fail=False)
             if not self.rpyc_serv:

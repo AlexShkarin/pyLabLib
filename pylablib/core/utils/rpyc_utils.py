@@ -11,6 +11,7 @@ except ImportError as err:
     raise ImportError(msg) from err
 import numpy as np
 
+import encodings.idna  # pylint: disable=unused-import
 import importlib
 import struct
 import pickle

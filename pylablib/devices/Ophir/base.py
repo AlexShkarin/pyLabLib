@@ -188,7 +188,7 @@ class VegaPowerMeter(OphirDevice):
 
         Index goes from 0 (highest) to maximal (lowest); auto-ranging is -1.
         """
-        return self.get_range_info().curr_idx
+        return int(self.query("$RN"))
     def set_range_idx(self, rng_idx):
         """
         Set current range index.
@@ -238,5 +238,5 @@ class VegaPowerMeter(OphirDevice):
         return int(self.query("$DQ").split()[0])==2
     def set_diffuser(self, diffuser_in=True):
         """Change the diffuser setting at the power meter (on or off)"""
-        self.query("$dQ{:d}".format(2 if diffuser_in else 1))
+        self.query("$DQ{:d}".format(2 if diffuser_in else 1))
         return self.is_diffuser_in()

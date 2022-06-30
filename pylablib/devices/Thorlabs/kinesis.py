@@ -172,7 +172,7 @@ class BasicKinesisDevice(comm_backend.ICommBackendWrapper):
 
     _device_SN={   20:"BSC001", 21:"BPC001", 22:"BNT001", 25:"BMS001", 26:"KST101", 27:"KDC101", 28:"KBD101", 29:"KPZ101",
                     30:"BSC002", 31:"BPC002", 33:"BDC101", 35:"BMS002", 37:"MFF10." ,
-                    40:"BSC101", 41:"BPC101", 43:"BDC101", 44:"PPC001", 45:"LTS"   , 48:"MMR"   , 49:"MLJ"   ,
+                    40:"(BSC101|SSC20.)", 41:"BPC101", 43:"BDC101", 44:"PPC001", 45:"LTS"   , 48:"MMR"   , 49:"MLJ"   ,
                     50:"MST60" , 51:"MPZ601", 52:"MNA601", 55:"K10CR1", 56:"KLS101", 57:"KNA101", 59:"KSG101",
                     60:"0ST001", 63:"ODC001", 64:"TLD001", 65:"TIM001", 67:"TBD001", 68:"KSC101", 69:"KPA101",
                     70:"BSC.03", 71:"BPC.03", 72:"BPS103", 73:"BBD103", 
@@ -1089,7 +1089,7 @@ class KinesisMotor(KinesisDevice):
                 return 25600/360,"deg"
             if stage=="NR360":
                 return 25600/(360/66),"deg"
-        if model in ["TST101","KST101","MST602","K10CR1"] or model.startswith("BSC20"):
+        if model in ["TST101","KST101","MST602","K10CR1"] or model.startswith("BSC20") or model.startswith("SSC20"):
             if stage.startswith("ZST"):
                 return 2008645.63E3,"m"
             if stage.startswith("ZFS"):

@@ -128,7 +128,7 @@ class GenericCameraThread(device_thread.DeviceThread):
         self.FrameTransferError=self.rpyc_obtain(self.device.FrameTransferError)
         self.v["parameters/add_info"]=False
         if self._default_updated_camera_attributes=="all":
-            self._updated_camera_attributes={a:True for a in self.device.get_all_attributes()}
+            self._updated_camera_attributes={a:True for a in self.rpyc_obtain(self.device.get_all_attributes())}
         else:
             self._updated_camera_attributes=dict(self._default_updated_camera_attributes)
         self.update_parameters()
@@ -177,6 +177,8 @@ class GenericCameraThread(device_thread.DeviceThread):
     def _update_additional_parameters(self, parameters):
         pass
     def _get_camera_attributes(self, **kwargs):
+        if self.rpyc_serv is not None:
+            return {}
         attrs={k for k,v in self._updated_camera_attributes.items() if v}
         self._updated_camera_attributes.update({k:False for k,v in self._updated_camera_attributes.items() if v=="single"})
         return {a:self.device.get_attribute_value(a,**kwargs) for a in attrs if getattr(self.device.ca[a],"readable",True)}
@@ -238,7 +240,7 @@ class GenericCameraThread(device_thread.DeviceThread):
         self.set_variable("parameters/aux",aux_info,update=True)
     def _get_aux_full_info(self):
         aux_info=super()._get_aux_full_info()
-        if self.device:
+        if self.device and self.rpyc_serv is None:
             if hasattr(self.device,"ca"):
                 aux_info.update({"camera_attributes_desc":self.device.ca[""]})
         return aux_info
