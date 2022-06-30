@@ -452,7 +452,7 @@ class SirahMatisse(SCPI.SCPIDevice):
         return self.get_refcell_position()
     def get_refcell_waveform_params(self):
         """
-        Get reference cell wavefrom parameters.
+        Get reference cell waveform parameters.
         
         Return tuple ``(lower_limit, upper_limit, oversamp, mode)``.
         ``mode`` can be ``"none"``, ``"avg"``, ``"min"``, or ``"max"``.
@@ -460,11 +460,11 @@ class SirahMatisse(SCPI.SCPIDevice):
         return TRefcellWaveformParameters(*[self._get_scpi_parameter(n) for n in ["refcell_wave_lowlim","refcell_wave_upplim","refcell_wave_oversamp","refcell_wave_mode"]])
     def set_refcell_waveform_params(self, lower_limit=None, upper_limit=None, oversamp=None, mode=None):
         """
-        Set reference cell wavefrom parameters.
+        Set reference cell waveform parameters.
         
         Any parameters which are ``None`` remain unchanged.
         `mode` can be ``"none"``, ``"avg"``, ``"min"``, or ``"max"``.
-        `oversamp` should be between 4 anf 512.
+        `oversamp` should be between 4 and 512.
         """
         for n,v in zip(["refcell_wave_lowlim","refcell_wave_upplim","refcell_wave_oversamp","refcell_wave_mode"],[lower_limit,upper_limit,oversamp,mode]):
             if v is not None:

@@ -168,7 +168,7 @@ class EPC04(comm_backend.ICommBackendWrapper):
         self._add_settings_variable("voltages",self.get_voltages,self.set_all_voltages)
         self._add_settings_variable("mode",self.get_mode,self.set_mode)
         self._add_settings_variable("frequencies",self.get_frequencies,self.set_all_frequencies)
-        self._add_settings_variable("wavefrom",self.get_waveform,self.set_waveform)
+        self._add_settings_variable("waveform",self.get_waveform,self.set_waveform)
     
     def _parse_response(self, comm, resp):
         resp=[s.strip() for s in resp.splitlines() if s.strip()]
