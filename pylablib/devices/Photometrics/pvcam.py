@@ -558,6 +558,9 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
             mode|=out_mode
         self._setup_acquisition(exp_mode=mode)
         return self.get_trigger_mode()
+    def send_software_trigger(self):
+        """Send software trigger signal and return whether it has been accepted"""
+        return lib.pl_exp_trigger(self.handle)==0
 
     def _get_data_dimensions_rc(self):
         roi=self.get_roi()
