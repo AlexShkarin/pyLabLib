@@ -67,9 +67,11 @@ class TracePlotterCtl(QWidgetContainer):
         """
         self.channels_table.clear()
         if self.plotter.channel_indices:
-            channel_names=[self.plotter.channels[idx]["name"] for idx in self.plotter.channel_indices]
-            self.channels_table.add_combo_box("xaxis",0,options=channel_names,label="X axis")
-            self.channels_table.add_combo_box("order_by",0,options=channel_names,label="Order by")
+            channel_names={idx:self.plotter.channels[idx]["name"] for idx in self.plotter.channel_indices}
+            self.channels_table.add_combo_box("xaxis",options=channel_names,label="X axis",out_of_range="ignore")
+            self.channels_table.add_combo_box("order_by",options=channel_names,label="Order by",out_of_range="ignore")
+            for w in ["xaxis","order_by"]:
+                self.channels_table.w[w].set_direct_index_action("value_default")
             for idx in self.plotter.channel_indices:
                 name=self.plotter.channels[idx]["name"]
                 self.channels_table.add_check_box(idx+"_enabled",name)
@@ -126,6 +128,8 @@ class TracePlotter(QLayoutManagedWidget):
         self.data_src_kind=None
         self.data_src=None
         self.add_end_marker=add_end_marker
+        self.marker_pos=-1
+        self.marker_params={"symbol":"o","symbolSize":5,"pxMode":True}
         self.update_only_on_visible=update_only_on_visible
         self.full_data=full_data
         self.displayed=[]
@@ -171,8 +175,17 @@ class TracePlotter(QLayoutManagedWidget):
                 ch["color"]=colors.pop(0)
         if self.ctl:
             self.ctl.setup_channels()
+        self.get_enabled_channels()
         self._update_plot_lines()
+    def set_marker_parameters(self, **kwargs):
+        """
+        Setup pyqtgraph marker parameters, which are used in updating current and creating new markers.
 
+        Parameters are supplied to the pyqtgraph ``plot`` method used to define marker plots.
+        """
+        self.marker_params.update(kwargs)
+        if kwargs:
+            self._update_plot_lines()
 
 
     on_reset=Signal()
@@ -288,7 +301,7 @@ class TracePlotter(QLayoutManagedWidget):
             vl=self.plot_widget.plot([],[],pen=ch["color"],name=ch["legend_name"])
             self.vlines.append(vl)
             if ch.get("end_marker",self.add_end_marker):
-                vm=self.plot_widget.plot([],[],symbolBrush=ch["color"],symbol="o",symbolSize=5,pxMode=True)
+                vm=self.plot_widget.plot([],[],symbolBrush=ch["color"],**self.marker_params)
                 self.vmarks.append(vm)
             else:
                 self.vmarks.append(None)
@@ -306,8 +319,8 @@ class TracePlotter(QLayoutManagedWidget):
         """Get list of channels required for plotting: all enabled channels plus 'X axis' and  'Order by' channels """
         if self.ctl is None or self.full_data:
             return self.channel_indices
-        xaxis=self.channel_indices[self.ctl.channels_table.v["xaxis"]]
-        order_by=self.channel_indices[self.ctl.channels_table.v["order_by"]]
+        xaxis=self.ctl.channels_table.v["xaxis"]
+        order_by=self.ctl.channels_table.v["order_by"]
         return [xaxis,order_by]+self.get_enabled_channels()
     def get_data_from_accum(self, table_accum):
         """
@@ -317,7 +330,7 @@ class TracePlotter(QLayoutManagedWidget):
         """
         channels=self.get_required_channels()
         maxlen=self.ctl.plot_params_table.v["disp_last"] if self.ctl else None
-        return table_accum.get_data_dict(channels,maxlen=maxlen,fmt="columns")
+        return table_accum.get_data_dict(channels,maxlen=maxlen)
     def get_data_from_accum_thread(self, table_accum_thread):
         """
         Get data from the table accumulator thread, taking selected channels into account
@@ -329,7 +342,7 @@ class TracePlotter(QLayoutManagedWidget):
         return table_accum_thread.csi.get_data(channels,maxlen=maxlen,fmt="dict")
 
 
-    def setup_data_source(self, src=None):
+    def setup_data_source(self, src=None, data_src_kind="auto"):
         """
         Setup data source.
         
@@ -337,7 +350,9 @@ class TracePlotter(QLayoutManagedWidget):
         The source is used to automatically grab channel data and receive reset commands.
         Not necessary, if the data is provided explicitly to :meth:`update_plot`.
         """
-        if isinstance(src,TableAccumulator):
+        if data_src_kind in ["accum","accum_thread",None]:
+            self.data_src_kind=data_src_kind
+        elif isinstance(src,TableAccumulator):
             self.data_src_kind="accum"
         elif isinstance(src,TableAccumulatorThread):
             self.data_src_kind="accum_thread"
@@ -346,6 +361,7 @@ class TracePlotter(QLayoutManagedWidget):
         else:
             raise ValueError("unrecognized data source: {}".format(src))
         self.data_src=src
+        self._plotted_data=None
     def get_data_from_source(self):
         """
         Get data from the default source.
@@ -363,7 +379,7 @@ class TracePlotter(QLayoutManagedWidget):
             return self.data_src.reset()
 
 
-    def _draw_plot(self, data=None, par=None, idx_column=None):
+    def _draw_plot(self, data=None, par=None, idx_column=None, include=("lines","markers")):
         """
         Draw the plot using the given data, parameters dictionary, and index column.
         
@@ -376,9 +392,9 @@ class TracePlotter(QLayoutManagedWidget):
         if self.full_data:
             self._plotted_data=data
         if par is None:
-            par=self.ctl.get_all_values() if self.ctl else {"channels/xaxis":0, "channels/order_by":0, "plotting/update_plot":True}
-        xaxis=self.channel_indices[par["channels/xaxis"]]
-        order_by=self.channel_indices[par["channels/order_by"]]
+            par=self.ctl.get_all_values() if self.ctl else {"channels/xaxis":self.channel_indices[0], "channels/order_by":self.channel_indices[0], "plotting/update_plot":True}
+        xaxis=par["channels/xaxis"]
+        order_by=par["channels/order_by"]
         data_channels=[xaxis,order_by]+self.get_enabled_channels()
         norm_data=[]
         for idx in data_channels:
@@ -387,7 +403,7 @@ class TracePlotter(QLayoutManagedWidget):
                 col=col*self.channels[idx]["factor"]
             norm_data.append(col)
         if norm_data and len(norm_data[0]):
-            last_pts=[col[-1] for col in norm_data]
+            last_pts=[col[min(self.marker_pos,len(col)-1)] for col in norm_data]
         else:
             last_pts=None
         if order_by!=idx_column:
@@ -396,9 +412,10 @@ class TracePlotter(QLayoutManagedWidget):
             norm_data=[norm_data[:,c] for c in range(norm_data.shape[1])]
         autorange=self.plot_widget.plotItem.getViewBox().autoRangeEnabled()
         self.plot_widget.plotItem.disableAutoRange()
-        for vl,col in zip(self.vlines,norm_data[2:]):
-            vl.setData(norm_data[0],col)
-        if last_pts:
+        if "lines" in include:
+            for vl,col in zip(self.vlines,norm_data[2:]):
+                vl.setData(norm_data[0],col)
+        if last_pts and "markers" in include:
             for vm,pt in zip(self.vmarks,last_pts[2:]):
                 if vm is not None:
                     vm.setData([last_pts[0]],[pt])
@@ -415,11 +432,18 @@ class TracePlotter(QLayoutManagedWidget):
             idx_column: name of the default index column; if the "order by" column name is the same as `idx_column`, no data re-ordering is performed.
                 doesn't need to be supplied, but can improve plotting speed somewhat.
         """
-        par=self.ctl.get_all_values() if self.ctl else {"channels/xaxis":0, "channels/order_by":0, "plotting/update_plot":True}
+        par=self.ctl.get_all_values() if self.ctl else {"channels/xaxis":self.channel_indices[0], "channels/order_by":self.channel_indices[0], "plotting/update_plot":True}
         if par["plotting/update_plot"] and (self.isVisible() or not self.update_only_on_visible):
             if data is None:
                 data=self.get_data_from_source()
             self._draw_plot(data=data,par=par,idx_column=idx_column)
+    def set_marker_position(self, position=-1, update=True):
+        """Set marker datapoint position"""
+        self.marker_pos=position
+        if update:
+            par=self.ctl.get_all_values() if self.ctl else {"plotting/update_plot":True}
+            if par["plotting/update_plot"] and (self.isVisible() or not self.update_only_on_visible):
+                self._draw_plot(include=("markers"))
             
 
 

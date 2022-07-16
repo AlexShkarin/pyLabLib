@@ -13,17 +13,29 @@ class ComboBox(QtWidgets.QComboBox):
         self._index=-1
         self._index_values=None
         self._out_of_range_action="error"
+        self._direct_index_action="ignore"
     def wheelEvent(self, event):
         event.ignore()
     def set_out_of_range(self, action="error"):
         """
         Set behavior when out-of-range value is applied.
 
-        Can be ``"error"`` (raise error), ``"reset"`` (reset to no-value position), or ``"ignore"`` (keep current value).
+        Can be ``"error"`` (raise error), ``"reset"`` (reset to no-value position), ``"reset_start"`` (reset to the first position) or ``"ignore"`` (keep current value).
         """
-        if action not in ["error","reset","ignore"]:
+        if action not in ["error","reset","reset_start","ignore"]:
             raise ValueError("unrecognized out-of-range action: {}".format(action))
         self._out_of_range_action=action
+    def set_direct_index_action(self, action="error"):
+        """
+        Set behavior when index values are specified, but direct indexing is used.
+
+        Can be ``"ignore"`` (do not allow direct indexing and treat any value as index value),
+        ``"value_default"`` (allow direct indexing, but prioritize index values with the same value),
+        or ``"index_default"`` (allow direct indexing and prioritize it if index value with the same value exists).
+        """
+        if action not in ["ignore","value_default","index_default"]:
+            raise ValueError("unrecognized direct index action: {}".format(action))
+        self._direct_index_action=action
     def index_to_value(self, idx):
         """Turn numerical index into value"""
         if (self._index_values is None) or (idx<0) or (idx>=len(self._index_values)):
@@ -33,10 +45,19 @@ class ComboBox(QtWidgets.QComboBox):
     def value_to_index(self, value):
         """Turn value into a numerical index"""
         try:
-            return value if (value==-1 or self._index_values is None) else self._index_values.index(value)
+            if value==-1 or self._index_values is None:
+                return value
+            if isinstance(value,int) and value>=0 and value<len(self._index_values):
+                if self._direct_index_action=="value_default" and value in self._index_values:
+                    return self._index_values.index(value)
+                if self._direct_index_action!="ignore":
+                    return value
+            return self._index_values.index(value)
         except ValueError as err:
             if self._out_of_range_action=="error":
-                raise ValueError("value {} is not among available option {}".format(value,self._index_values)) from err
+                raise ValueError("value {} is not among available options {}".format(value,self._index_values)) from err
+            if self._out_of_range_action=="reset_start":
+                return 0
             return -1
     def _on_index_changed(self, index):
         if self._index!=index:

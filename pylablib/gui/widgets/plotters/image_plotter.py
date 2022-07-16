@@ -352,6 +352,7 @@ class ImagePlotter(QLayoutManagedWidget):
         self.new_image_set=False
         self.img=np.zeros(img_size)
         self.do_image_update=True
+        self.update_only_on_visible=True
         self._ignored_control_variables=set()
         self.xbin=1
         self.ybin=1
@@ -397,8 +398,8 @@ class ImagePlotter(QLayoutManagedWidget):
             self.cut_plot_window.addItem(c)
         self.cut_plot_panel.setVisible(False)
         self.set_row_stretch([4,1])
-        self.vline.sigPositionChanged.connect(lambda: self._update_line_controls(),QtCore.Qt.DirectConnection)  # pylint: disable=unnecessary-lambda
-        self.hline.sigPositionChanged.connect(lambda: self._update_line_controls(),QtCore.Qt.DirectConnection)  # pylint: disable=unnecessary-lambda
+        self.vline.sigPositionChanged.connect(lambda: self._update_line_controls(update_lines=True),QtCore.Qt.DirectConnection)  # pylint: disable=unnecessary-lambda
+        self.hline.sigPositionChanged.connect(lambda: self._update_line_controls(update_lines=True),QtCore.Qt.DirectConnection)  # pylint: disable=unnecessary-lambda
         self.vline.sigPositionChanged.connect(lambda: self.lines_updated.emit(),QtCore.Qt.DirectConnection)  # pylint: disable=unnecessary-lambda
         self.hline.sigPositionChanged.connect(lambda: self.lines_updated.emit(),QtCore.Qt.DirectConnection)  # pylint: disable=unnecessary-lambda
         self.image_window.getHistogramWidget().sigLevelsChanged.connect(lambda: self._update_levels_controls(self.image_window.getHistogramWidget().getLevels()),QtCore.Qt.DirectConnection)
@@ -762,14 +763,17 @@ class ImagePlotter(QLayoutManagedWidget):
         with self._ignoring_control_update({"minlim","maxlim"}):
             values.v["minlim"],values.v["maxlim"]=levels
     @controller.exsafe
-    def _update_line_controls(self):
+    def _update_line_controls(self, update_lines=False):
         values=self._get_values()
         with self._ignoring_control_update({"vlinepos","hlinepos"}):
             vpos,hpos=self.vline.getPos()[0],self.hline.getPos()[1]
             ipos,jpos=self._convert_coordinates((vpos,hpos),dst=self._control_coord_system)
             values.v["vlinepos"]=ipos
             values.v["hlinepos"]=jpos
-        self._update_linecut_boundaries(values)
+        if update_lines and "vlinepos" not in self._ignored_control_variables:
+            self._update_lines()
+        else:
+            self._update_linecut_boundaries(values)
     def _sanitize_img(self, img): # PyQtGraph histogram has an unfortunate failure mode (crashing) when the image is integer and is constant
         """Correct the image so that it doesn't cause crashes on pyqtgraph 0.10.0"""
         if not _pre_0p11:
@@ -835,7 +839,7 @@ class ImagePlotter(QLayoutManagedWidget):
         with self._ignoring_control_update({"vlinepos","hlinepos"}):
             self.set_line_positions(ipos,jpos,coord_system=self._control_coord_system)
         self._update_linecut_boundaries(values)
-        if self.isVisible():
+        if self.isVisible() or not self.update_only_on_visible:
             if values.v["show_lines"] and values.v["show_linecuts"]:
                 vpos,hpos=self.get_line_positions(coord_system="display")
                 cut_width=values.v["linecut_width"]
@@ -853,8 +857,8 @@ class ImagePlotter(QLayoutManagedWidget):
                         hmax+=1
                     else:
                         hmin-=1
-                x_cut=draw_img[:,hmin:hmax].mean(axis=1) if hlineon else []
-                y_cut=draw_img[vmin:vmax,:].mean(axis=0) if vlineon else []
+                x_cut=draw_img[:,hmin:hmax].mean(axis=1) if hlineon and hmin<draw_img.shape[1] else []
+                y_cut=draw_img[vmin:vmax,:].mean(axis=0) if vlineon and vmin<draw_img.shape[0] else []
                 autorange=self.cut_plot_window.getViewBox().autoRangeEnabled()
                 self.cut_plot_window.disableAutoRange()
                 self.cut_lines[0].setData(np.arange(len(x_cut)),x_cut)
@@ -879,7 +883,7 @@ class ImagePlotter(QLayoutManagedWidget):
         if not do_redraw:
             if not self.new_image_set and (only_new_image or not self.do_image_update):
                 return False
-        return self.isVisible()
+        return self.isVisible() or not self.update_only_on_visible
     @controller.exsafe
     def update_image(self, update_controls=True, do_redraw=False, only_new_image=True):
         """
@@ -908,7 +912,7 @@ class ImagePlotter(QLayoutManagedWidget):
             self._update_coordinate_systems()
             self.update_rectangles()
             self._update_lines(draw_img=draw_img)
-            if self.isVisible():
+            if self.isVisible() or not self.update_only_on_visible:
                 self.image_window.setImage(draw_img,levels=levels,autoHistogramRange=False)
                 if values.v["auto_histogram_range"] or all(self.image_window.ui.histogram.vb.autoRangeEnabled()):
                     hist_range=min(img_levels[0],levels[0]),max(img_levels[1],levels[1])
