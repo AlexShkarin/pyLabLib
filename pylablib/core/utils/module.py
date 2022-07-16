@@ -39,8 +39,8 @@ def cmp_versions(ver1, ver2):
     
     Return ``'<'`` if the first version is older (smaller), ``'>'`` if it's younger (larger) or ``'='`` if it's the same.
     """
-    ver1=[_tryint(v.strip()) for v in ver1.split(".")]
-    ver2=[_tryint(v.strip()) for v in ver2.split(".")]
+    ver1=[_tryint(v.strip()) for v in str(ver1).split(".")]
+    ver2=[_tryint(v.strip()) for v in str(ver2).split(".")]
     if ver1>ver2:
         return ">"
     if ver1<ver2:

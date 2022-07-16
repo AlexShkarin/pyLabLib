@@ -670,10 +670,10 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         c1=metadata.get(1,None)
         c7=metadata.get(7,(None,)*4)
         return (c1,camera.TFrameSize(c7[2],c7[3]),c7[1],c7[0])
-    def _parse_image(self, img, bpp=None, stride=None, metadata_enabled=False):
+    def _parse_image(self, img, bpp=None, stride=None, dim=None, metadata_enabled=False):
         if img is None:
             return None
-        height,width=self._get_data_dimensions_rc()
+        height,width=dim or self._get_data_dimensions_rc()
         imlen=len(img)
         if metadata_enabled:
             chunks={}
@@ -810,7 +810,8 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         metadata_enabled=self.is_metadata_enabled()
         bpp=self.cav["BytesPerPixel"]
         stride=self.cav["AOIStride"]
-        data=[self._parse_image(self._buffer_mgr.read(i),bpp=bpp,stride=stride,metadata_enabled=metadata_enabled) for i in range(*rng)]
+        dim=self._get_data_dimensions_rc()
+        data=[self._parse_image(self._buffer_mgr.read(i),bpp=bpp,stride=stride,dim=dim,metadata_enabled=metadata_enabled) for i in range(*rng)]
         frames=[d[0] for d in data]
         info=[TFrameInfo(n,*d[1]) for (n,d) in zip(range(*rng),data)] if metadata_enabled else None
         return frames,info
