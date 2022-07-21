@@ -197,6 +197,33 @@ class IQLayoutManagedWidget:
     def get_sublayout(self, name=None):
         """Get the previously added sublayout"""
         return self._sublayouts[name or self._default_layout][0]
+    def _iter_layout_items(self, layout, include, nested=False):
+        for idx in range(layout.count()):
+            item=layout.itemAt(idx)
+            if item.widget() is not None and "widget" in include:
+                yield "widget",item.widget()
+            if item.layout() is not None:
+                if "layout" in include:
+                    yield "layout",item.layout()
+                if nested:
+                    for itm in self._iter_layout_items(item.layout(),include,nested=True):
+                        yield itm
+    def iter_sublayout_items(self, name=None, include=("widget",), nested=False):
+        """
+        Iterate over items contained in a given sublayout.
+
+        `include` is a tuple which contains items to iterate over; can include ``"widget"`` or ``"layout"``.
+        If ``nested==True``, iterate over items in contained layouts as well.
+        """
+        if include=="all":
+            include=("widget","layout")
+        elif not isinstance(include,(tuple,list)):
+            include=(include,)
+        include=set(include)
+        if include-{"widget","layout"}:
+            raise ValueError("unrecognized include kinds: {}".format(include-{"widgets","layout"}))
+        for itm in self._iter_layout_items(self.get_sublayout(name=name),include,nested=nested):
+            yield itm
     def get_sublayout_kind(self, name=None):
         """Get the kind of the previously added sublayout"""
         return self._sublayouts[name or self._default_layout][1]

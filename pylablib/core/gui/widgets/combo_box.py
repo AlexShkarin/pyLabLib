@@ -97,6 +97,9 @@ class ComboBox(QtWidgets.QComboBox):
     def get_options(self):
         """Return the list of labels corresponding to combo box indices"""
         return [self.itemText(i) for i in range(self.count())]
+    def get_options_dict(self):
+        """Return the dictionary ``{value: label}`` of the option labels"""
+        return dict(zip(self.get_index_values(),self.get_options()))
     def set_options(self, options, index_values=None, value=None, index=None):
         """
         Set new set of options.

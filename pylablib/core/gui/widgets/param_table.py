@@ -538,13 +538,13 @@ class ParamTable(container.QWidgetContainer):
     def get_all_values(self):
         return super().get_all_values()
     @controller.gui_thread_method
-    def set_value(self, name, value, force=False):  # pylint: disable=arguments-differ
+    def set_value(self, name, value, force=True):  # pylint: disable=arguments-differ
         """
         Set value of a widget with the given name.
         
         If ``force==True``, force widget value (e.g., ignoring restriction on not changing values of focused widgets)
         """
-        if not force:
+        if force:
             return super().set_value(name,value)
         if name is None:
             self.set_all_values(value,force=force)
@@ -557,13 +557,13 @@ class ParamTable(container.QWidgetContainer):
         if allow_set:
             return super().set_value(name,value)
     @controller.gui_thread_method
-    def set_all_values(self, value, force=False):  # pylint: disable=arguments-differ
+    def set_all_values(self, value, force=True):  # pylint: disable=arguments-differ
         """
         Set values of all widgets in the table.
         
         If ``force==True``, force widget value (e.g., ignoring restriction on not changing values of focused widgets)
         """
-        if not force:
+        if force:
             return super().set_all_values(value)
         for n,v in dictionary.as_dictionary(value).iternodes(to_visit="all",topdown=True,include_path=True):
             path="/".join(n)
