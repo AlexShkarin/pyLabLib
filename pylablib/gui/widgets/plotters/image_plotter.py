@@ -127,7 +127,7 @@ class ImagePlotterCtl(QWidgetContainer):
         """
         Set up image value limits.
 
-        Specifies the minimal and maximal values in ``Min`` and ``Max•`` controls.
+        Specifies the minimal and maximal values in ``Min`` and ``Max`` controls.
         Can specify either only upper limit (lower stays the same), or both limits.
         Value of ``None`` implies no limit.
         """

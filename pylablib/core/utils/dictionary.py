@@ -262,7 +262,7 @@ class Dictionary:
             raise ValueError("can't replace root with a leaf")
         if value: # adding empty dictionary doesn't change anything
             if branch_option=="attach" and not keep_dict:
-                self._root=value
+                self._data=value
             else:
                 self._clear_root(keep_dict=keep_dict)
                 self._insert_branch(value,self._data,normalize_paths=(branch_option=="normalize"))
@@ -719,6 +719,13 @@ class Dictionary:
             if as_series:
                 table=table["value"]
         return table
+    def __eq__(self, other):
+        if isinstance(other,dict):
+            return self._data==other
+        if isinstance(other,type(self)):
+            # print(self._data,other._data,self._data==other._data)
+            return self._data==other._data and self._case_normalization==other._case_normalization
+        return False
     
     def get_path(self): return [] # for compatibility with pointer
     def branch_pointer(self, branch=""):
@@ -809,6 +816,7 @@ class Dictionary:
         Returns:
             :class:`DictionaryDiff`
         """
+        other=as_dictionary(other,case_normalization=self._case_normalization)
         if self._case_normalization!=other._case_normalization:
             raise ValueError("can't compare dictionaries with different case normalization")
         self_paths=set(["/".join(p) for p in self.paths()])
