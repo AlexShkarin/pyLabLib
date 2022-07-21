@@ -278,9 +278,10 @@ class IFileSystemDataLocation(IDataLocation):
     
     A single file name describes a single file in the filesystem.
     """
-    def __init__(self):
+    def __init__(self, encoding=None):
         IDataLocation.__init__(self)
         self.opened_files={}
+        self.encoding=encoding
     def get_filesystem_path(self, name=None, path_type="absolute"):
         """
         Get the filesystem path corresponding to a given name.
@@ -309,7 +310,7 @@ class IFileSystemDataLocation(IDataLocation):
             mode=mode+"b"
         elif data_type!="text":
             raise ValueError("unrecognized data type: {0}".format(data_type))
-        f=open(file_path,mode)
+        f=open(file_path,mode,encoding=self.encoding)
         self.opened_files[name_str]=f
         return f
     def open(self, name=None, mode="read", data_type="text"):
@@ -342,8 +343,8 @@ class SingleFileSystemDataLocation(IFileSystemDataLocation):
     Args:
         file_path (str): The path to the file.
     """
-    def __init__(self, file_path):
-        IFileSystemDataLocation.__init__(self)
+    def __init__(self, file_path, encoding=None):
+        super().__init__(encoding=encoding)
         self.rel_path=file_path
         self.abs_path=os.path.abspath(file_path)
         file_utils.retry_ensure_dir(os.path.split(file_path)[0])
@@ -371,8 +372,8 @@ class PrefixedFileSystemDataLocation(IFileSystemDataLocation):
     
     Multi-level paths translate into nested folders (the top level folder is combined from the `file_path` prefix and the first path entry).
     """
-    def __init__(self, file_path, prefix_template="{0}_{1}"):
-        IFileSystemDataLocation.__init__(self)
+    def __init__(self, file_path, prefix_template="{0}_{1}", encoding=None):
+        super().__init__(encoding=encoding)
         self.rel_path,self.master_name=os.path.split(file_path)
         self.abs_path=os.path.abspath(self.rel_path)
         self.master_prefix, self.master_ext=os.path.splitext(self.master_name)
@@ -410,8 +411,8 @@ class FolderFileSystemDataLocation(IFileSystemDataLocation):
     
     Multi-level paths translate into nested subfolders.
     """
-    def __init__(self, folder_path, default_name="content", default_ext=""):
-        IFileSystemDataLocation.__init__(self)
+    def __init__(self, folder_path, default_name="content", default_ext="", encoding=None):
+        super().__init__(encoding=encoding)
         split_path=folder_path.split('|')
         if len(split_path)==2:
             folder_path,default_name=split_path
@@ -440,7 +441,7 @@ class FolderFileSystemDataLocation(IFileSystemDataLocation):
         file_path=self.get_filesystem_path(name,path_type="absolute")
         if mode in ["write","append"]:
             file_utils.ensure_dir(os.path.split(file_path)[0])
-        return IFileSystemDataLocation._open_file_stream(self,name,mode,data_type)
+        return super()._open_file_stream(name,mode,data_type)
         
 
 

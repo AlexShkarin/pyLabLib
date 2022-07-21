@@ -322,7 +322,7 @@ def get_output_format(data, output_format, **kwargs):
 
 
 
-def save_csv(data, path, delimiters="\t", value_formats=None, use_rep_classes=False, save_columns=True, save_props=True, save_comments=True, save_time=True, loc="file"):
+def save_csv(data, path, delimiters="\t", value_formats=None, use_rep_classes=False, save_columns=True, save_props=True, save_comments=True, save_time=True, loc="file", encoding=None):
     """
     Save data to a CSV file.
     
@@ -338,13 +338,14 @@ def save_csv(data, path, delimiters="\t", value_formats=None, use_rep_classes=Fa
         save_comments (bool): If ``True`` and saving :class:`.datafile.DataFile` object, save its comments metainfo.
         save_time (bool): If ``True``, append the file creation time in the end.
         loc (str): Location type.
+        encoding: if a new file location is opened, this specifies the encoding.
     """
     data,output_format=get_output_format(data,"csv",delimiters=delimiters,value_formats=value_formats,use_rep_classes=use_rep_classes,save_columns=save_columns,
         save_props=save_props,save_comments=save_comments,save_time=save_time)
-    f=location.LocationFile(location.get_location(path,loc))
+    f=location.LocationFile(location.get_location(path,loc,encoding=encoding))
     output_format.write(f,data)
 
-def save_csv_desc(data, path, loc="file"):
+def save_csv_desc(data, path, loc="file", encoding=None):
     """
     Save data table to a dictionary file with an inlined table.
 
@@ -354,12 +355,13 @@ def save_csv_desc(data, path, loc="file"):
         data: Data to be saved (2D numpy array, pandas DataFrame, or a :class:`.datafile.DataFile` object containing this data).
         path (str): Path to the file or a file-like object.
         loc (str): Location type.
+        encoding: if a new file location is opened, this specifies the encoding.
     """
     data,output_format=get_output_format(data,"csv_desc")
-    f=location.LocationFile(location.get_location(path,loc))
+    f=location.LocationFile(location.get_location(path,loc,encoding=encoding))
     output_format.write(f,data)
 
-def save_bin(data, path, dtype=None, transposed=False, loc="file"):
+def save_bin(data, path, dtype=None, transposed=False, loc="file", encoding=None):
     """
     Save data to a binary file.
     
@@ -369,12 +371,13 @@ def save_bin(data, path, dtype=None, transposed=False, loc="file"):
         dtype: :class:`numpy.dtype` describing the data. By default, use little-endian (``"<"``) variant kind of the supplied data array dtype.
         transposed (bool): If ``False``, write the data row-wise; otherwise, write it column-wise.
         loc (str): Location type.
+        encoding: if a new file location is opened, this specifies the encoding.
     """
     data,output_format=get_output_format(data,"bin",dtype=dtype,transposed=transposed)
-    f=location.LocationFile(location.get_location(path,loc))
+    f=location.LocationFile(location.get_location(path,loc,encoding=encoding))
     output_format.write(f,data)
 
-def save_bin_desc(data, path, loc="file"):
+def save_bin_desc(data, path, loc="file", encoding=None):
     """
     Save data to a binary file with an additional description file, which contains all of the data related to loading (shape, dtype, columns, etc.)
     
@@ -382,12 +385,13 @@ def save_bin_desc(data, path, loc="file"):
         data: Data to be saved (2D numpy array, pandas DataFrame, or a :class:`.datafile.DataFile` object containing this data).
         path (str): Path to the file or a file-like object.
         loc (str): Location type.
+        encoding: if a new file location is opened, this specifies the encoding.
     """
     data,output_format=get_output_format(data,"bin_desc")
-    f=location.LocationFile(location.get_location(path,loc))
+    f=location.LocationFile(location.get_location(path,loc,encoding=encoding))
     output_format.write(f,data)
 
-def save_dict(data, path, param_formats=None, use_rep_classes=False, table_format="inline", inline_delimiters="\t", inline_formats=None, save_props=True, save_comments=True, save_time=True, loc="file"):
+def save_dict(data, path, param_formats=None, use_rep_classes=False, table_format="inline", inline_delimiters="\t", inline_formats=None, save_props=True, save_comments=True, save_time=True, loc="file", encoding=None):
     """
     Save dictionary to a text file.
     
@@ -407,17 +411,18 @@ def save_dict(data, path, param_formats=None, use_rep_classes=False, table_forma
         save_comments (bool): If ``True`` and saving :class:`.datafile.DataFile` object, save its comments metainfo.
         save_time (bool): If ``True``, append the file creation time in the end.
         loc (str): Location type.
+        encoding: if a new file location is opened, this specifies the encoding.
     """
     data,output_format=get_output_format(data,"dict",param_formats=param_formats,use_rep_classes=use_rep_classes,table_format=table_format,inline_delimiters=inline_delimiters,
         inline_formats=inline_formats,save_props=save_props,save_comments=save_comments,save_time=save_time)
-    f=location.LocationFile(location.get_location(path,loc))
+    f=location.LocationFile(location.get_location(path,loc,encoding=encoding))
     output_format.write(f,data)
 
 
 
 
 
-def save_generic(data, path, output_format=None, loc="file", **kwargs):
+def save_generic(data, path, output_format=None, loc="file", encoding=None, **kwargs):
     """
     Save data to a file.
     
@@ -429,6 +434,7 @@ def save_generic(data, path, output_format=None, loc="file", **kwargs):
             a string with one of the default format names, or 
             an already prepared :class:`IOutputFileFormat` object. 
         loc (str): Location type.
+        encoding: if a new file location is opened, this specifies the encoding.
     
     `**kwargs` are passed to the file formatter constructor
     (see :class:`CSVTableOutputFileFormat`, :class:`DictionaryOutputFileFormat` and :class:`TableBinaryOutputFileFormat` for the possible arguments).
@@ -448,6 +454,6 @@ def save_generic(data, path, output_format=None, loc="file", **kwargs):
         else:
             raise ValueError("can't determine output file format for data: {}".format(data))
     data,output_format=get_output_format(data,output_format,**kwargs)
-    loc=location.get_location(path,loc)
+    loc=location.get_location(path,loc,encoding=encoding)
     f=location.LocationFile(loc)
     output_format.write(f,data)
