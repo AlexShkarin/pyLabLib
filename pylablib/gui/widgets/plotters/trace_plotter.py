@@ -165,7 +165,7 @@ class TracePlotter(QLayoutManagedWidget):
         ``"factor"`` - rescaling factor applied before plotting.
         """
         self.channels=channels.copy()
-        self.channel_indices=channel_indices or list(channels.keys())
+        self.channel_indices=channel_indices or list(channels)
         colors=all_colors*len(channels)
         for idx in self.channel_indices:
             ch=self.channels[idx]
@@ -216,17 +216,22 @@ class TracePlotter(QLayoutManagedWidget):
         self._drag_lines[name]=self.TDragLine(channels,{},line)
         line.sigPositionChanged.connect(self._make_line_updater(name),QtCore.Qt.DirectConnection)
         self._update_drag_lines()
+    def _get_axis_index(self, axis):
+        try:
+            return self.channel_indices.index(axis)
+        except ValueError:
+            return -1
     def _make_line_updater(self, name):
         @controller.exsafe
         def update():
-            xaxis=self.ctl.v["channels/xaxis"] if self.ctl else 0
+            xaxis=self._get_axis_index(self.ctl.v["channels/xaxis"]) if self.ctl else 0
             self._drag_lines[name].positions[xaxis]=self._drag_lines[name].line.getPos()[0]
         return update
     def _update_drag_lines(self, par=None):
         if par is None:
-            xaxis=self.ctl.v["channels/xaxis"] if self.ctl else 0
+            xaxis=self._get_axis_index(self.ctl.v["channels/xaxis"]) if self.ctl else 0
         else:
-            xaxis=par["channels/xaxis"]
+            xaxis=self._get_axis_index(par["channels/xaxis"])
         for dln in self._drag_lines.values():
             if dln.channels=="all" or self.channel_indices[xaxis] in dln.channels:
                 visible=True
@@ -249,10 +254,7 @@ class TracePlotter(QLayoutManagedWidget):
         """
         if only_visible and not self.is_line_visible(name):
             return None
-        if channel is None:
-            channel=self.ctl.v["channels/xaxis"]
-        else:
-            channel=self.channel_indices.index(channel)
+        channel=self._get_axis_index(self.ctl.v["channels/xaxis"] if channel is None else channel)
         return self._drag_lines[name].positions.get(channel,None)
     def set_line_position(self, name, position, channel=None, only_visible=True):
         """
@@ -266,12 +268,10 @@ class TracePlotter(QLayoutManagedWidget):
         xaxis=self.ctl.v["channels/xaxis"]
         if channel is None:
             channel=xaxis
-        else:
-            channel=self.channel_indices.index(channel)
         if channel==xaxis:
             self._drag_lines[name].line.setPos(position)
         else:
-            self._drag_lines[name].positions[channel]=position
+            self._drag_lines[name].positions[self._get_axis_index(channel)]=position
     def center_line(self, name, only_visible=True):
         """
         Center line with the given name within the plot range.
@@ -422,7 +422,7 @@ class TracePlotter(QLayoutManagedWidget):
         if any(autorange):
             self.plot_widget.plotItem.enableAutoRange(x=autorange[0],y=autorange[1])
         self.plot_widget.setLabel("bottom",self.channels[xaxis]["legend_name"])
-    def update_plot(self, data=None, idx_column=None):
+    def update_plot(self, data=None, idx_column=None, force=False):
         """
         Update plot data.
 
@@ -431,9 +431,10 @@ class TracePlotter(QLayoutManagedWidget):
                 if not supplied, can be grabbed automatically from the default data source (if supplied).
             idx_column: name of the default index column; if the "order by" column name is the same as `idx_column`, no data re-ordering is performed.
                 doesn't need to be supplied, but can improve plotting speed somewhat.
+            force: if ``False``, update plot only when visible and ``Update plot`` button is enabled; otherwise, always update
         """
         par=self.ctl.get_all_values() if self.ctl else {"channels/xaxis":self.channel_indices[0], "channels/order_by":self.channel_indices[0], "plotting/update_plot":True}
-        if par["plotting/update_plot"] and (self.isVisible() or not self.update_only_on_visible):
+        if force or (par["plotting/update_plot"] and (self.isVisible() or not self.update_only_on_visible)):
             if data is None:
                 data=self.get_data_from_source()
             self._draw_plot(data=data,par=par,idx_column=idx_column)
@@ -443,7 +444,7 @@ class TracePlotter(QLayoutManagedWidget):
         if update:
             par=self.ctl.get_all_values() if self.ctl else {"plotting/update_plot":True}
             if par["plotting/update_plot"] and (self.isVisible() or not self.update_only_on_visible):
-                self._draw_plot(include=("markers"))
+                self._draw_plot(include=("markers",))
             
 
 
