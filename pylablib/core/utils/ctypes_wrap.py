@@ -32,6 +32,7 @@ def setup_func(func, argtypes, restype=None, errcheck=None):
         func.restype=restype
     if errcheck is not None:
         func.errcheck=errcheck
+    return func
 
 def _default_argprep(arg, argtype):
     """Prepare `arg` to be convertible to the ctypes type `argtype`"""

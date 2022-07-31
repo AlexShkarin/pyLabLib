@@ -1022,7 +1022,7 @@ class IAttributeCamera(ICamera):
     def _update_attributes(self, replace=False):
         """Update ``attributes`` dictionary; if ``replace==True``, replace it entirely, otherwise, simply update it"""
         attrs=self._list_attributes()
-        attrs_dict=dictionary.Dictionary({self._normalize_attribute_name(p.name):p for p in attrs})
+        attrs_dict=dictionary.Dictionary(attrs if isinstance(attrs,dict) else {self._normalize_attribute_name(p.name):p for p in attrs})
         if replace:
             self.attributes=attrs_dict
         else:
