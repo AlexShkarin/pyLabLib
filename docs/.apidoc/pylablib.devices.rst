@@ -11,6 +11,7 @@ Subpackages
     pylablib.devices.Arcus
     pylablib.devices.Arduino
     pylablib.devices.Attocube
+    pylablib.devices.Basler
     pylablib.devices.Conrad
     pylablib.devices.Cryocon
     pylablib.devices.Cryomagnetics

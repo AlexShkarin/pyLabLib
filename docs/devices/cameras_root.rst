@@ -16,6 +16,7 @@ Currently supported cameras:
 
     cameras_basics
     Andor
+    Basler
     DCAM
     IMAQ
     IMAQdx

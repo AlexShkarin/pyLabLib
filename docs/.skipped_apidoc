@@ -9,6 +9,8 @@
 ..\pylablib\devices\Andor\atmcd32d_lib.py
 ..\pylablib\devices\Arcus\ArcusPerformaxDriver_defs.py
 ..\pylablib\devices\Arcus\ArcusPerformaxDriver_lib.py
+..\pylablib\devices\Basler\pylonC_defs.py
+..\pylablib\devices\Basler\pylonC_lib.py
 ..\pylablib\devices\DCAM\dcamapi4_defs.py
 ..\pylablib\devices\DCAM\dcamapi4_lib.py
 ..\pylablib\devices\DCAM\dcamprop_defs.py
