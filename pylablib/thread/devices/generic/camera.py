@@ -258,8 +258,11 @@ class GenericCameraThread(device_thread.DeviceThread):
     def _estimate_buffers_num(self):
         if self.device:
             n_fixed=self.min_buffer_size[1]
-            n_rate=self.min_buffer_size[0]/self.device.get_frame_period()
-            return int(max(n_fixed,n_rate))
+            try:
+                n_rate=self.min_buffer_size[0]/self.device.get_frame_period()
+                return int(max(n_fixed,n_rate))
+            except (self.DeviceError,AttributeError):  # pylint: disable=catching-non-exception
+                return n_fixed
         return None
     def _prepare_applied_parameters(self, parameters):
         pass

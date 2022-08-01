@@ -454,6 +454,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
     def get_frame_period(self):
         return 1./self.cav["FrameRate"]
     def set_frame_period(self, frame_period):
+        """Set frame period (time between two consecutive frames in the internal trigger mode)"""
         p_frame_rate=self.get_attribute("FrameRate",update_properties=True,error_on_missing=False)
         if p_frame_rate is None or not p_frame_rate.writable:
             return
