@@ -1,12 +1,12 @@
-from . import sc2_camexport_lib
 from .sc2_camexport_lib import wlib as lib, PCO_ERR, PCOSC2Error, PCOSC2LibError, PCO_INTERFACE, sc2_defs, CAPS1, MAX_SCHEDULED_BUFFERS
 
 from ...core.utils import dictionary, py3, general, nbtools
-from ...core.utils.ctypes_wrap import class_tuple_to_dict
+from ...core.utils.ctypes_wrap import class_tuple_to_dict, setup_func
 from ...core.devio import interface
 from ..interface import camera
 
 import numpy as np
+import numba as nb
 import collections
 import time
 import ctypes
@@ -110,12 +110,9 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         self.handle=None
         self.reboot_on_fail=reboot_on_fail
         self._full_camera_data=dictionary.Dictionary()
-        self._buffers=None
-        self._full_buffer=None
-        self._buffer_looping=False
+        self._buffer_mgr=None
+        self._schedule_looper=self.ScheduleLooper()
         self._buffer_loop_thread=None
-        self._next_schedule_buffer=0
-        self._frame_notifier=camera.FrameNotifier()
         self._buffer_overruns=None
         self._status_line_enabled=False
         self.v=dictionary.ItemAccessor(lambda n:self._full_camera_data[n])
@@ -330,31 +327,46 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         return bool(lib.PCO_ForceTrigger(self.handle))
 
     ### Acquisition controls ###
-    class Buffer:
-        """Single frame buffer object, which controls setup, cleanup, and synchronization"""
-        def __init__(self, buff, size, metadata_size=0):
-            self.buff=buff
-            self.event=lib.CreateEvent()
-            self.size=size
-            self.status=sc2_camexport_lib.DWORD()
-            self.metadata_size=metadata_size
-            self.lock=threading.Lock()
-        def wait(self, timeout):
-            if not self.lock.acquire(timeout=(-1 if timeout is None else timeout)):
-                return False
-            wait_res=lib.WaitForSingleObject(self.event,(-1 if timeout is None else np.int32(timeout*1000)))==0
-            self.lock.release()
-            return wait_res
-        def is_done(self):
-            return lib.WaitForSingleObject(self.event,0)==0
+
+    class ScheduleLooper:
+        """
+        Numba schedule loop manager.
+        
+        Compiles the loop function and provides callback storage.
+        """
+        def __init__(self):
+            self.evt=threading.Event()
+            self.cnotify=ctypes.CFUNCTYPE(ctypes.c_int)(self.notify)
+            self.looper=_make_schedule_looper(self.cnotify)
         def reset(self):
-            with self.lock:
-                lib.ResetEvent(self.event)
-        def release(self):
-            if self.buff is not None:
-                lib.CloseHandle(self.event)
-                self.buff=None
-                self.event=None
+            self.evt.clear()
+        def notify(self):
+            if self.evt is not None:
+                self.evt.set()
+            return 0
+    class BufferManager:
+        """
+        Frame buffer managers.
+
+        Stores and accesses frame buffer and status arrays and buffer info.
+        """
+        def __init__(self, nbuff, size, metadata_size=0):
+            self.nbuff=int(nbuff)
+            self.size=size
+            self.metadata_size=metadata_size
+            self.full_size=size+metadata_size
+            self.comm=np.zeros(1,dtype="i8")
+            self.stat=np.zeros(2,dtype="i8")
+            self._full_buffer=ctypes.create_string_buffer(self.full_size*nbuff)
+            buff_ptr=ctypes.addressof(self._full_buffer)
+            self._buffers=[buff_ptr+self.full_size*i for i in range(nbuff)]
+            self._npbuffers=np.array(self._buffers,dtype="u8")
+            self._full_status=ctypes.create_string_buffer(nbuff*4)
+            stat_ptr=ctypes.addressof(self._full_status)
+            self._statuses=np.array([stat_ptr+i*4 for i in range(nbuff)],dtype="u8")
+        def get_buffer_ptr(self, n):
+            """Get address of n'th frame buffer"""
+            return self._buffers[n%self.nbuff]
     def _get_buffer_size(self):
         dim=self._get_data_dimensions_rc()
         mm_size=self._get_metadata_size()
@@ -363,69 +375,41 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         return dim[0]*dim[1]*2,mm_size
     def _allocate_buffers(self, n):
         frame_size,metadata_size=self._get_buffer_size()
-        self._full_buffer=ctypes.create_string_buffer((frame_size+metadata_size)*n)
-        buff_ptr=ctypes.addressof(self._full_buffer)
-        self._buffers=[self.Buffer(buff_ptr+(frame_size+metadata_size)*i,frame_size+metadata_size,metadata_size=metadata_size) for i in range(n)]
-        self._frame_notifier.reset()
-        self._next_schedule_buffer=0
+        self._buffer_mgr=self.BufferManager(n,frame_size,metadata_size)
         return n
-    def _schedule_buffer(self, buff, n=0):
-        lib.PCO_AddBufferExtern(self.handle,buff.event,0,n,n,0,buff.buff,buff.size,ctypes.pointer(buff.status))
-    def _schedule_all_buffers(self, n=None, set_idx=False):
-        if self._buffers:
-            if n is None:
-                n=min(len(self._buffers),MAX_SCHEDULED_BUFFERS)
-            for i,b in enumerate(self._buffers[:n]):
-                self._schedule_buffer(b,i+1 if set_idx else 0)
-                self._next_schedule_buffer+=1
     def _unschedule_all_buffers(self):
-        if self._buffers:
+        if self._buffer_mgr:
             lib.PCO_CancelImages(self.handle)
     def _deallocate_buffers(self):
-        if self._buffers is not None:
-            for b in self._buffers:
-                b.release()
-            self._buffers=None
-            self._full_buffer=None
+        self._buffer_mgr=None
     def _get_acquired_frames(self):
-        return self._frame_notifier.counter
+        return self._buffer_mgr.stat[1] if self._buffer_mgr is not None else 0
         
-    def _loop_schedule_refresh_buffers(self):
-        nbuff=len(self._buffers)
-        nsched=min(nbuff,MAX_SCHEDULED_BUFFERS) # API limit on actually scheduled buffers
-        while self._buffer_looping:
-            actioned=False
-            if self._frame_notifier.counter<self._next_schedule_buffer: # scheduled buffers available
-                buff=self._buffers[self._frame_notifier.counter%nbuff]
-                succ=buff.wait(timeout=0.001)
-                if succ:
-                    self._frame_notifier.inc()
-                actioned=True
-            if self._next_schedule_buffer<self._frame_notifier.counter+nsched:
-                buff=self._buffers[self._next_schedule_buffer%nbuff]
-                buff.reset()
-                self._schedule_buffer(buff)
-                self._next_schedule_buffer+=1
-                actioned=True
-            if not actioned:
-                time.sleep(0.001)
-    def _start_reading_loop(self):
+    def _start_reading_loop(self, set_idx=False):
         self._stop_reading_loop()
         self._buffer_overruns=0 if self._status_line_enabled else None
-        self._buffer_loop_thread=threading.Thread(target=self._loop_schedule_refresh_buffers,daemon=True)
-        self._buffer_looping=True
+        self._buffer_loop_thread=threading.Thread(target=self._run_schedule_looper,args=[set_idx],daemon=True)
+        self._buffer_mgr.comm[0]=1
+        self._schedule_looper.reset()
         self._buffer_loop_thread.start()
+        if not self._schedule_looper.evt.wait(timeout=1.):
+            raise PCOSC2Error("could not start scheduling loop")
+    def _run_schedule_looper(self, set_idx=False):
+        code=self._schedule_looper.looper(self.handle.value,self._buffer_mgr.nbuff,self._buffer_mgr._npbuffers,self._buffer_mgr._statuses,
+            self._buffer_mgr.full_size,set_idx,self._buffer_mgr.comm,self._buffer_mgr.stat)
+        if code:
+            raise PCOSC2LibError("PCO_AddBufferExtern",code,lib=lib)
     def _stop_reading_loop(self):
         if self._buffer_loop_thread is not None:
-            self._buffer_looping=False
+            self._buffer_mgr.comm[0]=0
             self._buffer_loop_thread.join()
             self._buffer_loop_thread=None
     def get_internal_buffer_status(self):
         """Get the status of the internal smaller API buffer, showing the number of scheduled frames there, and the maximal number that can be scheduled"""
-        if self._buffers is None:
+        if self._buffer_mgr is None:
             return TInternalBufferStatus(0,0,0)
-        size=len(self._buffers)
-        scheduled=self._next_schedule_buffer-self._frame_notifier.counter
+        size=self._buffer_mgr.nbuff
+        scheduled=self._buffer_mgr.stat[0]-self._buffer_mgr.stat[1]
         scheduled_max=min(size,MAX_SCHEDULED_BUFFERS)
         return TInternalBufferStatus(scheduled,scheduled_max,self._buffer_overruns)
         
@@ -525,13 +509,11 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         self._arm()
         self._status_line_enabled=self.get_status_line_mode()[0]
         if self._is_pco_edge() and self._is_camlink():
-            self._schedule_all_buffers(set_idx=True)
-            self._start_reading_loop()
+            self._start_reading_loop(set_idx=True)
             lib.PCO_SetRecordingState(self.handle,1)
         else:
             lib.PCO_SetRecordingState(self.handle,1)
-            self._schedule_all_buffers(set_idx=False)
-            self._start_reading_loop()
+            self._start_reading_loop(set_idx=False)
         self._frame_counter.reset(self._acq_params["nframes"])
     def stop_acquisition(self):
         """
@@ -730,11 +712,9 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         else:
             return 0
 
-    def _wait_for_next_frame(self, timeout=20., idx=None):
-        self._frame_notifier.wait(idx=idx,timeout=timeout)
     _support_chunks=True
     def _parse_frames_data(self, ptr, nframes, shape):
-        stride=self._buffers[0].size
+        stride=self._buffer_mgr.full_size
         buffer=np.ctypeslib.as_array(ctypes.cast(ptr,ctypes.POINTER(ctypes.c_ubyte)),shape=(stride*nframes,))
         size=shape[0]*shape[1]*2
         framedata=np.empty(nframes*size,dtype="u1")
@@ -744,9 +724,7 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         return frames
     def _read_frames(self, rng, return_info=False):
         shape=self._get_data_dimensions_rc()
-        base=ctypes.addressof(self._full_buffer)
-        stride=self._buffers[0].size
-        buffer_frames=len(self._buffers)
+        buffer_frames=self._buffer_mgr.nbuff
         start=rng[0]%buffer_frames
         stop=start+(rng[1]-rng[0])
         if stop<=buffer_frames:
@@ -754,7 +732,7 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         else:
             l0=buffer_frames-start
             chunks=[(rng[0],start,l0),(rng[0]+l0,0,stop-start-l0)]
-        frames=[self._parse_frames_data(base+s*stride,l,shape) for (_,s,l) in chunks]
+        frames=[self._parse_frames_data(self._buffer_mgr.get_buffer_ptr(s),l,shape) for (_,s,l) in chunks]
         if self._status_line_enabled and frames and len(frames[-1]):
             self._buffer_overruns=max(self._buffer_overruns,get_status_line(frames[-1][-1,:,:]).framestamp-rng[-1]-1)
         return frames,None
@@ -767,6 +745,48 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
 
 copy_strided=nbtools.copy_array_strided(par=False)
 
+
+def _make_schedule_looper(cnotify):
+    CreateEvent=lib.kernel32.CreateEventA
+    CreateEvent.argtypes[-1]=ctypes.c_void_p
+    CloseHandle=lib.kernel32.CloseHandle
+    ResetEvent=lib.kernel32.ResetEvent
+    WaitForSingleObject=lib.kernel32.WaitForSingleObject
+    Sleep=setup_func(lib.kernel32.Sleep,argtypes=[ctypes.c_uint32])
+    PCO_AddBufferExtern=lib.lib.PCO_AddBufferExtern
+    PCO_AddBufferExtern.argtypes[-1]=ctypes.c_void_p
+    @nb.njit(nb.i4(nb.u8,nb.u4,nb.u8[:],nb.u8[:],nb.u4,nb.u4,nb.i8[:],nb.i8[:]),fastmath=False,parallel=False,nogil=True)
+    def looper(hcam, nbuff, buffers, statuses, buffer_size, set_idx, comm, stat): # comm is 1-array [looping], stat is 2-array [scheduled, read]
+        events=np.empty(nbuff,dtype=nb.uint64)
+        for i1 in range(nbuff):
+            events[i1]=CreateEvent(0,1,0,0)
+        to_schedule=nbuff if nbuff<32 else 32
+        for i2 in range(to_schedule):
+            n=i2+1 if set_idx else 0
+            code=PCO_AddBufferExtern(hcam,events[i2],0,n,n,0,buffers[i2],buffer_size,statuses[i2])
+            stat[0]+=1
+            if code:
+                break
+        cnotify()
+        while (not code) and comm[0]:
+            acted=False
+            if stat[1]<stat[0]:
+                idx=stat[1]%nbuff
+                if WaitForSingleObject(events[idx],2)==0:
+                    stat[1]+=1
+                acted=True
+            if stat[0]<stat[1]+to_schedule:
+                idx=stat[0]%nbuff
+                ResetEvent(events[idx])
+                code=PCO_AddBufferExtern(hcam,events[idx],0,0,0,0,buffers[idx],buffer_size,statuses[idx])
+                stat[0]+=1
+                acted=True
+            if not acted:
+                Sleep(1)
+        for i3 in range(nbuff):
+            CloseHandle(events[i3])
+        return code
+    return looper
 
 
 
