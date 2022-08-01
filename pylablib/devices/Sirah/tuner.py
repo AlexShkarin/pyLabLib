@@ -9,7 +9,7 @@ class MatisseTuner:
     """
     Matisse tuner.
 
-    Helps to coordiante with an external wavemeter to perform more complicated tasks: motors calibration, fine frequency tuning, and stitching scans.
+    Helps to coordinate with an external wavemeter to perform more complicated tasks: motors calibration, fine frequency tuning, and stitching scans.
 
     Args:
         laser: opened Matisse laser object
@@ -69,7 +69,7 @@ class MatisseTuner:
         return np.column_stack([position,diode_power,thinet_power,frequency])
     def scan_centered(self, motor, span, step):
         """
-        Scan the given motor (``"bifi"`` or ``"thinet"``) in discerete steps in a given span around the current position.
+        Scan the given motor (``"bifi"`` or ``"thinet"``) in discrete steps in a given span around the current position.
 
         After the scan, return the motor to the original position.
 
@@ -84,8 +84,8 @@ class MatisseTuner:
         """
         Do a quick continuous scan of the given motor (``"bifi"`` or ``"thinet"``) within the given range.
 
-        Compared to :meth:`scan_steps`, which does a seires of discrete defined moves, this method does a single continuous move and records values in its progress.
-        This is quicker, but does nto allow for the step size control, and results in non-uniform recorded positions.
+        Compared to :meth:`scan_steps`, which does a series of discrete defined moves, this method does a single continuous move and records values in its progress.
+        This is quicker, but does not allow for the step size control, and results in non-uniform recorded positions.
         If ``autodir==False``, first initialize the motor to `start` and then move to `stop`; otherwise, initialize to whichever border is closer.
 
         Return a 4-column numpy array containing motor position, internal diode power, thin etalon reflection power, and wavemeter frequency.
@@ -122,12 +122,12 @@ class MatisseTuner:
         return scan
     def scan_both_motors(self, bifi_rng, te_rng, verbose=False):
         """
-        Perform a 2D grid scan changing positions of both BiFi and thin etalon motors.
+        Perform a 2D grid scan changing positions of both birefringent filter and thin etalon motors.
 
         `bifi_rng` and `te_rng` are both 3-tuples ``(start, stop, step)`` specifying the scan ranges.
-        If ``verbose==True``, print a message per every bifi position indicating the scan progress.
+        If ``verbose==True``, print a message per every birefringent filter position indicating the scan progress.
         
-        Return a 5-column numpy array containing bifi motor position, thin etalon motor position, internal diode power, thin etalon reflection power, and wavemeter frequency.
+        Return a 5-column numpy array containing birefringent filter motor position, thin etalon motor position, internal diode power, thin etalon reflection power, and wavemeter frequency.
         """
         self.unlock_all()
         diode_power=[]
@@ -152,13 +152,13 @@ class MatisseTuner:
         return np.column_stack([bffpos,tefpos,diode_power,thinet_power,frequency])
     def scan_both_motors_quick(self, bifi_rng, te_rng, verbose=False):
         """
-        Perform a quick 2D grid scan changing positions of both BiFi and thin etalon motors.
+        Perform a quick 2D grid scan changing positions of both birefringent filter and thin etalon motors.
 
-        For each discrete postiion of a BiFi motor perform a quick scan of the thin etalon motor.
+        For each discrete position of a birefringent filter motor perform a quick scan of the thin etalon motor.
         `bifi_rng` is a 3-tuple ``(start, stop, step)``, while ``te_rng`` is a 2-tuple ``(start, stop)`` specifying the scan ranges.
-        If ``verbose==True``, print a message per every bifi position indicating the scan progress.
+        If ``verbose==True``, print a message per every birefringent filter position indicating the scan progress.
         
-        Return a 5-column numpy array containing bifi motor position, thin etalon motor position, internal diode power, thin etalon reflection power, and wavemeter frequency.
+        Return a 5-column numpy array containing birefringent filter motor position, thin etalon motor position, internal diode power, thin etalon reflection power, and wavemeter frequency.
         """
         self.unlock_all()
         bffpos=[]
@@ -240,7 +240,7 @@ class MatisseTuner:
     _bifi_search_step=(1800,3,200)  # bifi "zoom-in" parameters ``(init, factor, final)``
     # start with ``init`` step size, and every time the desired frequency is reached, reduce it by ``factor``, until ``final`` (or smaller) step size is reached
     _bifi_pos_dir=1  # direction of bifi tuning corresponding to the increasing frequencies
-    _bifi_plateau_span=50E9  # maximal estimate of the frequency variation withing one bifi 'plateu' (frequency changes smaller than that are ignored during tuning)
+    _bifi_plateau_span=50E9  # maximal estimate of the frequency variation withing one bifi 'plateau' (frequency changes smaller than that are ignored during tuning)
     def _align_bifi(self, target, approach="both"):
         s0,sr,sm=self._bifi_search_step
         s=s0*(1 if target>self.get_frequency() else -1)*self._bifi_pos_dir
@@ -312,7 +312,7 @@ class MatisseTuner:
     # start with ``init`` position step, and every time the desired frequency is reached, reduce it by ``factor`` and flip the direction,
     # until ``final`` (or smaller) position step is reached
     _fine_tune_speed=0.1  # speed of fine tuning (slow enough to avoid mode hopping, fast enough to be quick)
-    _fine_tune_dir=1  # direction of slow peizo tuning corresponding to the increasing frequencies
+    _fine_tune_dir=1  # direction of slow piezo tuning corresponding to the increasing frequencies
     def slow_piezo_tune_to(self, target):
         """Fine tune the laser to the given target frequency using only slow piezo tuning"""
         pos=self.laser.get_slowpiezo_position()

@@ -8,7 +8,7 @@ Basler cameras interface
 
 Basler manufactures a wide variety of cameras, which implement GenICam-based interface through its pylon API. It has been tested with pylon-provded emulated camera camera.
 
-The code is located in :mod:`pylablib.devices.Basler`, and the main camera class is :class:`pylablib.devices.Basler.BaslerPylonCamera<.Basler.BaslerPylonCamera>`.
+The code is located in :mod:`pylablib.devices.Basler`, and the main camera class is :class:`pylablib.devices.Basler.BaslerPylonCamera<.pylon.BaslerPylonCamera>`.
 
 Software requirements
 ----------------------
@@ -25,7 +25,7 @@ These cameras require ``PylonC_vX_Y.dll`` (where ``X`` and ``Y`` is the pylon ve
 Connection
 ----------------------
 
-The cameras are identified either by their index among the present cameras (starting from 0), or by their name. To get the list of all cameras, you can use pylon Viewer, or :func:`.Basler.list_cameras`::
+The cameras are identified either by their index among the present cameras (starting from 0), or by their name. To get the list of all cameras, you can use pylon Viewer, or :func:`Basler.list_cameras<.pylon.list_cameras>`::
 
     >> from pylablib.devices import Basler
     >> Basler.list_cameras()
