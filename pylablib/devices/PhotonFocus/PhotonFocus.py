@@ -536,7 +536,7 @@ class PhotonFocusIMAQCamera(IPhotonFocusCamera,IMAQFrameGrabber):
     Error=DeviceError
     GrabberClass=IMAQFrameGrabber
     def __init__(self, imaq_name="img0", pfcam_port=0):
-        super().__init__(pfcam_port=pfcam_port,name=imaq_name)
+        super().__init__(pfcam_port=pfcam_port,imaq_name=imaq_name)
 
     def open(self):
         super().open()

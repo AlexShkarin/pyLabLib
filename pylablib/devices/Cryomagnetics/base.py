@@ -37,10 +37,11 @@ class LM500(SCPI.SCPIDevice):
 
     def close(self):
         """Close connection to the device"""
-        try:
-            self.write("LOCAL")
-        finally:
-            SCPI.SCPIDevice.close(self)
+        if self.is_opened():
+            try:
+                self.write("LOCAL")
+            finally:
+                SCPI.SCPIDevice.close(self)
     _reset_comm="*RST;REMOTE"
 
     def _instr_write(self, msg):
@@ -216,3 +217,24 @@ class LM500(SCPI.SCPIDevice):
     #     Can be a channel number (1 or 2) or ``'sel'``, if the digital input select is used.
     #     """
     #     self.ask("OUT?","int")
+
+
+class LM510(LM500):
+    """
+    Cryomagnetics 510 level monitor.
+
+    Compared to :class:`LM500`, adds additional specific methods to enable/disable automatic refill.
+
+    Channels are enumerated from 1.
+    To abort filling or reset a timeout, call :meth:`.SCPIDevice.reset` method.
+
+    Args:
+        conn: serial connection parameters (usually port or a tuple containing port and baudrate)
+    """
+    
+    _p_ctrl_mode=interface.EnumParameterClass("control_mode",{"off":"Off","auto":"Auto"})
+    @interface.use_parameters(mode="control_mode")
+    def set_control_mode(self, mode, channel=None):
+        """Set automated refill mode on a given channel (``None`` for the current channel); can be ``"off"`` or ``"auto"``"""
+        self._select_channel(channel)
+        self.write("CTRL",mode)

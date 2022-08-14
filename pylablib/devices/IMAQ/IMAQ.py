@@ -199,7 +199,7 @@ class IMAQFrameGrabber(camera.IROICamera):
     def _get_data_dimensions_rc(self):
         return self.get_grabber_attribute_value("ROI_HEIGHT"),self.get_grabber_attribute_value("ROI_WIDTH")
     def get_detector_size(self):
-        _,_,mw,mh=lib.imgSessionFitROI(self.sid,0,0,0,2**31-1,2**31-1)
+        _,_,mh,mw=lib.imgSessionFitROI(self.sid,0,0,0,2**31-1,2**31-1)
         return mw,mh
     get_grabber_detector_size=get_detector_size
     def get_roi(self):
@@ -221,8 +221,8 @@ class IMAQFrameGrabber(camera.IROICamera):
     def get_roi_limits(self, hbin=1, vbin=1):
         minp=lib.imgSessionFitROI(self.sid,0,0,0,1,1)
         detsize=self.get_detector_size()
-        hlim=camera.TAxisROILimit(minp[2],detsize[0],1,1,1)
-        vlim=camera.TAxisROILimit(minp[3],detsize[1],1,1,1)
+        hlim=camera.TAxisROILimit(minp[3],detsize[0],1,1,1)
+        vlim=camera.TAxisROILimit(minp[2],detsize[1],1,1,1)
         return hlim,vlim
     get_grabber_roi_limits=get_roi_limits
 

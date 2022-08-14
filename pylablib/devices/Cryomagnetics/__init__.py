@@ -1,1 +1,1 @@
-from .base import LM500, CryomagneticsError
+from .base import LM500, LM510, CryomagneticsError
