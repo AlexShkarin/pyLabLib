@@ -7,6 +7,7 @@ Subpackages
 .. toctree::
 
     pylablib.devices.AWG
+    pylablib.devices.AlliedVision
     pylablib.devices.Andor
     pylablib.devices.Arcus
     pylablib.devices.Arduino

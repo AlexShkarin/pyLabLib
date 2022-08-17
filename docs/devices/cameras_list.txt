@@ -1,4 +1,5 @@
 - :ref:`Andor SDK2 <cameras_andor_sdk2>` and :ref:`Andor SDK3 <cameras_andor_sdk3>`: variety of Andor (currently part of Oxford Instruments) cameras. Tested with Andor iXon, Luca, Zyla, Neo and Marana.
+- :ref:`Allied Visiion Bonito <cameras_allvis>` cameras: CameraLink-interfaced cameras. Tested with Bonito CL-400B/C and NI IMAQ frame grabber.
 - :ref:`Basler <cameras_basler>`: Basler pylon-compatible cameras. Tested with an emulated Basler camera.
 - :ref:`DCAM <cameras_dcam>`: Hamamatsu cameras. Tested with Hamamatsu Orca Flash 4.0 and ImagEM.
 - :ref:`NI IMAQ <cameras_imaq>`: National Instruments frame grabbers. Tested with NI PCI-1430 and PCI-1433 frame grabbers together with PhotonFocus MV-D1024E camera.
