@@ -18,6 +18,7 @@ Currently supported cameras:
     Andor
     AlliedVision
     Basler
+    BitFlow
     DCAM
     IMAQ
     IMAQdx

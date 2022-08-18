@@ -3,6 +3,7 @@ from .pfcam_lib import wlib as lib, PFCamError, PFCamLibError
 
 from ..IMAQ.IMAQ import IMAQFrameGrabber
 from ..SiliconSoftware.fgrab import SiliconSoftwareFrameGrabber
+from ..BitFlow.BitFlow import BitFlowFrameGrabber
 from ...core.utils import py3, dictionary
 from ...core.devio.comm_backend import DeviceError
 from ..interface import camera
@@ -252,7 +253,7 @@ class IPhotonFocusCamera(camera.IAttributeCamera): # pylint: disable=abstract-me
                 self.pfcam_opened=True
                 self.setup_max_baudrate()
                 self._update_attributes()
-                self._update_grabber_roi()
+                self._ensure_grabber_roi()
                 self._hstep=self._get_roi_step("h")
                 self._vstep=self._get_roi_step("v")
         except self.Error:
@@ -351,6 +352,13 @@ class IPhotonFocusCamera(camera.IAttributeCamera): # pylint: disable=abstract-me
         if self.GrabberClass:
             r,c=self._get_pf_data_dimensions_rc()
             self.GrabberClass.set_roi(self,0,c,0,r)
+            roi=self.GrabberClass.get_roi(self)
+            w,h=roi[1]-roi[0],roi[3]-roi[2]
+            return h,w
+    def _ensure_grabber_roi(self, hstart=0, vstart=0):
+        gdim=self._update_grabber_roi()
+        if gdim is not None and gdim!=self._get_pf_data_dimensions_rc():
+            self.set_roi(hstart,hstart+gdim[1],vstart,vstart+gdim[0])
     def get_roi(self):
         """
         Get current ROI.
@@ -416,7 +424,7 @@ class IPhotonFocusCamera(camera.IAttributeCamera): # pylint: disable=abstract-me
         self.ucav["Window/Y"]=vstart
         self.ucav["Window/W"]=min(hend-hstart,grabber_detector_size[0]) # in case the previous assignment truncated
         self.ucav["Window/H"]=min(vend-vstart,grabber_detector_size[1])
-        self._update_grabber_roi()
+        self._ensure_grabber_roi(hstart=hstart,vstart=vstart)
         return self.get_roi()
     def get_roi_limits(self, hbin=1, vbin=1): # pylint: disable=unused-argument
         params=[self.ca[p] for p in ["Window/W","Window/H"]]
@@ -579,6 +587,47 @@ class PhotonFocusSiSoCamera(IPhotonFocusCamera,SiliconSoftwareFrameGrabber):
         ppbpp=self._get_camera_bytepp()
         if ppbpp is not None:
             self.setup_camlink_pixel_format(ppbpp,2)
+
+
+
+class PhotonFocusBitFlowCamera(IPhotonFocusCamera,BitFlowFrameGrabber):
+    """
+    BitFlow+PFCam interface to a PhotonFocus camera.
+
+    Args:
+        bitflow_idx: board index, starting from 0
+        bitflow_camfile: if not ``None``, a path to a valid camera file used for this frame grabber and camera combination;
+            in this case, a temporary camera file is generated based on the provided one and used to change some otherwise unavailable camera parameters
+            such as ROI and pixel bit depth (they are otherwise fixed to whatever is specified in the default camera file)
+        pfcam_port: port number for pfcam interface (can be learned by :func:`list_cameras`; port number is the first element of the camera data tuple)
+            can also be a tuple ``(manufacturer, port)``, e.g., ``("National Instruments", "port0")``.
+    """
+    Error=DeviceError
+    GrabberClass=BitFlowFrameGrabber
+    def __init__(self, bitflow_idx=0, bitflow_camfile=None, pfcam_port=0):
+        super().__init__(pfcam_port=pfcam_port,bitflow_camfile=bitflow_camfile,bitflow_idx=bitflow_idx)
+        self._max_readout_rate=500  # maximal bitflow buffer readout rate; used to inform the frame_merge parameter of the frame grabber
+
+    def open(self):
+        super().open()
+        self._ensure_pixel_format()
+
+    def setup_acquisition(self, mode="sequence", nframes=100, frame_merge=None):
+        if frame_merge is None:
+            if self._max_readout_rate is not None:
+                frame_merge=max(1,int(1/(self._max_readout_rate*self.get_frame_period())))
+            else:
+                frame_merge=1
+        super().setup_acquisition(mode=mode,nframes=nframes,frame_merge=frame_merge)
+
+    def _ensure_pixel_format(self):
+        fgbpp=self._get_board_info("bpp")
+        ppbpp=self._get_camera_bytepp()
+        if ppbpp is not None and ppbpp!=fgbpp:
+            msg=(   "PhotonFocus pixel format {} does not agree with the frame grabber {} bits per pixel; "
+                    "changing PhotonFocus pixel format accordingly; to use the original format, alter the camera file".format(self.cav["DataResolution"],fgbpp))
+            warnings.warn(msg)
+            self._set_camera_bytepp(fgbpp)
 
 
 

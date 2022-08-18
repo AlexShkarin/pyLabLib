@@ -13,6 +13,7 @@ Subpackages
     pylablib.devices.Arduino
     pylablib.devices.Attocube
     pylablib.devices.Basler
+    pylablib.devices.BitFlow
     pylablib.devices.Conrad
     pylablib.devices.Cryocon
     pylablib.devices.Cryomagnetics

@@ -1,1 +1,1 @@
-from .PhotonFocus import SiliconSoftwarePhotonFocusCameraThread, IMAQPhotonFocusCameraThread
+from .PhotonFocus import SiliconSoftwarePhotonFocusCameraThread, IMAQPhotonFocusCameraThread, BitFlowPhotonFocusCameraThread
