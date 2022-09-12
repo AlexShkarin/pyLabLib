@@ -723,7 +723,6 @@ class Dictionary:
         if isinstance(other,dict):
             return self._data==other
         if isinstance(other,type(self)):
-            # print(self._data,other._data,self._data==other._data)
             return self._data==other._data and self._case_normalization==other._case_normalization
         return False
     

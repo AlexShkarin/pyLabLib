@@ -17,6 +17,9 @@ class GenericPIController(comm_backend.ICommBackendWrapper,stage.IMultiaxisStage
 
     Args:
         conn: connection parameters (usually port or a tuple containing port and baudrate)
+        auto_online: if ``True``, switch to the online mode upon connection;
+            in this online mode controller parameters are controlled remotely instead of the front panel (including external voltages),
+            while in the offline mode most of the parameters are still controlled manually, and the remote connection is mostly used for readout
     """
     Error=PhysikInstrumenteError
     def __init__(self, conn, auto_online=True):
@@ -191,6 +194,9 @@ class PIE516(GenericPIController):
 
     Args:
         conn: serial connection parameters (usually port or a tuple containing port and baudrate)
+        auto_online: if ``True``, switch to the online mode upon connection;
+            in this online mode controller parameters such as voltages or positions are controlled remotely instead of the front panel (including external voltages),
+            while in the offline mode most of the parameters are still controlled manually, and the remote connection is mostly used for readout
     """
     def __init__(self, conn, auto_online=True):
         super().__init__(conn,auto_online=auto_online)

@@ -6,7 +6,7 @@
 Allied Vision Bonito cameras
 ============================
 
-Allied Vision manufactures a variety of cameras with different interfaces: USB, GigE, and CameraLink. Currently, only CameraLink Bonito cameras using NI IMAQ frame grabber are supported.
+Allied Vision manufactures a variety of cameras with different interfaces: USB, GigE, and CameraLink. Currently, only CameraLink Bonito cameras using NI IMAQ frame grabber are supported. It has been tested with Bonito CL-400B/C and NI IMAQ frame grabber.
 
 The code is located in :mod:`pylablib.devices.AlliedVision`, and the main camera class is :class:`pylablib.devices.AlliedVision.BonitoIMAQCamera<.Bonito.BonitoIMAQCamera>`.
 
