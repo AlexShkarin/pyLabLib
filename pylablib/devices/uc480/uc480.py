@@ -358,6 +358,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         min_gain=100
         ivalue=max(min(ivalue,max_gain),min_gain)
         self.lib.is_SetHWGainFactor(self.hcam,uc480_defs.GAINFACTOR.IS_SET_MASTER_GAIN_FACTOR+i,ivalue)
+    @camera.acqcleared
     def set_gains(self, master=None, red=None, green=None, blue=None):
         """
         Set current gains.
@@ -371,6 +372,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
     def get_gain_boost(self):
         """Check if gain boost is enabled"""
         return bool(self.lib.is_SetGainBoost(self.hcam,uc480_defs.GAIN.IS_GET_SUPPORTED_GAINBOOST) and self.lib.is_SetGainBoost(self.hcam,uc480_defs.GAIN.IS_GET_GAINBOOST))
+    @camera.acqcleared
     def set_gain_boost(self, enabled):
         """Enable or disable gain boost"""
         if self.lib.is_SetGainBoost(self.hcam,uc480_defs.GAIN.IS_GET_SUPPORTED_GAINBOOST):

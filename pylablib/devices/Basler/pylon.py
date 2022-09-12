@@ -648,7 +648,7 @@ class BaslerPylonCamera(camera.IROICamera, camera.IAttributeCamera, camera.IExpo
         if self._raw_readout_format=="frame":
             return data[:,None,:]
         if self._raw_readout_format=="rows":
-            return data.reshape((shape[0],-1,n))
+            return data.reshape((n,shape[0],-1))
         supported_formats=["Mono8","Mono10","Mono12","Mono16","Mono32"]
         if pixel_format not in supported_formats:
             sf_string=", ".join(supported_formats)

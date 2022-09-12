@@ -6,7 +6,7 @@ class UC480CameraThread(camera.GenericCameraThread):
 
     See :class:`GenericCameraThread`.
     """
-    parameter_variables=camera.GenericCameraThread.parameter_variables|{"exposure","frame_period","detector_size","pixel_rate","buffer_size","acq_status","roi_limits","roi"}
+    parameter_variables=camera.GenericCameraThread.parameter_variables|{"exposure","frame_period","detector_size","pixel_rate","gains","buffer_size","acq_status","roi_limits","roi"}
     _frameinfo_include_fields={ "frame_index","framestamp","timestamp_dev","io_status",
                                 "timestamp_year","timestamp_month","timestamp_day","timestamp_hour","timestamp_minute","timestamp_second","timestamp_millisecond"}
     def connect_device(self):
