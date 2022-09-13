@@ -58,17 +58,18 @@ def ai8(x, off):
 ##### Array tools #####
 
 @functools.lru_cache(1024)
-def copy_array_chunks(base="u1", par=False):
+def copy_array_chunks(base="u1", par=False, nogil=True):
     """
     Generate and compile a numba function for copying an array in chunks.
     `base` specifies the base array type (by default, unsigned byte);
     if ``par==True``, generate a parallelized implementation.
+    if ``nogil==True``, use the ``nogil`` numba option to release GIL during the execution.
 
     The returned function takes 4 arguments: source array, destination array, number of chunks, and size (in elements) of each chunk.
     """
     ain=c_array(base,readonly=True)
     aout=c_array(base,readonly=False)
-    @nb.njit(nb.void(ain,aout,nb.u8,nb.u8),parallel=par)
+    @nb.njit(nb.void(ain,aout,nb.u8,nb.u8),parallel=par,nogil=nogil)
     def copy(src, dst, n, size):
         for i in nb.prange(n):  # pylint: disable=not-an-iterable
             for p in range(size):
@@ -76,11 +77,12 @@ def copy_array_chunks(base="u1", par=False):
     return copy
 
 @functools.lru_cache(1024)
-def copy_array_strided(base="u1", par=False):
+def copy_array_strided(base="u1", par=False, nogil=True):
     """
     Generate and compile a numba function for copying an array in chunks with an arbitrary stride.
     `base` specifies the base array type (by default, unsigned byte);
     if ``par==True``, generate a parallelized implementation.
+    if ``nogil==True``, use the ``nogil`` numba option to release GIL during the execution.
 
     The returned function takes 6 arguments: source array, destination array, number of chunks, size (in elements) of each chunk,
     chunks stride (in elements) in the source array, and offset (in elements) from the beginning of the first array.
@@ -88,7 +90,7 @@ def copy_array_strided(base="u1", par=False):
     """
     ain=c_array(base,readonly=True)
     aout=c_array(base,readonly=False)
-    @nb.njit(nb.void(ain,aout,nb.u8,nb.u8,nb.u8,nb.u8),parallel=par)
+    @nb.njit(nb.void(ain,aout,nb.u8,nb.u8,nb.u8,nb.u8),parallel=par,nogil=nogil)
     def copy_strided(src, dst, n, size, stride, off):
         for i in nb.prange(n):  # pylint: disable=not-an-iterable
             for p in range(size):

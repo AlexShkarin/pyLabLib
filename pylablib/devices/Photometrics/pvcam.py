@@ -864,7 +864,7 @@ def get_roi_parameters(buffer):
         imbytes=ssz*psz*bypp
         roi_off=32+resize+imbytes
     return roi_data
-@nb.njit(nb.u4[:,:](u1_1_RC,nb.u8,nb.u8))
+@nb.njit(nb.u4[:,:](u1_1_RC,nb.u8,nb.u8),nogil=True)
 def parse_metainfo_v1(buffer, nframes, stride):
     """
     Extract frames metainfo for frames with v1 or v2 header.
@@ -885,7 +885,7 @@ def parse_metainfo_v1(buffer, nframes, stride):
         metainfo[f,6]=buffer[p+37]
         p+=stride
     return metainfo
-@nb.njit(nb.u8[:,:](u1_1_RC,nb.u8,nb.u8))
+@nb.njit(nb.u8[:,:](u1_1_RC,nb.u8,nb.u8),nogil=True)
 def parse_metainfo_v3(buffer, nframes, stride):
     """
     Extract frames metainfo for frames with v3 header.

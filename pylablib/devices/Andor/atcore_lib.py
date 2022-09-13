@@ -192,7 +192,7 @@ try:
     NBError=nb.errors.NumbaError
     nb_uint8_ro=nb.typeof(np.frombuffer(b"\x00",dtype="u1").reshape((1,1))) # for readonly attribute of a numpy array
     nb_width=nb.typeof(np.empty([0]).shape[0]) # pylint: disable=unsubscriptable-object
-    @nb.njit(nb.uint16[:,:](nb_uint8_ro,nb_width),parallel=False)
+    @nb.njit(nb.uint16[:,:](nb_uint8_ro,nb_width),parallel=False,nogil=True)
     def read_uint12(raw_data, width):
         """
         Convert packed 12bit data (3 bytes per 2 pixels) into unpacked 16bit data (2 bytes per pixel).
