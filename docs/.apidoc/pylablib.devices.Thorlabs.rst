@@ -22,6 +22,15 @@ pylablib.devices.Thorlabs.base module
     :undoc-members:
     :show-inheritance:
 
+pylablib.devices.Thorlabs.elliptec module
+-----------------------------------------
+
+.. automodule:: pylablib.devices.Thorlabs.elliptec
+    :members:
+    :inherited-members:
+    :undoc-members:
+    :show-inheritance:
+
 pylablib.devices.Thorlabs.kinesis module
 ----------------------------------------
 

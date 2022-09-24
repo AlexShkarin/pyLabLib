@@ -255,6 +255,7 @@ psu
 photonics
 solstis
 addr
+addrs
 websocket
 terascan
 brf
@@ -423,3 +424,4 @@ repr
 bifi
 wavemeters
 bitflow
+Elliptec
