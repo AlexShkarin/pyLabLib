@@ -28,6 +28,7 @@ def _check_nidaqmx():
 
 
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["name","model","serial_number"])
+TVoltageOutputClockParameters=collections.namedtuple("TVoltageOutputClockParameters",["rate","sync_with_ai","continuous","samps_per_chan","autoloop"])
 def get_device_info(name):
     """
     Get device info.
@@ -77,6 +78,10 @@ class NIDAQ(interface.IDevice):
         self.do_channels={}
         self.ao_channels={}
         self.ao_values={}
+        self.ao_array=None
+        self.ao_array_single=None
+        self.ao_autoloop=True
+        self._ao_written=0
         self.cpi_counter=0
         self.clk_channel_base=20E6
         self.max_ao_write_rate=1000 # maximal rate of repeating ao waveform with continuous repetition
@@ -129,6 +134,10 @@ class NIDAQ(interface.IDevice):
         self.ao_task=None
         self.ao_channels={}
         self.ao_values={}
+        self.ao_array=None
+        self.ao_array_single=None
+        self.ao_autoloop=True
+        self._ao_written=0
         if self.cpi_task is not None:
             self.cpi_task.close()
         self.cpi_task=None
@@ -570,21 +579,7 @@ class NIDAQ(interface.IDevice):
             rng=(ch.ao_min,ch.ao_max)
             params.append((n,term,rng))
         return params
-    @reraise
-    def set_voltage_outputs(self, names, values):
-        """
-        Set values of one or several analog voltage outputs.
-
-        Args:
-            names(str or [str]): name or list of names of outputs.
-            values: output value or list values.
-                These can be single numbers, or arrays if the output clock is setup (see :meth:`setup_voltage_output_clock`).
-                In the latter case it sets up the output waveforms; not that waveforms for all channels must have the same length
-                (a single number signifying a constant output is also allowed)
-                If the analog output is set up to the finite mode (``continuous==False``), the finite waveform output happens right away,
-                with the number of samples determined by `samps_per_channel` parameter of :meth:`setup_voltage_output_clock`.
-                In this case, if the supplied waveform is shorter than the number of samples, it gets repeated; if it's longer, it gets cut off.
-        """
+    def _update_voltage_output_values(self, names, values, single_shot=0):
         if not funcargparse.is_sequence(names,"array"):
             names=[names]
             values=[values]
@@ -593,9 +588,6 @@ class NIDAQ(interface.IDevice):
                 raise ValueError("channel '{}' doesn't exist".format(n))
         for n,v in zip(names,values):
             self.ao_values[n]=v
-        waveform_output=self.ao_task.timing.samp_timing_type!=nidaqmx.constants.SampleTimingType.ON_DEMAND
-        if waveform_output:
-            self.ao_task.stop()
         val=[self.ao_values[ch.name] for ch in self.ao_task.ao_channels]
         ls=[len(v) for v in val if np.ndim(v)==1]
         if not np.all([l==ls[0] for l in ls]):
@@ -603,23 +595,94 @@ class NIDAQ(interface.IDevice):
         if not np.all([np.ndim(v)==np.ndim(val[0]) for v in val]):
             val=[(v if np.ndim(v)==1 else [v]*ls[0]) for v in val]
         val=np.array(val)
+        self.ao_array=val[...,single_shot:]
+        self.ao_array_single=val[...,:single_shot] if single_shot else None
+    def _write_voltage_output_values(self, minsamp=0, force_restart=True):
+        val=self.ao_array
+        sval=self.ao_array_single
+        self.ao_array_single=None
+        if val is None:
+            return
+        if sval is None:
+            svshape=(val.shape[0],0) if val.ndim==2 else (0,)
+            sval=np.zeros(svshape,dtype=val.dtype)
+        waveform_output=self.ao_task.timing.samp_timing_type!=nidaqmx.constants.SampleTimingType.ON_DEMAND
         if waveform_output:
-            min_out_len=max(2,int(self.ao_task.timing.samp_clk_rate//self.max_ao_write_rate)+1)
+            min_out_len=max(2,int(self.ao_task.timing.samp_clk_rate//self.max_ao_write_rate)+1,minsamp)
             if val.ndim==1:
                 val=np.column_stack([val]*min_out_len)
-            elif val.shape[1]<min_out_len:
-                nreps=min_out_len//val.shape[1]+1
-                val=np.concatenate([val]*nreps,axis=1)
+            elif sval.shape[1]+val.shape[1]<min_out_len:
+                nreps=(min_out_len-sval.shape[1])//val.shape[1]+1
+                val=np.concatenate([sval]+[val]*nreps,axis=1)
+            elif sval.shape[-1]:
+                val=np.concatenate([sval,val],axis=1)
             if self.ao_task.timing.samp_quant_samp_mode==nidaqmx.constants.AcquisitionType.FINITE:
                 max_out_len=self.ao_task.timing.samp_quant_samp_per_chan
                 val=val[:,:max_out_len]
-        elif (not waveform_output) and val.ndim==2:
+            nval=val.shape[1]
+        elif val.ndim==2:
             val=val[:,0]
         val=np.require(val,requirements=["C","W"])
-        if len(val)==1:
-            self.ao_task.write(val[0],auto_start=True if waveform_output else nidaqmx.task.AUTO_START_UNSET)
+        val=val[0] if len(val)==1 else val
+        if waveform_output and (force_restart or self.ao_autoloop):
+            self.ao_task.stop()
+            self.ao_task.write(val,auto_start=True)
+            self._ao_written=nval
         else:
-            self.ao_task.write(val,auto_start=True if waveform_output else nidaqmx.task.AUTO_START_UNSET)
+            self.ao_task.write(val)
+            if waveform_output:
+                self._ao_written+=nval
+    @reraise
+    def set_voltage_outputs(self, names, values, minsamp=1, force_restart=True, single_shot=0):
+        """
+        Set values of one or several analog voltage outputs.
+
+        Args:
+            names(str or [str]): name or list of names of outputs.
+            values: output value or list values.
+                These can be single numbers, or arrays if the output clock is setup (see :meth:`setup_voltage_output_clock`).
+                In the latter case it sets up the output waveforms; note that waveforms for all channels must have the same length
+                (a single number signifying a constant output is also allowed)
+                If the analog output is set up to the finite mode (``continuous==False``), the finite waveform output happens right away,
+                with the number of samples determined by `samps_per_channel` parameter of :meth:`setup_voltage_output_clock`.
+                In this case, if the supplied waveform is shorter than the number of samples, it gets repeated; if it's longer, it gets cut off.
+            minsamp: in non-autoloop mode, specifies the minimal number of samples to write to the output buffer; if the length of `values` is
+                less than this number, than the waveform is repeated by a required integer number of times to produce at least `minsamp` samples
+            force_restart: if ``True``, restart the output after writing to immediately start otuputting the new waveforms;
+                otherwise, add it to the end of the buffer; only applies in non-autoloop mode (autoloop mode always restarts)
+            single_shot: specifies some number of samples from the start as "single-shot", so whenever the waveform is repeated
+                (either to reach `minsamp` samples, or when :meth:`fill_voltage_output_buffer` is called), this part is ignored, and only the rest is repeated
+        """
+        self._update_voltage_output_values(names,values,single_shot=single_shot)
+        if self.ao_autoloop or force_restart:
+            self._write_voltage_output_values(minsamp=minsamp or 0,force_restart=force_restart)
+        else:
+            self.fill_voltage_output_buffer(minsamp=minsamp)
+    def get_voltage_output_buffer_fill(self):
+        """
+        Get the number of samples still in the output buffer.
+
+        Only applies to non-autoloop mode, and return ``None`` otherwise.
+        """
+        try:
+            if not self.ao_autoloop:
+                ngen=self.ao_task.out_stream.total_samp_per_chan_generated
+                return self._ao_written-ngen
+        except self.BackendError:
+            pass
+    @reraise
+    def fill_voltage_output_buffer(self, minsamp=1):
+        """
+        Add samples to the output buffer until there are at least `minsamp` samples there.
+
+        Only applies to non-autoloop mode, and does nothing otherwise. The added samples are determined based
+        on the last data written by :meth:`set_voltage_outputs` and the ``single_shot`` argument specified there.
+        """
+        curr_fill=self.get_voltage_output_buffer_fill()
+        if curr_fill is not None and minsamp is not None and curr_fill<minsamp:
+            self._write_voltage_output_values(minsamp-curr_fill,force_restart=False)
+
+
     def get_voltage_outputs(self, names=None):
         """
         Get values of one or several analog voltage outputs.
@@ -637,7 +700,7 @@ class NIDAQ(interface.IDevice):
             names=funcargparse.as_sequence(names,allowed_type="array")
         return [self.ao_values[n] for n in names]
     @reraise
-    def setup_voltage_output_clock(self, rate=0, sync_with_ai=False, continuous=True, samps_per_chan=1000):
+    def setup_voltage_output_clock(self, rate=0, sync_with_ai=False, continuous=True, samps_per_chan=1000, autoloop=True, minsamp=1):
         """
         Setup analog output clock configuration.
 
@@ -647,7 +710,14 @@ class NIDAQ(interface.IDevice):
                 note that in this case output changes only when the analog read task is running
             continuous: if ``True``, any written waveform gets repeated continuously; otherwise, it outputs written waveform only once,
                 and then latches the output on the last value
-            samps_per_chan: if ``continuous==False``, it determines number of samples to output before stopping
+            samps_per_chan: if ``continuous==False``, it determines number of samples to output before stopping;
+                otherwise, it determines the size of the output buffer
+            autoloop: if it is ``True``, then the specified output waveforms are automatically repeated to create a periodic output signal
+                (referred to as "regeneration mode" in NI DAQ terminology); otherwise, written output data is "exhausted" onse sent to the output,
+                so the application needs to continuously write output waveforms to avoid output buffer from running empty (which causes an error).
+                This mode gives better control over the output and allows to seamlesly adjust it in real time, but it is more demanding on the application.
+            minsamp: if the waveform has been specified before, this argument sets th minimal number of samples to write to the output buffer
+                after the clock is set up and the output is restarted
         """
         if not len(self.ao_task.ao_channels):
             return
@@ -659,20 +729,25 @@ class NIDAQ(interface.IDevice):
             self.ao_task.timing.cfg_samp_clk_timing(self.rate,source="ai/SampleClock",samps_per_chan=int(samps_per_chan),sample_mode=sample_mode)
         else:
             self.ao_task.timing.cfg_samp_clk_timing(rate,source="",samps_per_chan=int(samps_per_chan),sample_mode=sample_mode)
+        self.ao_autoloop=True
+        self.ao_task.out_stream.regen_mode=nidaqmx.constants.RegenerationMode.ALLOW_REGENERATION
         if self.ao_task.timing.samp_timing_type!=nidaqmx.constants.SampleTimingType.ON_DEMAND:
             if continuous:
-                self.set_voltage_outputs(self.ao_names,[self.ao_values[n] for n in self.ao_names])
+                if not autoloop:
+                    self.ao_autoloop=False
+                    self.ao_task.out_stream.regen_mode=nidaqmx.constants.RegenerationMode.DONT_ALLOW_REGENERATION
+                self.set_voltage_outputs(self.ao_names,[self.ao_values[n] for n in self.ao_names],minsamp=minsamp)
     @reraise
     def get_voltage_output_clock_parameters(self):
         """
         Get analog output clock configuration.
 
-        Return tuple ``(rate, sync_with_ai, continuous, samps_per_chan)``.
+        Return tuple ``(rate, sync_with_ai, continuous, samps_per_chan, autoloop)``.
         """
         if (not self.ao_channels) or self.ao_task.timing.samp_timing_type==nidaqmx.constants.SampleTimingType.ON_DEMAND:
-            return (0,False,1000,True)
+            return TVoltageOutputClockParameters(0,False,1000,True,True)
         sync_with_ai=self.ao_task.timing.samp_clk_src.endswith("ai/SampleClock")
         rate=self.ao_task.timing.samp_clk_rate
         samps_per_chan=self.ao_task.timing.samp_quant_samp_per_chan
         continuous=self.ao_task.timing.samp_quant_samp_mode!=nidaqmx.constants.AcquisitionType.FINITE
-        return (rate,sync_with_ai,continuous,samps_per_chan)
+        return TVoltageOutputClockParameters(rate,sync_with_ai,continuous,samps_per_chan,self.ao_autoloop)
