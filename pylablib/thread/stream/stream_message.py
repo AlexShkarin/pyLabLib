@@ -117,6 +117,9 @@ class DataStreamMessage(IStreamMessage):
         for k,v in kwargs.items():
             if v is not None:
                 self.metainfo[k]=v
+    def _add_default_metainfo_args(self, **kwargs):
+        for k,v in kwargs.items():
+            self.metainfo.setdefault(k,v)
     def _build_copy_arg(self, name, *arg):
         if name in self._metainfo_args:  # already in metainfo
             return arg[0] if arg else None
@@ -289,7 +292,9 @@ class FramesMessage(DataStreamMessage):
         source: frames source, e.g., camera or processor
         tag: extra batch tag
         creation_time: message creation time (if ``None``, use current time)
-        step: expected index step between the frames
+        step: expected index step between the frames (1 if not supplied)
+        chandim: number of trailing dimensions which correspond to channels (e.g., color channels);
+            0 (default) means a monochrome image, 1 means that frames have a single (e.g., color) dimension in the end, etc.
         chunks: if ``True``, force all `frames` elements to be chunks (of length 1 if necessary);
             otherwise, if all of them are single-frame 2D arrays, keep them this way
         metainfo: additional metainfo dictionary; the contents is arbitrary, but it's assumed to be message-wide, i.e., common for all frames in the message;
@@ -299,9 +304,10 @@ class FramesMessage(DataStreamMessage):
     All of the supplied additional data (source, tag, etc.) is automatically added in the metainfo dictionary.
     It can be either directly, e.g., ``msg.metainfo["source"]``, or through the ``.mi`` accessor, e.g., ``msg.mi.source``.
     """
-    def __init__(self, frames, indices=None, frame_info=None, source=None, tag=None, creation_time=None, step=1, chunks=False, metainfo=None, sn=None, sid=None, mid=None):
+    def __init__(self, frames, indices=None, frame_info=None, source=None, tag=None, creation_time=None, step=None, chandim=None, chunks=False, metainfo=None, sn=None, sid=None, mid=None):
         super().__init__(source=source,tag=tag,creation_time=creation_time,metainfo=metainfo,sn=sn,sid=sid,mid=mid)
-        self._add_metainfo_args(step=step)
+        self._add_metainfo_args(step=step,chandim=chandim)
+        self._add_default_metainfo_args(step=1,chandim=0)
         if isinstance(frames,tuple):
             frames=list(frames)
         elif not isinstance(frames,list):
@@ -331,13 +337,18 @@ class FramesMessage(DataStreamMessage):
     def __bool__(self):
         return len(self)>0
 
-    _metainfo_args=DataBlockMessage._metainfo_args|{"step"}
+    _metainfo_args=DataBlockMessage._metainfo_args|{"step","chandim"}
     def _setup_chunks(self):
-        frames=self.frames
+        chandim=self.mi.chandim
         if not self.chunks:
-            self.chunks=any([f.ndim>2 for f in frames])
+            self.chunks=any([f.ndim>2+chandim for f in self.frames])
         if self.chunks:
-            self.frames=[f[None] if f.ndim==2 else f for f in frames]
+            self.frames=[f[None] if f.ndim==2+chandim else f for f in self.frames]
+        if chandim and self.frames:
+            chanshape=self.frames[0].shape[-chandim:]
+            for f in self.frames:
+                if f.shape[-chandim:]!=chanshape:
+                    raise ValueError("inconsistent channels shape: {} vs {}".format(chanshape,f.shape[-chandim:]))
         if self.indices is None:
             if self.chunks:
                 self.indices=[0]+list(np.cumsum([len(f) for f in self.frames]))[:-1]

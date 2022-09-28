@@ -73,13 +73,13 @@ class FrameBinningThread(controller.QTaskThread):
         self.acc_frame=None
         self.acc_frame_num=0
         self._recv_acc.clear()
-    def _bin_spatial(self, frames, n, dec, status_line):
+    def _bin_spatial(self, frames, n, dec, status_line, chandim=0):
         if n!=(1,1):
             sl=camera_utils.extract_status_line(frames,status_line,copy=False)
             if n[0]>1:
-                frames=filters.decimate(frames,n[0],dec=dec,axis=-2)
+                frames=filters.decimate(frames,n[0],dec=dec,axis=-2-chandim)
             if n[1]>1:
-                frames=filters.decimate(frames,n[1],dec=dec,axis=-1)
+                frames=filters.decimate(frames,n[1],dec=dec,axis=-1-chandim)
             if sl is not None:
                 frames=camera_utils.insert_status_line(frames,status_line,sl,copy=(dec=="skip"))
         return frames
@@ -96,16 +96,17 @@ class FrameBinningThread(controller.QTaskThread):
             sl=camera_utils.extract_status_line(frames[0],status_line,copy=False)
             res=camera_utils.insert_status_line(res,status_line,sl,copy=False)
         return res
-    def _update_buffer(self, frames, status_line):
+    def _update_buffer(self, frames, status_line, chandim):
         par=self.v["params"]
-        if frames.ndim==2:
+        if frames.ndim==2+chandim:
             frames=frames[None]
         dtype=frames.dtype if par["dtype"] is None else par["dtype"]
-        frames=self._bin_spatial(frames,par["spat/bin"],par["spat/mode"],status_line)
+        frames=self._bin_spatial(frames,par["spat/bin"],par["spat/mode"],status_line,chandim=chandim)
         time_bin,time_bin_mode=par["time/bin"],par["time/mode"]
         if time_bin>1:
-            if self.acc_frame is not None and frames.shape[-2:]!=self.acc_frame.shape:
+            if self.acc_frame is not None and frames.shape[-2-chandim:]!=self.acc_frame.shape:
                 self._clear_buffer()
+                return None
             binned_frames=[]
             time_dec_mode=time_bin_mode if time_bin_mode!="mean" else "sum"
             if time_dec_mode=="sum":
@@ -152,7 +153,9 @@ class FrameBinningThread(controller.QTaskThread):
         self._recv_acc.add_message(msg)
         frames=[]
         for chunk in msg.frames:
-            proc_chunk=self._update_buffer(chunk,msg.metainfo.get("status_line"))
+            proc_chunk=self._update_buffer(chunk,msg.metainfo.get("status_line"),chandim=msg.mi.chandim)
+            if proc_chunk is None:
+                return
             l=len(proc_chunk)
             if l:
                 frames.append(proc_chunk if msg.chunks else proc_chunk[0])
@@ -577,7 +580,7 @@ class BackgroundSubtractionThread(controller.QTaskThread):
         """Process and emit new frame"""
         if self._new_show_frame and not self.v["overridden"]:
             show_frame=self.process_frame(self.last_frame.frame,status_line=self.last_frame.status_line)
-            self.send_multicast(dst="any",tag=self.tag_out,value=self.frames_src.build_message(show_frame,self.last_frame.index,[self.last_frame.info],
+            self.send_multicast(dst="any",tag=self.tag_out,value=self.frames_src.build_message(show_frame,self.last_frame.index,
                 source=self.name,metainfo=self.last_frame.metainfo))
         self._new_show_frame=False
 

@@ -536,7 +536,7 @@ class ImagePlotter(QLayoutManagedWidget):
         """
         if self.do_image_update or self.single_armed:
             img=np.asarray(img)
-            if img.ndim!=2 or (img.ndim==3 and img.shape[2] not in (3,4)):
+            if not (img.ndim==2 or (img.ndim==3 and img.shape[2] in (3,4))):
                 raise ValueError("only 2D images or 3D images with 3 or 4 color channels are allowed; got image with the shape {}".format(img.shape))
             self.img=img
             self.single_armed=False
@@ -552,7 +552,7 @@ class ImagePlotter(QLayoutManagedWidget):
             self.image_window.ui.histogram.hide()
     def _update_coordinate_systems(self):
         values=self._get_values()
-        imshape=self.img.shape
+        imshape=self.img.shape[:2]
         dimshape=imshape
         im2disp=transform.Indexed2DTransform()
         im2disp=im2disp.multiplied([1/self.xbin,1/self.ybin])
@@ -808,14 +808,14 @@ class ImagePlotter(QLayoutManagedWidget):
         if self.ybin>1:
             draw_img=filters.decimate(draw_img,self.ybin,dec=self.dec,axis=1)
         if values.v["transpose"]:
-            draw_img=draw_img.transpose()
+            draw_img=draw_img.transpose(1,0,*range(2,draw_img.ndim))
         if values.v["flip_x"]:
             draw_img=draw_img[::-1,:]
         if values.v["flip_y"]:
             draw_img=draw_img[:,::-1]
         return draw_img
     def _get_draw_img_shape(self):
-        shape=np.array(self.img.shape)
+        shape=np.array(self.img.shape[:2])
         values=self._get_values()
         shape//=[self.xbin,self.ybin]
         if values.v["transpose"]:
@@ -859,6 +859,9 @@ class ImagePlotter(QLayoutManagedWidget):
                         hmin-=1
                 x_cut=draw_img[:,hmin:hmax].mean(axis=1) if hlineon and hmin<draw_img.shape[1] else []
                 y_cut=draw_img[vmin:vmax,:].mean(axis=0) if vlineon and vmin<draw_img.shape[0] else []
+                while np.ndim(x_cut)>1:
+                    x_cut=np.mean(x_cut,axis=-1)
+                    y_cut=np.mean(y_cut,axis=-1)
                 autorange=self.cut_plot_window.getViewBox().autoRangeEnabled()
                 self.cut_plot_window.disableAutoRange()
                 self.cut_lines[0].setData(np.arange(len(x_cut)),x_cut)

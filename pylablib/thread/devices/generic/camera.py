@@ -321,10 +321,10 @@ class GenericCameraThread(device_thread.DeviceThread):
         if "roi" in parameters:
             metainfo["roi"]=parameters["roi"]
         return metainfo
-    def _build_chunks(self, frames, infos, max_size=None):
+    def _build_chunks(self, frames, infos, max_size=None, chandim=0):
         if infos is not None and not all(isinstance(inf,np.ndarray) for inf in infos):
             return frames,infos
-        if any(f.ndim==3 for f in frames):
+        if any(f.ndim==3+chandim for f in frames):
             return frames,infos
         max_size=max_size or self._max_chunk_size_bytes
         chunks=[]
@@ -344,12 +344,12 @@ class GenericCameraThread(device_thread.DeviceThread):
         if infos is not None:
             infos=[np.asarray(infos[s:e]) for s,e in chunks]
         return frames,infos
-    def _expand_frame_infos(self, frames, indices, infos):  # pylint: disable=unused-argument
+    def _expand_frame_infos(self, frames, indices, infos, chandim=0):  # pylint: disable=unused-argument
         if infos is None:
             return None
         timestamp=int(time.time()*1E3)
-        infos=[np.column_stack([i[:,0],[timestamp]*len(i),[f.shape[-1]]*len(i),[f.shape[-2]]*len(i),i[:,1:]]) for i,f in zip(infos,frames)]
-        infos=[i[0] if f.ndim==2 else i for i,f in zip(infos,frames)]
+        infos=[np.column_stack([i[:,0],[timestamp]*len(i),[f.shape[-1-chandim]]*len(i),[f.shape[-2-chandim]]*len(i),i[:,1:]]) for i,f in zip(infos,frames)]
+        infos=[i[0] if f.ndim==2+chandim else i for i,f in zip(infos,frames)]
         return infos
     def _read_send_images(self):
         """Read and send new available images"""
@@ -370,22 +370,26 @@ class GenericCameraThread(device_thread.DeviceThread):
                 frames=[self.rpyc_obtain(frames)]
             else:
                 frames=self.rpyc_obtain(frames)
-            frames,infos=self._build_chunks(frames,infos)
-            if frames and frames[0].ndim==3:
+            if frames:
+                chandim=frames[0].ndim-(2 if frame_fmt=="list" else 3)
+            else:
+                chandim=0
+            frames,infos=self._build_chunks(frames,infos,chandim=chandim)
+            if frames and frames[0].ndim==3+chandim:
                 lch=np.array([len(f) for f in frames])
                 nread=int(sum(lch))
                 indices=[rng[1]-nread]+list(np.cumsum(lch[:-1])+rng[1]-nread)
             else:
                 nread=len(frames)
                 indices=list(range(rng[1]-nread,rng[1]))
-            infos=self._expand_frame_infos(frames,indices,infos)
+            infos=self._expand_frame_infos(frames,indices,infos,chandim=chandim)
             self.v["frames/acquired"]=rng[1]
             self.v["frames/read"]+=nread
             self.v["frames/buffer_filled"]=rng[1]-rng[0]
             self.v["frames/last_idx"]=rng[1]-1
             nsent=len(frames)
             if nsent:
-                msg=self.frames_src.build_message(frames,indices,infos,source="camera",metainfo=self._get_metainfo(frames,indices,infos),sn=self.name)
+                msg=self.frames_src.build_message(frames,indices,infos,source="camera",metainfo=self._get_metainfo(frames,indices,infos),chandim=chandim,sn=self.name)
                 self.send_multicast("any","frames/new",msg)
                 self.v["frames/last_frame"]=frames[-1] if frames[-1].ndim==2 else frames[-1][-1]
         return nsent
