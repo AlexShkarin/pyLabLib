@@ -648,7 +648,7 @@ class NIDAQ(interface.IDevice):
                 In this case, if the supplied waveform is shorter than the number of samples, it gets repeated; if it's longer, it gets cut off.
             minsamp: in non-autoloop mode, specifies the minimal number of samples to write to the output buffer; if the length of `values` is
                 less than this number, than the waveform is repeated by a required integer number of times to produce at least `minsamp` samples
-            force_restart: if ``True``, restart the output after writing to immediately start otuputting the new waveforms;
+            force_restart: if ``True``, restart the output after writing to immediately start outputting the new waveforms;
                 otherwise, add it to the end of the buffer; only applies in non-autoloop mode (autoloop mode always restarts)
             single_shot: specifies some number of samples from the start as "single-shot", so whenever the waveform is repeated
                 (either to reach `minsamp` samples, or when :meth:`fill_voltage_output_buffer` is called), this part is ignored, and only the rest is repeated
@@ -713,10 +713,10 @@ class NIDAQ(interface.IDevice):
             samps_per_chan: if ``continuous==False``, it determines number of samples to output before stopping;
                 otherwise, it determines the size of the output buffer
             autoloop: if it is ``True``, then the specified output waveforms are automatically repeated to create a periodic output signal
-                (referred to as "regeneration mode" in NI DAQ terminology); otherwise, written output data is "exhausted" onse sent to the output,
+                (referred to as "regeneration mode" in NI DAQ terminology); otherwise, written output data is "exhausted" once sent to the output,
                 so the application needs to continuously write output waveforms to avoid output buffer from running empty (which causes an error).
-                This mode gives better control over the output and allows to seamlesly adjust it in real time, but it is more demanding on the application.
-            minsamp: if the waveform has been specified before, this argument sets th minimal number of samples to write to the output buffer
+                This mode gives better control over the output and allows to seamlessly adjust it in real time, but it is more demanding on the application.
+            minsamp: if the waveform has been specified before, this argument sets the minimal number of samples to write to the output buffer
                 after the clock is set up and the output is restarted
         """
         if not len(self.ao_task.ao_channels):

@@ -195,6 +195,8 @@ class BasicKinesisDevice(comm_backend.ICommBackendWrapper):
     def get_device_info(self, dest="host"):
         """
         Get device info.
+
+        Return tuple ``(serial_no, model_no, fw_ver, hw_type, hw_ver, mod_state, nchannels, notes)``.
         """
         data=self.query(0x0005,dest=dest).data
         serial_no,=struct.unpack("<I",data[:4])
