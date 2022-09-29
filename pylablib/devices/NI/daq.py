@@ -224,15 +224,11 @@ class NIDAQ(interface.IDevice):
         return self._strip_channel_name(term) if term else None
 
     if nidaqmx is not None:
-        try:
-            _diff_cfg=nidaqmx.constants.TerminalConfiguration.DIFFERENTIAL  # pylint: disable=no-member
-        except AttributeError:
-            _diff_cfg=nidaqmx.constants.TerminalConfiguration.BAL_DIFF  # pylint: disable=no-member
         _voltage_input_terminal_cfgs={  "default":nidaqmx.constants.TerminalConfiguration.DEFAULT,
                                         "rse":nidaqmx.constants.TerminalConfiguration.RSE,
                                         "nrse":nidaqmx.constants.TerminalConfiguration.NRSE,
-                                        "diff":_diff_cfg,
-                                        "pseudodiff":nidaqmx.constants.TerminalConfiguration.PSEUDODIFFERENTIAL}
+                                        "diff":general.getattr_multivar(nidaqmx.constants.TerminalConfiguration,["DIFFERENTIAL","BAL_DIFF","DIFF"],default=10106),
+                                        "pseudodiff":general.getattr_multivar(nidaqmx.constants.TerminalConfiguration,["PSEUDODIFFERENTIAL","PSEUDO_DIFF"],default=12529)}
     else:
         _voltage_input_terminal_cfgs={}
     _p_voltage_input_terminal_cfg=interface.EnumParameterClass("voltage_input_terminal_cfg",_voltage_input_terminal_cfgs)

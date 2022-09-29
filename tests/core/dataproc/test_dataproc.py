@@ -140,6 +140,15 @@ def test_filters(table_loader):
     compare_tables(filters.fourier_filter(data,resp),ffldata,decimal=6)
     resp=filters.fourier_filter_bandstop(0.1-1E-5,0.2-1E-5)
     compare_tables(filters.fourier_filter(data,resp),data-ffldata,decimal=6)
+    # Running
+    for dec in ["mean","min"]:
+        flt=filters.RunningDecimationFilter(10,mode=dec)
+        pfdata=filters.sliding_filter(adata[:,0],10,dec=dec)[5:-5]
+        rfdata=np.array([flt.add(x) for x in adata[:,0]][10:])
+        compare_tables(rfdata,pfdata,decimal=6)
+        flt.reset()
+        rfdata=np.array([flt.add(x) for x in adata[:,0]][10:])
+        compare_tables(rfdata,pfdata,decimal=6)
 
 def test_fourier(table_loader):
     builder=table_loader.builder

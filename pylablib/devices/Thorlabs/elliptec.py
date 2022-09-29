@@ -86,11 +86,12 @@ class ElliptecMotor(comm_backend.ICommBackendWrapper):
         """Get a list of all connected device addresses"""
         return list(self._addrs)
     def _change_addr(self, addr, newaddr):
-        self._addrs[self._addrs.index(addr)]=newaddr
-        if self._default_addr==addr:
-            self._default_addr=newaddr
-        for d in [self._model_no,self._stage_scale,self._scale]:
-            d[newaddr]=d.pop(addr)
+        if addr in self._addrs:
+            self._addrs[self._addrs.index(addr)]=newaddr
+            if self._default_addr==addr:
+                self._default_addr=newaddr
+            for d in [self._model_no,self._stage_scale,self._scale]:
+                d[newaddr]=d.pop(addr)
     def get_default_addr(self):
         """Get the current default address"""
         return self._default_addr

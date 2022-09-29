@@ -33,6 +33,20 @@ def get_props(obj, prop_names):
     """
     return [getattr(obj,p) for p in prop_names]
 
+def getattr_multivar(obj, attrs, **kwargs):
+    """
+    Try to get an attribute of `obj` given a list `attrs` of its potential names.
+
+    If no attributes are found and ``default`` keyword argument is supplied, return this default value; otherwise, raise :exc:`AttributeError`.
+    """
+    for a in attrs:
+        try:
+            return getattr(obj,a)
+        except AttributeError:
+            pass
+    if "default" in kwargs:
+        return kwargs["default"]
+    raise AttributeError("{} object has no attributes {}".format(type(obj).__name__,attrs))
 
 
 ### Defaulting to method call in a function ###

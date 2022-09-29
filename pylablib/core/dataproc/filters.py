@@ -196,9 +196,8 @@ def _sliding_func(trace, filtering_function, width, mode="reflect", cval=0.):
     if width is None or width<=1:
         return trace
     l=len(trace)
-    width=(int(width)//2)*2+1
-    trace=utils.pad_trace(np.asarray(trace),pad=width//2,mode=mode,cval=cval)
-    return np.array([filtering_function(trace[i-width//2:i+width//2+1]) for i in range(width//2,l+width//2)])
+    trace=utils.pad_trace(np.asarray(trace),pad=(width-1)//2,mode=mode,cval=cval)
+    return np.array([filtering_function(trace[i-width//2:i+(width+1)//2]) for i in range(width//2,l+width//2)])
 
 def sliding_filter(trace, n, dec="bin", mode="reflect", cval=0.):
     """
@@ -604,24 +603,32 @@ class RunningDebounceFilter:
         self.initial=initial
         self.value=self.initial
         self._candidate=None
-        self._cnt=0
+        self._cnt=None
     def get(self):
         """Get the filtered result"""
         return self.value
+    def _newval(self, v, x):
+        return abs(x-v)>self.precision if self.precision is not None else x!=v
     def add(self, x):
         """Add a new sample"""
         if self.value is None:
-            self.value=self._candidate=x
+            self.value=x
         else:
-            cont=abs(x-self._candidate)<self.precision if self.precision is not None else x==self._candidate
-            if cont:
-                self._cnt+=1
+            newc=self._newval(x,self._candidate) if self._candidate is not None else True
+            if newc:
+                self._cnt=0
+                self._candidate=None
+            if self._candidate is None:
+                newv=self._newval(x,self.value)
+                if newv:
+                    self._cnt=0
+                    self._candidate=x
             else:
-                self._cnt=0
-                self._candidate=x
-            if self._cnt+1>=self.n:
-                self.value=self._candidate=x
-                self._cnt=0
+                self._cnt+=1
+                if self._cnt>=self.n:
+                    self.value=x
+                    self._candidate=None
+                    self._cnt=0
         return self.get()
     def reset(self):
         """Reset the filter"""
