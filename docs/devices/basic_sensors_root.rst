@@ -18,6 +18,7 @@ Currently supported sensors:
     Ophir
     Lakeshore
     Cryocon
+    Cryomagnetics
     Pfeiffer
     Leybold
     KJL
