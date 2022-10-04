@@ -238,6 +238,8 @@ class LibraryController:
         Return tuple ``(close_result, uninit_result)`` with the results of the closing and the shutdown.
         If library does not need to be shut down yet, set ``uninit_result=None``
         """
+        if opid is None:
+            return
         with self.lock:
             if opid in self.opened:
                 self.opened.remove(opid)
@@ -261,8 +263,7 @@ class LibraryController:
             init_result,open_result,opid=self.open()
             yield init_result,open_result
         finally:
-            if opid is not None:
-                self.close(opid)
+            self.close(opid)
     def shutdown(self):
         """Close all opened connections and shutdown the library"""
         for opid in list(self.opened):

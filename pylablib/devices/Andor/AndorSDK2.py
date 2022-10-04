@@ -243,7 +243,8 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         """Close connection to the camera"""
         if self.handle is not None:
             try:
-                self.clear_acquisition()
+                if self._opid is not None:
+                    self.clear_acquisition()
                 try:
                     self._select_camera()
                 except AndorError:

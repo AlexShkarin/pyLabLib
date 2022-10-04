@@ -300,8 +300,9 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
 
     ### Image settings and transfer controls ###
     def get_detector_size(self):
-        width=lib.tl_camera_get_image_width_range(self.handle)[1]
-        height=lib.tl_camera_get_image_height_range(self.handle)[1]
+        roi_range=lib.tl_camera_get_roi_range(self.handle)
+        width=roi_range[6]+1
+        height=roi_range[7]+1
         return width,height
     def get_roi(self):
         roi=lib.tl_camera_get_roi(self.handle)
@@ -328,8 +329,9 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
         return self.get_roi()
     def get_roi_limits(self, hbin=1, vbin=1):
         wdet,hdet=self.get_detector_size()
-        hmin=lib.tl_camera_get_image_width_range(self.handle)[0]
-        vmin=lib.tl_camera_get_image_height_range(self.handle)[0]
+        roi_range=lib.tl_camera_get_roi_range(self.handle)
+        hmin=roi_range[2]+1
+        vmin=roi_range[3]+1
         mhbin=lib.tl_camera_get_binx_range(self.handle)[1]
         mvbin=lib.tl_camera_get_biny_range(self.handle)[1]
         hlim=camera.TAxisROILimit(hmin*hbin,wdet,1,hbin,mhbin)

@@ -734,7 +734,7 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
             chunks=[(rng[0],start,l0),(rng[0]+l0,0,stop-start-l0)]
         frames=[self._parse_frames_data(self._buffer_mgr.get_buffer_ptr(s),l,shape) for (_,s,l) in chunks]
         if self._status_line_enabled and frames and len(frames[-1]):
-            self._buffer_overruns=max(self._buffer_overruns,get_status_line(frames[-1][-1,:,:]).framestamp-rng[-1]-1)
+            self._buffer_overruns=max(self._buffer_overruns,get_status_lines(frames[-1][-1,:,:])[0]-rng[-1]-1)
         return frames,None
 
     def _get_grab_acquisition_parameters(self, nframes, buff_size):
@@ -800,7 +800,7 @@ def get_status_line(frame):
 
     Assume that the status line is present; if it isn't, the returned frame info will be a random noise.
     """
-    warnings.warn(DeprecationWarning("PCO.get_status_line will be removed soon; use PCO.get_status_lines instead"))
+    warnings.warn(DeprecationWarning("PCO.get_status_line is deprecated and will be removed in a future version. Use PCO.get_status_lines instead"))
     if frame.ndim==3:
         return [get_status_line(f) for f in frame]
     sline=frame[0,:14]

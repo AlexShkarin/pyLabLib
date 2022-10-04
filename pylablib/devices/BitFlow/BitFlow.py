@@ -269,7 +269,7 @@ class BitFlowFrameGrabber(camera.IROICamera):
         """
         self.clear_acquisition()
         self._set_frame_merge(frame_merge)
-        nframes=max(nframes,2)
+        nframes=max(nframes,2*self._frame_merge)
         nframes=(((nframes-1)//self._frame_merge)+1)*self._frame_merge
         super().setup_acquisition(mode=mode,nframes=nframes,frame_merge=frame_merge)
         self._acq.BufferSetup(nframes//self._frame_merge)

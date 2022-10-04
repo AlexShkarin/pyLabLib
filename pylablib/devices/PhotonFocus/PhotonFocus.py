@@ -435,11 +435,11 @@ class IPhotonFocusCamera(camera.IAttributeCamera): # pylint: disable=abstract-me
 
     def _get_buffer_bpp(self):
         bpp=self.GrabberClass._get_buffer_bpp(self) if self.GrabberClass else 1
-        ppbpp=self._get_camera_bytepp()
+        ppbpp=self._get_camera_bitpp()
         if ppbpp is not None:
             bpp=(ppbpp-1)//8+1
         return bpp
-    def _get_camera_bytepp(self):
+    def _get_camera_bitpp(self):
         fmt=self.get_attribute_value("DataResolution",error_on_missing=False)
         if fmt is None:
             return None
@@ -552,7 +552,7 @@ class PhotonFocusIMAQCamera(IPhotonFocusCamera,IMAQFrameGrabber):
 
     def _ensure_pixel_format(self):
         fgbpp=self.get_grabber_attribute_value("BITSPERPIXEL")
-        ppbpp=self._get_camera_bytepp()
+        ppbpp=self._get_camera_bitpp()
         if ppbpp is not None and ppbpp!=fgbpp:
             msg=(   "PhotonFocus pixel format {} does not agree with the frame grabber {} bits per pixel; "
                     "changing PhotonFocus pixel format accordingly; to use the original format, alter the camera file".format(self.cav["DataResolution"],fgbpp))
@@ -584,7 +584,7 @@ class PhotonFocusSiSoCamera(IPhotonFocusCamera,SiliconSoftwareFrameGrabber):
         self._ensure_pixel_format()
 
     def _ensure_pixel_format(self):
-        ppbpp=self._get_camera_bytepp()
+        ppbpp=self._get_camera_bitpp()
         if ppbpp is not None:
             self.setup_camlink_pixel_format(ppbpp,2)
 
@@ -622,12 +622,9 @@ class PhotonFocusBitFlowCamera(IPhotonFocusCamera,BitFlowFrameGrabber):
 
     def _ensure_pixel_format(self):
         fgbpp=self._get_board_info("bpp")
-        ppbpp=self._get_camera_bytepp()
+        ppbpp=self._get_camera_bitpp()
         if ppbpp is not None and ppbpp!=fgbpp:
-            msg=(   "PhotonFocus pixel format {} does not agree with the frame grabber {} bits per pixel; "
-                    "changing PhotonFocus pixel format accordingly; to use the original format, alter the camera file".format(self.cav["DataResolution"],fgbpp))
-            warnings.warn(msg)
-            self._set_camera_bytepp(fgbpp)
+            self._change_board_parameters(bpp=ppbpp)
 
 
 
