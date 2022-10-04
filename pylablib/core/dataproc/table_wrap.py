@@ -611,7 +611,7 @@ class DataFrame2DWrapper(I2DWrapper):
             self._wrapper=wrapper
             self._storage=storage
         def __iter__(self):
-            for _,c in self._storage.iteritems():
+            for _,c in self._storage.items():
                 yield c
         def __getitem__(self, idx):
             return self._storage.iloc[:,idx]

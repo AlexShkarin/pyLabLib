@@ -6,7 +6,7 @@
 CryoCon temperature sensors
 ==============================
 
-CryoCon manufactures a range of temperature sensor controllers and resistance bridges, which are also used for temperature sensing. There is some overlap between different products, but they still use fairly distinct interfaces and interaction patterns. The code has been tested with CryoCon 14C temperature controller.
+CryoCon manufactures a range of temperature sensor controllers and resistance bridges, which are also used for temperature sensing. The code has been tested with CryoCon 14C temperature controller.
 
 The main device class is :class:`pylablib.devices.Cryocon.Cryocon1x<.Cryocon.base.Cryocon1x>`.
 

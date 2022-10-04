@@ -9,6 +9,7 @@ from pylablib.devices import uc480
 from pylablib.devices import Thorlabs
 from pylablib.devices import Photometrics
 from pylablib.devices import PrincetonInstruments
+from pylablib.devices import Basler
 
 
 from .test_basic_camera import ROICameraTester
@@ -150,6 +151,24 @@ class TestPhotonFocusSiSo(ROICameraTester):
 
 
 
+class TestPhotonFocusBitFlow(ROICameraTester):
+    """Testing class for PhotonFocus camera with BitFlow interface"""
+    devname="photon_focus_bitflow"
+    devcls=PhotonFocus.PhotonFocusBitFlowCamera
+    rois=gen_rois(128)
+    
+    def check_status_line(self, frames):
+        slines=PhotonFocus.get_status_lines(np.asarray(frames))
+        assert slines is not None
+        assert np.all(slines[1:,0]-slines[:-1,0]==1)
+    
+    @pytest.fixture(scope="class")
+    def library_parameters(self):
+        pylablib.par["devices/dlls/pfcam"]="../dlls/libs/x32"
+
+
+
+
 class TestIMAQdx(ROICameraTester):
     """Testing class for IMAQdx camera interface"""
     devname="imaqdx"
@@ -218,3 +237,13 @@ class TestPICam(ROICameraTester):
     @classmethod
     def post_open(cls, device):
         device.enable_metadata(True)
+
+
+
+
+
+class TestBasler(ROICameraTester):
+    """Testing class for Basler pylon camera interface"""
+    devname="basler_pylon"
+    devcls=Basler.BaslerPylonCamera
+    rois=gen_rois(64)
