@@ -23,6 +23,20 @@ you can write
     import pylablib.legacy as pll
     from pylablib.legacy.aux_libs.devices import Lakeshore
 
+1.4.1
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Devices
+
+    * Added Basler pylon-compatible cameras, BitFlow frame grabbers, AlliedVision Bonito cameras, Thorlabs Elliptec stages, PI-E516 piezo controller, and Sirah Matisse laser.
+    * Minor additions to Cryocon temperature controller, Cryomagnetics LM510 level meters, and NI DAQmx DAQs. Improved performance of PCO cameras at high frame rates.
+    * Multiple minor bug fixes and improved support of specific models.
+
+- Added encoding argument to file loading.
+- Improved color images support in image plotter, minor additions to trace plotter.
+- Added real-time binning and debounce filters.
+
+
 1.4.0
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
