@@ -40,7 +40,7 @@ class ElliptecMotor(comm_backend.ICommBackendWrapper):
         defaults={"serial":{"baudrate":9600}}
         instr=comm_backend.new_backend(conn,backend=("auto","serial"),term_write=b"",term_read=b"\r\n",timeout=timeout,
             defaults=defaults,reraise_error=ThorlabsBackendError)
-        instr.setup_cooldown(write=0.003)
+        instr.setup_cooldown(write=0.01)
         super().__init__(instr)
         self._bg_msg_counters={}
         self.add_background_comm("BO")
@@ -67,6 +67,7 @@ class ElliptecMotor(comm_backend.ICommBackendWrapper):
         self._add_status_variable("velocity",lambda: self.get_velocity(addr="all"))
         self._add_status_variable("motor_info",lambda: self._get_all_motor_info(addr="all"))
     
+    _pre_move_delay=0.1
     def _detect_devices(self, addrs="all", timeout=0.5, delay=0.1):
         if addrs=="all":
             addrs=list(range(16))
@@ -381,6 +382,7 @@ class ElliptecMotor(comm_backend.ICommBackendWrapper):
         The operation is synchronous, i.e., it will not finish until the motion is stopped.
         Return ``True`` if the position was reached successfully or ``False`` otherwise.
         """
+        time.sleep(self._pre_move_delay)  # if the move command is issued to soon after a previous one, it can move to 0 instead
         reply=self.query("ma",data=self._to_steps_data(position,addr),addr=addr,reply_comm=["GS","PO"],timeout=timeout)
         self._check_status_reply(reply)
         return reply.comm=="PO"
@@ -392,6 +394,7 @@ class ElliptecMotor(comm_backend.ICommBackendWrapper):
         The operation is synchronous, i.e., it will not finish until the motion is stopped.
         Return ``True`` if the position was reached successfully or ``False`` otherwise.
         """
+        time.sleep(self._pre_move_delay)  # if the move command is issued to soon after a previous one, it can move to 0 instead
         reply=self.query("mr",data=self._to_steps_data(distance,addr),addr=addr,reply_comm=["GS","PO"],timeout=timeout)
         self._check_status_reply(reply)
         return reply.comm=="PO"
