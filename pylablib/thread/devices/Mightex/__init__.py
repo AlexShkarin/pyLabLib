@@ -1,0 +1,1 @@
+from .MightexSSeries import MightexSSeriesCameraThread

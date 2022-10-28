@@ -12,3 +12,4 @@
 - :ref:`Silicon Software <cameras_siso>`: Silicon Software frame grabbers. Tested with microEnable IV AD4-CL frame grabbers together with PhotonFocus MV-D1024E camera.
 - :ref:`Thorlabs Scientific Cameras <cameras_thorlabs_tlcamera>`: Thorlabs sCMOS cameras. Tested with Thorlabs Kiralux camera.
 - :ref:`Uc480/uEye <cameras_uc480>`: multiple cameras, including simple Thorlabs and IDS cameras. Tested with IDS SC2592R12M and Thorlabs DCC1545M.
+- :ref:`Mightex <cameras_mightex>`: several different USB camera types with different APIs. Implemented and tested only for S-series cameras.

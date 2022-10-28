@@ -21,6 +21,8 @@
 ..\pylablib\devices\IMAQdx\NIIMAQdx_defs.py
 ..\pylablib\devices\IMAQdx\NIIMAQdx_lib.py
 ..\pylablib\devices\IMAQdx\nivision_defs.py
+..\pylablib\devices\Mightex\NewClassic_USBCamera_SDK_defs.py
+..\pylablib\devices\Mightex\NewClassic_USBCamera_SDK_lib.py
 ..\pylablib\devices\PCO\PCO_err_defs.py
 ..\pylablib\devices\PCO\sc2_camexport_defs.py
 ..\pylablib\devices\PCO\sc2_camexport_lib.py

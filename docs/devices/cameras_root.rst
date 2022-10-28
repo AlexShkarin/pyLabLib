@@ -29,3 +29,4 @@ Currently supported cameras:
     SiliconSoftware
     Thorlabs_TLCamera
     uc480
+    Mightex

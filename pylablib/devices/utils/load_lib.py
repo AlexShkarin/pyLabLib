@@ -268,3 +268,7 @@ class LibraryController:
         """Close all opened connections and shutdown the library"""
         for opid in list(self.opened):
             self.close(opid)
+    def get_opened_num(self):
+        """Get number of opened devices"""
+        with self.lock:
+            return self.open_devices
