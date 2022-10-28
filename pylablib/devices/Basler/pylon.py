@@ -78,7 +78,7 @@ def _find_camera(cameras, **kwargs):
     return None
 
 def get_cameras_number():
-    """Get number of connected dx cameras"""
+    """Get number of connected Basler Pylon cameras"""
     return len(list_cameras(desc=False))
 
 
@@ -317,7 +317,7 @@ class BaslerPylonCamera(camera.IROICamera, camera.IAttributeCamera, camera.IExpo
             else:
                 idx=self.idx
             if idx>=len(cams):
-                raise BaslerError("camera index {} is not available ({} cameras exist)".format(self.idx,len(cams)))
+                raise BaslerError("camera index {} is not available ({} cameras exist)".format(idx,len(cams)))
             with self._close_on_error():
                 self.hdev=lib.PylonCreateDeviceByIndex(idx)
                 lib.PylonDeviceOpen(self.hdev,PYLONC_ACCESS.PYLONC_ACCESS_MODE_MONITOR|PYLONC_ACCESS.PYLONC_ACCESS_MODE_CONTROL|PYLONC_ACCESS.PYLONC_ACCESS_MODE_STREAM)

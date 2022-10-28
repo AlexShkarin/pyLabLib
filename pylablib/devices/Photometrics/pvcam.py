@@ -598,8 +598,8 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
     def set_roi(self, hstart=0, hend=None, vstart=0, vend=None, hbin=1, vbin=1):
         hbin,vbin=self._limit_bin(hbin,vbin)
         hlim,vlim=self.get_roi_limits(hbin,vbin)
-        hstart,hend,_=self._roi=camera.truncate_roi_axis((hstart,hend,hbin),hlim)
-        vstart,vend,_=self._roi=camera.truncate_roi_axis((vstart,vend,vbin),vlim)
+        hstart,hend,_=camera.truncate_roi_axis((hstart,hend,hbin),hlim)
+        vstart,vend,_=camera.truncate_roi_axis((vstart,vend,vbin),vlim)
         self._roi=(hstart,hend,vstart,vend,hbin,vbin)
         self._setup_acquisition()
         return self.get_roi()
