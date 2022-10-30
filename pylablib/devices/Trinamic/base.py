@@ -1,4 +1,5 @@
 from ...core.devio import comm_backend, interface
+from ...core.utils import general
 
 from ..interface import stage
 
@@ -11,7 +12,12 @@ class TrinamicError(comm_backend.DeviceError):
     """Generic Trinamic error"""
 class TrinamicBackendError(TrinamicError,comm_backend.DeviceBackendError):
     """Generic Trinamic backend communication error"""
+class TrinamicTimeoutError(TrinamicError):
+    """Generic Trinamic timeout error"""
 
+TLimitSwitchParams=collections.namedtuple("TLimitSwitchParams",["left_enable","right_enable"])
+TVelocityParams=collections.namedtuple("TVelocityParams",["speed","accel","pulse_divisor","ramp_divisor"])
+THomeParams=collections.namedtuple("THomeParams",["mode","search_speed","switch_speed"])
 class TMCM1110(comm_backend.ICommBackendWrapper,stage.IStage):
     """
     Trinamic stepper motor controller TMCM-1110 controlled using TMCL Firmware.
@@ -26,6 +32,7 @@ class TMCM1110(comm_backend.ICommBackendWrapper,stage.IStage):
         self._add_status_variable("position",self.get_position)
         self._add_settings_variable("velocity_parameters",self.get_velocity_parameters,self.setup_velocity)
         self._add_settings_variable("limit_switches_parameters",self.get_limit_switches_parameters,self.setup_limit_switches)
+        self._add_settings_variable("home_parameters",self.get_home_parameters,self.setup_home)
         self._add_status_variable("current_parameters",self.get_current_parameters)
         self._add_status_variable("velocity_factor",self.get_velocity_factor)
         self._add_status_variable("acceleration_factor",self.get_acceleration_factor)
@@ -185,7 +192,7 @@ class TMCM1110(comm_backend.ICommBackendWrapper,stage.IStage):
 
     def get_limit_switches_parameters(self, addr=0):
         """Return limit switch parameters ``(left_enable, right_enable)``"""
-        return bool(self.get_axis_parameter(13,addr=addr)), bool(self.get_axis_parameter(12,addr=addr))
+        return TLimitSwitchParams(bool(self.get_axis_parameter(13,addr=addr)), bool(self.get_axis_parameter(12,addr=addr)))
     def setup_limit_switches(self, left_enable=None, right_enable=None, addr=0):
         """Setup limit switch parameters"""
         if left_enable is not None:
@@ -193,6 +200,69 @@ class TMCM1110(comm_backend.ICommBackendWrapper,stage.IStage):
         if right_enable is not None:
             self.set_axis_parameter(12,1 if right_enable else 0,addr=addr)
         return self.get_limit_switches_parameters(addr=addr)
+    
+    _p_home_mode=interface.EnumParameterClass("home_mode",
+        {"lim_left":1,"lim_right_left":2,"lim_right_left_bothsides":3,"lim_left_bothsides":4,
+        "lim_right":65,"lim_left_right":66,"lim_left_right_bothsides":67,"lim_right_bothsides":68,
+        "home_neg_switch":5,"home_pos_switch":6,"home_pos":7,"home_neg":8,
+        "home_neg_switch_inv":133,"home_pos_switch_inv":134,"home_pos_inv":135,"home_neg_inv":136})
+    @interface.use_parameters(_returns=("home_mode",None,None))
+    def get_home_parameters(self, addr=0):
+        """
+        Return homing parameters ``(mode, search_speed, switch_speed)``.
+
+        ``mode`` is one of 16 different values, which can start with ``"lim_"`` indicating reliance on limit switches,
+        or with ``"home_"`` indicating usage of home switches. Home-based switches can also be inverted (with ``"_inv"`` in the end),
+        indicating that the homing switch function is inverted (0 instead of 1 means that the switch is engaged). More details can be found in the manual.
+        ``search_speed`` and ``switch_speed`` describe, respectively, the initial speed while searching for the switch,
+        and the final homing speed while searching for the edge of the switch action. Both are given in *internal* units.
+        """
+        mode=self.get_axis_parameter(193,addr=addr)
+        search_speed=self.get_axis_parameter(194,addr=addr)
+        switch_speed=self.get_axis_parameter(195,addr=addr)
+        return THomeParams(mode,search_speed,switch_speed)
+    @interface.use_parameters(mode="home_mode")
+    def setup_home(self, home_mode=None, search_speed=None, switch_speed=None, addr=0):
+        """
+        Setup homing parameters ``(mode, search_speed, switch_speed)``.
+
+        ``mode`` is one of 16 different values, which can start with ``"lim_"`` indicating reliance on limit switches,
+        or with ``"home_"`` indicating usage of home switches. Home-based switches can also be inverted (with ``"_inv"`` in the end),
+        indicating that the homing switch function is inverted (0 instead of 1 means that the switch is engaged). More details can be found in the manual.
+        ``search_speed`` and ``switch_speed`` describe, respectively, the initial speed while searching for the switch,
+        and the final homing speed while searching for the edge of the switch action. Both are given in *internal* units.
+        """
+        if home_mode is not None:
+            self.set_axis_parameter(193,home_mode,addr=addr)
+        if search_speed is not None:
+            self.set_axis_parameter(194,search_speed,addr=addr)
+        if switch_speed is not None:
+            self.set_axis_parameter(195,switch_speed,addr=addr)
+        return self.get_velocity_parameters()
+    
+    def home(self, wait=True, timeout=30., addr=0):
+        """
+        Home the given axis.
+
+        If ``wait==True``, wait until the homing is complete or until `timeout` is passed.
+        Note that homing affects the velocity parameters, which need to be re-established after the homing is complete.
+        This is done automatically when ``wait==True``, but needs to be done manually otherwise.
+        """
+        velpar=self.get_velocity_parameters(addr=addr)
+        self.query(13,0,0,addr=addr)
+        if wait:
+            ctd=general.Countdown(timeout)
+            try:
+                while self.is_homing():
+                    if ctd.passed():
+                        raise TrinamicTimeoutError("timeout while homing the stage at address {}".format(addr))
+                    time.sleep(0.05)
+            finally:
+                self.query(13,1,0,addr=addr)
+                self.setup_velocity(*velpar,addr=addr)
+    def is_homing(self, addr=0):
+        """Check if homing is in progress at the given address"""
+        return bool(self.query(13,2,0,addr=addr).value)
 
     def get_velocity_parameters(self, addr=0):
         """
@@ -205,7 +275,7 @@ class TMCM1110(comm_backend.ICommBackendWrapper,stage.IStage):
         defines how internal acceleration units translate into microsteps/s^2 (see :meth:`get_acceleration_factor`);
         rounded to the nearest power of 2, higher values mean slower acceleration.
         """
-        return self.get_axis_parameter(4,addr=addr),self.get_axis_parameter(5,addr=addr),2**self.get_axis_parameter(154,addr=addr),2**self.get_axis_parameter(153,addr=addr)
+        return TVelocityParams(self.get_axis_parameter(4,addr=addr),self.get_axis_parameter(5,addr=addr),2**self.get_axis_parameter(154,addr=addr),2**self.get_axis_parameter(153,addr=addr))
     def setup_velocity(self, speed=None, accel=None, pulse_divisor=None, ramp_divisor=None, addr=0):
         """
         Setup velocity parameters ``(speed, accel, pulse_divisor, ramp_divisor)``.
