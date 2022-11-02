@@ -115,7 +115,8 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         self._device_var_ignore_error={"get":(AndorNotSupportedError,),"set":(AndorNotSupportedError,)}
         self._add_info_variable("device_info",self.get_device_info)
         self._add_info_variable("capabilities",self.get_capabilities,priority=-5)
-        self._add_info_variable("amp_modes",self.get_all_amp_modes,ignore_error=AndorSDK2LibError,priority=-5)
+        self._add_info_variable("amp_modes",self.get_all_amp_modes,ignore_error=AndorSDK2LibError,priority=-2)
+        self._add_info_variable("vsspeeds",self.get_all_vsspeeds,ignore_error=AndorSDK2LibError,priority=-2)
         self._add_info_variable("pixel_size",self.get_pixel_size)
         self._add_settings_variable("temperature",self.get_temperature_setpoint,self.set_temperature)
         self._add_status_variable("temperature_monitor",self.get_temperature,ignore_error=AndorSDK2LibError)
@@ -126,7 +127,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         self._add_settings_variable("oamp",self.get_oamp,lambda x:self.set_amp_mode(oamp=x))
         self._add_settings_variable("hsspeed",self.get_hsspeed,lambda x:self.set_amp_mode(hsspeed=x))
         self._add_settings_variable("preamp",self.get_preamp,lambda x:self.set_amp_mode(preamp=x),ignore_error=AndorSDK2LibError)
-        self._add_settings_variable("vsspeed",self.get_vsspeed,self.set_vsspeed)
+        self._add_settings_variable("vsspeed",self.get_vsspeed,self.set_vsspeed,ignore_error=AndorSDK2LibError)
         self._add_settings_variable("EMCCD_gain",self.get_EMCCD_gain,self.set_EMCCD_gain)
         self._add_settings_variable("shutter",self.get_shutter_parameters,self.setup_shutter)
         self._add_settings_variable("fan_mode",self.get_fan_mode,self.set_fan_mode)
@@ -394,6 +395,18 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         """Get maximal recommended vertical scan speed"""
         return lib.GetFastestRecommendedVSSpeed()[0]
     @_camfunc
+    def get_all_vsspeeds(self):
+        """
+        Get all available vertical shift speeds modes.
+
+        Return list of the vertical shift periods in microseconds for the corresponding indices (starting from 0).
+        """
+        try:
+            nspeeds=lib.GetNumberVSSpeeds()
+            return [lib.GetVSSpeed(i) for i in range(nspeeds)]
+        except AndorSDK2LibError:
+            return []
+    @_camfunc
     def set_amp_mode(self, channel=None, oamp=None, hsspeed=None, preamp=None):
         """
         Setup preamp mode.
@@ -499,8 +512,12 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         """
         mode=mode or self.get_all_amp_modes()[0]
         self.set_amp_mode(mode.channel,mode.oamp,mode.hsspeed,mode.preamp)
-        vsspeed=self.get_max_vsspeed()
-        self.set_vsspeed(vsspeed)
+        if self.get_all_vsspeeds():
+            try:
+                vsspeed=self.get_max_vsspeed()
+            except AndorSDK2LibError:
+                vsspeed=0
+            self.set_vsspeed(vsspeed)
         try:
             self.set_EMCCD_gain(0,advanced=None)
             self.set_EMCCD_gain(0,advanced=False)
