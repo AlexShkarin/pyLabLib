@@ -153,6 +153,7 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
             try:
                 self.update_full_data()
                 self.set_roi(*self.get_roi()) # ensure ROI
+                self.set_bit_alignment("LSB") # ensure proper bit alignment
                 return
             except PCOSC2Error:
                 if self.reboot_on_fail and t==0:
@@ -197,7 +198,10 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
                     raise
         cam_data["general"]=class_tuple_to_dict(lib.PCO_GetGeneral(self.handle),expand_lists=True)
         cam_data["sensor"]=class_tuple_to_dict(lib.PCO_GetSensorStruct(self.handle),expand_lists=True)
-        cam_data["img_timing"]=class_tuple_to_dict(lib.PCO_GetImageTiming(self.handle),expand_lists=True)
+        try:
+            cam_data["img_timing"]=class_tuple_to_dict(lib.PCO_GetImageTiming(self.handle),expand_lists=True)
+        except PCOSC2LibError:
+            pass
         cam_data["timing"]=class_tuple_to_dict(lib.PCO_GetTimingStruct(self.handle),expand_lists=True)
         cam_data["storage"]=class_tuple_to_dict(lib.PCO_GetStorageStruct(self.handle),expand_lists=True)
         cam_data["recording"]=class_tuple_to_dict(lib.PCO_GetRecordingStruct(self.handle),expand_lists=True)
@@ -416,11 +420,19 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
     
 
     def _get_full_timings(self):
-        timings=lib.PCO_GetImageTiming(self.handle)
-        exp=timings.ExposureTime_s+timings.ExposureTime_ns*1E-9
-        frame_delay=timings.TriggerDelay_s+timings.TriggerDelay_ns*1E-9
-        frame_time=timings.FrameTime_s+timings.FrameTime_ns*1E-9
-        return exp,frame_delay,frame_time
+        try:
+            timings=lib.PCO_GetImageTiming(self.handle)
+            exp=timings.ExposureTime_s+timings.ExposureTime_ns*1E-9
+            delay=timings.TriggerDelay_s+timings.TriggerDelay_ns*1E-9
+            frame_time=timings.FrameTime_s+timings.FrameTime_ns*1E-9
+        except PCOSC2LibError:
+            delay,exp,tbdelay,tbexp=lib.PCO_GetDelayExposureTime(self.handle)
+            delay=delay*[1E-9,1E-6,1E-3][tbdelay]
+            exp=exp*[1E-9,1E-6,1E-3][tbexp]
+            w,h=self._get_data_dimensions_rc()
+            readout_time=w*h/self.get_pixel_rate()
+            frame_time=exp+delay+readout_time
+        return exp,delay,frame_time
     def _set_exposure_delay(self, exposure, frame_delay):
         exposure=max(exposure,self.v["sensor/strDescription/dwMinExposureDESC"]*1E-9)
         exposure=min(exposure,self.v["sensor/strDescription/dwMaxExposureDESC"]*1E-3)
@@ -523,7 +535,10 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         """
         self._stop_reading_loop()
         self._unschedule_all_buffers()
-        lib.PCO_SetRecordingState(self.handle,0)
+        try:
+            lib.PCO_SetRecordingState(self.handle,0)
+        except PCOSC2LibError:
+            pass
         self._deallocate_buffers()
         self._frame_counter.reset()
     def acquisition_in_progress(self):
@@ -636,6 +651,7 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
     @interface.use_parameters(returns="noise_filter_mode")
     def get_noise_filter_mode(self):
         """Get the noise filter mode (for details, see :meth:`set_noise_filter_mode`)"""
+        self._check_option(CAPS1.GENERALCAPS1_NOISE_FILTER)
         return lib.PCO_GetNoiseFilterMode(self.handle)
     @interface.use_parameters(mode="noise_filter_mode")
     def set_noise_filter_mode(self, mode="on"):

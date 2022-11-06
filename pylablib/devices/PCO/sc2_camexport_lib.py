@@ -12,6 +12,7 @@ from ...core.devio.comm_backend import DeviceError
 from ..utils import load_lib
 
 import ctypes
+import os
 
 
 class PCOSC2Error(DeviceError):
@@ -268,10 +269,16 @@ class PCOSC2Lib:
         if self._initialized:
             return
 
-        camware_path=load_lib.get_program_files_folder("Digital Camera Toolbox/Camware4")
-        sdk_path=load_lib.get_program_files_folder("PCO Digital Camera Toolbox/pco.sdk/bin") # TODO: check folder; bin/bin64; may also be in 32-bit program files folder
+        major_paths=[load_lib.get_program_files_folder(arch="32bit"),load_lib.get_program_files_folder(arch="64bit"),
+            load_lib.get_appdata_folder(kind="roaming"),load_lib.get_appdata_folder(kind="local")]
+        major_paths=[p for p in major_paths if p is not None and os.path.exists(p)]
+        dct_paths=[os.path.join(mp,dctp) for mp in major_paths for dctp in ["PCO Digital Camera Toolbox","Digital Camera Toolbox"]]
+        dct_paths=[p for p in dct_paths if os.path.exists(p)]
+        dll_paths=[os.path.join(dctp,dllp) for dctp in dct_paths for dllp in ["Camware4","Camware","Camware64",os.path.join("pco.sdk","bin"),os.path.join("pco.sdk","bin64")]]
+        dll_paths=[p for p in dll_paths if os.path.exists(p)]
         error_message="The library is supplied with pco.camware or pco.sdk software\n"+load_lib.par_error_message.format("pco_sc2")
-        self.lib=load_lib.load_lib("SC2_Cam.dll",locations=("parameter/pco_sc2",camware_path,sdk_path,"global"),error_message=error_message,call_conv="stdcall")
+        locations=["parameter/pco_sc2"]+dll_paths+["global"]
+        self.lib=load_lib.load_lib("SC2_Cam.dll",locations=locations,error_message=error_message,call_conv="stdcall")
         lib=self.lib
         define_functions(lib)
 

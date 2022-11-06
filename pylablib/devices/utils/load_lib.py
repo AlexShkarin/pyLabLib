@@ -45,6 +45,20 @@ def get_program_files_folder(subfolder="", arch=None):
     else:
         return os.environ.get("PROGRAMFILES",r"C:\Program Files")
 program_files_folder=get_program_files_folder()
+def get_appdata_folder(subfolder="", kind="roaming"):
+    """
+    Get user AppData folder (used to install software only for specific users).
+
+    `kind` can be ``"roaming"`` (return ``Roaming`` AppData folder) or ``"local"`` (return ``Local`` AppData folder).
+    """
+    if subfolder:
+        folder=get_appdata_folder(kind=kind)
+        return os.path.join(folder,subfolder) if folder is not None else None
+    if kind=="roaming":
+        return os.environ.get("APPDATA")
+    if kind=="local":
+        return os.environ.get("LOCALAPPDATA")
+    raise ValueError("unrecognized appdata folder kind: {}".format(kind))
 
 
 _load_lock=threading.RLock()

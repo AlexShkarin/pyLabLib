@@ -6,7 +6,7 @@
 PCO SC2 cameras interface
 =========================
 
-SC2 is the interface used with PCO cameras. It has been tested with pco.edge cameras with CLHS and regular CameraLink interfaces. A detailed description of the interface is given in the `manual <https://www.pco.de/fileadmin/fileadmin/user_upload/pco-manuals/pco.sdk_manual.pdf>`__.
+SC2 is the interface used with PCO cameras. It has been tested with pco.edge cameras with CLHS and regular CameraLink interfaces, and with pco.pixelfly usb cameras. A detailed description of the interface is given in the `manual <https://www.pco.de/fileadmin/fileadmin/user_upload/pco-manuals/pco.sdk_manual.pdf>`__.
 
 The code is located in :mod:`pylablib.devices.PCO`, and the main camera class is :class:`pylablib.devices.PCO.PCOSC2Camera<.SC2.PCOSC2Camera>`.
 
