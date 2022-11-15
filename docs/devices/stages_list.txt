@@ -5,4 +5,4 @@
 - :ref:`Arcus Performax <stages_arcus_performax>`: fairly common single- and multi-axis motor controllers sold under different brands: Arcus, Nippon Pulse America, or Newmark Systems. Tested with PMX-4EX device with USB connection.
 - :ref:`Trinamic <stages_trinamic>`: universal motor controllers and drivers. Tested with a single-axis TMCM-1110 controller with USB connection.
 - :ref:`SmarAct <stages_smaract>`: high-performance piezo sliders. So far only simple open-loop :ref:`SCU controllers <stages_smaract_scu>` are supported. Tested with a standard HCU controller unit.
-- :ref:`Physik Instrumente <stages_PI>`: piezo controllers. So far only PI E-516 is supported and tested.
+- :ref:`Physik Instrumente <stages_PI>`: piezo controllers. So far only PI E-515 and PI E-516 is supported and tested.

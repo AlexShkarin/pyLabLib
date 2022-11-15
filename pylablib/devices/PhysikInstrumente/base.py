@@ -1,4 +1,4 @@
-from ...core.devio import comm_backend
+from ...core.devio import comm_backend, SCPI, interface
 from ...core.utils import funcargparse
 
 from ..interface import stage
@@ -204,7 +204,7 @@ class PIE516(GenericPIController):
         self._add_settings_variable("drift_compensation",self.is_drift_compensation_enabled,self.enable_drift_compensation)
         self._add_settings_variable("velocity_control",self.is_velocity_control_enabled,self.enable_velocity_control)
         self._add_status_variable("voltage",self.get_voltage)
-        self._add_settings_variable("voltage_setpoint",self.get_voltage_setpoint,self.set_voltage)
+        self._add_status_variable("voltage_setpoint",self.get_voltage_setpoint)
         self._add_settings_variable("voltage_lowlim",self.get_voltage_lower_limit,self.set_voltage_lower_limit)
         self._add_settings_variable("voltage_upplim",self.get_voltage_upper_limit,self.set_voltage_upper_limit)
         self._add_status_variable("position",self.get_position)
@@ -302,4 +302,198 @@ class PIE516(GenericPIController):
     def set_position_upper_limit(self, position, axis=None):
         """Get the upper position limit on the given axis (all axes by default)"""
         self.set_axis("PLM",position,axis=axis)
+        return self.get_position_upper_limit(axis=axis)
+
+
+
+class PIE515(stage.IMultiaxisStage,SCPI.SCPIDevice):
+    """
+    Physik Instrumente E-515 controller.
+
+    Args:
+        conn: connection parameters (usually port or a tuple containing port and baudrate)
+        auto_online: if ``True``, switch to the online mode upon connection;
+            in this online mode controller parameters are controlled remotely instead of the front panel (including external voltages),
+            while in the offline mode most of the parameters are still controlled manually, and the remote connection is mostly used for readout
+    """
+    Error=PhysikInstrumenteError
+    ReraiseError=PhysikInstrumenteBackendError
+    def __init__(self, conn, auto_online=True):
+        self._auto_online=auto_online
+        self._last_selected_axis=1
+        self._current_selected_axis=1
+        super().__init__(conn,term_write="\n",term_read="\n",backend="serial",backend_defaults={"serial":("COM1",9600,8,'N',1,True,False,False)},default_axis=None)
+        self._add_status_variable("online",self.is_online_enabled)
+        self._add_status_variable("servo",lambda: self.is_servo_enabled(axis="all"))
+        self._add_status_variable("voltage",lambda: self.get_voltage(axis="all"))
+        self._add_status_variable("voltage_setpoint",lambda: self.get_voltage_setpoint(axis="all"))
+        self._add_settings_variable("voltage_lowlim",lambda: self.get_voltage_lower_limit(axis="all"),lambda v: self.set_voltage_lower_limit(v,axis="all"))
+        self._add_settings_variable("voltage_upplim",lambda: self.get_voltage_upper_limit(axis="all"),lambda v: self.set_voltage_upper_limit(v,axis="all"))
+        self._add_status_variable("position",lambda: self.get_position(axis="all"))
+        self._add_status_variable("target_position",lambda: self.get_target_position(axis="all"))
+        self._add_settings_variable("position_lowlim",lambda: self.get_position_lower_limit(axis="all"),lambda v: self.set_position_lower_limit(v,axis="all"))
+        self._add_settings_variable("position_upplim",lambda: self.get_position_upper_limit(axis="all"),lambda v: self.set_position_upper_limit(v,axis="all"))
+        self.open()
+    def open(self):
+        res=super().open()
+        with self._close_on_error():
+            self.write("INST:SEL CH1")
+            self.write("SOUR:VOLT:UNIT VOLT")
+            self.write("POS:VOLT:UNIT DEF")
+            if self._auto_online:
+                self.enable_online(safe=True)
+        return res
+    def close(self):
+        if self.is_opened():
+            self.write("DEV:CONT LOC")
+        super().close()
+
+    _axes=[1,2,3]
+    _bool_selector=("OFF","ON")
+    def _setup_to_measured(self):
+        self.set_voltage(self.get_voltage(axis="all"),axis="all")
+        self.move_to(self.get_position(axis="all"),axis="all")
+    def is_online_enabled(self):
+        """Check if online mode is enabled"""
+        return self.ask("DEV:CONT?").lower()=="rem"
+    def enable_online(self, enable=True, safe=False):
+        """
+        Enable or disable online mode.
+        
+        If ``safe==True`` and ``enable==True``, set the current voltage and position setpoints to be equal to the currently read values;
+        this avoids sudden change of output voltages when enabling the online mode. Note that this only works if all servo modes are off
+        (enabling online mode always forcibly turns them off, which might lead to the output voltage jump).
+        """
+        if safe and enable:
+            self._setup_to_measured()
+        self.write("DEV:CONT","REM" if enable else "LOC")
+        return self.is_online_enabled()
+    
+    def _set_current_axis(self, axis, assign=False):
+        if axis is None:
+            axis=self._current_selected_axis
+        elif assign:
+            self._current_selected_axis=axis
+        if axis!=self._last_selected_axis:
+            self.write("INST:SEL CH{}".format(axis))
+            self._last_selected_axis=axis
+    def get_current_axis(self):
+        """Select the current measurement channel"""
+        ch=self.ask("INST:SEL?")
+        return int(ch[2:])
+    @interface.use_parameters
+    def select_axis(self, axis):
+        """Select the current default axis"""
+        self._set_current_axis(axis,assign=True)
+        return self.get_current_axis()
+    @stage.muxaxis
+    @interface.use_parameters
+    def is_servo_enabled(self, axis=None):
+        """Check if the servo is enabled on the given axis (current axis by default)"""
+        self._set_current_axis(axis)
+        return self.ask("DEV:SERV?","bool")
+    @stage.muxaxis
+    @interface.use_parameters
+    def enable_servo(self, enable=True, axis=None):
+        """Enable or disable servo on the given axis (current axis by default)"""
+        self._set_current_axis(axis)
+        self.write("DEV:SERV",enable,"bool")
+        return self.is_servo_enabled(axis=axis)
+    
+    @stage.muxaxis
+    @interface.use_parameters
+    def get_voltage_setpoint(self, axis=None):
+        """Get the current voltage setpoint on the given axis (current axis by default)"""
+        self._set_current_axis(axis)
+        return self.ask("SOUR:VOLT?","float")
+    @stage.muxaxis
+    @interface.use_parameters
+    def get_voltage(self, axis=None):
+        """Get the actual voltage value on the given axis (current axis by default)"""
+        self._set_current_axis(axis)
+        return self.ask("MEAS:VOLT?","float")
+    @stage.muxaxis(mux_argnames="voltage")
+    @interface.use_parameters
+    def set_voltage(self, voltage, axis=None):
+        """Get the target voltage on the given axis (current axis by default)"""
+        self._set_current_axis(axis)
+        self.write("SOUR:VOLT",voltage)
+        return self.get_voltage_setpoint(axis=axis)
+    @stage.muxaxis
+    @interface.use_parameters
+    def get_voltage_lower_limit(self, axis=None):
+        """Get the lower output voltage limit on the given axis (current axis by default)"""
+        self._set_current_axis(axis)
+        return self.ask("SOUR:VOLT:LIM:LOW?","float")
+    @stage.muxaxis(mux_argnames="voltage")
+    @interface.use_parameters
+    def set_voltage_lower_limit(self, voltage, axis=None):
+        """Get the lower output voltage limit on the given axis (current axis by default)"""
+        self._set_current_axis(axis)
+        self.write("SOUR:VOLT:LIM:LOW",voltage)
+        return self.get_voltage_lower_limit(axis=axis)
+    @stage.muxaxis
+    @interface.use_parameters
+    def get_voltage_upper_limit(self, axis=None):
+        """Get the upper output voltage limit on the given axis (current axis by default)"""
+        self._set_current_axis(axis)
+        return self.ask("SOUR:VOLT:LIM:HIGH?","float")
+    @stage.muxaxis(mux_argnames="voltage")
+    @interface.use_parameters
+    def set_voltage_upper_limit(self, voltage, axis=None):
+        """Get the upper output voltage limit on the given axis (current axis by default)"""
+        self._set_current_axis(axis)
+        self.write("SOUR:VOLT:LIM:HIGH",voltage)
+        return self.get_voltage_upper_limit(axis=axis)
+    
+    @stage.muxaxis
+    @interface.use_parameters
+    def get_position(self, axis=None):
+        """Get current measured position on the given axis (current axis by default)"""
+        self._set_current_axis(axis)
+        return self.ask("MEAS:POS?","float")
+    @stage.muxaxis
+    @interface.use_parameters
+    def get_target_position(self, axis=None):
+        """Get the target motion position on the given axis"""
+        self._set_current_axis(axis)
+        return self.ask("SOUR:POS?","float")
+    @stage.muxaxis
+    @interface.use_parameters
+    def move_to(self, position, axis=None):
+        """Move the given axis to the given position"""
+        self._set_current_axis(axis)
+        self.write("SOUR:POS",position)
+        return self.get_target_position(axis=axis)
+    @stage.muxaxis
+    @interface.use_parameters
+    def move_by(self, distance, axis=None):
+        """Move the given axis by the given distance"""
+        position=self.get_target_position(axis=axis)
+        return self.move_to(position+distance,axis=axis)
+    @stage.muxaxis
+    @interface.use_parameters
+    def get_position_lower_limit(self, axis=None):
+        """Get the lower position limit on the given axis (current axis by default)"""
+        self._set_current_axis(axis)
+        return self.ask("SOUR:POS:LIM:LOW?","float")
+    @stage.muxaxis
+    @interface.use_parameters(mux_argnames="position")
+    def set_position_lower_limit(self, position, axis=None):
+        """Get the lower position limit on the given axis (current axis by default)"""
+        self._set_current_axis(axis)
+        self.write("SOUR:POS:LIM:LOW",position)
+        return self.get_position_lower_limit(axis=axis)
+    @stage.muxaxis
+    @interface.use_parameters
+    def get_position_upper_limit(self, axis=None):
+        """Get the upper position limit on the given axis (current axis by default)"""
+        self._set_current_axis(axis)
+        return self.ask("SOUR:POS:LIM:HIGH?","float")
+    @stage.muxaxis(mux_argnames="position")
+    @interface.use_parameters
+    def set_position_upper_limit(self, position, axis=None):
+        """Get the upper position limit on the given axis (current axis by default)"""
+        self._set_current_axis(axis)
+        self.write("SOUR:POS:LIM:HIGH",position)
         return self.get_position_upper_limit(axis=axis)
