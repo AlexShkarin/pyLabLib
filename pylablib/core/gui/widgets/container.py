@@ -153,6 +153,14 @@ class IQContainer:
                 widget.value_changed.connect(lambda value: self.contained_value_changed.emit(path,value))
             elif _hasattr(widget,"contained_value_changed"):
                 widget.contained_value_changed.connect(lambda name,value: self.contained_value_changed.emit(self._normalize_name((path,name)),value))
+    def _remove_child_values(self, name, path):
+        path=self._normalize_name(path)
+        if path=="" or path=="*" or path.endswith("/*"):
+            if path.endswith("*"):
+                path=path[:-1]
+            self.gui_values.remove_handler((path,"."+name),remove_indicator=True,disconnect=True)
+        else:
+            self.gui_values.remove_handler(path,remove_indicator=True,disconnect=True)
     def _setup_child_name(self, widget, name):
         if name is None:
             name=getattr(widget,"name",None)
@@ -192,7 +200,7 @@ class IQContainer:
             child.widget.clear()
         if child.gui_values_path is not None:
             try:
-                self.gui_values.remove_handler(child.gui_values_path,remove_indicator=True,disconnect=True)
+                self._remove_child_values(child.name,child.gui_values_path)
             except KeyError:
                 pass
     def remove_child(self, name):

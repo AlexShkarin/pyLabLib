@@ -338,7 +338,7 @@ class DeviceThread(controller.QTaskThread):
         self.add_command(name,command,limit_queue=limit_queue,on_full_queue=on_full_queue,priority=priority)
     def _device_method(self, name, args, kwargs):
         """Call a device method"""
-        if self.open_device():
+        if self.open():
             return getattr(self.device,name)(*args,**kwargs)
         return None
     class DeviceMethodAccessor:

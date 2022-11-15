@@ -19,6 +19,7 @@ class ThorlabsSerialInterface(SCPI.SCPIDevice):
     _default_retry_delay=0.5
     def __init__(self, conn):
         super().__init__(conn,backend="serial",term_read=["\r","\n"],term_write="\r",timeout=5.,backend_defaults={"serial":("COM1",115200)})
+        self.open()
 
     def open(self):
         super().open()
