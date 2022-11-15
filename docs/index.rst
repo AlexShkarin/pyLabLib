@@ -42,6 +42,12 @@ Related projects
 `Pylablib cam-control <https://github.com/AlexShkarin/pylablib-cam-control>`__ - software for universal camera control and camera data acquisition.
 
 
+Citation
+-------------------------
+
+If you found this package useful in your scientific work, you can cite via `Zenodo <https://doi.org/10.5281/zenodo.7324875>`__ either referencing to the package in general using the DOI ``10.5281/zenodo.7324875``, or to a specific version, as found on the `Zenodo <https://doi.org/10.5281/zenodo.7324875>`__ page.
+
+
 .. toctree::
    :maxdepth: 2
    :includehidden:
