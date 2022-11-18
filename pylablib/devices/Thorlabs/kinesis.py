@@ -101,7 +101,9 @@ class BasicKinesisDevice(comm_backend.ICommBackendWrapper):
         dids=comm_backend.FT232DeviceBackend.list_resources(desc=True)
         if filter_ids:
             ids=[did for did in dids if _is_thorlabs_id(did)]
-        return ids
+            return ids
+        else:
+            return dids
     def send_comm(self, messageID, param1=0x00, param2=0x00, source=0x01, dest="host"):
         """
         Send a message with no associated data.
