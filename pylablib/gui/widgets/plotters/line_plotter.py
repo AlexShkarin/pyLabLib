@@ -27,6 +27,14 @@ class LinePlotter(pyqtgraph.PlotWidget):
         self.setLabel("left","Signal")
         self.showGrid(True,True,0.7)
 
+    def setup(self):
+        """
+        Setup the plotter widget.
+
+        Currently does nothing, added for compatibility and future expansions.
+        """
+        pass
+
     def add_trace(self, name, caption=None, **kwargs):
         """
         Add a trace plot.

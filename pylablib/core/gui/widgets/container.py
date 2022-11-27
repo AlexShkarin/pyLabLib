@@ -39,7 +39,7 @@ class IQContainer:
         self._children=dictionary.Dictionary()
         self.gui_values=value_handling.GUIValues()
         self.ctl=None
-        self.c=dictionary.ItemAccessor(self.get_child)
+        self.c=dictionary.ItemAccessor(self.get_child,iterator=lambda: self._children.paths())
         self.w=dictionary.ItemAccessor(self.get_widget)
         self.v=dictionary.ItemAccessor(self.get_value,self.set_value)
         self.i=dictionary.ItemAccessor(self.get_indicator,self.set_indicator)
@@ -195,22 +195,23 @@ class IQContainer:
         if path:
             return self._children[path].widget.get_child(subpath) if subpath else self._children[path].widget
         raise KeyError("can't find widget {}".format(name))
-    def _clear_child(self, child):
-        if _hasattr(child.widget,"clear"):
+    def _clear_child(self, child, clear=True):
+        if _hasattr(child.widget,"clear") and clear:
             child.widget.clear()
         if child.gui_values_path is not None:
             try:
                 self._remove_child_values(child.name,child.gui_values_path)
             except KeyError:
                 pass
-    def remove_child(self, name):
-        """Remove child from the container and clear it"""
+    def remove_child(self, name, clear=True):
+        """Remove child from the container and (if ``clear==True``) clear it"""
         path,subpath=self._children.get_max_prefix(name,kind="leaf")
         if path:
             if subpath:
-                return self._children[path].widget.remove_child(subpath)
+                return self._children[path].widget.remove_child(subpath,clear=clear)
             ch=self._children.pop(path)
-            self._clear_child(ch)
+            if clear:
+                self._clear_child(ch)
         else:
             raise KeyError("can't find widget {}".format(name))
     def add_virtual_element(self, name, value=None, multivalued=False, add_indicator=True):
@@ -406,14 +407,15 @@ class IQWidgetContainer(IQLayoutManagedWidget, IQContainer):
         if isinstance(widget,QtWidgets.QWidget):
             IQLayoutManagedWidget.add_to_layout(self,widget,location=location)
         return widget
-    def remove_child(self, name):
-        """Remove widget from the container and the layout, clear it, and remove it"""
+    def remove_child(self, name, clear=True):
+        """Remove widget from the container and the layout and (if ``clear==True``) clear it, and remove it"""
         if name in self._children:
             widget=self._children[name].widget
-            IQContainer.remove_child(self,name)
-            IQLayoutManagedWidget.remove_layout_element(self,widget)
+            IQContainer.remove_child(self,name,clear=clear)
+            if clear:
+                IQLayoutManagedWidget.remove_layout_element(self,widget)
         else:
-            IQContainer.remove_child(self,name)
+            IQContainer.remove_child(self,name,clear=clear)
     def add_frame(self, name, layout="vbox", location=None, gui_values_path=True, no_margins=True):
         """
         Add a new frame container to the layout.
@@ -440,6 +442,10 @@ class IQWidgetContainer(IQLayoutManagedWidget, IQContainer):
         self.add_child(name,group_box,location=location,gui_values_path=gui_values_path)
         group_box.setup(caption=caption,layout=layout,no_margins=no_margins)
         return group_box
+    def _clear_children(self):
+        IQContainer.clear(self)
+    def _clear_layout(self):
+        IQLayoutManagedWidget.clear(self)
     def clear(self):
         """
         Clear the container.

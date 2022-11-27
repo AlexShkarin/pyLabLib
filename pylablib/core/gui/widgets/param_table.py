@@ -595,11 +595,11 @@ class ParamTable(container.QWidgetContainer):
         if name in self.params:
             return self.get_widget(name)
         return super().get_child(name)
-    def remove_child(self, name):
+    def remove_child(self, name, clear=True):
         name=self._normalize_name(name)
         if name in self.params:
             return self.remove_widget(name)
-        return super().remove_child(name)
+        return super().remove_child(name,clear=clear)
 
     @controller.gui_thread_method
     def get_indicator(self, name=None):
