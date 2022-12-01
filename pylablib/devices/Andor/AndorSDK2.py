@@ -186,7 +186,12 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
             self.setup_cont_mode()
             self.enable_frame_transfer_mode(False)
             self.setup_single_track_mode()
-            self.setup_multi_track_mode()
+            for (height,offset) in [(1,0),(2,0),(1,1),(2,1),(self.get_detector_size()[1],0),(self.get_detector_size()[1],1)]:
+                try:
+                    self.setup_multi_track_mode(height=height,offset=offset)
+                    break
+                except AndorSDK2LibError:
+                    pass
             self.setup_random_track_mode()
             self._minh=self._find_min_roi_end("h")
             self._minv=self._find_min_roi_end("v")
@@ -867,7 +872,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
 
     @camera.acqstopped
     @_camfunc
-    def setup_multi_track_mode(self, number=1, height=1, offset=1):
+    def setup_multi_track_mode(self, number=1, height=1, offset=0):
         """
         Switch into the multi-track read mode and set up its parameters.
 

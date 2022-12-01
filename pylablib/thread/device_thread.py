@@ -188,6 +188,7 @@ class DeviceThread(controller.QTaskThread):
             if self.device is not None:
                 self.device.close()
                 self.device=None
+            raise self.ConnectionFailError
     def open(self, reopen=False):
         """
         Open the device by calling :meth:`connect_device`.
