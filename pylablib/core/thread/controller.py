@@ -1441,7 +1441,7 @@ class QTaskThread(QThreadController):
             raise ValueError("batch job {} doesn't exists".format(name))
         running=self.is_batch_job_running(name)
         if (stop or restart) and running:
-            period,args,kwargs,_=self._batch_jobs_args[name]
+            period,args,kwargs,_,_=self._batch_jobs_args[name]
             self.stop_batch_job(name,error_on_stopped=False)
         if job=="keep":
             job=self.batch_jobs[name].job
@@ -1478,8 +1478,8 @@ class QTaskThread(QThreadController):
         if name in self._batch_jobs_stopreq:
             self._batch_jobs_stopreq.remove(name)
         job,cleanup,min_runtime,priority=self.batch_jobs[name]
-        self._batch_jobs_args[name]=(period,args,kwargs,cleanup)
         gen=job(*args,**kwargs)
+        self._batch_jobs_args[name]=(period,args,kwargs,cleanup,gen)
         def do_step():
             cnt=general.Countdown(min_runtime) if min_runtime else None
             try:
@@ -1524,7 +1524,8 @@ class QTaskThread(QThreadController):
             self._batch_jobs_stopreq.add(name)
             return
         self.remove_job(name)
-        _,args,kwargs,cleanup=self._batch_jobs_args.pop(name)
+        _,args,kwargs,cleanup,gen=self._batch_jobs_args.pop(name)
+        gen.close()
         if cleanup:
             cleanup(*args,**kwargs)
     def restart_batch_job(self, name, start_immediate=True, error_on_stopped=False):
@@ -1534,7 +1535,7 @@ class QTaskThread(QThreadController):
         If ``error_on_stopped==True`` and the job is not currently running, raise an error. Otherwise, do nothing.
         Local call method.
         """
-        period,args,kwargs,_=self._batch_jobs_args[name]
+        period,args,kwargs,_,_=self._batch_jobs_args[name]
         self.stop_batch_job(name,stop_immediate=True,error_on_stopped=error_on_stopped)
         self.start_batch_job(name,period,*args,start_immediate=start_immediate,**kwargs)
     def run_as_batch_job(self, job, period, cleanup=None, name=None, priority=-10, start_immediate=True, args=None, kwargs=None):
