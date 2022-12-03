@@ -1,15 +1,9 @@
-from ...core.devio import SCPI, interface, comm_backend
+from ...core.devio import SCPI, interface
 from ...core.utils import py3, general
+from .base import GenericSirahError, GenericSirahBackendError
 
 import time
 import collections
-
-
-
-class GenericSirahError(comm_backend.DeviceError):
-    """Generic Sirah error"""
-class GenericSirahBackendError(GenericSirahError,comm_backend.DeviceBackendError):
-    """Sirah backend communication error"""
 
 
 TThinetCtlParameters=collections.namedtuple("TThinetCtlParameters",["setpoint","P","I","avg"])
@@ -33,6 +27,8 @@ class SirahMatisse(SCPI.SCPIDevice):
     _bool_selector=("FALSE","TRUE")
     def __init__(self, addr):
         super().__init__(addr)
+        with self._close_on_error():
+            self.get_id()
         self._add_scpi_parameter("diode_power","DPOW:DC")
         self._add_scpi_parameter("diode_power_waveform","DPOW:WAVTAB",kind="string")
         self._add_scpi_parameter("diode_power_lowlevel","DPOW:LOW",set_echo=True)

@@ -1,7 +1,10 @@
 from ...core.dataproc import filters
-from ...core.utils import general, funcargparse
+from ...core.fileio import loadfile
+from ...core.utils import general, funcargparse, py3
+from .base import GenericSirahError
 
 import numpy as np
+import pandas as pd
 import time
 
 
@@ -14,10 +17,56 @@ class MatisseTuner:
     Args:
         laser: opened Matisse laser object
         wavemeter: opened wavemeter object (currently only HighFinesse wavemeters are supported)
+        calibration: either a calibration dictionary, or a path to the calibration dictionary file
     """
-    def __init__(self, laser, wavemeter):
+    def __init__(self, laser, wavemeter, calibration=None):
         self.laser=laser
         self.wavemeter=wavemeter
+        self.apply_calibration(calibration)
+        self._tune_units="int"
+        self._fine_scan_start=None
+    def set_tune_units(self, units="int"):
+        """
+        Set default units for fine tuning and sweeping (fine sweep or stitched scan).
+        
+        Can be either ``"int"`` (internal units between 0 and 1) or ``"freq"`` (frequency units; requires calibration).
+        """
+        funcargparse.check_parameter_range(units,"units",["int","freq"])
+        if self._slow_piezo_cal is None and units=="freq":
+            raise ValueError("frequency tuning units require calibration")
+        self._tune_units=units
+    def _to_int_units(self, value, device="slow_piezo"):
+        if self._tune_units=="freq":
+            if device=="slow_piezo":
+                value=value/self._slow_piezo_cal
+        return value
+    def apply_calibration(self, calibration):
+        """
+        Apply the given calibration.
+
+        `calibration` is either a calibration dictionary, or a path to the calibration dictionary file.
+        Contains information about the relation between bifi motor and wavelength, thin etalon motor span,
+        slow piezo tuning rate (frequency to internal units) and its maximal sweep rate.
+        """
+        if isinstance(calibration,py3.textstring):
+            try:
+                calibration=loadfile.load_dict(calibration)
+            except (IOError,RuntimeError):
+                raise GenericSirahError("could not load calibration file {}".format(calibration))
+        if calibration is None:
+            return
+        if "te_search_rng" in calibration:
+            self._te_search_rng=calibration["te_search_rng"]
+        if "te_full_rng" in calibration:
+            self._te_full_rng=calibration["te_full_rng"]
+        if "bifi_full_rng" in calibration:
+            self._bifi_full_rng=calibration["bifi_full_rng"]
+        if "bifi_freqs" in calibration:
+            self._bifi_freqs=calibration["bifi_freqs"]
+        if "slow_piezo_cal" in calibration:
+            self._slow_piezo_cal=calibration["slow_piezo_cal"]
+        if "slow_piezo_max_speed" in calibration:
+            self._slow_piezo_max_speed=calibration["slow_piezo_max_speed"]
     def get_frequency(self, timeout=1.):
         """
         Get current frequency reading.
@@ -30,7 +79,7 @@ class MatisseTuner:
             if isinstance(f,float):
                 return f
             if countdown.passed():
-                raise RuntimeError
+                raise RuntimeError("could not read frequency in {} seconds".format(timeout))
     
     def _get_motor_position(self, motor):
         funcargparse.check_parameter_range(motor,"motor",["bifi","thinet"])
@@ -182,6 +231,74 @@ class MatisseTuner:
                 print("{:3d} / {:3d}   {:5.1f}mins left".format(i+1,len(bifi_position),tleft/60))
         return np.column_stack([bffpos,tefpos,diode_power,thinet_power,frequency])
 
+    def _get_thinet_range(self, t):
+        prng=np.percentile(t.EtPower,10),np.percentile(t.EtPower,90)
+        cutoff=prng[0]+(prng[1]-prng[0])*0.2
+        inrng=t.ThinEt[t.EtPower>=cutoff]
+        return np.percentile(inrng,10),np.percentile(inrng,90)
+    def _get_motor_calibration(self, scan, cal=None):
+        cal=cal or {}
+        thinet_rngs=np.array([self._get_thinet_range(t) for _,t in scan.groupby("BiFi")])
+        te_rng=np.median(thinet_rngs,axis=0)
+        cal["te_search_rng"]=tuple(te_rng)
+        cal["te_full_rng"]=tuple(te_rng+np.array([-1,1])*1000)
+        fscan=scan[(scan.ThinEt>=te_rng[0])&(scan.ThinEt<te_rng[1])]
+        freq_rngs=np.array([(bf,np.percentile(t.Freq,10),np.percentile(t.Freq,90)) for bf,t in fscan.groupby("BiFi")])
+        valid_spans=freq_rngs[:,2]-freq_rngs[:,1]<1E12
+        freq_rngs=freq_rngs[valid_spans]
+        cal["bifi_full_rng"]=freq_rngs[:,0].min(),freq_rngs[:,0].max()
+        bifi_freqs=np.column_stack((freq_rngs[:,0],(freq_rngs[:,1]+freq_rngs[:,2])/2))
+        maxfreq=np.maximum.accumulate(bifi_freqs[:,1])
+        bifi_freqs=bifi_freqs[bifi_freqs[:,1]==maxfreq]
+        cal["bifi_freqs"]=bifi_freqs
+        return cal
+    _bifi_cal_rng=(100000,400000,400)
+    _te_cal_rng=(2000,22000)
+    def calibrate(self, motors=True, slow_piezo=True, verbose=True, bifi_range=None, thinet_range=None, return_scans=True):
+        """
+        Calibrate the laser and return the calibration results.
+
+        If ``motors==True``, perform motors calibration (bifi range and wavelengths, thin etalon range);
+        if ``slow_piezo==True``, perform slow piezo calibration (ratio between internal tuning units and frequency shift).
+        If `bifi_range` is specified, it is a tuple ``(start, stop, step)`` defining the tested bifi positions (default is between 100000 and 400000 with a step of 400).
+        If `thinet_range` is specified, it is a tuple ``(start, stop)`` defining the tested thin etalon position range.
+        IF ``verbose==True``, print the progress updates during scan.
+        If ``return_scans==True``, return a tuple ``(calibration, scans)``, where ``scans`` is a tuple ``(motor_scan, piezo_scan)`` containing detail scan result tables;
+        otherwise, return just the calibration dictionary.
+        """
+        cal={}
+        if motors:
+            if verbose:
+                print("Calibrating motors")
+            bifi_range=self._bifi_cal_rng if bifi_range is None else bifi_range
+            thinet_range=self._te_cal_rng if thinet_range is None else thinet_range
+            mot_scan=self.scan_both_motors_quick(bifi_range,thinet_range,verbose=verbose)
+            mot_scan=pd.DataFrame(mot_scan,columns=["BiFi","ThinEt","Power","EtPower","Freq"])
+            cal=self._get_motor_calibration(mot_scan,cal=cal)
+            self.apply_calibration(cal)
+        else:
+            mot_scan=None
+        if slow_piezo and len(self._bifi_freqs):
+            if verbose:
+                print("Calibrating slow piezo response")
+            slow_piezo_cal_freqs=np.linspace(self._bifi_freqs[:,1].min(),self._bifi_freqs[:,1].max(),12)[1:-1]
+            slow_piezo_scan=[]
+            t0=time.time()
+            for i,f in enumerate(slow_piezo_cal_freqs):
+                self.tune_to(f,level="thinet")
+                slow_piezo_scan.append((f,self._estimate_slow_piezo_slope()))
+                if verbose:
+                    dt=time.time()-t0
+                    tleft=(dt)/(i+1)*(len(slow_piezo_cal_freqs)-i-1)
+                    print("{:3d} / {:3d}   {:5.1f}mins left".format(i+1,len(slow_piezo_cal_freqs),tleft/60))
+            slow_piezo_scan=pd.DataFrame(slow_piezo_scan,columns=["Freq","Slope"])
+            self._slow_piezo_cal=cal["slow_piezo_cal"]=np.median(slow_piezo_scan.Slope)
+        else:
+            slow_piezo_scan=None
+        if return_scans:
+            return cal,(mot_scan,slow_piezo_scan)
+        return cal
+
     def _dfcmp(self, f1, f2, app):
         if app=="below":
             if f1>0 and f2<0:
@@ -240,8 +357,12 @@ class MatisseTuner:
     _bifi_search_step=(1800,3,200)  # bifi "zoom-in" parameters ``(init, factor, final)``
     # start with ``init`` step size, and every time the desired frequency is reached, reduce it by ``factor``, until ``final`` (or smaller) step size is reached
     _bifi_pos_dir=1  # direction of bifi tuning corresponding to the increasing frequencies
-    _bifi_plateau_span=50E9  # maximal estimate of the frequency variation withing one bifi 'plateau' (frequency changes smaller than that are ignored during tuning)
+    _bifi_plateau_span=10E9  # maximal estimate of the frequency variation withing one bifi 'plateau' (frequency changes smaller than that are ignored during tuning)
+    _bifi_freqs=np.zeros((0,2))
     def _align_bifi(self, target, approach="both"):
+        if len(self._bifi_freqs):
+            bifi_pos=self._bifi_freqs[abs(self._bifi_freqs[:,1]-target).argmin(),0]-500
+            self._move_motor("bifi",bifi_pos)
         s0,sr,sm=self._bifi_search_step
         s=s0*(1 if target>self.get_frequency() else -1)*self._bifi_pos_dir
         while abs(s)>=sm:
@@ -283,62 +404,176 @@ class MatisseTuner:
         self.laser.set_thinet_ctl_params(setpoint=etval/np.median(p[:,1]),P=abs(ctl_par.P)*side,I=abs(ctl_par.I)*side)
         return scan
     
-    def _move_cont(self, device, position, speed):
+    def _move_cont_gen(self, device, position, speed):
         scanpar=self.laser.get_scan_params()
-        self.laser.set_scan_status("stop")
         assert device=="slow_piezo"
+        self._unlock_slow_piezo()
+        position=max(self._slow_piezo_rng[0],min(position,self._slow_piezo_rng[1]))
         start=self.laser.get_slowpiezo_position()
-        if position>start:
-            self.laser.set_scan_params(device=device,mode=(False,True,True),lower_limit=0,upper_limit=position,rise_speed=speed)
-        else:
-            self.laser.set_scan_params(device=device,mode=(True,True,True),lower_limit=position,upper_limit=1,fall_speed=speed)
-        self.laser.set_scan_status("run")
-        self.laser.wait_scan()
-        self.laser.set_scan_params(*scanpar)
+        try:
+            if abs(position-start)<1E-3:
+                self.laser.set_scan_params(device="none")
+                self.laser.set_slowpiezo_position(position)
+                yield
+                return
+            if position>start:
+                self.laser.set_scan_params(device=device,mode=(False,True,True),lower_limit=0,upper_limit=position,rise_speed=speed)
+            else:
+                self.laser.set_scan_params(device=device,mode=(True,True,True),lower_limit=position,upper_limit=1,fall_speed=speed)
+            self.laser.set_scan_status("run")
+            while self.laser.get_scan_status()=="run":
+                yield
+        finally:
+            self.laser.set_scan_status("stop")
+            self.laser.set_scan_params(*scanpar)
+    def _move_cont(self, device, position, speed):
+        for _ in self._move_cont_gen(device,position,speed):
+            time.sleep(1E-3)
 
-    def unlock_all(self):
-        """Unlock all relevant locks (slow piezo, fast piezo, piezo etalon, thin etalon)"""
+    _slow_piezo_rng=(0,0.7)  # total accessible slow piezo range
+    _slow_piezo_cal=None  # slow piezo sensitivity (Hz/tuning value)
+    _slow_piezo_cal_est=(0.2,7,0.2)  # parameters for slow piezo sensitivity estimation ``(span, segments, delay)``;
+    # to estimate the sensitivity, range of ``span`` size around tuning center is split into ``segments`` chunks, slow is estimated over each of them, and then median is returned
+    def _estimate_slow_piezo_slope(self):
+        center=np.mean(self._slow_piezo_rng)
+        poss=center+np.linspace(-self._slow_piezo_cal_est[0]/2,self._slow_piezo_cal_est[0]/2,self._slow_piezo_cal_est[1]+1)
+        freqs=[]
+        for p in poss:
+            self._move_cont("slow_piezo",p,self._slow_piezo_max_speed)
+            time.sleep(self._slow_piezo_cal_est[2])
+            freqs.append(self.get_frequency())
+        df=np.median(np.diff(freqs))
+        return (df*self._slow_piezo_cal_est[1])/self._slow_piezo_cal_est[0]
+
+    def _unlock_slow_piezo(self):
+        try:
+            self.laser.set_fastpiezo_ctl_status("stop")
+        except self.laser.Error:
+            pass
         self.laser.set_scan_status("stop")
         self.laser.set_scan_params(device="none")
         self.laser.set_slowpiezo_ctl_status("stop")
-        self.laser.set_slowpiezo_position(.35)
+    def unlock_all(self):
+        """Unlock all relevant locks (slow piezo, fast piezo, piezo etalon, thin etalon)"""
+        self._unlock_slow_piezo()
+        self.laser.set_slowpiezo_position(np.mean(self._slow_piezo_rng))
         self.laser.set_piezoet_ctl_status("stop")
         self.laser.set_piezoet_position(0)
         self.laser.set_thinet_ctl_status("stop")
         self.laser.thinet_clear_errors()
         self.laser.bifi_clear_errors()
     
-    _fine_tune_step=(0.01,2,0.001)  # slow piezo "zoom-in" parameters ``(init, factor, final)``
+    _fine_tune_step=(0.01,2,0.001,0.1)  # slow piezo "zoom-in" parameters ``(init, factor, final, delay)``
     # start with ``init`` position step, and every time the desired frequency is reached, reduce it by ``factor`` and flip the direction,
-    # until ``final`` (or smaller) position step is reached
-    _fine_tune_speed=0.1  # speed of fine tuning (slow enough to avoid mode hopping, fast enough to be quick)
+    # until ``final`` (or smaller) position step is reached; when the step is within a factor of 10 from ``final``, start applying ``delay`` after every step
+    _fine_tune_slope=(10,0.05E9,0.2)
+    _slow_piezo_max_speed=0.05  # speed of fine tuning (slow enough to avoid mode hopping, fast enough to be quick)
     _fine_tune_dir=1  # direction of slow piezo tuning corresponding to the increasing frequencies
-    def slow_piezo_tune_to(self, target):
-        """Fine tune the laser to the given target frequency using only slow piezo tuning"""
+    def _slow_piezo_tune_step(self, target):
         pos=self.laser.get_slowpiezo_position()
         df=self.get_frequency()-target
         step=self._fine_tune_step[0]*(1 if df<0 else -1)*self._fine_tune_dir
         while abs(step)>self._fine_tune_step[2]:
-            if pos+step<0.05 or pos+step>0.65:
+            if pos+step<self._slow_piezo_rng[0]+0.05 or pos+step>self._slow_piezo_rng[1]-0.05:
                 break
-            self._move_cont("slow_piezo",pos+step,self._fine_tune_speed)
+            self._move_cont("slow_piezo",pos+step,self._slow_piezo_max_speed)
             pos+=step
             ndf=self.get_frequency()-target
             if abs(ndf)>abs(df):
                 step=-step/self._fine_tune_step[1]
             df=ndf
+            if abs(step)<self._fine_tune_step[2]*10:
+                time.sleep(self._fine_tune_step[3])
+    def _slow_piezo_tune_slope(self, target):
+        if self._slow_piezo_cal is None:
+            raise ValueError("slow piezo calibration is not specified")
+        bound_hit=[False,False]
+        dfs=[]
+        for i in range(self._fine_tune_slope[0]):
+            pos=self.laser.get_slowpiezo_position()
+            if pos<self._slow_piezo_rng[0]+0.07:
+                bound_hit[0]=True
+            if pos>self._slow_piezo_rng[1]-0.07:
+                bound_hit[1]=True
+            if all(bound_hit):
+                return
+            df=self.get_frequency()-target
+            dfs.append(abs(df))
+            if len(dfs)>=4 and np.min(dfs[-2:])>np.min(dfs[-4:-2])*0.8:
+                return
+            if abs(df)<self._fine_tune_slope[1] and i>2:
+                return
+            step=-df/self._slow_piezo_cal
+            newpos=max(self._slow_piezo_rng[0]+0.05,min(pos+step,self._slow_piezo_rng[1]-0.05))
+            self._move_cont("slow_piezo",newpos,self._slow_piezo_max_speed)
+            time.sleep(self._fine_tune_slope[2])
+    def slow_piezo_tune_to(self, target, method="auto"):
+        """Fine tune the laser to the given target frequency using only slow piezo tuning"""
+        funcargparse.check_parameter_range(method,"method",["auto","step","cal"])
+        if method=="auto":
+            method="cal" if self._slow_piezo_cal is not None else "step"
+        if method=="step":
+            return self._slow_piezo_tune_step(target)
+        return self._slow_piezo_tune_slope(target)
     
-    def tune_to(self, target):
-        """Tune the laser to the given frequency using all elements (bifi, thin etalon, piezo etalon, slow piezo)"""
+    def tune_to(self, target, level="full"):
+        """
+        Tune the laser to the given frequency (in Hz) using multiple elements (bifi, thin etalon, piezo etalon, slow piezo).
+        
+        `level` can be ``"bifi"`` (only tune the bifi motor), ``"thinet"`` (tune bifi motor and thin etalon),
+        or ``"full"`` (full tuning using all elements).
+        """
+        funcargparse.check_parameter_range(level,"level",["bifi","thinet","full"])
         self.unlock_all()
         self._move_motor("thinet",np.mean(self._te_search_rng))
         self._align_bifi(target)
+        if level=="bifi":
+            return
         self._align_te(target)
         self.laser.set_thinet_ctl_status("run")
         self.laser.set_piezoet_ctl_status("run")
+        if level=="thinet":
+            return
         self.slow_piezo_tune_to(target)
 
+    def fine_sweep_start(self, span, up_speed, down_speed=None, kind="cont_up", current_pos=0.5):
+        """
+        Start a fine sweep using the slow piezo.
+
+        `span` is a sweep span, `up_speed` and `down_speed` are the corresponding speeds (if `down_speed` is ``None``, use the same as `up_speed`),
+        `kind` is the sweep kind (``"cont_up"``, ``"cont_down"``, ``"single_up"``, or ``"single_down"``),
+        and `current_pos` is the relative position of the current position withing the sweep range (0 means that it's the lowest position of the sweep,
+        1 means it's the highest, 0.5 means that it's in the center).
+        """
+        funcargparse.check_parameter_range(kind,"kind",["cont_up","cont_down","single_up","single_down"])
+        span=self._to_int_units(span)
+        up_speed=min(self._to_int_units(abs(up_speed)),self._slow_piezo_max_speed)
+        down_speed=up_speed if down_speed is None else min(self._to_int_units(abs(down_speed)),self._slow_piezo_max_speed)
+        p=self.laser.get_slowpiezo_position()
+        self._fine_scan_start=p
+        scan_rng=max(self._slow_piezo_rng[0],p-span*current_pos),min(self._slow_piezo_rng[1],p-span*current_pos+span)
+        if kind in ["cont_up","single_up"]:
+            start=scan_rng[0]
+            mode=(False,False,kind=="single_up")
+        else:
+            start=scan_rng[1]
+            mode=(True,kind=="single_down",False)
+        self._move_cont("slow_piezo",start,self._slow_piezo_max_speed)
+        self.laser.set_scan_params(device="slow_piezo",mode=mode,lower_limit=scan_rng[0],upper_limit=scan_rng[1],rise_speed=up_speed,fall_speed=down_speed)
+        self.laser.set_scan_status("run")
+    def fine_sweep_stop(self, return_to_start=True):
+        """
+        Stop currently running fast sweep.
+
+        If ``return_to_start==True``, return to the original start tuning position after the sweeps is stopeed;
+        otherwise, stay at the current position.
+        """
+        self.laser.set_scan_status("stop")
+        if return_to_start and self._fine_scan_start is not None:
+            self._move_cont("slow_piezo",self._fine_scan_start,self._slow_piezo_max_speed)
+        self._fine_scan_start=None
     
+    _default_stitch_tune_precision=5E9
     def stitched_scan(self, full_rng, single_span, speed, overlap=0.1, freq_step=None):
         """
         Perform a stitched laser scan.
@@ -352,13 +587,30 @@ class MatisseTuner:
                 otherwise, it specifies a fixed frequency step between segments.
         """
         f=full_rng[0]
+        stitch_tune_precision=single_span*.2 if self._tune_units=="freq" else self._default_stitch_tune_precision
+        fail_step=freq_step*0.5 if freq_step is not None else (single_span*0.5 if self._tune_units=="freq" else self._default_stitch_tune_precision*2)
+        expected_span=single_span if self._tune_units=="freq" else None
+        single_span=self._to_int_units(single_span)
+        speed=self._to_int_units(speed)
         while f<full_rng[1]:
+            yield False
             self.tune_to(f)
             f0=self.get_frequency()
-            p=self.laser.get_slowpiezo_position()
-            self._move_cont("slow_piezo",min(p+single_span,0.7),speed)
-            f1=self.get_frequency()
-            if freq_step is None:
-                f=f1-(f1-f0)*overlap
+            if abs(f0-f)<stitch_tune_precision:
+                p=self.laser.get_slowpiezo_position()
+                yield False
+                for _ in self._move_cont_gen("slow_piezo",p+single_span,speed):
+                    yield True
+                yield False
+                f1=self.get_frequency()
             else:
-                f+=freq_step
+                f1=None
+            span_success=f1 is not None and (expected_span is None or (f1-f0>expected_span/4 and f1-f0<expected_span*2))
+            # print(span_success,f1)
+            if freq_step is None:
+                if span_success:
+                    f=f1-(f1-f0)*overlap
+                else:
+                    f=f+fail_step
+            else:
+                f+=freq_step if span_success else fail_step

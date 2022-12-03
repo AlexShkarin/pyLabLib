@@ -1,1 +1,1 @@
-from .Matisse import SirahMatisseThread
+from .Matisse import SirahMatisseThread, SirahMatisseTunerThread
