@@ -311,16 +311,18 @@ class MatisseTuner:
             if f1>0 and f2<0:
                 return False
         return abs(f1)>abs(f2)
-    def _pass_plateau(self, motor, step, target, prec, fltw=3, approach="both", rng=None):
-        cldf=self.get_frequency()-target
+    def _pass_plateau(self, motor, step, prec, target=None, fltw=3, approach="both", rng=None):
+        if target is None:
+            target=self.get_frequency()
+            cldf=0
+        else:
+            cldf=self.get_frequency()-target
         pdf=cldf
-        self._plateau_log.append((self._get_motor_position(motor),self.get_frequency(),cldf,cldf))
         flt=filters.RunningDecimationFilter(fltw,mode="median")
         while True:
             if not self._move_motor_by(motor,step,rng=rng):
                 return
             df=self.get_frequency()-target
-            self._plateau_log.append((self._get_motor_position(motor),self.get_frequency(),df,cldf))
             fdf=flt.add(df)
             if fdf is not None:
                 if abs(fdf-pdf)>prec:
@@ -329,12 +331,13 @@ class MatisseTuner:
                     else:
                         return
                 pdf=fdf
-    def _center_plateau(self, motor, step, target, prec, approach="both", rng=None):
-        self._plateau_log=[]
-        self._pass_plateau(motor,-step*5,target,prec,approach=approach,rng=rng)
-        self._pass_plateau(motor,step,target,prec,approach=approach,rng=rng)
+    def _center_plateau(self, motor, step, prec, target=None, approach="both", rng=None):
+        if target is None:
+            target=self.get_frequency()
+        self._pass_plateau(motor,-step*5,prec,target=target,approach=approach,rng=rng)
+        self._pass_plateau(motor,step,prec,target=target,approach=approach,rng=rng)
         p0=self._get_motor_position(motor)
-        self._pass_plateau(motor,-step,target,prec,approach=approach,rng=rng)
+        self._pass_plateau(motor,-step,prec,target=target,approach=approach,rng=rng)
         p1=self._get_motor_position(motor)
         self._move_motor(motor,(p0+p1)/2)
         return p0,p1
@@ -357,7 +360,7 @@ class MatisseTuner:
     _bifi_search_step=(1800,3,200)  # bifi "zoom-in" parameters ``(init, factor, final)``
     # start with ``init`` step size, and every time the desired frequency is reached, reduce it by ``factor``, until ``final`` (or smaller) step size is reached
     _bifi_pos_dir=1  # direction of bifi tuning corresponding to the increasing frequencies
-    _bifi_plateau_span=10E9  # maximal estimate of the frequency variation withing one bifi 'plateau' (frequency changes smaller than that are ignored during tuning)
+    _bifi_plateau_freq_span=10E9  # maximal estimate of the frequency variation withing one bifi 'plateau' (frequency changes smaller than that are ignored during tuning)
     _bifi_freqs=np.zeros((0,2))
     def _align_bifi(self, target, approach="both"):
         if len(self._bifi_freqs):
@@ -373,24 +376,37 @@ class MatisseTuner:
             else:
                 s=-s/sr
         s*=sr
-        self._center_plateau("bifi",s,target,self._bifi_plateau_span,approach=approach,rng=self._bifi_full_rng)
+        self._center_plateau("bifi",s,self._bifi_plateau_freq_span,target=target,approach=approach,rng=self._bifi_full_rng)
+    def _refine_bifi(self, target):
+        for _ in range(2):
+            te_pos=self._get_motor_position("thinet")
+            scan=self.scan_quick("thinet",*self._te_search_rng)
+            self._move_motor("thinet",te_pos)
+            plat_span=np.percentile(scan[:,3],10),np.percentile(scan[:,3],90)
+            target_frac=(target-plat_span[0])/(plat_span[1]-plat_span[0])
+            if abs(target_frac-0.5)>0.3:
+                plat_dir=1 if target_frac>0.5 else -1
+                self._pass_plateau("bifi",self._bifi_search_step[2]*plat_dir,self._bifi_plateau_freq_span)
+            else:
+                break
+        return scan
     _te_search_rng=(2000,12000)  # initial thin etalon search range
     _te_full_rng=(1000,13000)  # maximal thin etalon tune range (used when zooming in on the target 'plateau' center)
-    _te_plateau_span=5E9  # maximal estimate of the frequency variation withing thin etalon 'plateau' (frequency changes smaller than that are ignored during tuning)
+    _te_plateau_freq_span=5E9  # maximal estimate of the frequency variation withing thin etalon 'plateau' (frequency changes smaller than that are ignored during tuning)
     _te_plateau_step=50  # thin etalon motor step used to find the desired 'plateau'
     _te_center_step=20  # thin etalon motor step used for the final probing of the desired 'plateau' boundaries
     _te_lock_frac=0.3  # relative position within the 'plateau' to center the thin etalon lock (0.5 would be in the center, 0 is on the left edge, etc.)
-    def _align_te(self, target):
-        scan=self.scan_quick("thinet",*self._te_search_rng)
-        plats=self._split_plateaus(scan[:,3],self._te_plateau_span,minw=3)
+    def _align_te(self, target, prescan=None):
+        scan=self.scan_quick("thinet",*self._te_search_rng) if prescan is None else prescan
+        plats=self._split_plateaus(scan[:,3],self._te_plateau_freq_span,minw=3)
         if not plats:
             self._move_motor("thinet",np.mean(self._te_search_rng))
             return
         p=self._get_closest_plateau(scan,plats,target)
         self._move_motor("thinet",(p[0,0]+p[-1,0])/2)
-        p0,p1=self._center_plateau("thinet",self._te_plateau_step,target,self._te_plateau_span,rng=self._te_full_rng)
+        p0,p1=self._center_plateau("thinet",self._te_plateau_step,self._te_plateau_freq_span,target=target,rng=self._te_full_rng)
         scan=self.scan_steps("thinet",p0-self._te_center_step*3,p1+self._te_center_step*3,self._te_center_step)
-        plats=self._split_plateaus(scan[:,3],self._te_plateau_span,minw=3)
+        plats=self._split_plateaus(scan[:,3],self._te_plateau_freq_span,minw=3)
         if not plats:
             self._move_motor("thinet",np.mean([p0,p1]))
             return
@@ -414,7 +430,6 @@ class MatisseTuner:
             if abs(position-start)<1E-3:
                 self.laser.set_scan_params(device="none")
                 self.laser.set_slowpiezo_position(position)
-                yield
                 return
             if position>start:
                 self.laser.set_scan_params(device=device,mode=(False,True,True),lower_limit=0,upper_limit=position,rise_speed=speed)
@@ -476,7 +491,8 @@ class MatisseTuner:
         while abs(step)>self._fine_tune_step[2]:
             if pos+step<self._slow_piezo_rng[0]+0.05 or pos+step>self._slow_piezo_rng[1]-0.05:
                 break
-            self._move_cont("slow_piezo",pos+step,self._slow_piezo_max_speed)
+            for _ in self._move_cont_gen("slow_piezo",pos+step,self._slow_piezo_max_speed):
+                yield
             pos+=step
             ndf=self.get_frequency()-target
             if abs(ndf)>abs(df):
@@ -484,6 +500,7 @@ class MatisseTuner:
             df=ndf
             if abs(step)<self._fine_tune_step[2]*10:
                 time.sleep(self._fine_tune_step[3])
+            yield
     def _slow_piezo_tune_slope(self, target):
         if self._slow_piezo_cal is None:
             raise ValueError("slow piezo calibration is not specified")
@@ -505,17 +522,51 @@ class MatisseTuner:
                 return
             step=-df/self._slow_piezo_cal
             newpos=max(self._slow_piezo_rng[0]+0.05,min(pos+step,self._slow_piezo_rng[1]-0.05))
-            self._move_cont("slow_piezo",newpos,self._slow_piezo_max_speed)
+            for _ in self._move_cont_gen("slow_piezo",newpos,self._slow_piezo_max_speed):
+                yield
             time.sleep(self._fine_tune_slope[2])
-    def slow_piezo_tune_to(self, target, method="auto"):
-        """Fine tune the laser to the given target frequency using only slow piezo tuning"""
+            yield
+    def slow_piezo_tune_to_gen(self, target, method="auto"):
+        """
+        Same as :meth:`slow_piezo_tune_to`, but made as a generater which yields occasionally.
+        
+        Can be used to run this scan in parallel with some other task, or to be able to interrupt it in the middle.
+        """
         funcargparse.check_parameter_range(method,"method",["auto","step","cal"])
         if method=="auto":
             method="cal" if self._slow_piezo_cal is not None else "step"
-        if method=="step":
-            return self._slow_piezo_tune_step(target)
-        return self._slow_piezo_tune_slope(target)
+        tune=self._slow_piezo_tune_step if method=="step" else self._slow_piezo_tune_slope
+        for _ in tune(target):
+            yield
+    def slow_piezo_tune_to(self, target, method="auto"):
+        """Fine tune the laser to the given target frequency using only slow piezo tuning"""
+        for _ in self.slow_piezo_tune_to_gen(target,method=method):
+            time.sleep(1E-3)
     
+    def tune_to_gen(self, target, level="full"):
+        """
+        Same as :meth:`tune_to`, but made as a generater which yields occasionally.
+        
+        Can be used to run this scan in parallel with some other task, or to be able to interrupt it in the middle.
+        """
+        funcargparse.check_parameter_range(level,"level",["bifi","thinet","full"])
+        self.unlock_all()
+        self._move_motor("thinet",np.mean(self._te_search_rng))
+        yield
+        self._align_bifi(target)
+        yield
+        te_prescan=self._refine_bifi(target)
+        yield
+        if level=="bifi":
+            return
+        self._align_te(target,prescan=te_prescan)
+        yield
+        self.laser.set_thinet_ctl_status("run")
+        self.laser.set_piezoet_ctl_status("run")
+        if level=="thinet":
+            return
+        for _ in self.slow_piezo_tune_to_gen(target):
+            yield 
     def tune_to(self, target, level="full"):
         """
         Tune the laser to the given frequency (in Hz) using multiple elements (bifi, thin etalon, piezo etalon, slow piezo).
@@ -523,18 +574,8 @@ class MatisseTuner:
         `level` can be ``"bifi"`` (only tune the bifi motor), ``"thinet"`` (tune bifi motor and thin etalon),
         or ``"full"`` (full tuning using all elements).
         """
-        funcargparse.check_parameter_range(level,"level",["bifi","thinet","full"])
-        self.unlock_all()
-        self._move_motor("thinet",np.mean(self._te_search_rng))
-        self._align_bifi(target)
-        if level=="bifi":
-            return
-        self._align_te(target)
-        self.laser.set_thinet_ctl_status("run")
-        self.laser.set_piezoet_ctl_status("run")
-        if level=="thinet":
-            return
-        self.slow_piezo_tune_to(target)
+        for _ in self.tune_to_gen(target,level=level):
+            time.sleep(1E-3)
 
     def fine_sweep_start(self, span, up_speed, down_speed=None, kind="cont_up", current_pos=0.5):
         """
@@ -574,6 +615,40 @@ class MatisseTuner:
         self._fine_scan_start=None
     
     _default_stitch_tune_precision=5E9
+    def stitched_scan_gen(self, full_rng, single_span, speed, overlap=0.1, freq_step=None):
+        """
+        Same as :meth:`stitched_scan`, but made as a generater which yields occasionally.
+        
+        Can be used to run this scan in parallel with some other task, or to be able to interrupt it in the middle.
+        Yields ``True`` whenever the main scanning region is passing, and ``False`` during the stitching intervals.
+        """
+        f=full_rng[0]
+        stitch_tune_precision=single_span*.2 if self._tune_units=="freq" else self._default_stitch_tune_precision
+        fail_step=freq_step*0.5 if freq_step is not None else (single_span*0.5 if self._tune_units=="freq" else self._default_stitch_tune_precision*2)
+        expected_span=single_span if self._tune_units=="freq" else None
+        single_span=self._to_int_units(single_span)
+        speed=self._to_int_units(speed)
+        while f<full_rng[1]:
+            for _ in self.tune_to_gen(f):
+                yield False
+            f0=self.get_frequency()
+            if abs(f0-f)<stitch_tune_precision:
+                p=self.laser.get_slowpiezo_position()
+                yield False
+                for _ in self._move_cont_gen("slow_piezo",p+single_span,speed):
+                    yield True
+                yield False
+                f1=self.get_frequency()
+            else:
+                f1=None
+            span_success=f1 is not None and (expected_span is None or (f1-f0>expected_span/4 and f1-f0<expected_span*2))
+            if freq_step is None:
+                if span_success:
+                    f=f1-(f1-f0)*overlap
+                else:
+                    f=f+fail_step
+            else:
+                f+=freq_step if span_success else fail_step
     def stitched_scan(self, full_rng, single_span, speed, overlap=0.1, freq_step=None):
         """
         Perform a stitched laser scan.
@@ -586,31 +661,5 @@ class MatisseTuner:
             freq_step: if ``None``, the start of the next segment is calculated based on the end of the previous segment and `overlap`;
                 otherwise, it specifies a fixed frequency step between segments.
         """
-        f=full_rng[0]
-        stitch_tune_precision=single_span*.2 if self._tune_units=="freq" else self._default_stitch_tune_precision
-        fail_step=freq_step*0.5 if freq_step is not None else (single_span*0.5 if self._tune_units=="freq" else self._default_stitch_tune_precision*2)
-        expected_span=single_span if self._tune_units=="freq" else None
-        single_span=self._to_int_units(single_span)
-        speed=self._to_int_units(speed)
-        while f<full_rng[1]:
-            yield False
-            self.tune_to(f)
-            f0=self.get_frequency()
-            if abs(f0-f)<stitch_tune_precision:
-                p=self.laser.get_slowpiezo_position()
-                yield False
-                for _ in self._move_cont_gen("slow_piezo",p+single_span,speed):
-                    yield True
-                yield False
-                f1=self.get_frequency()
-            else:
-                f1=None
-            span_success=f1 is not None and (expected_span is None or (f1-f0>expected_span/4 and f1-f0<expected_span*2))
-            # print(span_success,f1)
-            if freq_step is None:
-                if span_success:
-                    f=f1-(f1-f0)*overlap
-                else:
-                    f=f+fail_step
-            else:
-                f+=freq_step if span_success else fail_step
+        for _ in self.stitched_scan_gen(full_rng,single_span,speed,overlap=overlap,freq_step=freq_step):
+            time.sleep(1E-3)

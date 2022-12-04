@@ -128,7 +128,13 @@ class SirahMatisseTunerThread(SirahMatisseThread):
         - ``calibration``: calibration data (either the calibration dictionary, or path to the calibration file)
 
     Commands:
-        - ``tune_to``: fine tune to the given frequency
+        - ``tune_to_start``: start fine tuning to the given frequency
+        - ``tune_to_stop``: stop fine tuning to the given frequency
+        - ``fine_scan_start``: start fine scan with the given parameters
+        - ``fine_scan_stop``: stop fine scan with the given parameters
+        - ``stitched_scan_start``: start stitched scan with the given frequency range
+        - ``stitched_scan_stop``: stop stitched scan with the given frequency range
+        - ``stop_tuning``: stop all tuning operations
     """
     _device_class=""
     def connect_device(self):
@@ -146,7 +152,9 @@ class SirahMatisseTunerThread(SirahMatisseThread):
         self.calibration=calibration
         self.add_job("update_measurements",self.update_measurements,.2)
         self.v["stitched_scan/stitching"]=0
-        self.add_command("tune_to")
+        self.add_batch_job("tune_to",self.tune_to_loop,self.tune_to_finalize)
+        self.add_command("tune_to_start")
+        self.add_command("tune_to_stop")
         self.add_command("fine_scan_start")
         self.add_command("fine_scan_stop")
         self.add_batch_job("stitched_scan",self.stitched_scan_loop,self.stitched_scan_finalize)
@@ -173,7 +181,7 @@ class SirahMatisseTunerThread(SirahMatisseThread):
         self.update_status("operation",status,text=text)
         return curr_status
 
-    def tune_to(self, frequency, level="full", fine_threshold=3E9):
+    def tune_to_loop(self, frequency, level="full", fine_threshold=3E9):
         """
         Fine tune the laser to the given frequency.
         
@@ -182,17 +190,28 @@ class SirahMatisseTunerThread(SirahMatisseThread):
         `fine_threshold` sets the fine tuning threshold; if the current frequency is within `fine_threshold` from the target, try tuning only with a slow piezo first.
         """
         if self.open():
-            self.stop_tuning()
-            self.update_operation_status("fine_tuning")
+            self.update_scan_status("running")
             if level=="full" and abs(self.tuner.get_frequency()-frequency)<fine_threshold:
-                self.tuner.slow_piezo_tune_to(frequency)
+                for _ in self.tuner.slow_piezo_tune_to_gen(frequency):
+                    yield
                 if abs(self.tuner.get_frequency()-frequency)<1E9:
-                    self.update_operation_status("idle")
-                    self.update_parameters()
                     return
-            self.tuner.tune_to(frequency,level)
-            self.update_operation_status("idle")
-            self.update_parameters()
+            for _ in self.tuner.tune_to_gen(frequency,level):
+                yield
+    def tune_to_finalize(self, *args, **kwargs):
+        self.update_scan_status("idle")
+        self.update_operation_status("idle")
+        self.update_parameters()
+    def tune_to_start(self, frequency, level="full", fine_threshold=3E9):
+        """Start fine tuning job"""
+        self.stop_tuning()
+        self.update_operation_status("fine_tuning")
+        self.update_scan_status("setup")
+        self.start_batch_job("tune_to",0.05,frequency,level=level,fine_threshold=fine_threshold)
+    def tune_to_stop(self):
+        """Stop fine tuning job"""
+        self.stop_batch_job("tune_to")
+
     def fine_scan_start(self, span, rate, kind="continuous"):
         """
         Start fine scan with the given span and at a given rate around the current frequency.
@@ -215,26 +234,30 @@ class SirahMatisseTunerThread(SirahMatisseThread):
             self.update_scan_status("idle")
             self.update_operation_status("idle")
     
-    def stitched_scan_loop(self, scan_range, rate):
+    def stitched_scan_loop(self, scan_range, rate, single_span=15E9):
         if self.open():
             self.tuner.fine_sweep_stop()
             self.update_scan_status("running")
-            for sweeping in self.tuner.stitched_scan(scan_range,15E9,rate):
+            for sweeping in self.tuner.stitched_scan_gen(scan_range,single_span,rate):
                 self.v["stitched_scan/stitching"]=0 if sweeping else 1
                 yield
     def stitched_scan_finalize(self, *args, **kwargs):
         self.v["stitched_scan/stitching"]=0
-    def stitched_scan_start(self, scan_range, rate):
+        self.update_scan_status("idle")
+        self.update_operation_status("idle")
+        self.update_parameters()
+    def stitched_scan_start(self, scan_range, rate, single_span=15E9):
         """Start stitched scan within the given range ``(start, stop)`` at a given rate"""
+        self.stop_tuning()
         self.update_operation_status("stitched_scan")
         self.update_scan_status("setup")
-        self.start_batch_job("stitched_scan",0.05,scan_range=scan_range,rate=rate)
+        self.start_batch_job("stitched_scan",0.05,scan_range=scan_range,rate=rate,single_span=single_span)
     def stitched_scan_stop(self):
         """Stop stitched scan"""
         self.stop_batch_job("stitched_scan")
-        self.update_scan_status("idle")
-        self.update_operation_status("idle")
+
     def stop_tuning(self):
         """Stop all tuning and sweeping"""
+        self.tune_to_stop()
         self.stitched_scan_stop()
         self.fine_scan_stop()
