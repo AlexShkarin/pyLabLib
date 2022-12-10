@@ -18,6 +18,7 @@ Subpackages
     pylablib.devices.Cryocon
     pylablib.devices.Cryomagnetics
     pylablib.devices.DCAM
+    pylablib.devices.ElektroAutomatik
     pylablib.devices.HighFinesse
     pylablib.devices.IMAQ
     pylablib.devices.IMAQdx

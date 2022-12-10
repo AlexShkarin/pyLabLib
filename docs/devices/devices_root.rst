@@ -25,4 +25,5 @@ Currently supported devices:
     generic_awgs
     Thorlabs_misc
     OZOptics
+    ElektroAutomatik
     misc_devices
