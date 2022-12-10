@@ -269,8 +269,8 @@ class IMAQFrameGrabber(camera.IROICamera):
                 if ``True``, perform it automatically
         """
         funcargparse.check_parameter_range(self._parameters["trig_type"].i(trig_type),"trig_type",{"ext","rtsi","iso_in","software"})
-        timeout=int(timeout*1E3) if timeout is not None else niimaq_lib.IMAQ_INF_TIMEOUT
-        lib.imgSessionTriggerConfigure2(self.sid,trig_type,trig_line,trig_pol,timeout,trig_action)
+        ni_timeout=int(timeout*1E3) if timeout is not None else niimaq_lib.IMAQ_INF_TIMEOUT
+        lib.imgSessionTriggerConfigure2(self.sid,trig_type,trig_line,trig_pol,ni_timeout,trig_action)
         self._triggers_in[(self._parameters["trig_type"].i(trig_type),trig_line)]=(
                 self._parameters["trig_pol"].i(trig_pol),self._parameters["trig_action"].i(trig_action),timeout)
         if reset_acquisition:
