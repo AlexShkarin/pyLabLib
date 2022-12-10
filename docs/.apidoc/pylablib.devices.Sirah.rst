@@ -13,6 +13,15 @@ pylablib.devices.Sirah.Matisse module
     :undoc-members:
     :show-inheritance:
 
+pylablib.devices.Sirah.base module
+----------------------------------
+
+.. automodule:: pylablib.devices.Sirah.base
+    :members:
+    :inherited-members:
+    :undoc-members:
+    :show-inheritance:
+
 pylablib.devices.Sirah.tuner module
 -----------------------------------
 

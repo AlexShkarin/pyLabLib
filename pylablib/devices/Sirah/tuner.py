@@ -8,6 +8,11 @@ import pandas as pd
 import time
 
 
+class FrequencyReadSirahError(GenericSirahError):
+    """Sirah error indicating an error while trying to read frequency value"""
+    def __init__(self, timeout=None):
+        msg="could not read frequency in {} seconds".format(timeout) if timeout is not None else "could not read frequency"
+        super().__init__(msg)
 class MatisseTuner:
     """
     Matisse tuner.
@@ -25,6 +30,8 @@ class MatisseTuner:
         self.apply_calibration(calibration)
         self._tune_units="int"
         self._fine_scan_start=None
+        self._freq_avg_time=0
+        self._last_read_frequency=None,0
     def set_tune_units(self, units="int"):
         """
         Set default units for fine tuning and sweeping (fine sweep or stitched scan).
@@ -73,13 +80,30 @@ class MatisseTuner:
 
         The only method relying on the wavemeter. Can be extended or overloaded to support different wavemeters.
         """
+        avg_countdown=general.Countdown(self._freq_avg_time)
         countdown=general.Countdown(timeout)
+        acc=[]
         while True:
             f=self.wavemeter.get_frequency(error_on_invalid=False)
             if isinstance(f,float):
-                return f
-            if countdown.passed():
-                raise RuntimeError("could not read frequency in {} seconds".format(timeout))
+                acc.append(f)
+                if avg_countdown.passed():
+                    self._last_read_frequency=np.mean(acc),time.time()
+                    return self._last_read_frequency[0]
+                time.sleep(1E-3)
+                countdown.reset()
+            elif countdown.passed():
+                raise FrequencyReadSirahError(timeout)
+            else:
+                time.sleep(5E-3)
+    def get_last_read_frequency(self, max_delay=1.):
+        """Get the last valid read frequency, or ``None`` if none has been acquired yet"""
+        if time.time()>self._last_read_frequency[1]+max_delay:
+            return self.get_frequency()
+        return self._last_read_frequency[0]
+    def set_frequency_average_time(self, avg_time=0):
+        """Set averaging time for frequency measurements (reduces measured frequency jitter)"""
+        self._freq_avg_time=avg_time
     
     def _get_motor_position(self, motor):
         funcargparse.check_parameter_range(motor,"motor",["bifi","thinet"])
@@ -501,11 +525,12 @@ class MatisseTuner:
             if abs(step)<self._fine_tune_step[2]*10:
                 time.sleep(self._fine_tune_step[3])
             yield
-    def _slow_piezo_tune_slope(self, target):
+    def _slow_piezo_tune_slope(self, target, tolerance=None):
         if self._slow_piezo_cal is None:
             raise ValueError("slow piezo calibration is not specified")
         bound_hit=[False,False]
         dfs=[]
+        tolerance=self._fine_tune_slope[1] if tolerance is None else tolerance
         for i in range(self._fine_tune_slope[0]):
             pos=self.laser.get_slowpiezo_position()
             if pos<self._slow_piezo_rng[0]+0.07:
@@ -518,7 +543,7 @@ class MatisseTuner:
             dfs.append(abs(df))
             if len(dfs)>=4 and np.min(dfs[-2:])>np.min(dfs[-4:-2])*0.8:
                 return
-            if abs(df)<self._fine_tune_slope[1] and i>2:
+            if abs(df)<tolerance and i>2:
                 return
             step=-df/self._slow_piezo_cal
             newpos=max(self._slow_piezo_rng[0]+0.05,min(pos+step,self._slow_piezo_rng[1]-0.05))
@@ -526,7 +551,7 @@ class MatisseTuner:
                 yield
             time.sleep(self._fine_tune_slope[2])
             yield
-    def slow_piezo_tune_to_gen(self, target, method="auto"):
+    def slow_piezo_tune_to_gen(self, target, method="auto", tolerance=None):
         """
         Same as :meth:`slow_piezo_tune_to`, but made as a generater which yields occasionally.
         
@@ -535,15 +560,21 @@ class MatisseTuner:
         funcargparse.check_parameter_range(method,"method",["auto","step","cal"])
         if method=="auto":
             method="cal" if self._slow_piezo_cal is not None else "step"
-        tune=self._slow_piezo_tune_step if method=="step" else self._slow_piezo_tune_slope
-        for _ in tune(target):
+        tune_gen=self._slow_piezo_tune_step(target) if method=="step" else self._slow_piezo_tune_slope(target,tolerance=tolerance)
+        for _ in tune_gen:
             yield
-    def slow_piezo_tune_to(self, target, method="auto"):
-        """Fine tune the laser to the given target frequency using only slow piezo tuning"""
-        for _ in self.slow_piezo_tune_to_gen(target,method=method):
+    def slow_piezo_tune_to(self, target, method="auto", tolerance=None):
+        """
+        Fine tune the laser to the given target frequency using only slow piezo tuning.
+        
+        `method` can be ``"step"`` for step-based binary search method, or ``"cal"`` for slope-based method using the slow piezo calibration.
+        (generally faster, but requires a known calibration). If ``method=="auto"``, use ``"cal"`` when the calibration is available and ``"step"`` ohterwise.
+        `tolerance` gives the final frequency tolerance for the ``"cal"`` tuning method; if ``None``, use the standard value (50MHz by default).
+        """
+        for _ in self.slow_piezo_tune_to_gen(target,method=method,tolerance=tolerance):
             time.sleep(1E-3)
     
-    def tune_to_gen(self, target, level="full"):
+    def tune_to_gen(self, target, level="full", tolerance=None):
         """
         Same as :meth:`tune_to`, but made as a generater which yields occasionally.
         
@@ -565,16 +596,17 @@ class MatisseTuner:
         self.laser.set_piezoet_ctl_status("run")
         if level=="thinet":
             return
-        for _ in self.slow_piezo_tune_to_gen(target):
+        for _ in self.slow_piezo_tune_to_gen(target,tolerance=tolerance):
             yield 
-    def tune_to(self, target, level="full"):
+    def tune_to(self, target, level="full", tolerance=None):
         """
         Tune the laser to the given frequency (in Hz) using multiple elements (bifi, thin etalon, piezo etalon, slow piezo).
         
         `level` can be ``"bifi"`` (only tune the bifi motor), ``"thinet"`` (tune bifi motor and thin etalon),
         or ``"full"`` (full tuning using all elements).
+        `tolerance` gives the final fine tuning frequency tolerance; if ``None``, use the standard value (50MHz by default).
         """
-        for _ in self.tune_to_gen(target,level=level):
+        for _ in self.tune_to_gen(target,level=level,tolerance=tolerance):
             time.sleep(1E-3)
 
     def fine_sweep_start(self, span, up_speed, down_speed=None, kind="cont_up", current_pos=0.5):
