@@ -42,7 +42,7 @@ class ImagePlotterCtl(QWidgetContainer):
     Args:
         parent: parent widget
     """
-    def setup(self, plotter, name=None, save_values=("colormap","img_lim_preset")):  # pylint: disable=arguments-differ, arguments-renamed
+    def setup(self, plotter, name=None, save_values=("colormap","img_lim_preset"), lim_format="auto"):  # pylint: disable=arguments-differ, arguments-renamed
         """
         Setup the image plotter controller.
 
@@ -51,12 +51,16 @@ class ImagePlotterCtl(QWidgetContainer):
             plotter (ImagePlotter): controlled image plotter
             save_values (tuple): optional parameters to include on :meth:`get_all_values`;
                 can include ``"colormap"`` (colormap defined in the widget), and ``"img_lim_preset"`` (saved image limit preset)
+            lim_format: format for the image limit controls; can be a standard number edit format (e.g., format string description such as ``".2f"``) or ``"auto"``,
+                which adjusts the format automatically based on the image values
         """
         super().setup(name=name,no_margins=True)
         self.save_values=save_values
         self.setMaximumWidth(200)
         self.plotter=plotter
         self._update_paused=False
+        self.lim_format=lim_format
+        self._current_order=None
         self._update_required={}
         self.params=ParamTable(self)
         self.add_child("params",self.params)
@@ -68,8 +72,8 @@ class ImagePlotterCtl(QWidgetContainer):
         self.params.add_check_box("transpose","Transpose",value=True)
         self.params.add_check_box("normalize","Normalize",value=False)
         with self.params.using_new_sublayout("minmaxlim","grid"):
-            self.params.add_num_edit("minlim",value=self.img_lim[0],limiter=self.img_lim+("coerce",),formatter=("int"),label="Min",add_indicator=True)
-            self.params.add_num_edit("maxlim",value=self.img_lim[1],limiter=self.img_lim+("coerce",),formatter=("int"),label="Max",add_indicator=True)
+            self.params.add_num_edit("minlim",value=self.img_lim[0],limiter=self.img_lim+("coerce",),formatter="int" if self.lim_format=="auto" else self.lim_format,label="Min",add_indicator=True)
+            self.params.add_num_edit("maxlim",value=self.img_lim[1],limiter=self.img_lim+("coerce",),formatter="int" if self.lim_format=="auto" else self.lim_format,label="Max",add_indicator=True)
             self.params.add_spacer(width=30,location=(0,2))
         with self.params.using_new_sublayout("presets","hbox"):
             self.params.add_button("save_preset","Save preset")
@@ -123,6 +127,21 @@ class ImagePlotterCtl(QWidgetContainer):
         self.plotter._attach_controller(self)
         self._setup_gui_state()
 
+    def _set_lim_format(self, levels, img):
+        value=max(abs(levels[0]),abs(levels[1]))
+        order=int(np.log10(value)) if value else 5
+        if self._current_order is None:
+            self._current_order=order
+        else:
+            self._current_order=order if abs(order-self._current_order)>1 else self._current_order
+        if order>6 or order<0:
+            fmt=".6E"
+        else:
+            int_type=(img.dtype.kind in "ui") if img is not None else isinstance(value,(int,np.integer))
+            ndec=0 if int_type else max(5-order,0)
+            fmt=".{}f".format(ndec)
+        for n in ["minlim","maxlim"]:
+            self.w[n].set_formatter(fmt)
     def set_img_lim(self, *args):
         """
         Set up image value limits.
@@ -402,7 +421,7 @@ class ImagePlotter(QLayoutManagedWidget):
         self.hline.sigPositionChanged.connect(lambda: self._update_line_controls(update_lines=True),QtCore.Qt.DirectConnection)  # pylint: disable=unnecessary-lambda
         self.vline.sigPositionChanged.connect(lambda: self.lines_updated.emit(),QtCore.Qt.DirectConnection)  # pylint: disable=unnecessary-lambda
         self.hline.sigPositionChanged.connect(lambda: self.lines_updated.emit(),QtCore.Qt.DirectConnection)  # pylint: disable=unnecessary-lambda
-        self.image_window.getHistogramWidget().sigLevelsChanged.connect(lambda: self._update_levels_controls(self.image_window.getHistogramWidget().getLevels()),QtCore.Qt.DirectConnection)
+        self.image_window.getHistogramWidget().sigLevelsChanged.connect(lambda: self._update_levels_controls(self.image_window.getHistogramWidget().getLevels(),self.img),QtCore.Qt.DirectConnection)
         @controller.exsafe
         def on_click(ev):
             if ev.double():
@@ -758,9 +777,11 @@ class ImagePlotter(QLayoutManagedWidget):
 
     # Update image controls based on PyQtGraph image window
     @controller.exsafe
-    def _update_levels_controls(self, levels):
+    def _update_levels_controls(self, levels, img=None):
         values=self._get_values()
         with self._ignoring_control_update({"minlim","maxlim"}):
+            if self.ctl is not None:
+                self.ctl._set_lim_format(levels,img=img)
             values.v["minlim"],values.v["maxlim"]=levels
     @controller.exsafe
     def _update_line_controls(self, update_lines=False):
@@ -925,7 +946,7 @@ class ImagePlotter(QLayoutManagedWidget):
                 self._last_img_paint_cnt=self.image_window.imageItem.paint_cnt
             if update_controls:
                 if autoscale:
-                    self._update_levels_controls(levels)
+                    self._update_levels_controls(levels,draw_img)
                 self._update_line_controls()
             self._show_histogram(values.v["show_histogram"])
             values.i["minlim"]=img_levels[0]
