@@ -23,6 +23,7 @@ Subpackages
     pylablib.devices.IMAQ
     pylablib.devices.IMAQdx
     pylablib.devices.KJL
+    pylablib.devices.Keithley
     pylablib.devices.Lakeshore
     pylablib.devices.LaserQuantum
     pylablib.devices.Leybold

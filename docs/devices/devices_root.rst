@@ -21,6 +21,7 @@ Currently supported devices:
     Toptica
     Sirah
     Tektronix
+    Keithley
     nidaq
     generic_awgs
     Thorlabs_misc

@@ -138,7 +138,11 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
             value=self.ask(comm+"?","string")
             return parameter.i(value)
     def _set_scpi_parameter(self, name, value, result=False):
-        """Set SCPI parameter with a given name"""
+        """
+        Set SCPI parameter with a given name.
+        
+        If ``result==True``, query the parameter afterwards and return its value.
+        """
         comm,kind,parameter,set_delay,set_echo=self._scpi_parameters[name]
         if kind in ["string","int","float","bool"]:
             self.write(comm,value,kind)

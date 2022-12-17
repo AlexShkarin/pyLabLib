@@ -7,3 +7,4 @@
 - :ref:`Leybold <sensors_leybold>`: pressure gauges. Tested with ITR90 gauge.
 - :ref:`Kurt J. Lesker <sensors_kjl>`: pressure gauges. Tested with KJL300 gauge.
 - :ref:`Thorlabs quadrature detector controller <stages_thorlabs_kinesis_quad>`. Tested with TPA101.
+- :ref:`Keithley multimeters <keithley_multimeter>`. Tested with model 2110.
