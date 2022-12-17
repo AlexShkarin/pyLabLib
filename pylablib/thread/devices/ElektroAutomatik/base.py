@@ -8,7 +8,7 @@ class PS2000BThread(device_thread.DeviceThread):
 
     Device args:
         - ``conn``: device connection (usually, COM-port address)
-        - ``remote_mode``: approach to setting the remote mode; can be ``"enable"`` (enable on connection, disable on disconnection)
+        - ``remote_mode``: approach to setting the remote mode; can be ``"force"`` (enable on connection, disable on disconnection)
             or ``"manual"`` (do nothing about it, should be enabled or disabled automatically).
             In the remote mode the device is controlled from the PC (front panel controls are disabled),
             while in the local mode it can only be queried remotely, but not changed.
@@ -36,9 +36,9 @@ class PS2000BThread(device_thread.DeviceThread):
         self.remote=remote
         self.add_job("update_measurements",self.update_measurements,0.5)
         self.add_job("update_parameters",self.update_parameters,2)
-        self.add_command("set_voltage")
-        self.add_command("set_current")
-        self.add_command("enable_output")
+        self.add_device_command("set_voltage")
+        self.add_device_command("set_current")
+        self.add_device_command("enable_output")
     def update_measurements(self):
         """Update current measurements"""
         if self.open():
@@ -55,17 +55,3 @@ class PS2000BThread(device_thread.DeviceThread):
             self.v["voltage_setpoint"]=0
             self.v["current_setpoint"]=0
             self.v["output_status"]=("cv",False,False,False,False)
-    def set_voltage(self, voltage):
-        """Set output voltage"""
-        if self.open():
-            self.device.set_voltage(voltage)
-            self.update_parameters()
-    def set_current(self, current):
-        """Set output current"""
-        if self.open():
-            self.device.set_current(current)
-            self.update_parameters()
-    def enable_output(self, enable=True):
-        """Enable or disable the output"""
-        if self.open():
-            self.device.enable_output(enable)

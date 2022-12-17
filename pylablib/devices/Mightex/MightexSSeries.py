@@ -15,18 +15,18 @@ import time
 
 TCameraInfo=collections.namedtuple("TCameraInfo",["idx","model","serial"])
 class LibraryController(load_lib.LibraryController):
-    def __init__(self, lib):
+    def __init__(self, lib):  # pylint: disable=redefined-outer-name
         super().__init__(lib)
         self.ncams=None
         self.cams=None
     def _do_init(self):
-        self.ncams=lib.NewClassicUSB_InitDevice()
+        self.ncams=self.lib.NewClassicUSB_InitDevice()
         self.cams=[]
         for i in range(self.ncams):
-            model,serial=lib.NewClassicUSB_GetModuleNoSerialNo(i+1)
+            model,serial=self.lib.NewClassicUSB_GetModuleNoSerialNo(i+1)
             self.cams.append(TCameraInfo(i+1,py3.as_str(model).strip(),py3.as_str(serial).strip()))
     def _do_uninit(self):
-        lib.NewClassicUSB_UnInitDevice()
+        self.lib.NewClassicUSB_UnInitDevice()
         self.ncams=None
         self.cams=None
 libctl=LibraryController(lib)

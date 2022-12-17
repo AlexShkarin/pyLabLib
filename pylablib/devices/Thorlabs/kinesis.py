@@ -862,10 +862,8 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         self._pzmot_autoenable(channel,auto_enable)
         self.send_comm_data(0x08D4,struct.pack("<Hi",channel,position))
     @muxchannel(mux_argnames="distance")
-    @interface.use_parameters(channel="channel_id")
     def _pzmot_move_by(self, distance=1, auto_enable=True, channel=None):
         """Move piezo-motor by a given `distance` (positive or negative)"""
-        self._pzmot_autoenable(channel,auto_enable)
         self._pzmot_move_to(self._pzmot_get_position(channel)+distance,auto_enable=auto_enable,channel=channel)
     @muxchannel(mux_argnames="direction")
     @interface.use_parameters
