@@ -22,7 +22,7 @@ class PS2000B(comm_backend.ICommBackendWrapper):
 
     Args:
         conn: serial connection parameters (usually, COM-port address)
-        remote_mode: approach to setting the remote mode; can be ``"enable"`` (enable on connection, disable on disconnection)
+        remote_mode: approach to setting the remote mode; can be ``"force"`` (enable on connection, disable on disconnection)
             or ``"manual"`` (do nothing about it, should be enabled or disabled automatically).
             In the remote mode the device is controlled from the PC (front panel controls are disabled),
             while in the local mode it can only be queried remotely, but not changed.

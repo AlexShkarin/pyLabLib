@@ -39,7 +39,7 @@ class IQContainer:
         self._children=dictionary.Dictionary()
         self.gui_values=value_handling.GUIValues()
         self.ctl=None
-        self.c=dictionary.ItemAccessor(self.get_child,iterator=lambda: self._children.paths())
+        self.c=dictionary.ItemAccessor(self.get_child,iterator=lambda: self._children.paths())  # pylint: disable=unnecessary-lambda
         self.w=dictionary.ItemAccessor(self.get_widget)
         self.v=dictionary.ItemAccessor(self.get_value,self.set_value)
         self.i=dictionary.ItemAccessor(self.get_indicator,self.set_indicator)

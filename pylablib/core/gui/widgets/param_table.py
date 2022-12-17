@@ -381,7 +381,7 @@ class ParamTable(container.QWidgetContainer):
 
         Args:
             name (str): widget name (used to reference its value in the values table)
-            options (list): dictionary ``{option: index_value}`` which converts values into text
+            options (list): dictionary ``{index_value: text}`` which converts values into text
             out_of_range (str): behavior when out-of-range value is applied;
                 can be ``"error"`` (raise error), ``"text"`` (convert value into text), or ``"ignore"`` (keep current value).
             prep: a function which takes a single value argument and converts into an option; useful for "fuzzy" options (e.g., when 0 and ``False`` mean the same thing)
