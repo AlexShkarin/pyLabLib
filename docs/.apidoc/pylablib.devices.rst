@@ -40,6 +40,7 @@ Subpackages
     pylablib.devices.PhotonFocus
     pylablib.devices.PhysikInstrumente
     pylablib.devices.PrincetonInstruments
+    pylablib.devices.Rigol
     pylablib.devices.SiliconSoftware
     pylablib.devices.Sirah
     pylablib.devices.SmarAct

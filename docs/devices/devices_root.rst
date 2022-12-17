@@ -22,6 +22,7 @@ Currently supported devices:
     Sirah
     Tektronix
     Keithley
+    Rigol
     nidaq
     generic_awgs
     Thorlabs_misc
