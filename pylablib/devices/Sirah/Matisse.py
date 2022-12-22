@@ -412,7 +412,7 @@ class SirahMatisse(SCPI.SCPIDevice):
         return self.get_fastpiezo_ctl_status()
     def is_fastpiezo_locked(self):
         """Check if the fast piezo is locked (output is between 5% and 95%)"""
-        return self._get_scpi_parameter("fastpiezo_ctl_locked")
+        return self.get_fastpiezo_ctl_status()=="run" and self._get_scpi_parameter("fastpiezo_ctl_locked")
     def get_fastpiezo_position(self):
         """Get fast piezo DC position between 0 and 1"""
         return self._get_scpi_parameter("fastpiezo_value")
