@@ -22,7 +22,7 @@ In some cases ``pyft232`` library can not find the required ``ftd2xx.dll`` libra
 Connection
 -----------------------
 
-The devices are identified by their address, which correspond to their serial numbers. To get the list of all the connected devices, you can use :func:`Thorlabs.list_kinesis_devices<.kinesis.list_kinesis_devices>`::
+On Windows devices are identified by their address, which correspond to their serial numbers. To get the list of all the connected devices, you can use :func:`Thorlabs.list_kinesis_devices<.kinesis.list_kinesis_devices>`::
 
     >> from pylablib.devices import Thorlabs
     >> Thorlabs.list_kinesis_devices()
@@ -30,6 +30,13 @@ The devices are identified by their address, which correspond to their serial nu
     >> stage = Thorlabs.KinesisMotor("27500001")
     >> stage.close()
 
+On Linux they directly appear as virtual serial ports, e.g., ``/dev/ttyUSB0``. Hence, there you need to identify which device file corresponds your device (e.g., by unplugging and plugging it bak in to see which device shows up). After that, you can use this name as the device address::
+
+    >> from pylablib.devices import Thorlabs
+    >> stage = Thorlabs.KinesisMotor("/dev/ttyUSB0")
+    >> stage.close()
+
+Note that on Linux :func:`Thorlabs.list_kinesis_devices<.kinesis.list_kinesis_devices>` will not produce a correct list, since it uses a different API. In the worst case, it can crash the process.
 
 Operation
 -----------------------

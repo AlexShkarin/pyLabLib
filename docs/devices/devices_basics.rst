@@ -16,7 +16,7 @@ Connection
 
 The device identifier or address needs to be provided upon the device object creation, after which it is automatically connected. Getting the address usually depends on the kind of device:
 
-    - Simple message-style devices, such as AWG, oscilloscopes, sensors and gauges, require an address which depends on the exact connection protocol. For example, serial devices addresses look like ``"COM1"``, Visa addresses as ``"USB0::0x1313::0x8070::000000::INSTR"``, and network addresses take IP and, possibly, port ``"192.168.1.3:7230"``. To get the list of all connected devices, you can run :func:`.comm_backend.list_backend_resources`::
+    - Simple message-style devices, such as AWG, oscilloscopes, sensors and gauges, require an address which depends on the exact connection protocol. For example, serial devices addresses look like ``"COM1"`` (or ``"/dev/ttyUSB0"`` or Linux), Visa addresses as ``"USB0::0x1313::0x8070::000000::INSTR"``, and network addresses take IP and, possibly, port ``"192.168.1.3:7230"``. To get the list of all connected devices, you can run :func:`.comm_backend.list_backend_resources`::
 
         >> import pylablib as pll
         >> pll.list_backend_resources("serial")  # list serial port resources

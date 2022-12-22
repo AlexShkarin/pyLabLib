@@ -1497,7 +1497,7 @@ _backends["recorded"]=RecordedDeviceBackend
 
     
     
-_serial_re=re.compile(r"^(com\d+|(/dev|/)?tty.*)",re.IGNORECASE)
+_serial_re=re.compile(r"^(com\d+|/?(dev/)?tty.*)",re.IGNORECASE)
 def _is_serial_addr(addr):
     return isinstance(addr,py3.anystring) and bool(_serial_re.match(addr))
 _network_re=re.compile(r"(\d+\.){3}\d+(:\d+)?",re.IGNORECASE)
@@ -1561,7 +1561,7 @@ def new_backend(conn, backend="auto", defaults=None, **kwargs):
     if isinstance(conn,IDeviceCommBackend):
         return conn
     if isinstance(conn,tuple) and conn and (conn[0] in _backends or (isinstance(conn[0],type) and issubclass(conn[0],IDeviceCommBackend))):
-        return new_backend(conn[1],backend=conn[0],**kwargs)
+        return new_backend(conn[1],backend=conn[0],defaults=defaults,**kwargs)
     backend=_as_backend(backend,conn)
     backend_name=getattr(backend,"_backend",None)
     if defaults is not None and backend_name is not None and backend_name in defaults:
