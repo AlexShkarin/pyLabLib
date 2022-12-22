@@ -28,4 +28,5 @@ Currently supported devices:
     Thorlabs_misc
     OZOptics
     ElektroAutomatik
+    Voltcraft
     misc_devices

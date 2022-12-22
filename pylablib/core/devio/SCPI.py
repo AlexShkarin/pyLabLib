@@ -401,6 +401,12 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
             if unit is not None:
                 msg=msg+" "+unit
         return msg
+    def _read_echo(self, delay=0.):
+        try:
+            self.sleep(delay)
+            self._read_one_try()
+        except self.Error:
+            pass
     def write(self, msg, arg=None, arg_type=None, unit=None, bool_selector=None, wait_sync=None, read_echo=False, read_echo_delay=0.):
         """
         Send a command.
@@ -430,11 +436,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
             msg=msg+";"+self._wait_sync_comm
         self._write_retry(msg)
         if read_echo:
-            try:
-                self.sleep(read_echo_delay)
-                self._read_one_try()
-            except self.Error:
-                pass
+            self._read_echo(read_echo_delay)
         if wait_sync:
             sync_msg=self.read()
             if sync_msg!="1":
