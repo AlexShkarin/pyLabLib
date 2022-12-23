@@ -36,15 +36,15 @@ class Keithley2110Thread(device_thread.DeviceThread):
         self.add_device_command("setup_averaging")
     def update_measurements(self):
         if self.open():
-            self.v["readings"]=dict(zip(["1","2"],self.device.get_readings("all")))
+            self.v["readings"]=dict(zip(["1","2"],self.device.get_reading("all")))
         else:
             self.v["readings"]={"1":None,"2":None}
     def update_parameters(self):
         if self.open():
             sett=self.device.get_settings("all")
-            self.v["functions"]=dict(zip(["1","2"],sett["function"]))
+            self.v["functions"]=dict(zip(["1","2"],sett["functions"]))
             for k,v in sett.items():
-                if k.startsiwth("pararmeters/"):
+                if k.startswith("parameters/"):
                     self.v[k]=v
         else:
             self.v["functions"]={"1":"none","2":"none"}

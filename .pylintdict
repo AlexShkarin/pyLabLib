@@ -438,3 +438,7 @@ cv
 cc
 detuning
 autorange
+hblanking
+pdst
+nbuff
+nread

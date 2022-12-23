@@ -19,7 +19,7 @@ The main device class is :class:`pylablib.devices.Keithley.Keithley2110<.Keithle
 Software requirements
 -----------------------
 
-Thes multimeters use NI VISA communication interface. Hence, it requires NI VISA Runtime, which is freely available from the `National Instruments website <https://www.ni.com/en-us/support/downloads/drivers/download.ni-visa.html>`__
+These multimeters use NI VISA communication interface. Hence, it requires NI VISA Runtime, which is freely available from the `National Instruments website <https://www.ni.com/en-us/support/downloads/drivers/download.ni-visa.html>`__
 
 
 Connection

@@ -37,13 +37,12 @@ class VC7055Thread(device_thread.DeviceThread):
         self.add_device_command("set_measurement_rate")
     def update_measurements(self):
         if self.open():
-            self.v["readings"]=dict(zip(["1","2"],self.device.get_readings("all")))
+            self.v["readings"]=dict(zip(["1","2"],self.device.get_reading("all")))
         else:
             self.v["readings"]={"1":None,"2":None}
     def update_parameters(self):
         if self.open():
-            sett=self.device.get_settings("all")
-            self.v["functions"]=dict(zip(["1","2"],sett["function"]))
+            self.v["functions"]=dict(zip(["1","2"],self.device.get_function("all")))
             self.v["range"]=self.device.get_range()
             self.v["rate"]=self.device.get_measurement_rate()
         else:
