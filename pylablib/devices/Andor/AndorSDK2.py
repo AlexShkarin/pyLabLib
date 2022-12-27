@@ -4,6 +4,7 @@ from .atmcd32d_lib import wlib as lib, AndorSDK2LibError
 from .atmcd32d_lib import DRV_STATUS
 from .atmcd32d_lib import AC_ACQMODE, AC_READMODE, AC_TRIGGERMODE, AC_EMGAIN, AC_FEATURES, AC_GETFUNC, AC_SETFUNC
 from .atmcd32d_lib import drAC_CAMERATYPE, AC_PIXELMODE
+from .atmcd32d_defs import AT_VersionInfoId
 
 from ...core.utils import py3
 from ...core.devio import interface
@@ -29,6 +30,10 @@ def restart_lib():
     libctl.shutdown()
 
 
+def get_SDK_version():
+    """Get version of Andor SDK2"""
+    libctl.preinit()
+    return py3.as_str(lib.GetVersionInfo(AT_VersionInfoId.AT_SDKVersion))
 def get_cameras_number():
     """Get number of connected Andor cameras"""
     libctl.preinit()
@@ -533,7 +538,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
     @_camfunc(option=("feat",AC_FEATURES.AC_FEATURES_SHUTTER))
     def get_min_shutter_times(self):
         """Get minimal shutter opening and closing times"""
-        return lib.GetShutterMinTimes()
+        return lib.GetShutterMinTimes() if lib.GetShutterMinTimes is not None else (0,0)
     _p_shutter_mode=interface.EnumParameterClass("shutter_mode",[("auto",0),("open",1),(True,1),("closed",2),(False,2)],allowed_alias="exact")
     @_camfunc(setpar="shutter",option=("feat",AC_FEATURES.AC_FEATURES_SHUTTER))
     @interface.use_parameters(mode="shutter_mode",_returns=("shutter_mode",None,None,None))

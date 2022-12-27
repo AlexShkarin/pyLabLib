@@ -74,6 +74,9 @@ class AndorSDK2Lib:
         self.Initialize=wrapper(lib.Initialize)
         #  ctypes.c_uint ShutDown()
         self.ShutDown=wrapper(lib.ShutDown)
+        #  ctypes.c_uint GetVersionInfo(ctypes.c_int arr, ctypes.c_char_p szVersionInfo, ctypes.c_ulong ui32BufferLen)
+        self.GetVersionInfo=wrapper(lib.GetVersionInfo, args=["arr"], rvals=["szVersionInfo"],
+            argprep={"szVersionInfo":strprep,"ui32BufferLen":default_strlen}, byref=[])
         #  ctypes.c_uint GetAvailableCameras(ctypes.POINTER(ctypes.c_long) totalCameras)
         self.GetAvailableCameras=wrapper(lib.GetAvailableCameras)
         #  ctypes.c_uint GetCameraHandle(ctypes.c_long cameraIndex, ctypes.POINTER(ctypes.c_long) cameraHandle)
@@ -96,7 +99,7 @@ class AndorSDK2Lib:
         self.GetHardwareVersion=wrapper(lib.GetHardwareVersion)
         #  ctypes.c_uint GetSoftwareVersion(ctypes.POINTER(ctypes.c_uint) eprom, ctypes.POINTER(ctypes.c_uint) coffile, ctypes.POINTER(ctypes.c_uint) vxdrev, ctypes.POINTER(ctypes.c_uint) vxdver, ctypes.POINTER(ctypes.c_uint) dllrev, ctypes.POINTER(ctypes.c_uint) dllver)
         self.GetSoftwareVersion=wrapper(lib.GetSoftwareVersion)
-        #  ctypes.c_uint GetVersionInfo(ctypes.c_int arr, ctypes.c_char_p szVersionInfo, ctypes.c_ulong ui32BufferLen)
+        #  ctypes.c_uint GetCameraSerialNumber(ctypes.POINTER(ctypes.c_int) number)
         self.GetCameraSerialNumber=wrapper(lib.GetCameraSerialNumber) # only iDus, set index=0
         # #  ctypes.c_uint GetPixelSize(ctypes.POINTER(ctypes.c_float) xSize, ctypes.POINTER(ctypes.c_float) ySize)
         self.GetPixelSize=wrapper(lib.GetPixelSize)
