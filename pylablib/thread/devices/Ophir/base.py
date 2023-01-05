@@ -26,8 +26,9 @@ class VegaPowerMeterThread(device_thread.DeviceThread):
         self.device_reconnect_tries=5
         self.conn=conn
         self.remote=remote
-        self.add_job("update_measurements",self.update_measurements,0.01 if remote else 0.002)
+        self.add_job("update_measurements",self.update_measurements,0.5 if remote else 0.05)
         self.add_job("update_parameters",self.update_parameters,1.)
+        self.add_command("configure")
     def update_measurements(self):
         """Update current measurements"""
         if self.open():
@@ -37,7 +38,7 @@ class VegaPowerMeterThread(device_thread.DeviceThread):
                     range_info=self.device.get_range_info()
                     power=range_info.curr_range if range_info.curr_idx>=0 else max(range_info.ranges)
                 self.v["power"]=power
-            except (self.DeviceError,ValueError):  # non-float or error response
+            except (self.DeviceError,ValueError):  # pylint: disable=catching-non-exception
                 if "power" not in self.v:
                     self.v["power"]=0
                 self.sleep(0.1)

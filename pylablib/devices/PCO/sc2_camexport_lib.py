@@ -685,7 +685,7 @@ class PCOSC2Lib:
         #  ctypes.c_int PCO_SetFlimRelativePhase(HANDLE ph, DWORD dwPhaseMilliDeg)
         self.PCO_SetFlimRelativePhase=wrapper(lib.PCO_SetFlimRelativePhase)
 
-        self.kernel32=ctypes.windll.kernel32
+        self.kernel32=ctypes.WinDLL("kernel32")
         wrapper=ctypes_wrap.CFunctionWrapper()
         self.CreateEventA=wrapper.wrap_bare(self.kernel32.CreateEventA, [ctypes.c_void_p,BOOL,BOOL,ctypes.c_char_p], ["attr","man_reset","init_state","name"], restype=HANDLE)
         self.CloseHandle=wrapper.wrap_bare(self.kernel32.CloseHandle, [HANDLE], ["handle"], restype=BOOL)

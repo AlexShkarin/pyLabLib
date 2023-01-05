@@ -150,11 +150,11 @@ class VegaPowerMeter(OphirDevice):
             rng=info[2:]
             return TWavelengthInfo(mode,rng,curr_idx-1,rng,rng[curr_idx-1])
     def get_wavelength(self):
-        """Get current wavelength"""
+        """Get current wavelength (in nm)"""
         return self.get_wavelength_info().curr_wavelength
     def set_wavelength(self, wavelength):
         """
-        Set current wavelength.
+        Set current wavelength (in nm).
         
         `wavelength` is either a wavelength (in m) for the continuous mode, or a wavelength preset (as a string) for a discrete mode.
         """
@@ -198,6 +198,25 @@ class VegaPowerMeter(OphirDevice):
         """
         self.query("$WN{:d}".format(rng_idx))
         return self.get_range_idx()
+    def set_range(self, rng):
+        """
+        Set current power range.
+
+        Select the smallest available range which is larger than `rng` (or maximal range, if the requested range is too large)
+        If `rng` is ``"auto"``, enable autorange; if `rng` is ``None``, set to the maximal range.
+        """
+        if rng=="auto":
+            self.set_range_idx(-1)
+        else:
+            rng_info=self.get_range_info()
+            idx=0
+            for i,r in sorted(enumerate(rng_info),key=lambda v: v[1]):
+                if rng<=r:
+                    idx=i
+                    break
+            self.set_range_idx(idx)
+        return self.get_range()
+        
 
     def get_battery_condition(self):
         """Check if the batter is OK"""
