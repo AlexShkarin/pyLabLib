@@ -1,5 +1,6 @@
 - :ref:`HighFinesse <sensors_highfinesse>`: laser wavelength meters. Tested with WS6 and WS7 USB-controlled devices.
 - :ref:`Ophir <sensors_ophir>`: optical power and energy meters. Tested with Ophir Vega.
+- :ref:`Thorlabs <sensors_thorlabs>`: optical power and energy meters. Tested with PM160.
 - :ref:`Lakeshore <sensors_lakeshore>`: temperature sensors. Tested with Lakeshore 218.
 - :ref:`Cryocon <sensors_cryocon>`: temperature sensors. Tested with CryoCon 14C.
 - :ref:`Cryomagnetics <sensors_cryomagnetics>`: liquid nitrogen or helium level sensor. Tested with LM-500 and LM-510 sensors.
