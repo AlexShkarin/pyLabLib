@@ -50,3 +50,37 @@ class VC7055Thread(device_thread.DeviceThread):
             self.v["range"]=None
             self.v["rate"]="slow"
             self.sleep(1.)
+
+
+
+class VC880Thread(device_thread.DeviceThread):
+    """
+    Voltcraft VC880/VC650BT series multimeter device thread.
+
+    Device args:
+        - ``conn``: device connection (usually, either a HID path, or an integer 0-based index indicating the devices among the ones connected)
+
+    Variables:
+        - ``live``: full live update tuple which includes the function, value, units, auxiliary displays, etc.
+        - ``reading``: last measured readings
+        - ``function``: selected measurement function
+    """
+    full_info_variables="all"
+    def connect_device(self):
+        with self.using_devclass("Voltcraft.VC880",host=self.remote) as cls:
+            self.device=cls(conn=self.conn)  # pylint: disable=not-callable
+    def setup_task(self, conn=0, remote=None):  # pylint: disable=arguments-differ
+        self.device_reconnect_tries=5
+        self.conn=conn
+        self.remote=remote
+        self.add_job("update_measurements",self.update_measurements,.2)
+    def update_measurements(self):
+        if self.open():
+            live=self.device.get_reading()
+            self.v["live"]=live
+            self.v["reading"]=live.value
+            self.v["function"]=live.kind
+        else:
+            self.v["live"]=None
+            self.v["reading"]=None
+            self.v["function"]="none"

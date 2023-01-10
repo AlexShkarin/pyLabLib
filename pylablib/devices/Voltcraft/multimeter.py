@@ -1,8 +1,10 @@
 from .base import GenericVoltcraftError, GenericVoltcraftBackendError
 from ...core.utils import py3
-from ...core.devio import SCPI, interface
+from ...core.devio import SCPI, comm_backend, interface
 
 import re
+import struct
+import collections
 import numpy as np
 
 
@@ -136,3 +138,194 @@ class VC7055(SCPI.SCPIDevice):
         if channel=="all":
             return tuple(self._get_single_reading(k) for k in self._reading_channels)
         return self._get_single_reading(channel)
+
+
+
+
+
+
+
+
+
+
+TVC880Reading=collections.namedtuple("TVC880Reading",["func","kind","value","unit","disps","d2func"])
+class VC880(comm_backend.ICommBackendWrapper):
+    """
+    Voltcraft VC880/VC650BT series multimeter.
+
+    Args:
+        conn: device connection (usually, either a HID path, or an integer 0-based index indicating the devices among the ones connected)
+    """
+    Error=GenericVoltcraftError
+    def __init__(self, conn=0):
+        if isinstance(conn,int):
+            hid_devices=comm_backend.list_backend_resources("hid",desc=True)
+            vc_devices=[dev for dev in hid_devices if (dev.vendor_id,dev.product_id)==(0x10C4,0xEA80)]
+            if conn>=len(vc_devices):
+                raise GenericVoltcraftError("could not find devices with index {}; {} devices available".format(conn,len(vc_devices)))
+            path=vc_devices[conn].path
+        else:
+            path=conn
+        instr=comm_backend.new_backend(path,"hid",defaults={"hid":("rep_fmt","lenpfx")},reraise_error=GenericVoltcraftBackendError)
+        super().__init__(instr)
+        self._add_status_variable("reading",self.get_reading)
+    
+    _header_magic=b"\xAB\xCD"
+    TMessage=collections.namedtuple("TMessage",["typ","payload"])
+    def _read_single_message(self):
+        hdr=self.instr.read(4)
+        for _ in range(100):
+            if hdr[:2]==self._header_magic:
+                break
+            hdr=hdr[1:]+self.instr.read(1)
+        if hdr[:2]!=self._header_magic:
+            raise GenericVoltcraftError("could not find the header 0x{:02X}{:02X}".format(*self._header_magic))
+        l,typ=struct.unpack("BB",hdr[2:])
+        if l<3:
+            raise GenericVoltcraftError("error in the received message length: expect at least 3 bytes, got {}".format(l))
+        msg_pending=self.instr.get_pending()>l-1
+        msg=self.instr.read(l-1)
+        payload=msg[:-2]
+        rcsum,=struct.unpack(">H",msg[-2:])
+        ccsum=sum(hdr)+sum(payload)
+        if ccsum!=rcsum:
+            raise GenericVoltcraftError("error in the received message check sum: received at 0x{:04X}, calculated 0x{:04X}".format(rcsum,ccsum))
+        return self.TMessage(typ,payload),msg_pending
+    def read_message(self, tries=10):
+        """Read the oldest message in the queue"""
+        for t in range(tries):
+            try:
+                return self._read_single_message()[0]
+            except GenericVoltcraftError:
+                if t==tries-1:
+                    raise
+    def exhaust_messages(self, nmax=100000, tries=10):
+        """
+        Read all messages in the queue and return them
+        
+        `nmax` specifies the maximal number of messages to read (``None`` means reading until available).
+        """
+        received=[]
+        while nmax is None or len(received)<nmax:
+            try:
+                msg,pending=self._read_single_message()
+                received.append(msg)
+                if not pending:
+                    break
+                t=0
+            except GenericVoltcraftError:
+                t+=1
+                if t==tries:
+                    break
+        return received
+    def _build_message(self, comm, data=b""):
+        hdr=self._header_magic+struct.pack("BB",len(data)+3,comm)
+        csum=struct.pack(">H",sum(hdr)+sum(data))
+        return hdr+data+csum
+    def send_message(self, comm, data=b"", pre_exhaust=True, reps=1, post_read=0):
+        """
+        Send a message containing the given command and data.
+        
+        If ``pre_exhaust==True``, empty the read queue before sending the message (improves chances of delivery).
+        `reps` specifies the number of exhaust/send cycle repetitions (improves chances of delivery).
+        If `post_read` is more than 0, it specifies the number of messages to read after the command is sent.
+        """
+        for _ in range(reps):
+            if pre_exhaust:
+                self.exhaust_messages()
+            self.instr.write(self._build_message(comm,data=data))
+        return [self.read_message() for _ in range(post_read)]
+
+    _functions={
+        0x00:("DCV","V","V","volt_dc"),  # function, units, range_kind, function_kind
+        0x01:("ACDCV","V","V","volt_acdc"),
+        0x02:("DCmV","V","mV","volt_dc"),
+        0x03:("freq","Hz","Hz","freq"),
+        0x04:("duty_cycl","perc","perc","duty_cycl"),
+        0x05:("ACV","V","V","volt_ac"),
+        0x06:("res","Ohm","Ohm","res"),
+        0x07:("diod","V","V","diod"),
+        0x08:("short","Ohm","Ohm","short"),
+        0x09:("cap","F","F","cap"),
+        0x0A:("t_cels","dC","dC","temp"),
+        0x0B:("t_fahr","dF","dF","temp"),
+        0x0C:("DCuA","A","uA","curr_dc"),
+        0x0D:("ACuA","A","uA","curr_ac"),
+        0x0E:("DCmA","A","mA","curr_dc"),
+        0x0F:("ACmA","A","mA","curr_ac"),
+        0x10:("DCA","A","A","curr_dc"),
+        0x11:("ACA","A","A","curr_ac"),
+        0x12:("low_pass","V","V","low_pass")}
+    _ranges={   "V":[4,40,400,1000],
+                "mV":[4e-1],
+                "A":[10],
+                "mA":[4E-2,4E-1],
+                "uA":[4E-4,4E-3],
+                "Ohm":[4E2,4E3,4E4,4E5,4E6,4E7],
+                "F":[4E-8,4E-7,4E-6,4E-5,4E-4,4E-3,4E-2],
+                "Hz":[4E1,4E2,4E3,4E4,4E5,4E6,4E7,4E8]}
+    def _decode_live(self, data):
+        func,rng=data[:2]
+        if func not in self._functions:
+            raise GenericVoltcraftError("unrecognized function index: {:02X}".format(func))
+        func,unit,rngk,kind=self._functions[func]
+        rng=self._ranges.get(rngk,[1])[rng-0x30]
+        pfxord=int(np.log10(rng*.99)//3)
+        val=py3.as_str(data[2:9]).strip()
+        stat=list(data[26:33])
+        def parse_val(val, neg):
+            if val=="-"*len(val):
+                return None
+            elif val.upper().find("OL")>=0:
+                return"over"
+            else:
+                return float(val)*10**(pfxord*3)*(-1 if neg else 1)
+        val=parse_val(val,stat[0]&0x04)
+        disps=[]
+        parse_d2=lambda v: parse_val(v,stat[0]&0x08)
+        for ds,de,c in [(9,16,parse_d2),(16,23,int),(23,26,int)]:
+            d=py3.as_str(data[ds:de]).strip()
+            try:
+                d=c(d) if d else None
+            except ValueError:
+                pass
+            disps.append(d)
+        d2func=None
+        if stat[1]&0x08:
+            d2func="max"
+        elif stat[1]&0x04:
+            d2func="min"
+        elif stat[1]&0x02:
+            d2func="avg"
+        elif stat[1]&0x01:
+            d2func="rel"
+        return TVC880Reading(func,kind,val,unit,tuple(disps),d2func)
+    _p_reading_kind=interface.EnumParameterClass("reading_kind",["latest","oldest","all"])
+    @interface.use_parameters(kind="reading_kind")
+    def get_reading(self, kind="latest"):
+        """
+        Get the multimeter reading.
+
+        `kind` can be ``"latest"`` (return the most recent reading), ``"oldest"`` (return the oldest reading),
+        or ``"all"`` (return all readings in the read queue).
+        Return tuple ``(func, kind, val, unit, disps, d2func)`` with, correspondingly, specific selected function (e.g., ``"DCuA"`` or ``"res"``),
+        function kind (e.g., ``"curr_dc"`` or ``"res"``), displayed value (in SI units), value units (e.g., ``"V"`` or ``"Ohm"``),
+        values of the other 3 auxiliary displays (upper right min/max/avg/rel display, upper left memory display, bottom linear scale display),
+        and the kind of function on the upper right display (``"min"``, ``"max"``, ``"avg"``, or ``"rel"``).
+        """
+        if kind=="latest":
+            msgs=self.exhaust_messages()
+            for m in msgs[::-1]:
+                if m.typ==0x01:
+                    return self._decode_live(m.payload)
+        if kind=="all":
+            msgs=self.exhaust_messages()
+            return [self._decode_live(m.payload) for m in msgs if m.type==0x01]
+        for _ in range(100):
+            m=self.read_message()
+            if m.typ==0x01:
+                return self._decode_live(m.payload)
+        raise GenericVoltcraftError("could not receive a live update message")
+    def enable_autorange(self, enable=True):
+        """Enable or disable autorange"""
+        self.send_message(0x47 if enable else 0x46,reps=2)
