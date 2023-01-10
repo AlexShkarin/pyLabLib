@@ -10,7 +10,7 @@ import subprocess
 src=r"..\pylablib"
 
 exclude_folders=["gui","thread","misc","legacy"]
-exclude_files=["aux_libs.py"]
+exclude_files=["aux_libs.py",os.path.join("core","utils","ctypes_tools.py"),os.path.join("core","devio","hid_lib.py")]
 
 def is_autogen(path):
     name=os.path.split(path)[1]

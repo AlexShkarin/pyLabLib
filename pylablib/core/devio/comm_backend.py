@@ -632,14 +632,14 @@ try:
             return self.instr.timeout
         
         @reraise
-        def _read_terms(self, terms=(), timeout=None, error_on_timeout=True):
+        def _read_terms(self, terms=(), read_block_size=8, timeout=None, error_on_timeout=True):
             result=b""
             singlechar_terms=all(len(t)==1 for t in terms)
             terms=[py3.as_builtin_bytes(t) for t in terms]
             with self.single_op():
                 with self.using_timeout(timeout):
                     while True:
-                        c=self.instr.read(1 if terms else 8)
+                        c=self.instr.read(1 if terms else read_block_size)
                         result=result+c
                         if c==b"":
                             if error_on_timeout and terms:
@@ -865,14 +865,14 @@ try:
         
         
         @reraise
-        def _read_terms(self, terms=(), timeout=None, error_on_timeout=True):
+        def _read_terms(self, terms=(), read_block_size=8, timeout=None, error_on_timeout=True):
             result=b""
             singlechar_terms=all(len(t)==1 for t in terms)
             terms=[py3.as_builtin_bytes(t) for t in terms]
             with self.single_op():
                 with self.using_timeout(timeout):
                     while True:
-                        c=self.instr.read(1 if terms else 8)
+                        c=self.instr.read(1 if terms else read_block_size)
                         result=result+c
                         if c==b"":
                             if error_on_timeout and terms:
@@ -1377,6 +1377,203 @@ try:
 except ImportError:
     pass
 _backend_errors["pyusb"]=_backend_install_message.format(name="PyUSB",pkg="pyusb",mod="usb")
+
+
+
+
+
+try:
+    from . import hid
+
+    class DeviceHIDError(DeviceBackendError):
+        """HID backend operation error"""
+
+    class HIDeviceBackend(IDeviceCommBackend):
+        """
+        HID backend (via Windows DLLs).
+        
+        Connection is automatically opened on creation.
+        
+        Args:
+            conn: Connection parameters. Can be either a string (for a port),
+                or a list/tuple ``(vendorID, productID, index, endpoint_read, endpoint_write, backend)`` supplied to the connection
+                (default is ``(0x0000,0x0000,0,0x00,0x01,'libusb1')``, which is invalid for most devices),
+                or a dict with the same parameters.
+                ``vendorID`` and ``productID`` specify device kind, ``index`` is an integer index (starting from zero) of the device
+                among several identical (i.e., with the same ids) ones, and ``endpoint_read`` and ``endpoint_write`` specify connection endpoints for the specific device.
+            timeout (float): Default timeout (in seconds).
+            term_write (str): Line terminator for writing operations; appended to the data
+            term_read (str): List of possible single-char terminator for reading operations (specifies when :func:`readline` stops).
+            datatype (str): Type of the returned data; can be ``"bytes"`` (return `bytes` object), ``"str"`` (return `str` object),
+                or ``"auto"`` (default Python result: `str` in Python 2 and `bytes` in Python 3)
+            reraise_error: if not ``None``, specifies an error to be re-raised on any backend exception (by default, use backend-specific error);
+                should be a subclass of :exc:`DeviceBackendError`.
+        """
+        _backend="hid"
+        BackendError=hid.HIDError
+        """Base class for the errors raised by the backend operations"""
+        Error=DeviceHIDError
+        
+        _conn_params=["path","rep_fmt"]
+        _default_conn=[None,"lenpfx"]
+
+        def __init__(self, conn, timeout=10., term_write=None, term_read=None, datatype="auto", reraise_error=None):
+            conn_dict=self.combine_conn(conn,self._default_conn)
+            if isinstance(term_read,py3.anystring):
+                term_read=[term_read]
+            super().__init__(conn_dict.copy(),term_write=term_write,term_read=term_read,datatype=datatype,reraise_error=reraise_error)
+            try:
+                self.instr=hid.HIDevice(path=self.conn["path"],timeout=timeout,rep_fmt=self.conn["rep_fmt"])
+                self.open()
+            except self.BackendError as e:
+                raise self.Error(e) from e
+            self.cooldown("open")
+            
+        @reraise
+        def open(self):
+            """Open the connection"""
+            self.instr.open()
+            self.cooldown("open")
+        @reraise
+        def close(self):
+            """Close the connection"""
+            self.instr.close()
+            self.cooldown("close")
+        def is_opened(self):
+            return self.instr.is_opened()
+            
+        
+        def set_timeout(self, timeout):
+            """Set operations timeout (in seconds)"""
+            if timeout is not None:
+                self.instr.set_timeout(timeout)
+        def get_timeout(self):
+            """Get operations timeout (in seconds)"""
+            return self.instr.get_timeout()
+        
+        @reraise
+        def _read_terms(self, terms=(), read_block_size=8, timeout=None, error_on_timeout=True):
+            result=b""
+            singlechar_terms=all(len(t)==1 for t in terms)
+            terms=[py3.as_builtin_bytes(t) for t in terms]
+            while True:
+                try:
+                    c=self.instr.read(1 if terms else read_block_size,timeout=timeout)
+                except self.BackendError:
+                    c=b""
+                result=result+c
+                if c==b"":
+                    if error_on_timeout and terms:
+                        raise self.Error("timeout during read")
+                    return result
+                if not terms:
+                    return result
+                if singlechar_terms:
+                    if c in terms:
+                        return result
+                else:
+                    for t in terms:
+                        if result.endswith(t):
+                            return result
+        @logerror
+        def readline(self, remove_term=True, timeout=None, skip_empty=True, error_on_timeout=True):  # pylint: disable=arguments-differ
+            """
+            Read a single line from the device.
+            
+            Args:
+                remove_term (bool): If ``True``, remove terminal characters from the result.
+                timeout: Operation timeout. If ``None``, use the default device timeout.
+                skip_empty (bool): If ``True``, ignore empty lines (works only for ``remove_term==True``).
+                error_on_timeout (bool): If ``False``, return an incomplete line instead of raising the error on timeout.
+            """
+            while True:
+                result=self._read_terms(self.term_read or [],timeout=timeout,error_on_timeout=error_on_timeout)
+                self.cooldown("read")
+                if remove_term and self.term_read:
+                    result=remove_longest_term(result,self.term_read)
+                if not (skip_empty and remove_term and (not result)):
+                    break
+            self._log("read",result)
+            return self._to_datatype(result)
+        @logerror
+        @reraise
+        def read(self, size=None):  # pylint: disable=arguments-differ
+            """
+            Read data from the device.
+            
+            If `size` is not None, read `size` bytes (usual timeout applies); otherwise, read all available data (return immediately).
+            """
+            result=self.instr.read(size)
+            if size is not None and len(result)!=size:
+                raise self.Error("read returned less than expected {} instead of {}".format(len(result),size))
+            self.cooldown("read")
+            self._log("read",result)
+            return self._to_datatype(result)
+        @logerror
+        def read_multichar_term(self, term, remove_term=True, timeout=None, error_on_timeout=True):
+            """
+            Read a single line with multiple possible terminators.
+            
+            Args:
+                term: Either a string (single multi-char terminator) or a list of strings (multiple terminators).
+                remove_term (bool): If ``True``, remove terminal characters from the result.
+                timeout: Operation timeout. If ``None``, use the default device timeout.
+                error_on_timeout (bool): If ``False``, return an incomplete line instead of raising the error on timeout.
+            """
+            if isinstance(term,py3.anystring):
+                term=[term]
+            result=self._read_terms(term,timeout=timeout,error_on_timeout=error_on_timeout)
+            self.cooldown("read")
+            if remove_term and term:
+                result=remove_longest_term(result,term)
+            self._log("read",result)
+            return self._to_datatype(result)
+        @logerror
+        @reraise
+        def get_pending(self):
+            """Get the number of bytes in the read buffer"""
+            return self.instr.get_pending()
+        @logerror
+        @reraise
+        def write(self, data, read_echo=False, read_echo_delay=0, read_echo_lines=1):
+            """
+            Write data to the device.
+            
+            If ``read_echo==True``, wait for `read_echo_delay` seconds and then perform :func:`readline` (`read_echo_lines` times).
+            `flush` parameter is ignored.
+            """
+            self._log("write",data)
+            data=py3.as_builtin_bytes(data)
+            if self.term_write:
+                data=data+py3.as_builtin_bytes(self.term_write)
+            self.instr.write(data)
+            self.cooldown("write")
+            if read_echo:
+                if read_echo_delay>0.:
+                    time.sleep(read_echo_delay)
+                for _ in range(read_echo_lines):
+                    self.readline()
+
+        @reraise
+        def __repr__(self):
+            return "HIDeviceBackend("+self.instr.__repr__()+")"
+
+        
+        @staticmethod
+        def list_resources(desc=False, **kwargs):
+            try:
+                devs=list(hid.list_devices(**kwargs))
+            except PyUSBDeviceBackend.BackendError as e:
+                raise PyUSBDeviceBackend.Error from e
+            if desc:
+                return devs
+            return [d.path for d in devs]
+        
+        
+    _backends["hid"]=HIDeviceBackend
+except ImportError:
+    pass
+_backend_errors["hid"]="HID backend is only available on Windows"
     
 
 class DeviceRecordedError(DeviceBackendError):
@@ -1506,6 +1703,9 @@ def _is_network_addr(addr):
 _visa_re=re.compile(r"\w+(::\w+)+",re.IGNORECASE)
 def _is_visa_addr(addr):
     return isinstance(addr,py3.anystring) and bool(_visa_re.match(addr))
+_hid_re=re.compile(r"\\\\\?\\hid.+",re.IGNORECASE)
+def _is_hid_addr(addr):
+    return isinstance(addr,py3.anystring) and bool(_hid_re.match(addr))
 def autodetect_backend(conn, default="visa"):
     """
     Try to determine the backend by the connection.
@@ -1530,6 +1730,8 @@ def autodetect_backend(conn, default="visa"):
         return "serial"
     if _is_visa_addr(conn):
         return "visa"
+    if _is_hid_addr(conn):
+        return "hid"
     return default
 def _as_backend(backend, conn=None):
     if backend=="auto":

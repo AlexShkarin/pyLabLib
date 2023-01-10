@@ -49,6 +49,24 @@ pylablib.core.devio.data\_format module
     :undoc-members:
     :show-inheritance:
 
+pylablib.core.devio.hid module
+------------------------------
+
+.. automodule:: pylablib.core.devio.hid
+    :members:
+    :inherited-members:
+    :undoc-members:
+    :show-inheritance:
+
+pylablib.core.devio.hid\_base module
+------------------------------------
+
+.. automodule:: pylablib.core.devio.hid_base
+    :members:
+    :inherited-members:
+    :undoc-members:
+    :show-inheritance:
+
 pylablib.core.devio.interface module
 ------------------------------------
 

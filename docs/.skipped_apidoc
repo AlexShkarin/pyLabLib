@@ -3,6 +3,8 @@
 ..\pylablib\misc/**
 ..\pylablib\legacy/**
 ..\pylablib\aux_libs.py
+..\pylablib\core\utils\ctypes_tools.py
+..\pylablib\core\devio\hid_lib.py
 ..\pylablib\devices\Andor\atcore_defs.py
 ..\pylablib\devices\Andor\atcore_lib.py
 ..\pylablib\devices\Andor\atmcd32d_defs.py

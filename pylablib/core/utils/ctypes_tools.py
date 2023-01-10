@@ -14,6 +14,7 @@ CHAR=ctypes.c_char
 PCHAR=ctypes.c_char_p
 UCHAR=ctypes.c_ubyte
 PUCHAR=ctypes.POINTER(UCHAR)
+PSTR=PCSTR=LPSTR=LPCSTR=ctypes.c_char_p
 
 WCHAR=ctypes.c_wchar
 PWCHAR=ctypes.c_wchar_p
@@ -65,6 +66,22 @@ class OVERLAPPED(ctypes.Structure):
                 ("OffsetHigh",DWORD),
                 ("hEvent",HANDLE) ]
 LPOVERLAPPED=ctypes.POINTER(OVERLAPPED)
+
+
+class COMMTIMEOUTS(ctypes.Structure):
+    _fields_=[  ("ReadIntervalTimeout",DWORD),
+                ("ReadTotalTimeoutMultiplier",DWORD),
+                ("ReadTotalTimeoutConstant",DWORD),
+                ("WriteTotalTimeoutMultiplier",DWORD),
+                ("WriteTotalTimeoutConstant",DWORD) ]
+LPCOMMTIMEOUTS=ctypes.POINTER(COMMTIMEOUTS)
+
+
+class SECURITY_ATTRIBUTES(ctypes.Structure):
+    _fields_=[  ("nLength",DWORD),
+                ("lpSecurityDescriptor",LPVOID),
+                ("bInheritHandle",BOOL) ]
+LPSECURITY_ATTRIBUTES=ctypes.POINTER(SECURITY_ATTRIBUTES)
 
 
 
