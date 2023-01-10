@@ -337,7 +337,7 @@ class ANC350(comm_backend.ICommBackendWrapper,stage.IMultiaxisStage):
         """Move along a given axis by a given distance (in m)"""
         self.move_to(axis,self.get_position(axis)+dist)
     @interface.use_parameters
-    def move_by_steps(self, axis, steps=1):
+    def move_by_steps(self, axis, steps=1, delay=0):
         """Move along a given axis by a given number of steps"""
         steps=int(steps)
         if steps>=0:
@@ -347,6 +347,8 @@ class ANC350(comm_backend.ICommBackendWrapper,stage.IMultiaxisStage):
             steps=-steps
         for _ in range(steps):
             self.instr.write(tg)
+            if delay:
+                time.sleep(delay)
 
     def wait_move(self, axis, precision=1E-6, timeout=10., period=0.01):
         """
