@@ -1,5 +1,5 @@
 from ..utils import ctypes_wrap, ctypes_tools as ctt, py3
-from .hid_base import HIDLibError
+from .hid_base import HIDError, HIDLibError
 
 import ctypes
 import enum
@@ -118,11 +118,17 @@ class HIDLib:
         ctt.decorate(self.kernel32lib.SetEvent,ctt.BOOL,[ctt.HANDLE],argnames=["hEvent"])
         ctt.decorate(self.kernel32lib.ResetEvent,ctt.BOOL,[ctt.HANDLE],argnames=["hEvent"])
         ctt.decorate(self.kernel32lib.WaitForSingleObject,ctt.DWORD,[ctt.HANDLE,ctt.DWORD],argnames=["hHandle","dwMilliseconds"])
+        ctt.decorate(self.kernel32lib.WaitForMultipleObjects,ctt.DWORD,[ctt.DWORD,ctt.LPHANDLE,ctt.BOOL,ctt.DWORD],
+            argnames=["nCount","lpHandles","bWaitAll","dwMilliseconds"])
         ctt.decorate(self.kernel32lib.CloseHandle,ctt.BOOL,[ctt.HANDLE],argnames=["hObject"])
         ctt.decorate(self.kernel32lib.ReadFile,ctt.BOOL,[ctt.HANDLE,ctt.LPVOID,ctt.DWORD,ctt.PDWORD,ctt.LPOVERLAPPED],
             argnames=["hFile","lpBuffer","nNumberOfBytesToRead","lpNumberOfBytesRead","lpOverlapped"])
         ctt.decorate(self.kernel32lib.WriteFile,ctt.BOOL,[ctt.HANDLE,ctt.LPVOID,ctt.DWORD,ctt.PDWORD,ctt.LPOVERLAPPED],
             argnames=["hFile","lpBuffer","nNumberOfBytesToWrite","lpNumberOfBytesWritten","lpOverlapped"])
+        ctt.decorate(self.kernel32lib.CancelIo,ctt.BOOL,[ctt.HANDLE],argnames=["hFile"])
+        ctt.decorate(self.kernel32lib.CancelIoEx,ctt.BOOL,[ctt.HANDLE,ctt.LPOVERLAPPED],argnames=["hFile","lpOverlapped"])
+        ctt.decorate(self.kernel32lib.GetOverlappedResult,ctt.BOOL,[ctt.HANDLE,ctt.LPOVERLAPPED,ctt.LPDWORD,ctt.BOOL],
+            argnames=["hFile","lpOverlapped","lpNumberOfBytesTransferred","bWait"])
         ctt.decorate(self.kernel32lib.SetCommTimeouts,ctt.BOOL,[ctt.HANDLE,ctt.LPCOMMTIMEOUTS],argnames=["hFile","lpCommTimeouts"])
         ctt.decorate(self.kernel32lib.GetCommTimeouts,ctt.BOOL,[ctt.HANDLE,ctt.LPCOMMTIMEOUTS],argnames=["hFile","lpCommTimeouts"])
         ctt.decorate(self.setupapilib.SetupDiGetClassDevsW,HDEVINFO,[ctt.LPGUID,ctt.LPCWSTR,ctt.HWND,ctt.DWORD],
@@ -162,6 +168,11 @@ class HIDLib:
         self.CreateFileW=wrapper(self.kernel32lib.CreateFileW)
         self.ReadFile=wrapper(self.kernel32lib.ReadFile, rvals=["lpNumberOfBytesRead"])
         self.WriteFile=wrapper(self.kernel32lib.WriteFile, rvals=["lpNumberOfBytesWritten"])
+        self.ReadFile_async=self.kernel32lib.ReadFile
+        self.WriteFile_async=self.kernel32lib.WriteFile
+        self.CancelIo=wrapper(self.kernel32lib.CancelIo)
+        self.CancelIoEx=wrapper(self.kernel32lib.CancelIoEx, rvals=[])
+        self.GetOverlappedResult=wrapper(self.kernel32lib.GetOverlappedResult, rvals=["lpNumberOfBytesTransferred"])
         self.SetCommTimeouts=wrapper(self.kernel32lib.SetCommTimeouts, rvals=[], byref=["lpCommTimeouts"])
         self.GetCommTimeouts=wrapper(self.kernel32lib.GetCommTimeouts, rvals=["lpCommTimeouts"])
         self.CreateEventA=wrapper(self.kernel32lib.CreateEventA, rvals=[], byref=[])
@@ -196,6 +207,10 @@ class HIDLib:
             argprep={"Buffer":hid_strprep,"BufferLength":_hid_string_size},byref=[],errcheck=self.errchecker_bool)
         self.HidD_GetNumInputBuffers=wrapper(self.hidlib.HidD_GetNumInputBuffers,rvals=["NumberBuffers"],errcheck=self.errchecker_bool)
         self.HidD_SetNumInputBuffers=wrapper(self.hidlib.HidD_SetNumInputBuffers,errcheck=self.errchecker_bool)
+    def WaitForMultipleObjects(self, Handles, bWaitAll, dwMilliseconds):
+        lpHandles=(ctt.HANDLE*len(Handles))(*Handles)
+        res=self.kernel32lib.WaitForMultipleObjects(len(Handles),lpHandles,bWaitAll,dwMilliseconds)
+        return res
     def list_hid_devices(self):
         guid=self.HidD_GetHidGuid()
         hdevinfo=self.SetupDiGetClassDevsW(guid,None,None,DIGCF.DIGCF_DEVICEINTERFACE|DIGCF.DIGCF_PRESENT)
@@ -214,6 +229,10 @@ class HIDLib:
         finally:
             self.SetupDiDestroyDeviceInfoList(hdevinfo)
         return paths
+    def make_overlapped(self, evt):
+        ovl=ctt.OVERLAPPED()
+        ovl.hEvent=evt
+        return ovl
 
 
 wlib=HIDLib()

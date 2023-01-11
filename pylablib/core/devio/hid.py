@@ -67,8 +67,9 @@ class HIDevice:
             ``"lenpfx"`` (assume a format where the first byte for the report indicates the payload size),
             or a tuple ``(parser, builder)`` of two functions, where the ``parser`` takes a single raw report data argument and returns a parsed value,
             while ``builder`` takes 2 arguments (data to be written and the output report size) and return the bytes to be sent to HID.
+        pause_on_write: if ``True``, pause the reading loop when writing; makes some communications more stable
     """
-    def __init__(self, path, timeout=3., rep_fmt="lenpfx"):
+    def __init__(self, path, timeout=3., rep_fmt="lenpfx", pause_on_write=True):
         if isinstance(rep_fmt,tuple):
             if len(rep_fmt)!=2:
                 raise ValueError("report format should be a 2-tuple (parser, builder), got {} instead".format(rep_fmt))
@@ -80,6 +81,7 @@ class HIDevice:
         self._readbuffsize=2**20
         self._rep_fmt=rep_fmt
         self.timeout=timeout
+        self.pause_on_write=pause_on_write
         self.open()
     
     def open(self):
@@ -89,7 +91,8 @@ class HIDevice:
         access=0x80000000|0x40000000  # GENERIC_READ | GENERIC_WRITE
         share_mode=0x01|0x02  # FILE_SHARE_READ | FILE_SHARE_WRITE
         disposition=3  # OPEN_EXISTING
-        self._file=lib.CreateFileW(self.path,access,share_mode,None,disposition,0,None)
+        attrs=0x80|0x40000000  # FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED
+        self._file=lib.CreateFileW(self.path,access,share_mode,None,disposition,attrs,None)
         try:
             ppd=lib.HidD_GetPreparsedData(self._file)
             try:
@@ -174,15 +177,27 @@ class HIDevice:
             self.parser=parser
             self._looping=False
             self._thread=None
+            self._read_evts=None
             self._data_wait_size=None
             self._data_ready=threading.Event()
             self._executing=threading.Event()
             self._read_lock=threading.Lock()
         def loop_read(self):
+            overlapped=lib.make_overlapped(self._read_evts[0])
             while self._looping:
                 self._executing.wait()
                 with self._read_lock:
-                    chread=lib.ReadFile(self.f,self.readbuff,self.readbuffsize,None)
+                    complete=lib.ReadFile_async(self.f,self.readbuff,self.readbuffsize,None,ctypes.byref(overlapped))
+                    if not complete:
+                        try:
+                            self._read_lock.release()
+                            res=lib.WaitForMultipleObjects(self._read_evts,False,0xFFFFFFFF)
+                            if res!=0:  # failure or stop looping event
+                                lib.CancelIo(self.f)
+                                return
+                        finally:
+                            self._read_lock.acquire()
+                    chread=lib.GetOverlappedResult(self.f,overlapped,False)
                     if not chread:
                         time.sleep(1E-3)
                         continue
@@ -203,6 +218,7 @@ class HIDevice:
             self.stop_loop()
             self._thread=threading.Thread(target=self.loop_read,daemon=True)
             self._looping=True
+            self._read_evts=[lib.CreateEventA(None,True,False,None) for _ in range(2)]
             self._executing.set()
             self.nread=0
             self.npassed=0
@@ -211,27 +227,28 @@ class HIDevice:
             """Stop the read loop"""
             if self._thread is not None:
                 self._looping=False
+                lib.SetEvent(self._read_evts[1])
                 self._executing.set()
                 self._thread.join()
                 self._thread=None
-        def pause(self, pause=True):
-            """Pause or resume the read loop"""
-            if pause:
-                self._executing.clear()
-                self._read_lock.acquire()
-                self._read_lock.release()
-            else:
-                self._executing.set()
+                for evt in self._read_evts:
+                    lib.CloseHandle(evt)
+                self._read_evts=None
         @contextlib.contextmanager
-        def pausing(self, do_pause=True):
+        def pausing(self, do_pause=True, timeout=None):
             if not do_pause:
                 yield
                 return
+            timeout=timeout if timeout is not None else -1
             paused=not self._executing.is_set()
             self._executing.clear()
             try:
-                with self._read_lock:
+                if not self._read_lock.acquire(timeout=timeout):
+                    raise HIDTimeoutError("timeout while pausing the read loop")
+                try:
                     yield
+                finally:
+                    self._read_lock.release()
             finally:
                 if not paused:
                     self._executing.set()
@@ -241,9 +258,8 @@ class HIDevice:
             self._data_ready.clear()
             self._data_wait_size=nread
             try:
-                self._data_ready.wait(timeout=timeout)
-            except TimeoutError:
-                raise HIDTimeoutError("timeout while read")
+                if not self._data_ready.wait(timeout=timeout):
+                    raise HIDTimeoutError("timeout while reading")
             finally:
                 self._data_wait_size=None
         def read(self, nbytes=None, timeout=None, peek=False):
@@ -272,6 +288,21 @@ class HIDevice:
         def get_pending(self):
             """Get the number of bytes in the read buffer"""
             return self.nread-self.npassed
+    def _do_write(self, data, timeout=None):
+        evt=lib.CreateEventA(None,True,False,None)
+        overlapped=lib.make_overlapped(evt)
+        to=0xFFFFFFFF if timeout is None else max(0,int(timeout*1E3))
+        try:
+            complete=lib.WriteFile_async(self._file,data,len(data),None,ctypes.byref(overlapped))
+            if not complete:
+                res=lib.WaitForSingleObject(evt,to)
+                if res!=0:
+                    lib.CancelIo(self._file)
+                    raise HIDTimeoutError("timeout while writing")
+            chwrite=lib.GetOverlappedResult(self._file,overlapped,False)
+            return chwrite
+        finally:
+            lib.CloseHandle(evt)
 
     def get_pending(self):
         """Get the number of bytes in the read buffer"""
@@ -288,41 +319,20 @@ class HIDevice:
         if timeout is None:
             timeout=self.timeout
         return self._reader.read(nbytes=nbytes,timeout=timeout)
-    def write(self, data):
-        """Write the given data to the device"""
+    def write(self, data, timeout=None):
+        """
+        Write the given data to the device.
+
+        If `timeout` is not ``None``, it can define the write operation timeout; otherwise, use the default timeout specified on creation.
+        """
         self._check_open()
+        if timeout is None:
+            timeout=self.timeout
         if isinstance(data,py3.textstring):
             data=py3.as_bytes(data)
         if not isinstance(data,(bytes,bytearray)):
             data=bytes(data)
         data=self._build_msg(data,self._caps.OutputReportByteLength)
-        with self._reader.pausing():
-            nwrite=lib.WriteFile(self._file,data,len(data),None)
+        with self._reader.pausing(do_pause=self.pause_on_write,timeout=timeout):
+            nwrite=self._do_write(data,timeout=timeout)
         return nwrite
-
-
-
-class VCHIDevice(HIDevice):
-    def read_msg(self):
-        hdr=self.read(2)
-        disc=b""
-        for _ in range(100):
-            if hdr==b"\xab\xcd":
-                break
-            disc+=hdr[:1]
-            hdr=hdr[1:]+self.read(1)
-        if disc and disc!=b"\x0d\x0a":
-            print("discarded",list(disc))
-        if hdr!=b"\xab\xcd":
-            raise HIDError("could not find the header")
-        l=self.read(1)[0]
-        new_msg=self.get_pending()<=l
-        return (hdr+bytes([l])+self.read(l),new_msg)
-    def exhaust_msg(self, nmax=100):
-        msgs=[]
-        for _ in range(nmax):
-            m,nm=self.read_msg()
-            msgs.append(m)
-            if nm:
-                break
-        return msgs

@@ -1535,7 +1535,7 @@ try:
             return self.instr.get_pending()
         @logerror
         @reraise
-        def write(self, data, read_echo=False, read_echo_delay=0, read_echo_lines=1):
+        def write(self, data, flush=True, read_echo=False, read_echo_delay=0, read_echo_lines=1):
             """
             Write data to the device.
             
