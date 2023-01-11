@@ -147,7 +147,8 @@ class VC7055(SCPI.SCPIDevice):
 
 
 
-
+class VC880ParseError(GenericVoltcraftError):
+    """Voltcraft VC880 message parse error"""
 TVC880Reading=collections.namedtuple("TVC880Reading",["func","kind","value","unit","disps","d2func"])
 class VC880(comm_backend.ICommBackendWrapper):
     """
@@ -166,7 +167,7 @@ class VC880(comm_backend.ICommBackendWrapper):
             path=vc_devices[conn].path
         else:
             path=conn
-        instr=comm_backend.new_backend(path,"hid",defaults={"hid":("rep_fmt","lenpfx")},reraise_error=GenericVoltcraftBackendError)
+        instr=comm_backend.new_backend(path,"hid",defaults={"hid":("rep_fmt","lenpfx")},timeout=3.,reraise_error=GenericVoltcraftBackendError)
         super().__init__(instr)
         self._add_status_variable("reading",self.get_reading)
     
@@ -179,24 +180,24 @@ class VC880(comm_backend.ICommBackendWrapper):
                 break
             hdr=hdr[1:]+self.instr.read(1)
         if hdr[:2]!=self._header_magic:
-            raise GenericVoltcraftError("could not find the header 0x{:02X}{:02X}".format(*self._header_magic))
+            raise VC880ParseError("could not find the header 0x{:02X}{:02X}".format(*self._header_magic))
         l,typ=struct.unpack("BB",hdr[2:])
         if l<3:
-            raise GenericVoltcraftError("error in the received message length: expect at least 3 bytes, got {}".format(l))
+            raise VC880ParseError("error in the received message length: expect at least 3 bytes, got {}".format(l))
         msg_pending=self.instr.get_pending()>l-1
         msg=self.instr.read(l-1)
         payload=msg[:-2]
         rcsum,=struct.unpack(">H",msg[-2:])
         ccsum=sum(hdr)+sum(payload)
         if ccsum!=rcsum:
-            raise GenericVoltcraftError("error in the received message check sum: received at 0x{:04X}, calculated 0x{:04X}".format(rcsum,ccsum))
+            raise VC880ParseError("error in the received message check sum: received at 0x{:04X}, calculated 0x{:04X}".format(rcsum,ccsum))
         return self.TMessage(typ,payload),msg_pending
     def read_message(self, tries=10):
         """Read the oldest message in the queue"""
         for t in range(tries):
             try:
                 return self._read_single_message()[0]
-            except GenericVoltcraftError:
+            except VC880ParseError:
                 if t==tries-1:
                     raise
     def exhaust_messages(self, nmax=100000, tries=10):
@@ -206,6 +207,7 @@ class VC880(comm_backend.ICommBackendWrapper):
         `nmax` specifies the maximal number of messages to read (``None`` means reading until available).
         """
         received=[]
+        t=0
         while nmax is None or len(received)<nmax:
             try:
                 msg,pending=self._read_single_message()
@@ -213,7 +215,7 @@ class VC880(comm_backend.ICommBackendWrapper):
                 if not pending:
                     break
                 t=0
-            except GenericVoltcraftError:
+            except VC880ParseError:
                 t+=1
                 if t==tries:
                     break
@@ -273,17 +275,16 @@ class VC880(comm_backend.ICommBackendWrapper):
         pfxord=int(np.log10(rng*.99)//3)
         val=py3.as_str(data[2:9]).strip()
         stat=list(data[26:33])
-        def parse_val(val, neg):
+        def parse_val(val):
             if val=="-"*len(val):
                 return None
             elif val.upper().find("OL")>=0:
                 return"over"
             else:
-                return float(val)*10**(pfxord*3)*(-1 if neg else 1)
-        val=parse_val(val,stat[0]&0x04)
+                return float(val)*10**(pfxord*3)
+        val=parse_val(val)
         disps=[]
-        parse_d2=lambda v: parse_val(v,stat[0]&0x08)
-        for ds,de,c in [(9,16,parse_d2),(16,23,int),(23,26,int)]:
+        for ds,de,c in [(9,16,parse_val),(16,23,int),(23,26,int)]:
             d=py3.as_str(data[ds:de]).strip()
             try:
                 d=c(d) if d else None
@@ -313,14 +314,13 @@ class VC880(comm_backend.ICommBackendWrapper):
         values of the other 3 auxiliary displays (upper right min/max/avg/rel display, upper left memory display, bottom linear scale display),
         and the kind of function on the upper right display (``"min"``, ``"max"``, ``"avg"``, or ``"rel"``).
         """
+        if kind=="all":
+            return [self._decode_live(m.payload) for m in self.exhaust_messages() if m.type==0x01]
         if kind=="latest":
             msgs=self.exhaust_messages()
             for m in msgs[::-1]:
                 if m.typ==0x01:
                     return self._decode_live(m.payload)
-        if kind=="all":
-            msgs=self.exhaust_messages()
-            return [self._decode_live(m.payload) for m in msgs if m.type==0x01]
         for _ in range(100):
             m=self.read_message()
             if m.typ==0x01:
@@ -328,4 +328,7 @@ class VC880(comm_backend.ICommBackendWrapper):
         raise GenericVoltcraftError("could not receive a live update message")
     def enable_autorange(self, enable=True):
         """Enable or disable autorange"""
-        self.send_message(0x47 if enable else 0x46,reps=2)
+        if enable:
+            self.send_message(0x47,reps=3)
+        else:
+            self.send_message(0x46,reps=1)
