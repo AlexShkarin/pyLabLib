@@ -156,8 +156,8 @@ class GenericPM(SCPI.SCPIDevice):
         If `sensor_mode` is ``None``, return reading in the currently set up mode (:meth:`get_sensor_mode`); otherwise, set the sensor mode to the requested one.
         If ``measure==True``, initiate a new measurement; otherwise, return the last measured value.
         `overrng` describes behavior if the power readings are outside of the current range;
-            can be ``"keep"`` (keep the default device behavior, which returns a very large number, about 9.9E37),
-            ``"error"`` (raise an error), or ``"max"`` (trim to the maximal value for the current range).
+        can be ``"keep"`` (keep the default device behavior, which returns a very large number, about 9.9E37),
+        ``"error"`` (raise an error), or ``"max"`` (trim to the maximal value for the current range).
         """
         funcargparse.check_parameter_range(overrng,"overrng",["keep","max","error"])
         if sensor_mode is not None:
