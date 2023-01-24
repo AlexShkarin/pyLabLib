@@ -252,6 +252,8 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         super().__init__(conn,timeout=timeout,is_rack_system=is_rack_system,default_axis=default_channel)
         self._remove_device_variable("axes")
         self._add_info_variable("channel",self.get_all_channels)
+        with self._close_on_error():
+            self._set_status_comm()
     _axes=[1]
     def get_all_channels(self):
         """Get the list of all available channels; alias of ``get_all_axes`` method"""
@@ -277,6 +279,20 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         if not isinstance(channels,list):
             channels=list(range(1,channels+1))
         self._update_axes(channels)
+    def _set_status_comm(self, comm="auto"):
+        """
+        Set status communication command.
+
+        Can usually be ``0x0480``, ``0x0490``, ``0x0429``, or ``"auto"`` (autodetect based on the model number).
+        """
+        if comm=="auto":
+            model=self.get_device_info().model_no
+            if model.startswith("MPC"):
+                comm=0x0490
+            else:
+                comm=0x0429
+        self._status_comm=comm
+
     @muxchannel
     def _get_status_n(self, channel=None):
         """
@@ -284,21 +300,31 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
 
         For details, see APT communications protocol.
         """
-        data=self.query(0x0429,self._make_channel(channel),dest=("channel",channel)).data
-        return struct.unpack("<I",data[2:6])[0]
-    status_bits=[(1<<0,"sw_bk_lim"),(1<<1,"sw_fw_lim"),
+        data=self.query(self._status_comm,self._make_channel(channel),dest=("channel",channel)).data
+        status_bits=data[16:20] if self._status_comm==0x0480 else data[-4:]
+        return struct.unpack("<I",status_bits)[0]
+    status_bits=[(1<<0,"hw_bk_lim"),(1<<1,"hw_fw_lim"),(1<<2,"sw_bk_lim"),(1<<3,"sw_fw_lim"),
                 (1<<4,"moving_bk"),(1<<5,"moving_fw"),(1<<6,"jogging_bk"),(1<<7,"jogging_fw"),
-                (1<<9,"homing"),(1<<10,"homed"),(1<<12,"tracking"),(1<<13,"settled"),
-                (1<<14,"motion_error"),(1<<24,"current_limit"),(1<<31,"enabled")]
+                (1<<8,"connected"),(1<<9,"homing"),(1<<10,"homed"),(1<<11,"initializing"),(1<<12,"tracking"),(1<<13,"settled"),
+                (1<<14,"motion_error"),(1<<15,"instr_error"),(1<<16,"interlock"),(1<<17,"overtemp"),(1<<18,"volt_supply_fault"),(1<<19,"commutation_error"),
+                (1<<20,"digio1"),(1<<21,"digio2"),(1<<22,"digio3"),(1<<23,"digio4"),
+                (1<<24,"current_limit"),(1<<25,"encoder_fault"),(1<<26,"overcurrent"),(1<<27,"curr_supply_fault"),
+                (1<<28,"power_ok"),(1<<29,"active"),(1<<30,"error"),(1<<31,"enabled")]
     @muxchannel
     def _get_status(self, channel=None):
         """
         Get device status.
 
-        Return list of status strings, which can include ``"sw_fw_lim"`` (forward limit switch reached), ``"sw_bk_lim"`` (backward limit switch reached),
+        Return list of status strings, which can include ``"hw_fw_lim"`` (forward hardware limit switch reached), ``"hw_bk_lim"`` (backward hardware limit switch reached),
+        ``"sw_fw_lim"`` (forward software limit switch reached), ``"sw_bk_lim"`` (backward software limit switch reached),
         ``"moving_fw"`` (moving forward), ``"moving_bk"`` (moving backward), ``"jogging_fw"`` (jogging forward), ``"jogging_bk"`` (jogging backward),
-        ``"homing"`` (homing), ``"homed"`` (homing done), ``"tracking"``, ``"settled"``,
-        ``"motion_error"`` (excessive position error), ``"current_limit"`` (motor current limit exceeded), or ``"enabled"`` (motor is enabled).
+        ``"connected"`` (motor is connected), ``"homing"`` (homing), ``"homed"`` (homing done), ``"initializing"`` (3-phase motor phase initialization),
+        ``"tracking"`` (position is within trajectory), ``"settled"`` (position has been stable),
+        ``"motion_error"`` (excessive position error), ``"instr_error"`` (legacy instrument command error), ``"interlock"`` (interlock is on), ``"overtemp"`` (temperature above limit),
+        ``"volt_supply_fault"`` (supply voltage is too low), ``"commutation_error"`` (3-phase motor commutation error),
+        ``"digio1"`` (state of digital input 1), ``"digio2"`` (state of digital input 2), ``"digio3"`` (state of digital input 3), ``"digio4"`` (state of digital input 4),
+        ``"current_limit"`` (motor current limit exceeded for a long time), ``"encoder_fault"`` (encoder problems), ``"overcurrent"`` (motor current limit exceeded temporarily),
+        ``"curr_supply_fault"`` (current drawn from supply is too high), ``"power_ok"`` (power is ok), ``"active"`` (moving), ``"error"`` (any error), ``"enabled"`` (motor is enabled).
         """
         status_n=self._get_status_n(channel=channel)
         return [s for (m,s) in self.status_bits if status_n&m]
@@ -1026,6 +1052,10 @@ class KinesisMotor(KinesisDevice):
         self._add_settings_variable("gen_move_parameters",self.get_gen_move_parameters,self.setup_gen_move)
         self._add_settings_variable("limit_switch_parameters",self.get_limit_switch_parameters,self.setup_limit_switch)
         with self._close_on_error():
+            self.send_comm(0x0012) # disable automatic update
+            self.send_comm(0x0005)
+            while self.recv_comm().messageID!=0x0006:
+                pass
             self._stage=self._get_stage(scale)
             self._scale,self._scale_units=self._calculate_scale(scale)
         if self.get_device_info().model_no in ["KDC101","KST101","KBD101"]:
