@@ -16,6 +16,7 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
 import re
+import sphinx
 
 from unittest import mock
 
@@ -52,6 +53,8 @@ extensions += [
     'sphinx.ext.viewcode',
     'sphinx.ext.githubpages',
 ]
+if sphinx.version_info[0]>=3:
+    extensions+=['sphinxcontrib.spelling']
 
 autodoc_mock_imports = ['nidaqmx', 'pyvisa', 'serial', 'ft232', 'PyQt5', 'pywinusb', 'pyqtgraph', 'websocket', 'matplotlib', 'sip', 'rpyc', 'numba', 'pandas']
 sys.modules['pyvisa']=mock.Mock(VisaIOError=object, __version__='1.9.0')
@@ -61,6 +64,9 @@ sys.modules['PyQt5.QtCore']=mock.Mock(QObject=object,QThread=object)
 sys.modules['PyQt5.QtWidgets']=mock.Mock(QWidget=object,QFrame=object,QGroupBox=object,QScrollArea=object,QTabWidget=object,
     QPushButton=object,QComboBox=object,QLineEdit=object,QLabel=object,QDialog=object)
 sys.modules['PyQt5']=mock.Mock(QtCore=sys.modules['PyQt5.QtCore'],QtWidgets=sys.modules['PyQt5.QtWidgets'])
+def nodec(*_, **__):
+    return lambda f:f
+sys.modules['numba']=mock.MagicMock(njit=nodec,jit=nodec)
 if os.path.exists(".skipped_apidoc"):
     with open(".skipped_apidoc","r") as f:
         for ln in f.readlines():
@@ -74,14 +80,15 @@ autodoc_member_order='bysource'
 nitpicky=True
 nitpick_ignore=[("py:class","callable"),
                 ("py:class","socket.socket"),
-                ("py:class","builtins.OSError"), ("py:class","builtins.RuntimeError"), ("py:class","usb.core.USBError"), ("py:class","pyvisa.errors.VisaIOError"),
+                ("py:class","builtins.OSError"), ("py:class","builtins.RuntimeError"),
+                ("py:class","usb.core.USBError"), ("py:class","pyvisa.errors.VisaIOError"), ("py:class","rpyc.SlaveService"),
                 ("py:class","sphinx.ext.autodoc.importer._MockObject"),
-                ("py:class","builtins.object"), 
+                ("py:class","builtins.object"),
                 ]
 intersphinx_mapping = {'python': ('https://docs.python.org/3', None),
                        'numpy': ('https://numpy.org/doc/stable/', None),
                        'pandas': ('https://pandas.pydata.org/pandas-docs/dev/', None),
-                       'scipy': ('https://docs.scipy.org/doc/scipy/reference/', None),
+                       'scipy': ('https://docs.scipy.org/doc/scipy/', None),
                        'matplotlib': ('https://matplotlib.org/stable/', None),
                        'rpyc': ('https://rpyc.readthedocs.io/en/latest/', None),
                        'pyqtgraph': ("https://pyqtgraph.readthedocs.io/en/latest/", None),
@@ -89,10 +96,40 @@ intersphinx_mapping = {'python': ('https://docs.python.org/3', None),
                        'PyVISA': ("https://pyvisa.readthedocs.io/en/latest/", None),
                        'nidaqmx': ("https://nidaqmx-python.readthedocs.io/en/latest/", None),}
 
+spelling_word_list_filename=["../.pylintdict",".sphinxdict"]
 
+
+duplicate_classes=set()
+duplicate_classed_added=set()
+namedtuple_att_ignore=set()
+if os.path.exists(".autodoc_ignore"):
+    with open(".autodoc_ignore","r") as f:
+        for ln in f.readlines():
+            ln=ln.strip()
+            if ln and not ln.startswith("#"):
+                k,n=ln.split(maxsplit=1)
+                if k=="dup":
+                    duplicate_classes.add(n)
+                elif k=="ntatt":
+                    namedtuple_att_ignore.add(n)
+def remove_duplicates(app, what, name, obj, skip, options):
+    if isinstance(obj,type):
+        name="{}.{}".format(obj.__module__,obj.__name__)
+        if name in duplicate_classes:
+            if name in duplicate_classed_added:
+                return True
+            duplicate_classed_added.add(name)
+    if name in ["count","index"] and str(obj)=="<method '{}' of 'tuple' objects>".format(name):
+        return True
+    if name in namedtuple_att_ignore and isinstance(obj,type) and issubclass(obj,tuple) and hasattr(obj,"_fields"):
+        for f in obj._fields:
+            try:
+                delattr(obj,f)
+            except AttributeError:
+                pass
+    return None
 def no_namedtuple_attrib_docstring(app, what, name, obj, options, lines):
-    if len(lines) == 1 and lines[0].startswith('Alias for field number'):
-        # We don't return, so we need to purge in-place
+    if len(lines)==1 and lines[0].startswith('Alias for field number'):
         del lines[:]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -112,7 +149,7 @@ master_doc = 'index'
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = "en"
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -147,8 +184,9 @@ html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 
 def setup(app):
-    app.add_stylesheet('css/wide.css')
+    app.add_css_file('css/wide.css')
     app.connect('autodoc-process-docstring',no_namedtuple_attrib_docstring)
+    app.connect('autodoc-skip-member',remove_duplicates)
 
 
 # Custom sidebar templates, must be a dictionary that maps document names

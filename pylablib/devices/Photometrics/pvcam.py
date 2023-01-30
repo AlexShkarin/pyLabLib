@@ -65,7 +65,6 @@ class PvcamAttribute:
         kind: attribute kind; can be ``"INT8"``, ``"INT16"``, ``"INT32"``, ``"INT64"``,
             ``"UNS8"``, ``"UNS16"``, ``"UNS32"``, ``"UNS64"``, ``"FLT32"``, ``"FLT64"``, 
             ``"ENUM"``, ``"BOOLEAN"``, or ``"CHAR_PTR"``
-        kind: attribute kind (e.g., ``"INT8"`` or ``"FLT32"``)
         available (bool): whether attribute is available on the current hardware
         readable (bool): whether attribute is readable
         writable (bool): whether attribute is writable

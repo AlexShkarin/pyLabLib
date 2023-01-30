@@ -125,7 +125,7 @@ class BasicKinesisDevice(comm_backend.ICommBackendWrapper):
         """
         Receive a message.
 
-        Return either :class:`CommShort` or :class:`CommData` depending on the message type
+        Return either :class:`BasicKinesisDevice.CommShort` or :class:`BasicKinesisDevice.CommData` depending on the message type
         (fixed length with two parameters, or variable length with associated data).
         If `expected_id` is not ``None`` and the received message ID is different from `expected_id`, raise an error.
         For details, see APT communications protocol.
