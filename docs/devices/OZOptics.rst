@@ -6,7 +6,7 @@
 OZ Optics devices
 ==============================
 
-OZ Optics provides a variety of mostly fiber-optics related devices. Pylalbib covers some of its fiber optomechanics solutions: polarization controller, tunable filter and variable attenuator. Their requirements and general approach are fairly similar, so they are all collected here.
+OZ Optics provides a variety of mostly fiber-optics related devices. Pylablib covers some of its fiber optomechanics solutions: polarization controller, tunable filter and variable attenuator. Their requirements and general approach are fairly similar, so they are all collected here.
 
 
 Software requirements

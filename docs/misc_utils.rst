@@ -39,7 +39,7 @@ Strings
 
 There are several string manipulation functions present:
 
-    - Powerful to/from string conversion. The main function are :func:`.utils.string.to_string` and :func:`.utils.string.from_string`, which can convert a large variety of values: simple scalar values (numbers, strings, bools, ``None``), containers (lists, tuples, sets, dictionaries), escaped and byte strings (e.g., ``b"\x00"``), complex types such as numpy arrays (represented as, e.g., ``"array([0, 1, 2, 3, 4])"``). The latter version requires setting ``use_classes=True`` in :func:`.utils.string.to_string`, which is not enabled by default to make the results more compatible with other parsers::
+    - Powerful to/from string conversion. The main function are :func:`.utils.string.to_string` and :func:`.utils.string.from_string`, which can convert a large variety of values: simple scalar values (numbers, strings, booleans, ``None``), containers (lists, tuples, sets, dictionaries), escaped and byte strings (e.g., ``b"\x00"``), complex types such as numpy arrays (represented as, e.g., ``"array([0, 1, 2, 3, 4])"``). The latter version requires setting ``use_classes=True`` in :func:`.utils.string.to_string`, which is not enabled by default to make the results more compatible with other parsers::
 
         >> pll.to_string(np.arange(5))  # by default, use the standard str method, which makes array look like a list
         '[0, 1, 2, 3, 4]'
@@ -80,12 +80,12 @@ Misc utilities
 
 A variety of small useful methods and classes:
 
-    - Dictionary manipulation functions: :func:`.utils.general.any_item` (get a random dict key-value pair), :func:`.utils.general.merge_dicts` (merge several dictionaries together), :func:`.utils.general.filter_dict` (filter dictionary according ot key or value), :func:`.utils.general.map_dict_keys`, :func:`.utils.general.map_dict_values`, :func:`.utils.general.to_dict` (convert a dict or a list of pairs into a dictionary, using a default value for a non-pair list elements), :func:`.utils.general.invert_dict` (turn keys into values and vice versa).
+    - Dictionary manipulation functions: :func:`.utils.general.any_item` (get a random dict key-value pair), :func:`.utils.general.merge_dicts` (merge several dictionaries together), :func:`.utils.general.filter_dict` (filter dictionary according to key or value), :func:`.utils.general.map_dict_keys`, :func:`.utils.general.map_dict_values`, :func:`.utils.general.to_dict` (convert a dict or a list of pairs into a dictionary, using a default value for a non-pair list elements), :func:`.utils.general.invert_dict` (turn keys into values and vice versa).
     - List manipulation functions: :func:`.utils.general.flatten_list` (flatten a nested list structure), :func:`.utils.general.partition_list` (split a list into two lists according to a predicate), :func:`.utils.general.split_in_groups` (split list into several groups according to a key function), :func:`.utils.general.sort_set_by_list` (convert set into a list, whose values are sorted according to a second supplied list), :func:`.utils.general.compare_lists` (compare two lists and return their intersection and differences).
     - :class:`.utils.general.DummyResource`: a "dummy" resource class, which can be used in a ``with`` block but does nothing; can be used to, e.g., replace multi-threading resources such as locks to turn them off.
     - Unique ID generators: :class:`.utils.general.UIDGenerator` and :class:`.utils.general.NamedUIDGenerator`, which generate unique names (based on a counter), with a thread-safe option (useful to create, e.g., unique data markers).
     - Timekeeping: :class:`.utils.general.Countdown` for single shot and :class:`.utils.general.Timer` for repeating tasks. Simplifies dealing with operation timeouts: checking how much time is left (including options for infinite timeout), checking if timeout is passed, resetting, etc.
-    - Script restarting vua :func:`.utils.general.restart` (thread-controller style applications can also use :func:`.thread.controller.restart_app` for a more managed restart).
+    - Script restarting via :func:`.utils.general.restart` (thread-controller style applications can also use :func:`.thread.controller.restart_app` for a more managed restart).
     - :class:`.utils.general.StreamFileLogger`, which can be set up to log all outputs into a stream (e.g., ``stdout``)::
 
         from pylablib import StreamFileLogger

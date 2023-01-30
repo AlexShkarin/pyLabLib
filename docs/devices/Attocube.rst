@@ -76,7 +76,7 @@ The device class is :class:`pylablib.devices.Attocube.ANC350<.anc350.ANC350>`.
 Software requirements
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-The controller has USB and Ethernet modes. USB mode requires a driver supplied with the controller. The communication is done via `PyUSB <https://pyusb.github.io/pyusb/>`__, which means that it does not require any additional Attocube DLLs, although you might need to install libusb (see `PyUSB <https://pyusb.github.io/pyusb/>`__ for more details). Ethernet control is supplied as an additional purchaseable option and can be configured using the supplied Daisy control software.
+The controller has USB and Ethernet modes. USB mode requires a driver supplied with the controller. The communication is done via `PyUSB <https://pyusb.github.io/pyusb/>`__, which means that it does not require any additional Attocube DLLs, although you might need to install libusb (see `PyUSB <https://pyusb.github.io/pyusb/>`__ for more details). Ethernet control is supplied as an additional purchasable option and can be configured using the supplied Daisy control software.
 
 This device has only been tested with a USB connection.
 

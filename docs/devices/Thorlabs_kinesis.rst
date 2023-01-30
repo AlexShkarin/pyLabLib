@@ -30,7 +30,7 @@ On Windows devices are identified by their address, which correspond to their se
     >> stage = Thorlabs.KinesisMotor("27500001")
     >> stage.close()
 
-On Linux they directly appear as virtual serial ports, e.g., ``/dev/ttyUSB0``. Hence, there you need to identify which device file corresponds your device (e.g., by unplugging and plugging it bak in to see which device shows up). After that, you can use this name as the device address::
+On Linux they directly appear as virtual serial ports, e.g., ``/dev/ttyUSB0``. Hence, there you need to identify which device file corresponds your device (e.g., by unplugging and plugging it back in to see which device shows up). After that, you can use this name as the device address::
 
     >> from pylablib.devices import Thorlabs
     >> stage = Thorlabs.KinesisMotor("/dev/ttyUSB0")

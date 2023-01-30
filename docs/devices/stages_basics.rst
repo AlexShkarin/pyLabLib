@@ -55,7 +55,7 @@ In many cases, the motor speed is ramped up and down linearly rather than abrupt
 Application notes and examples
 -------------------------------------------
 
-Here we talk more practically about using pyalblib to perform common tasks.
+Here we talk more practically about using pylablib to perform common tasks.
 
 
 Motion

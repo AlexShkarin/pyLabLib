@@ -11,7 +11,7 @@ Voltcraft multimeters
 .. note::
     Basic sensors communication concepts are described on the corresponding :ref:`page <basic_sensors_basics>`
 
-There are different series of multimeters with somewhat different capabilities and fairly different communication methods and protocols. There are currently two different supported protocols. The firs has been designed with Volcraft VC-7055BT multimeter, but it might also be able to work with other 7000 series multimeters such as 7060 and 7200. The second was designed with VC880, but might also work with VC650T.
+There are different series of multimeters with somewhat different capabilities and fairly different communication methods and protocols. There are currently two different supported protocols. The firs has been designed with Voltcraft VC-7055BT multimeter, but it might also be able to work with other 7000 series multimeters such as 7060 and 7200. The second was designed with VC880, but might also work with VC650T.
 
 The main device classes are :class:`pylablib.devices.Voltcraft.VC7055<.Voltcraft.multimeter.VC7055>` and :class:`pylablib.devices.Voltcraft.VC880<.Voltcraft.multimeter.VC880>`.
 

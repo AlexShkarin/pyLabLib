@@ -18,6 +18,7 @@ len
 iir
 cval
 gaussian
+gaussians
 n'th
 datasets
 bandpass
@@ -42,6 +43,7 @@ gridpoint
 pre
 rng
 lorentzian
+lorentzians
 hann
 accessor
 subcolumn
@@ -79,6 +81,7 @@ filepath
 filetype
 datetime
 metainfo
+metainfos
 formatters
 utils
 dictionarypointer
@@ -215,6 +218,7 @@ arcus
 exs
 pmx
 attocube
+attocubes
 pwd
 anc
 stp
@@ -258,6 +262,7 @@ addr
 addrs
 websocket
 terascan
+terascans
 brf
 ao
 daq
@@ -382,6 +387,7 @@ yappi
 hashable
 picam
 piezo
+piezos
 DMX
 autoclear
 xdiff
@@ -447,3 +453,5 @@ wchar
 bluetooth
 autoscaling
 nm
+strerror
+libusb

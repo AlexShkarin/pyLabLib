@@ -159,12 +159,6 @@ class IDictionaryEntry:
 
     Args:
         data: data to be wrapped
-
-    Methods:
-        is_data_valid (class method): check if a data object can be wrapped by the current entry class
-        is_branch_valid (class method): check if a branch can be parsed by the current entry class
-        from_dict (class method): create a dictionary entry of a given class from the dictionary branch
-        to_dict: convert the entry to a dictionary branch
     """
     _data_type=None # data type marker (a string marker of the entry class which is saved in the dictionary under ``__data_type__```)
     _obj_type=None
@@ -186,7 +180,7 @@ class IDictionaryEntry:
         Convert a dictionary branch to a specific :class:`IDictionaryEntry` object.
         
         Args:
-            dict_ptr (.dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
+            dict_ptr (dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
             loc: Location for the data to be loaded.
         """
         return cls(None) if cls.is_branch_valid(dict_ptr) else None
@@ -195,7 +189,7 @@ class IDictionaryEntry:
         Convert data to a dictionary branch on saving.
         
         Args:
-            dict_ptr (.dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
+            dict_ptr (dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
             loc: File location for the data to be saved.
         """
         return dictionary.Dictionary({"__data_type__":self._data_type})
@@ -301,7 +295,7 @@ class ITableDictionaryEntry(IDictionaryEntry):
         Convert a dictionary branch to a specific DictionaryEntry object.
         
         Args:
-            dict_ptr (.dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
+            dict_ptr (dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
             loc: Location for the data to be loaded.
             out_type (str): Output format of the data (``'array'`` for numpy arrays or ``'pandas'`` for pandas DataFrame objects),
                 used only if the dictionary doesn't provide the format.
@@ -345,7 +339,7 @@ class InlineTableDictionaryEntry(ITableDictionaryEntry):
         Build an :class:`InlineTableDictionaryEntry` object from the dictionary and read the inlined data.
         
         Args:
-            dict_ptr (.dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
+            dict_ptr (dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
             loc: Location for the data to be loaded.
             out_type (str): Output format of the data (``'array'`` for numpy arrays or ``'pandas'`` for pandas DataFrame objects).
         """
@@ -409,7 +403,7 @@ class ExternalTextTableDictionaryEntry(IExternalTableDictionaryEntry):
         Build an :class:`ExternalTextTableDictionaryEntry` object from the dictionary and load the external data.
         
         Args:
-            dict_ptr (.dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
+            dict_ptr (dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
             loc: Location for the data to be loaded.
             out_type (str): Output format of the data (``'array'`` for numpy arrays or ``'pandas'`` for pandas DataFrame objects).
         """
@@ -456,7 +450,7 @@ class ExternalBinTableDictionaryEntry(IExternalTableDictionaryEntry):
         Build an :class:`ExternalBinTableDictionaryEntry` object from the dictionary and load the external data.
         
         Args:
-            dict_ptr (.dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
+            dict_ptr (dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
             loc: Location for the data to be loaded.
             out_type (str): Output format of the data (``'array'`` for numpy arrays or  ``'pandas'`` for pandas DataFrame objects).
         """
@@ -548,7 +542,7 @@ class IExternalFileDictionaryEntry(IDictionaryEntry):
         Build an :class:`IExternalFileDictionaryEntry` object from the dictionary and load the external data.
         
         Args:
-            dict_ptr (.dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
+            dict_ptr (dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
             loc: Location for the data to be loaded.
         """
         file_path=dict_ptr["file_path"]

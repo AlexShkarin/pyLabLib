@@ -16,7 +16,7 @@ Software requirements
 
 The devices provide a bare RS232 interface, so any appropriate USB-to-RS232 adapter should work. 
 
-Note that these devices frequently require cross-cable (also called null-modem cable), in which connections vetween Rx and Tx lines are switched. In addition, one might need to activate RS-232 communication in the front panel menu, as otherwise the device would not respond.
+Note that these devices frequently require cross-cable (also called null-modem cable), in which connections between Rx and Tx lines are switched. In addition, one might need to activate RS-232 communication in the front panel menu, as otherwise the device would not respond.
 
 
 Connection
