@@ -121,17 +121,20 @@ class BasicKinesisDevice(comm_backend.ICommBackendWrapper):
 
     CommShort=collections.namedtuple("CommShort",["messageID","param1","param2","source","dest"])
     CommData=collections.namedtuple("CommData",["messageID","data","source","dest"])
-    def recv_comm(self, expected_id=None):
+    def recv_comm(self, expected_id=None, timeout=None):
         """
         Receive a message.
 
         Return either :class:`BasicKinesisDevice.CommShort` or :class:`BasicKinesisDevice.CommData` depending on the message type
         (fixed length with two parameters, or variable length with associated data).
         If `expected_id` is not ``None`` and the received message ID is different from `expected_id`, raise an error.
+        If `timeout` is not ``None``, it can specify the timeout to read the command header (the rest is done with the usual timeout).
         For details, see APT communications protocol.
         """
         while True:
-            msg=self.instr.read(6)
+            with self.instr.using_timeout(timeout):
+                b=self.instr.read(1)
+            msg=b+self.instr.read(5)
             messageID,_,dest,source=struct.unpack("<HHBB",msg[:6])
             if dest&0x80:
                 dest=dest&0x7F
@@ -141,22 +144,43 @@ class BasicKinesisDevice(comm_backend.ICommBackendWrapper):
             else:
                 param1,param2=struct.unpack("<BB",msg[2:4])
                 comm=self.CommShort(messageID,param1,param2,source,dest)
-            if messageID in self._bg_msg_counters:
+            if messageID in self._bg_msg_counters and messageID!=expected_id:
                 cnt,_=self._bg_msg_counters[messageID]
                 self._bg_msg_counters[messageID]=(cnt+1,comm)
             else:
                 if expected_id is not None and messageID!=expected_id:
                     raise ThorlabsError("unexpected command received: expected 0x{:04x}, got 0x{:04x}".format(expected_id,messageID))
                 return comm
-    def query(self, messageID, param1=0, param2=0, source=0x01, dest="host", replyID=-1):
+    def flush_comm(self, nmax=1000):
+        """
+        Flush any commands in the queue.
+
+        if `nmax` is not ``None``, it specifies the maximal number of commands to flush.
+        """
+        comms=[]
+        try:
+            while True:
+                comms.append(self.recv_comm(timeout=0))
+                if nmax is not None and len(comms)>=nmax:
+                    break
+        except self.instr.Error:
+            pass
+        return comms
+    def query(self, messageID, param1=0, param2=0, source=0x01, dest="host", replyID=-1, flush="auto"):
         """
         Send a query to the device and receive the reply.
 
         A combination of :meth:`send_comm` and :meth:`recv_comm`.
         If `replyID` is not ``None``, specifies the expected reply message ID; if -1 (default), set to te be ``messageID+1`` (the standard convention).
+        `flush` specifies whether input queue will be flushed before reading; ``"auto"`` means that it will be flushed if the expected reply is among the background
+        messages, i.e., it could be already present in the queue.
         """
         if replyID<0:
             replyID=messageID+1
+        if flush=="auto":
+            flush=replyID in self._bg_msg_counters
+        if flush:
+            self.flush_comm()
         self.send_comm(messageID,param1=param1,param2=param2,source=source,dest=dest)
         return self.recv_comm(expected_id=replyID)
     def add_background_comm(self, messageID):
@@ -230,6 +254,7 @@ TVelocityParams=collections.namedtuple("TVelocityParams",["min_velocity","accele
 TJogParams=collections.namedtuple("TJogParams",["mode","step_size","min_velocity","acceleration","max_velocity","stop_mode"])
 TGenMoveParams=collections.namedtuple("TGenMoveParams",["backlash_distance"])
 THomeParams=collections.namedtuple("THomeParams",["home_direction","limit_switch","velocity","offset_distance"])
+TPolCtlParams=collections.namedtuple("TPolCtlParams",["velocity","home_position","jog1","jog2","jog3"])
 TLimitSwitchParams=collections.namedtuple("TLimitSwitchParams",["hw_kind_cw","hw_kind_ccw","hw_swapped","sw_position_cw","sw_position_ccw","sw_kind"])
 TKCubeTrigIOParams=collections.namedtuple("TKCubeTrigIOParams",["trig1_mode","trig1_pol","trig2_mode","trig2_pol"])
 TKCubeTrigPosParams=collections.namedtuple("TKCubeTrigPosParams",["start_fw","step_fw","num_fw","start_bk","step_bk","num_bk","width","ncycles"])
@@ -253,7 +278,8 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         self._remove_device_variable("axes")
         self._add_info_variable("channel",self.get_all_channels)
         with self._close_on_error():
-            self._set_status_comm()
+            self._model=self.get_device_info().model_no
+            self._setup_comm_parameters()
     _axes=[1]
     def get_all_channels(self):
         """Get the list of all available channels; alias of ``get_all_axes`` method"""
@@ -279,19 +305,20 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         if not isinstance(channels,list):
             channels=list(range(1,channels+1))
         self._update_axes(channels)
-    def _set_status_comm(self, comm="auto"):
+    def _setup_comm_parameters(self, status_comm="auto", move_by_mode="auto"):
         """
-        Set status communication command.
+        Setup miscellaneous communication parameters.
 
-        Can usually be ``0x0480``, ``0x0490``, ``0x0429``, or ``"auto"`` (autodetect based on the model number).
+        `status_comm` is the status request command; can be ``0x0480``, ``0x0490``, ``0x0429``, or ``"auto"`` (autodetect based on the model number).
+        `move_by_mode` is the mode of ``move_by`` method; can be ``"builtin"`` (use built-in method),
+        ``"move_to"`` (use position readout and ``move_to``), or ``"auto"`` (autodetect based on the model number).
         """
-        if comm=="auto":
-            model=self.get_device_info().model_no
-            if model.startswith("MPC"):
-                comm=0x0490
-            else:
-                comm=0x0429
-        self._status_comm=comm
+        if status_comm=="auto":
+            status_comm=0x0490 if self._model.startswith("MPC") else 0x0429
+        self._status_comm=status_comm
+        if move_by_mode=="auto":
+            move_by_mode="move_to" if self._model.startswith("MPC") else "builtin"
+        self._move_by_mode=move_by_mode
 
     @muxchannel
     def _get_status_n(self, channel=None):
@@ -411,7 +438,7 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         
         If ``scale==True``, return value in the physical units (see class description); otherwise, return it in the device internal units (steps).
         """
-        data=self.query(0x0411,self._make_channel(channel),dest=("channel",channel)).data
+        data=self.query(0x0490 if self._status_comm==0x0490 else 0x0411,self._make_channel(channel),dest=("channel",channel)).data
         pos=struct.unpack("<i",data[2:6])[0]
         return self._d2p(pos,"p",scale=scale)
     @muxchannel(mux_argnames="position")
@@ -430,7 +457,10 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         
         If ``scale==True``, assume that the distance is in the physical units (see class description); otherwise, assume it is in the device internal units (steps).
         """
-        self.send_comm_data(0x0448,struct.pack("<Hi",self._make_channel(channel),self._p2d(distance,"p",scale=scale)),dest=("channel",channel))
+        if self._move_by_mode=="move_to":
+            self._move_to(self._get_position(channel=channel,scale=scale)+distance,channel=channel,scale=scale)
+        else:
+            self.send_comm_data(0x0448,struct.pack("<Hi",self._make_channel(channel),self._p2d(distance,"p",scale=scale)),dest=("channel",channel))
     @muxchannel(mux_argnames="position")
     def _move_to(self, position, channel=None, scale=True):
         """Move to `position` (positive or negative).
@@ -453,7 +483,7 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         _jog_fw=(self._forward_positive==bool(direction))
         comm=0x0457 if kind=="continuous" else 0x046A
         self.send_comm(comm,self._make_channel(channel),1 if _jog_fw else 2,dest=("channel",channel))
-    _moving_status=["moving_fw","moving_bk","jogging_fw","jogging_bk"]
+    _moving_status=["moving_fw","moving_bk","jogging_fw","jogging_bk","active"]
     @muxchannel
     def _is_moving(self, channel=None):
         """Check if motion is in progress"""
@@ -720,6 +750,38 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         self.send_comm_data(0x0526,data)
         return self._get_kcube_trigpos_parameters()
 
+    def _get_polctl_parameters(self, scale=True):
+        """
+        Get current polarizer controller parameters ``(velocity, home_position, jog1, jog2, jog3)``
+        
+        If ``scale==True``, return values in the physical units (see class description); otherwise, return it in the device internal units.
+        ``velocity`` is always returned in percent units (0 to 100).
+        """
+        data=self.query(0x0531).data
+        velocity,home_position,jog1,jog2,jog3=struct.unpack("<HHHHH",data[2:12])
+        home_position=self._d2p(home_position,"p",scale=scale)
+        jog1=self._d2p(jog1,"p",scale=scale)
+        jog2=self._d2p(jog2,"p",scale=scale)
+        jog3=self._d2p(jog3,"p",scale=scale)
+        return TPolCtlParams(velocity,home_position,jog1,jog2,jog3)
+    def _setup_polctl(self, velocity=None, home_position=None, jog1=None, jog2=None, jog3=None, scale=True):
+        """
+        Set polarizer controller parameters.
+        
+        If any parameter is ``None``, use the current value.
+        If ``scale==True``, assume that the specified values are in the physical units (see class description); otherwise, assume it is in the device internal units.
+        ``velocity`` is always set in percent units (0 to 100).
+        """
+        current_parameters=self._get_polctl_parameters(scale=False)
+        velocity=current_parameters.velocity if velocity is None else velocity
+        home_position=current_parameters.home_position if home_position is None else self._p2d(home_position,"p",scale=scale)
+        jog1=current_parameters.jog1 if jog1 is None else self._p2d(jog1,"p",scale=scale)
+        jog2=current_parameters.jog2 if jog2 is None else self._p2d(jog2,"p",scale=scale)
+        jog3=current_parameters.jog3 if jog3 is None else self._p2d(jog3,"p",scale=scale)
+        data=b"\x00\x00"+struct.pack("<HHHHH",velocity,home_position,jog1,jog2,jog3)
+        self.send_comm_data(0x0530,data)
+        return self._get_polctl_parameters(scale=scale)
+
     _p_channel_id=interface.EnumParameterClass("channel_id",{1:0x01,2:0x02,3:0x04,4:0x08})
     @muxchannel
     @interface.use_parameters(channel="channel_id")
@@ -739,7 +801,7 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
     _pzmot_kind=None
     def _pzmot_get_kind(self):
         if self._pzmot_kind is None:
-            self._pzmot_kind=self.get_device_info().model_no[:3].upper()
+            self._pzmot_kind=self._model[:3].upper()
         return self._pzmot_kind
     @muxchannel
     def _pzmot_get_status_n(self, channel=None):
@@ -1009,7 +1071,7 @@ class MFF(KinesisDevice):
         return self.get_flipper_parameters(channel=channel)
 
 
-    
+
 
 
 class KinesisMotor(KinesisDevice):
@@ -1041,16 +1103,23 @@ class KinesisMotor(KinesisDevice):
         self.add_background_comm(0x0464) # move completed
         self.add_background_comm(0x0466) # move stopped
         self.add_background_comm(0x0444) # homed
+        self.add_background_comm(0x0491) # status update
         self._add_info_variable("scale_units",self.get_scale_units)
         self._add_info_variable("scale",self.get_scale)
         self._add_info_variable("stage",self.get_stage)
         self._add_status_variable("position",self.get_position)
         self._add_status_variable("status",self.get_status)
-        self._add_settings_variable("velocity_parameters",self.get_velocity_parameters,self.setup_velocity)
-        self._add_settings_variable("jog_parameters",self.get_jog_parameters,self.setup_jog)
-        self._add_settings_variable("homing_parameters",self.get_homing_parameters,self.setup_homing)
-        self._add_settings_variable("gen_move_parameters",self.get_gen_move_parameters,self.setup_gen_move)
-        self._add_settings_variable("limit_switch_parameters",self.get_limit_switch_parameters,self.setup_limit_switch)
+        if not self._model.startswith("MPC"):
+            self._add_settings_variable("velocity_parameters",self.get_velocity_parameters,self.setup_velocity)
+            self._add_settings_variable("jog_parameters",self.get_jog_parameters,self.setup_jog)
+            self._add_settings_variable("homing_parameters",self.get_homing_parameters,self.setup_homing)
+            self._add_settings_variable("gen_move_parameters",self.get_gen_move_parameters,self.setup_gen_move)
+            self._add_settings_variable("limit_switch_parameters",self.get_limit_switch_parameters,self.setup_limit_switch)
+        else:
+            self._add_settings_variable("polctl_parameter",self.get_polctl_parameters,self.setup_polctl)
+        if self._model in ["KDC101","KST101","KBD101"]:
+            self._add_settings_variable("kcube_trigio_parameters",self.get_kcube_trigio_parameters,self.setup_kcube_trigio)
+            self._add_settings_variable("kcube_trigpos_parameters",self.get_kcube_trigpos_parameters,self.setup_kcube_trigpos)
         with self._close_on_error():
             self.send_comm(0x0012) # disable automatic update
             self.send_comm(0x0005)
@@ -1058,26 +1127,22 @@ class KinesisMotor(KinesisDevice):
                 pass
             self._stage=self._get_stage(scale)
             self._scale,self._scale_units=self._calculate_scale(scale)
-        if self.get_device_info().model_no in ["KDC101","KST101","KBD101"]:
-            self._add_settings_variable("kcube_trigio_parameters",self.get_kcube_trigio_parameters,self.setup_kcube_trigio)
-            self._add_settings_variable("kcube_trigpos_parameters",self.get_kcube_trigpos_parameters,self.setup_kcube_trigpos)
     
-    def _autodetect_stage(self, model):
+    def _autodetect_stage(self):
         info=self.query(0x0005).data
         stage_id,=struct.unpack("<H",info[76:78])
-        if model in ["KDC101","TDC001","ODC001"]:
+        if self._model in ["KDC101","TDC001","ODC001"]:
             stages={2:"Z706",3:"Z712",4:"Z725",5:"CR1-Z7",6:"PRM1-Z8",
                     7:"MTS25-Z8",8:"MTS50-Z8",9:"Z825",10:"Z812",11:"Z806"}
             return stages.get(stage_id,None)
-        if model=="K10CR1":
-            return "K10CR1"
+        if self._model=="K10CR1" or self._model.startswith("MPC"):
+            return self._model
         return None
     def _get_stage(self, scale):
-        model=self.get_device_info().model_no
         if scale=="stage":
-            return self._autodetect_stage(model)
+            return self._autodetect_stage()
         return scale if isinstance(scale,py3.textstring) else None
-    def _get_step_scale(self, model, stage):
+    def _get_step_scale(self, stage):
         if stage is None:
             warnings.warn("can't recognize the stage; assuming step scale of 1")
             return 1,None
@@ -1104,7 +1169,7 @@ class KinesisMotor(KinesisDevice):
             return 1440000/360,"deg"
         if stage=="HDR50":
             return 75091/0.99997,"deg"
-        if model in ["TST001","MST601"] or model.startswith("BSC00") or model.startswith("BSC10"):
+        if self._model in ["TST001","MST601"] or self._model.startswith("BSC00") or self._model.startswith("BSC10"):
             if stage.startswith("ZST"):
                 return 125540.35E3,"m"
             if stage.startswith("ZFS"):
@@ -1119,7 +1184,7 @@ class KinesisMotor(KinesisDevice):
                 return 25600/360,"deg"
             if stage=="NR360":
                 return 25600/(360/66),"deg"
-        if model in ["TST101","KST101","MST602","K10CR1"] or model.startswith("BSC20") or model.startswith("SSC20"):
+        if self._model in ["TST101","KST101","MST602","K10CR1"] or self._model.startswith("BSC20") or self._model.startswith("SSC20"):
             if stage.startswith("ZST"):
                 return 2008645.63E3,"m"
             if stage.startswith("ZFS"):
@@ -1136,31 +1201,32 @@ class KinesisMotor(KinesisDevice):
                 return 409600/(360/66),"deg"
             if stage=="K10CR1":
                 return 409600/3,"deg"
+        if self._model.startswith("MPC"):
+            return 1370/170,"deg"
         warnings.warn("can't recognize the stage name {}; assuming step scale of 1".format(stage))
         return 1,"step"
     def _calculate_scale(self, scale):
         if isinstance(scale,tuple):
             return scale,"user"
-        model=self.get_device_info().model_no
         if scale=="stage":
-            scale=self._autodetect_stage(model)
+            scale=self._stage
         if isinstance(scale,py3.textstring) or scale is None:
-            ssc,units=self._get_step_scale(model,scale)
+            ssc,units=self._get_step_scale(scale)
         else:
             ssc,units=scale,"user_step"
-        if model in ["KDC101","TDC001"]:
+        if self._model in ["KDC101","TDC001"]:
             time_conv=2048/6E6
             return (ssc,ssc*time_conv*2**16,ssc*time_conv**2*2**16),units
-        if model in ["TBD001","KBD101"] or model.startswith("BBD10") or model.startswith("BBD20"):
+        if self._model in ["TBD001","KBD101"] or self._model.startswith("BBD10") or self._model.startswith("BBD20"):
             time_conv=102.4E-6
             return (ssc,ssc*time_conv*2**16,ssc*time_conv**2*2**16),units
-        if model in ["TST001","MST601"] or model.startswith("BSC00") or model.startswith("BSC10"):
+        if self._model in ["TST001","MST601"] or self._model.startswith("BSC00") or self._model.startswith("BSC10") or self._model.startswith("MPC"):
             return (ssc,ssc,ssc),units
-        if model in ["TST101","KST101","MST602","K10CR1"] or model.startswith("BSC20"):
+        if self._model in ["TST101","KST101","MST602","K10CR1"] or self._model.startswith("BSC20"):
             vpr=53.68
             avr=204.94E-6
             return (ssc,ssc*vpr,ssc*vpr*avr),units
-        warnings.warn("can't recognize motor model {}; setting all scales to internal units".format(model))
+        warnings.warn("can't recognize motor model {}; setting all scales to internal units".format(self._model))
         return (1,1,1),"internal"
     def _get_scale(self):
         """
@@ -1226,6 +1292,8 @@ class KinesisMotor(KinesisDevice):
     setup_kcube_trigio=KinesisDevice._setup_kcube_trigio
     get_kcube_trigpos_parameters=KinesisDevice._get_kcube_trigpos_parameters
     setup_kcube_trigpos=KinesisDevice._setup_kcube_trigpos
+    get_polctl_parameters=KinesisDevice._get_polctl_parameters
+    setup_polctl=KinesisDevice._setup_polctl
 
 
 
@@ -1252,13 +1320,12 @@ class KinesisPiezoMotor(KinesisDevice):
         with self._close_on_error():
             self._autodetect_axes()
     def _autodetect_axes(self):
-        model=self.get_device_info().model_no
-        if model in ["TIM001","KIM001"]:
+        if self._model in ["TIM001","KIM001"]:
             self._update_axes([1])
-        elif model in ["TIM101","KIM101"]:
+        elif self._model in ["TIM101","KIM101"]:
             self._update_axes([1,2,3,4])
         else:
-            warnings.warn("unexpected piezo motor model: {}; assuming one axis".format(model))
+            warnings.warn("unexpected piezo motor model: {}; assuming one axis".format(self._model))
             self._update_axes([1])
     _forward_positive=True
     _default_get_status=KinesisDevice._pzmot_get_status
