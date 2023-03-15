@@ -1070,7 +1070,8 @@ class NetworkDeviceBackend(IDeviceCommBackend):
     @reraise
     def set_timeout(self, timeout):
         """Set operations timeout (in seconds)"""
-        self.socket.set_timeout(timeout)
+        if timeout is not None:
+            self.socket.set_timeout(timeout)
     @reraise
     def get_timeout(self):
         """Get operations timeout (in seconds)"""

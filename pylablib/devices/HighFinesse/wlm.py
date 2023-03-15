@@ -142,7 +142,8 @@ class WLM(interface.IDevice):
                         EGetError.ErrNoSignal:"nosig",
                         EGetError.ErrBadSignal:"badsig",
                         EGetError.ErrLowSignal:"under",
-                        EGetError.ErrBigSignal:"over"}
+                        EGetError.ErrBigSignal:"over",
+                        EGetError.ErrWlmMissing:"nowlm"}
     @muxchannel
     def get_frequency(self, channel=None, error_on_invalid=True, wait=True, timeout=5.):
         """
@@ -151,7 +152,8 @@ class WLM(interface.IDevice):
         `channel` is the measurement channel (starting from 1); if ``None``, use the default channel.
         If ``error_on_invalid==True``, raise an error if the measurement is invalid (e.g., over- or underexposure);
         otherwise, the method can return ``"under"`` if the meter is underexposed or ``"over"`` is it is overexposed,
-        ``"badsig"`` if there is no calculable signal, ``"noval"`` if there are no values acquired yet, or ``"nosig"`` if there is no signal.
+        ``"badsig"`` if there is no calculable signal, ``"noval"`` if there are no values acquired yet, ``"nosig"`` if there is no signal,
+        or ``"nowlm"`` if there is no connection to the wavemeter.
         If ``wait==True`` and the result is ``"noval"`` (e.g., if the read mode is ``"single"`` and no new value has been acquired since the last call),
         wait for at most ``timeout`` until a new value appears; if the ``timeout`` has passed, use the default behavior (error or ``"noval"`` result).
         """
@@ -174,7 +176,8 @@ class WLM(interface.IDevice):
         `channel` is the measurement channel (starting from 1); if ``None``, use the default channel.
         If ``error_on_invalid==True``, raise an error if the measurement is invalid (e.g., over- or underexposure);
         otherwise, the method can return ``"under"`` if the meter is underexposed or ``"over"`` is it is overexposed,
-        ``"badsig"`` if there is no calculable signal, ``"noval"`` if there are no values acquired yet, or ``"nosig"`` if there is no signal.
+        ``"badsig"`` if there is no calculable signal, ``"noval"`` if there are no values acquired yet, ``"nosig"`` if there is no signal,
+        or ``"nowlm"`` if there is no connection to the wavemeter.
         If ``wait==True`` and the result is ``"noval"`` (e.g., if the read mode is ``"single"`` and no new value has been acquired since the last call),
         wait for at most ``timeout`` until a new value appears; if the ``timeout`` has passed, use the default behavior (error or ``"noval"`` result).
         """
