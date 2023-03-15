@@ -59,6 +59,18 @@ def get_appdata_folder(subfolder="", kind="roaming"):
     if kind=="local":
         return os.environ.get("LOCALAPPDATA")
     raise ValueError("unrecognized appdata folder kind: {}".format(kind))
+def get_environ_folder(var, subfolder="", error_missing=False):
+    """
+    Get subfolder of a folder based on the environment variable.
+
+    If the environment variable is missing and ``error_missing==True``, raise an error; otherwise, return ``None``.
+    """
+    folder=os.environ.get(var,None)
+    if folder is None:
+        if error_missing:
+            raise ValueError("could not find environment variable {}".format(var))
+        return None
+    return os.path.join(folder,subfolder)
 
 
 _load_lock=threading.RLock()
