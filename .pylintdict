@@ -455,3 +455,5 @@ autoscaling
 nm
 strerror
 libusb
+timebase
+samps

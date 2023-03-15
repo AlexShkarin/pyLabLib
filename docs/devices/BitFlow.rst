@@ -23,9 +23,7 @@ Connection
 The cameras are identified by their index, starting from 0. To get the list of all cameras, you can use :func:`.BitFlow.list_cameras`::
 
     >> from pylablib.devices import BitFlow
-    >> BitFlow.list_cameras()
-    ['img0', 'img1']
-    >> cam = BitFlow.BitFlowCamera('img0')
+    >> cam = BitFlow.BitFlowCamera(bitflow_idx=0)
     >> cam.close()
 
 

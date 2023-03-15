@@ -13,7 +13,7 @@ class ArcusPerformaxLibError(ArcusError):
     def __init__(self, func, arguments):
         self.func=func
         self.arguments=arguments
-        self.msg="function '{}' return an error".format(func)
+        self.msg="function '{}' returned an error".format(func)
         ArcusError.__init__(self,self.msg)
 def errchecker(result, func, arguments):
     if not result:

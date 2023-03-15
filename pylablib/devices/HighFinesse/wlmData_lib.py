@@ -30,7 +30,7 @@ class WlmDataLibError(HighFinesseError):
             name_str="{}({})".format(self.code,self.name) if func_kind in ["get","set"] else ""
         else:
             name_str="{}".format(self.code)
-        self.msg="function '{}' return an error {}".format(func,name_str)
+        self.msg="function '{}' returned an error {}".format(func,name_str)
         HighFinesseError.__init__(self,self.msg)
 def errcheck(func_kind="get"):
     def errchecker(result, func, arguments):

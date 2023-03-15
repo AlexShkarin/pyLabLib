@@ -18,7 +18,7 @@ The required DLLs are distributed with `Andor Solis <https://andor.oxinst.com/pr
 Andor SDK 2
 -----------------------
 
-This is an older SDK, which mainly involves older cameras. It has been tested with Andor iXon and Andor Luca.
+This is an older SDK, which mainly involves older cameras. It has been tested with Andor iXon, Luca, and Newton.
 
 The code is located in :mod:`pylablib.devices.Andor`, and the main camera class is :class:`pylablib.devices.Andor.AndorSDK2Camera<.AndorSDK2.AndorSDK2Camera>`.
 

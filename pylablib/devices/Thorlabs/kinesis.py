@@ -1385,7 +1385,7 @@ class KinesisQuadDetector(BasicKinesisDevice):
             raise RuntimeError("unexpected submessage ID in the reply: expected 0x{:02x}, got 0x{:02x}".format(subid,rsubid))
         return data[2:]
     def _quad_set(self, subid, data):
-        """Perform PZMOT set (applicable to KIMx01/TIMx01)"""
+        """Perform QUAD set (applicable to TQD/TPA/KPA detectors)"""
         data=struct.pack("<H",subid)+data
         self.send_comm_data(0x0870,data)
     def get_pid_parameters(self):
