@@ -106,3 +106,13 @@ def decorate(func, restype=None, argtypes=None, argnames=None, errcheck=None):
     elif hasattr(func,"errcheck"):
         del func.errcheck
     return func
+
+def funcaddressof(func):
+    """Get address of the given ctypes-wrapped function"""
+    return ctypes.cast(ctypes.c_voidp(ctypes.addressof(func)),ctypes.POINTER(ctypes.c_voidp))[0]
+
+def as_ctypes_array(lst, ctype):
+    """Turn list of objects into a ctypes array of the given type"""
+    v=(ctype*len(lst))()
+    v[:]=lst[:]
+    return v

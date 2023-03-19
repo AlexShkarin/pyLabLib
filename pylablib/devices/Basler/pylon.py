@@ -7,9 +7,10 @@ from ...core.utils import py3, dictionary
 from ...core.devio import interface
 from ..interface import camera
 from ..utils import load_lib
+from ...core.utils.ctypes_tools import funcaddressof, as_ctypes_array
+from .utils import looper  # pylint: disable=no-name-in-module
 
 import numpy as np
-import numba as nb
 import collections
 import ctypes
 import threading
@@ -517,8 +518,8 @@ class BaslerPylonCamera(camera.IROICamera, camera.IAttributeCamera, camera.IExpo
             """Get buffer handle corresponding to the given frame index"""
             return self._handles[fidx%self.nbuff]
         def get_all_handles(self):
-            """Get all buffer handles as a numpy array"""
-            return np.array([h.value for h in self._handles],dtype="u8")
+            """Get all buffer handles as a ctypes array"""
+            return as_ctypes_array(self._handles,ctypes.c_void_p)
         def queue(self, fidx=None):
             """Queue a buffer with the given index or all buffers"""
             if fidx is None:
@@ -535,21 +536,25 @@ class BaslerPylonCamera(camera.IROICamera, camera.IAttributeCamera, camera.IExpo
                 _,rdy=self.retrieve()
                 if not rdy:
                     break
+    
     class ScheduleLooper:
-        """Schedule loop handler, which starts and stop the separate schedule loop thread"""
+        """
+        Cython-based schedule loop manager.
+        
+        Runs the loop function and provides callback storage.
+        """
         def __init__(self):
             self.evt=threading.Event()
             self._thread=None
-            self.comm=np.zeros(1,dtype="i8")
-            self.stat=np.zeros(1,dtype="i8")
+            self.looping=ctypes.c_ulong(0)
+            self.nread=ctypes.c_ulong(0)
             self._buff_mgr=None
-            self._looper=_make_schedule_looper()
         def start_loop(self, buff_mgr):
             """Start loop serving the given buffer manager"""
             self.stop_loop()
             self.evt.clear()
-            self.comm[0]=1
-            self.stat[0]=0
+            self.looping.value=1
+            self.nread.value=0
             self._buff_mgr=buff_mgr
             self._thread=threading.Thread(target=self._loop,daemon=True)
             self._thread.start()
@@ -557,22 +562,25 @@ class BaslerPylonCamera(camera.IROICamera, camera.IAttributeCamera, camera.IExpo
         def stop_loop(self):
             """Stop the loop thread"""
             if self._thread is not None:
-                self.comm[0]=0
+                self.looping.value=0
                 self._thread.join()
                 self._thread=None
                 self._buff_mgr=None
         def _loop(self):
             self.evt.set()
             hbuffers=self._buff_mgr.get_all_handles()
-            strm=self._buff_mgr.strm.value
-            wtobj=lib.PylonStreamGrabberGetWaitObject(strm).value
-            self._looper(strm,wtobj,hbuffers,self.comm,self.stat)
+            nbuff=len(hbuffers)
+            strm=self._buff_mgr.strm
+            wtobj=lib.PylonStreamGrabberGetWaitObject(strm)
+            looper(strm.value,wtobj.value,nbuff,ctypes.addressof(hbuffers),
+                    ctypes.addressof(self.looping),ctypes.addressof(self.nread),
+                    funcaddressof(lib.lib.PylonStreamGrabberRetrieveResult),funcaddressof(lib.lib.PylonStreamGrabberQueueBuffer),funcaddressof(lib.lib.PylonWaitObjectWait))
         def is_looping(self):
             """Check if the loop is running"""
-            return self.comm[0]
+            return self.looping.value
         def get_status(self):
             """Get the current loop status, which is the tuple ``(acquired,)``"""
-            return (self.stat[0],)
+            return (self.nread.value,)
 
     def _allocate_buffers(self, nbuff):
         self._deallocate_buffers()
@@ -675,36 +683,3 @@ class BaslerPylonCamera(camera.IROICamera, camera.IAttributeCamera, camera.IExpo
         if not self._raw_readout_format:
             frames=[self._convert_indexing(f,"rct",axes=(-2,-1)) for f in frames]
         return frames,None
-
-
-
-def _make_schedule_looper():
-    PylonStreamGrabberRetrieveResult=lib.lib.PylonStreamGrabberRetrieveResult
-    PylonStreamGrabberRetrieveResult.argtypes=[ctypes.c_void_p,ctypes.c_void_p,ctypes.c_void_p]
-    PylonStreamGrabberQueueBuffer=lib.lib.PylonStreamGrabberQueueBuffer
-    PylonStreamGrabberQueueBuffer.argypes=[ctypes.c_void_p,ctypes.c_void_p,ctypes.c_void_p]
-    PylonWaitObjectWait=lib.lib.PylonWaitObjectWait
-    PylonWaitObjectWait.argtypes=[ctypes.c_void_p,ctypes.c_uint32,ctypes.c_void_p]
-    ret_val_size=ctypes.sizeof(pylonC_lib.PylonGrabResult_t)
-    @nb.njit(nb.i4(nb.u8,nb.u8,nb.u8[:],nb.i8[:],nb.i8[:]),fastmath=False,parallel=False,nogil=True)
-    def looper(strm, wtobj, hbuffers, comm, stat): # comm is 1-array [looping], stat is 1-array [read]
-        code=0
-        nbuff=hbuffers.shape[0]
-        ret_rdy=np.zeros(1,dtype=nb.u1)
-        ret_val=np.zeros(ret_val_size,dtype=nb.u1)
-        while (not code) and comm[0]:
-            ret_rdy[0]=0
-            code=PylonWaitObjectWait(wtobj,10,ret_rdy.ctypes.data)
-            if code!=0:
-                break
-            if not ret_rdy[0]:
-                continue
-            code=PylonStreamGrabberRetrieveResult(strm,ret_val.ctypes.data,ret_rdy.ctypes.data)
-            if code!=0:
-                break
-            if not ret_rdy[0]:
-                continue
-            code=PylonStreamGrabberQueueBuffer(strm,hbuffers[stat[0]%nbuff],0)
-            stat[0]+=1
-        return code
-    return looper

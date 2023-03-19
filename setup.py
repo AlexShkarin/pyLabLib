@@ -5,14 +5,22 @@ https://packaging.python.org/guides/distributing-packages-using-setuptools/
 https://github.com/pypa/sampleproject
 """
 
-from setuptools import setup, find_packages
+from setuptools import Extension, setup, find_packages
 from codecs import open
 from os import path
+import pathlib
 
 here = path.abspath(path.dirname(__file__))
 
 with open(path.join(here,'README.rst')) as f:
     long_description=f.read()
+
+def list_cython_extensions(folder="pylablib"):
+    exts=[]
+    for f in pathlib.Path(folder).glob("**/*.c"):
+        name=".".join(list(f.parts[:-1])+[path.splitext(f.parts[-1])[0]])
+        exts.append(Extension(name=name,sources=[str(f)]))
+    return exts
 
 dep_base=['numpy','scipy','pandas']
 dep_extra=['rpyc','numba']
@@ -43,6 +51,8 @@ setup(
     'Programming Language :: Python :: 3.7',
     'Programming Language :: Python :: 3.8',
     'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
     ],
     project_urls={
     'Documentation': 'https://pylablib.readthedocs.io',
@@ -50,6 +60,7 @@ setup(
     'Tracker': 'https://github.com/AlexShkarin/pyLabLib/issues'
     },
     packages=find_packages(include=['pylablib*']),
+    ext_modules=list_cython_extensions(),
     install_requires=dep_base+dep_extra+dep_devio+dep_pyqt5,
     extras_require={
         'devio-full':dep_devio_extra,

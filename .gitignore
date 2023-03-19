@@ -10,10 +10,11 @@ local_python_interp_cmd.bat
 docs/_build
 docs/_static
 # docs/.apidoc
+pylablib/**/*.html
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[co]
+*.py[cod]
 *$py.class
 
 # VS code
