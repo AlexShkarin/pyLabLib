@@ -123,7 +123,7 @@ class Keithley2110(SCPI.SCPIDevice):
         """
         Get parameters for the given voltage, current or resistance measurement function.
         
-        Supported functions are  ``"volt_dc"``, ``"volt_ac"``, ``"curr_dc"``, ``"curr_ac"``, ``"res"``, and ``"fres"``.
+        Supported functions are ``"volt_dc"``, ``"volt_ac"``, ``"curr_dc"``, ``"curr_ac"``, ``"res"``, and ``"fres"``.
         Return tuple ``(rng, resolution, autorng)`` with, correspondingly, measurement range, resolution, and whether autorange is enabled.
         """
         function=self._wop._get_single_function() if function is None else function
@@ -145,7 +145,7 @@ class Keithley2110(SCPI.SCPIDevice):
         """
         Set parameters for the given frequency or period measurement function.
         
-        Supported functions are  ``"freq_volt"``, ``"freq_curr"``, ``"per_volt"``, ``"per_curr"``.
+        Supported functions are ``"freq_volt"``, ``"freq_curr"``, ``"per_volt"``, ``"per_curr"``.
         Return tuple ``(rng, aperture)`` with, correspondingly, measurement range, and the averaging aperture.
         """
         function=self._wop._get_single_function() if function is None else function
@@ -186,7 +186,7 @@ class Keithley2110(SCPI.SCPIDevice):
         """
         Set parameters for the given voltage, current or resistance measurement function.
         
-        Supported functions are  ``"volt_dc"``, ``"volt_ac"``, ``"curr_dc"``, ``"curr_ac"``, ``"res"``, and ``"fres"``.
+        Supported functions are ``"volt_dc"``, ``"volt_ac"``, ``"curr_dc"``, ``"curr_ac"``, ``"res"``, and ``"fres"``.
         `rng`, `resolution` and `autorng` are correspondingly, measurement range, resolution, and whether autorange is enabled.
         `rng` and `resolution` can also have values ``"min"``, ``"max"`` or ``"def"`` for, correspondingly, minimal possible, maximal possible, and default value.
         """
@@ -212,7 +212,7 @@ class Keithley2110(SCPI.SCPIDevice):
         """
         Set parameters for the given frequency or period measurement function.
         
-        Supported functions are  ``"freq_volt"``, ``"freq_curr"``, ``"per_volt"``, ``"per_curr"``.
+        Supported functions are ``"freq_volt"``, ``"freq_curr"``, ``"per_volt"``, ``"per_curr"``.
         `rng` and `aperture` are correspondingly, measurement range and the averaging aperture.
         `rng` and `aperture` can also have values ``"min"``, ``"max"`` or ``"def"`` for, correspondingly, minimal possible, maximal possible, and default value.
         """

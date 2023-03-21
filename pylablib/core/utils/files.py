@@ -390,7 +390,7 @@ def walk_dir(folder, folder_filter=None, file_filter=None, rel_path=True, topdow
         rel_path (bool): If ``True``, the returned folder path is specified relative to the initial path.
         topdown (bool): If ``True``, return folder before its subfolders.
         visit_folder_filter: Filter for visiting folders (more description at :func:`.string.get_string_filter`).
-            If not ``None``, specifies filter for visiting folders which is different from  `folder_filter` (filter for returned folders).
+            If not ``None``, specifies filter for visiting folders which is different from `folder_filter` (filter for returned folders).
         max_depth (int): If not ``None``, limits the recursion depth.
     
     Yields:

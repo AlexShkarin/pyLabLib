@@ -316,7 +316,7 @@ class TracePlotter(QLayoutManagedWidget):
         return enabled
     
     def get_required_channels(self):
-        """Get list of channels required for plotting: all enabled channels plus 'X axis' and  'Order by' channels """
+        """Get list of channels required for plotting: all enabled channels plus 'X axis' and 'Order by' channels """
         if self.ctl is None or self.full_data:
             return self.channel_indices
         xaxis=self.ctl.channels_table.v["xaxis"]

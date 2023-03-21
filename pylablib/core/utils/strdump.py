@@ -116,7 +116,7 @@ class StrDumper:
     
 dumper=StrDumper()
 """
-Default dumper for converting  into standard Python classes and pickling.
+Default dumper for converting into standard Python classes and pickling.
 
 Converts :class:`numpy.ndarray` and :class:`.Dictionary` objects
 (these conversion routines are defined when corresponding modules are imported).

@@ -105,7 +105,7 @@ The package has been tested with Python 3.6 through 3.9, and is incompatible wit
 
 .. _install-github:
 
-Installing from  GitHub
+Installing from GitHub
 -------------------------
 
 The most recent and extensive, but less tested and documented, version of this library is available on GitHub at https://github.com/AlexShkarin/pyLabLib/. There are several versions of installing it:

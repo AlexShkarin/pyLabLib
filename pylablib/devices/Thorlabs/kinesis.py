@@ -196,7 +196,7 @@ class BasicKinesisDevice(comm_backend.ICommBackendWrapper):
 
     _device_SN={   20:"BSC001", 21:"BPC001", 22:"BNT001", 25:"BMS001", 26:"KST101", 27:"KDC101", 28:"KBD101", 29:"KPZ101",
                     30:"BSC002", 31:"BPC002", 33:"BDC101", 35:"BMS002", 37:"MFF10." ,
-                    40:"(BSC101|SSC20.)", 41:"BPC101", 43:"BDC101", 44:"PPC001", 45:"LTS"   , 48:"MMR"   , 49:"MLJ"   ,
+                    40:"(BSC101|SSC20.)", 41:"BPC101", 43:"BDC101", 44:"PPC001", 45:"LTS", 48:"MMR", 49:"MLJ",
                     50:"MST60" , 51:"MPZ601", 52:"MNA601", 55:"K10CR1", 56:"KLS101", 57:"KNA101", 59:"KSG101",
                     60:"0ST001", 63:"ODC001", 64:"TLD001", 65:"TIM001", 67:"TBD001", 68:"KSC101", 69:"KPA101",
                     70:"BSC.03", 71:"BPC.03", 72:"BPS103", 73:"BBD103", 
@@ -1464,7 +1464,7 @@ class KinesisQuadDetector(BasicKinesisDevice):
         gains=[v/32767 for v in par[6:8]]
         return TQuadDetectorOutputParams(lims[0],lims[2],lims[1],lims[3],gains[0],gains[1],par[4],par[5])
     @interface.use_parameters(route="quad_route",open_loop_out="quad_open_loop_out")
-    def set_output_parameters(self, xmin=None, xmax=None,  ymin=None, ymax=None, xgain=None, ygain=None, route=None, open_loop_out=None):
+    def set_output_parameters(self, xmin=None, xmax=None, ymin=None, ymax=None, xgain=None, ygain=None, route=None, open_loop_out=None):
         """
         Set current PID gain parameters ``(xmin, xmax, ymin, ymax, xgain, ygain, route, open_loop_out)``.
         

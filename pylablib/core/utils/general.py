@@ -103,7 +103,7 @@ def to_predicate(x):
 
 def map_container(value, func):
     """
-    Map values  in the container.
+    Map values in the container.
     
     `value` can be a ``tuple``, a ``list`` or a ``dict`` (mapping is applied to the values)
     raises :exc:`ValueError` if it's something else.

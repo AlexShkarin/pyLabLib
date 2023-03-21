@@ -210,7 +210,7 @@ def parse_stored_table_data(desc=None, data=None, out_type="pandas"):
         data: separately loaded data; can be ``None``, if no data is given (in this case assume that it is stored in the description dictionary);
             can be a tuple ``(column_data, column_names)`` (such as the one returned by :func:`.parse_csv.read_table`),
             or a an :class:`.InlineTable` object containing such tuple.
-        out_type (str): Output format of the data (``'array'`` for numpy arrays or  ``'pandas'`` for pandas DataFrame objects).
+        out_type (str): Output format of the data (``'array'`` for numpy arrays or ``'pandas'`` for pandas DataFrame objects).
     
     Return:
         tuple ``(data, columns)``, where ``data`` is the data table in the specified format, and ``columns`` is the list of columns
@@ -364,7 +364,7 @@ class IExternalTableDictionaryEntry(ITableDictionaryEntry):
     @classmethod
     def from_dict(cls, dict_ptr, loc, out_type="pandas"):
         file_type=dict_ptr.get("file_type",None)
-        if not (file_type in {"bin","csv"}): # TODO:  add autodetect
+        if not (file_type in {"bin","csv"}): # TODO: add autodetect
             raise ValueError("can't load {0} with format {1}".format(dict_ptr,"external"))
         if file_type=="csv":
             return ExternalTextTableDictionaryEntry.from_dict(dict_ptr,loc,out_type=out_type)
@@ -452,7 +452,7 @@ class ExternalBinTableDictionaryEntry(IExternalTableDictionaryEntry):
         Args:
             dict_ptr (dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
             loc: Location for the data to be loaded.
-            out_type (str): Output format of the data (``'array'`` for numpy arrays or  ``'pandas'`` for pandas DataFrame objects).
+            out_type (str): Output format of the data (``'array'`` for numpy arrays or ``'pandas'`` for pandas DataFrame objects).
         """
         from . import loadfile
         file_path=dict_ptr["file_path"]

@@ -214,7 +214,7 @@ class FunctionSignature:
         
         The arguments are combined:
             - if ``add_place=='front'``, the outer arguments are placed in the beginning, followed by inner arguments not already listed;
-            - if ``add_place=='back'``,  the inner arguments are placed in the beginning, followed by outer arguments not already listed.
+            - if ``add_place=='back'``, the inner arguments are placed in the beginning, followed by outer arguments not already listed.
             
         The default values are joined, with the outer values superseding the inner values.
         
@@ -252,7 +252,7 @@ class FunctionSignature:
             pass_order=inner.arg_names+out_arg_names
         defaults=inner.defaults.copy()
         defaults.update(outer.defaults)
-        varg_name =outer.varg_name  if "varg_name"  in overwrite else inner.varg_name
+        varg_name =outer.varg_name if "varg_name" in overwrite else inner.varg_name
         kwarg_name=outer.kwarg_name if "kwarg_name" in overwrite else inner.kwarg_name
         name=outer.name if "name" in overwrite else inner.name
         doc=outer.doc if ("doc" in overwrite or inner.doc is None) else inner.doc

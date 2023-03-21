@@ -128,7 +128,7 @@ class CFunctionWrapper:
                 by default, use the value supplied on the wrapper creation (``"rest"`` by default)
             argprep: dictionary ``{name: prep}`` of ways to prepare of C function arguments;
                 each ``prep`` can be a value (which is assumed to be default argument value), or a callable, which is given values of Python function arguments
-            rconv:  dictionary ``{name: conv}`` of converters of the return values;
+            rconv: dictionary ``{name: conv}`` of converters of the return values;
                 each ``conv`` is a function which takes 3 arguments: unconverted ctypes value, dictionary of all C function arguments, and dictionary of all Python function arguments
                 if ``conv`` takes less than 3 argument, then the arguments list is trimmed (e.g., if it takes only one argument, it will be an unconverted value)
                 ``conv`` can also be ``"ctypes"`` (return raw ctypes value), or ``"raw"`` (return raw value for buffers).
@@ -205,7 +205,7 @@ class CFunctionWrapper:
                 all names in all other parameters (``rvals``, ``argprep``, ``rconv``, and ``byref``) take aliased names
             argprep: dictionary ``{name: prep}`` of ways to prepare of C function arguments;
                 each ``prep`` can be a value (which is assumed to be default argument value), or a callable, which is given values of Python function arguments
-            rconv:  dictionary ``{name: conv}`` of converters of the return values;
+            rconv: dictionary ``{name: conv}`` of converters of the return values;
                 each ``conv`` is a function which takes 3 arguments: unconverted ctypes value, dictionary of all C function arguments, and dictionary of all Python function arguments
                 if ``conv`` takes less than 3 argument, then the arguments list is trimmed (e.g., if it takes only one argument, it will be an unconverted value)
             byref: list of all argument names which should by passed by reference; by default, it includes all arguments listed in ``rvals``

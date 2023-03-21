@@ -102,7 +102,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
         Args:
             name: parameter name
             comm: SCPI access command (e.g., ``":TRIG:SOURCE"``)
-            kind: parameter kind; can be  ``"string"``, ``"int"``, ``"float"``, ``"bool"``, or ``"param"`` (for parameter values)
+            kind: parameter kind; can be ``"string"``, ``"int"``, ``"float"``, ``"bool"``, or ``"param"`` (for parameter values)
             parameter: for ``"param"`` kind it is a device parameter class used to convert this device parameter
             set_delay: delay between setting and getting commands on parameter setting
             add_variable: if ``True``, automatically add a settings variable with the corresponding name
