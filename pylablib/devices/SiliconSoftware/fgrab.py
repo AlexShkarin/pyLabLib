@@ -292,6 +292,7 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
         self._acq_in_progress=False
         self._system_info=None
         self.siso_detector_size=siso_detector_size
+        self._camlink_camtype_attr=None
 
         self._add_info_variable("device_info",self.get_device_info)
         self._add_info_variable("camlink_pixel_formats",self.get_available_camlink_pixel_formats)
@@ -305,7 +306,7 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
         if name.startswith("FG_"):
             return name[3:]
         return name
-    _fixed_parameters=[FG_PARAM.FG_CAMSTATUS,FG_PARAM.FG_IMAGE_TAG,FG_PARAM.FG_TIMEOUT,FG_PARAM.FG_TIMESTAMP,FG_PARAM.FG_TIMESTAMP_LONG,FG_PARAM.FG_TRANSFER_LEN,FG_PARAM.FG_GLOBAL_ACCESS]
+    _fixed_parameters=[FG_PARAM.FG_CAMSTATUS,FG_PARAM.FG_IMAGE_TAG,FG_PARAM.FG_TIMEOUT,FG_PARAM.FG_TIMESTAMP,FG_PARAM.FG_TIMESTAMP_LONG,FG_PARAM.FG_TRANSFER_LEN]
     def _list_grabber_attributes(self):
         pnum=lib.Fg_getNrOfParameter(self.fg)
         attrs=[FGrabAttribute(self.fg,lib.Fg_getParameterId(self.fg,i),port=self.siso_port) for i in range(pnum)]
@@ -319,6 +320,7 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
         if self.fg is None:
             self.fg=lib.Fg_Init(self.siso_applet_path,self.siso_board)
             self._update_grabber_attributes()
+            self._camlink_camtype_attr="CAMERA_LINK_CAMTYP" if "CAMERA_LINK_CAMTYP" in self.grabber_attributes else "CAMERA_LINK_CAMTYPE"
     def close(self):
         """Close connection to the camera"""
         if self.fg is not None:
@@ -485,18 +487,18 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
         else:
             if output_fmt is None:
                 output_fmt=FG_IMGFMT.FG_GRAY16
-        self.gav["CAMERA_LINK_CAMTYP"]=fmt
+        self.gav[self._camlink_camtype_attr]=fmt
         self.gav["FORMAT"]=output_fmt
     def get_camlink_pixel_format(self):
         """Get CamLink pixel format and the output pixel format as a tuple"""
         try:
-            return (self.gav["CAMERA_LINK_CAMTYP"],self.gav["FORMAT"])
+            return (self.gav[self._camlink_camtype_attr],self.gav["FORMAT"])
         except KeyError:
             return None
     def get_available_camlink_pixel_formats(self):
         """Get all available CamLink pixel formats and the output pixel formats as a tuple of 2 lists"""
         try:
-            clfmts=list(self.get_grabber_attribute("CAMERA_LINK_CAMTYP").values)
+            clfmts=list(self.get_grabber_attribute(self._camlink_camtype_attr).values)
         except KeyError:
             clfmts=None
         try:

@@ -1,5 +1,6 @@
 from ... import device_thread
 from ....devices import M2
+from ....devices.HighFinesse import wlm
 
 import time
 
@@ -20,7 +21,7 @@ class WLMThread(device_thread.DeviceThread):
         - ``frequency``, ``wavelength``: last measured frequency and wavelength (in vacuum);
             frequency and wavelength of 0 indicates invalid values: over- or underflow, disconnected channel or wavemeter
         - ``measurement_status``: status of the last measurement; can be ``"ok"`` for a valid measurement,
-            ``"under"``, ``"over"``, ``"nosig"``, ``"badsig"`` or ``"noval"`` to indicate measurement problems,
+            ``"under"``, ``"over"``, ``"nosig"``, ``"badsig"``, ``"noval"`` or ``"nowlm"`` to indicate measurement problems,
             or ``"disconn"`` if the device is disconnected
         - ``parameters``: main wavemeter parameters: exposure and exposure mode, switcher mode, pulse mode, etc.
     """
@@ -36,13 +37,21 @@ class WLMThread(device_thread.DeviceThread):
         self.dev_kwargs=kwargs
         self.remote=remote
         self._badval_start=None
+        self._error_on_missing=False
         self.add_job("update_measurements",self.update_measurements,0.02 if remote else 0.005) # frequency update period is >15ms anyway; lower period for remote due to network latency
         self.add_job("update_parameters",self.update_parameters,1.)
+    def _get_parameters(self):
+        try:
+            return self._get_device_parameters_dictionary(include=self.parameter_variables)
+        except wlm.WlmDataLibError as err:
+            if (not self._error_on_missing) and err.code==wlm.EGetError.ErrWlmMissing:
+                return
+            raise
     def _set_frequency_variable(self, channel, branch=None):
         badval=False
         if self.open():
             freq=self.device.get_frequency(channel=channel,error_on_invalid=False)
-            if freq in ["under","over","nosig","badsig","noval"]:
+            if freq in ["under","over","nosig","badsig","noval","nowlm"]:
                 data=freq,None,None
                 badval=True
             else:
