@@ -32,3 +32,7 @@
     - :ref:`Basic Arduino communication <misc_devices_arduino>`
     - :ref:`ElektroAutomatik power supplies <elektroautomatik_sources>`
     - :ref:`Rigol power supplies <rigol_power_supply>`
+
+- :ref:`Mid-level protocols <protocols>`
+
+    - :ref:`Modbus <protocols_modbus>`

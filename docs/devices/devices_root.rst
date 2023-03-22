@@ -30,3 +30,4 @@ Currently supported devices:
     ElektroAutomatik
     Voltcraft
     misc_devices
+    protocols

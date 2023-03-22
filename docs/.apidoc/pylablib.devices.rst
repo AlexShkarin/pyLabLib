@@ -31,6 +31,7 @@ Subpackages
    pylablib.devices.LighthousePhotonics
    pylablib.devices.M2
    pylablib.devices.Mightex
+   pylablib.devices.Modbus
    pylablib.devices.NI
    pylablib.devices.Newport
    pylablib.devices.OZOptics

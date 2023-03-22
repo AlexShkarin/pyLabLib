@@ -13,6 +13,15 @@ pylablib.core.utils.array\_utils module
    :undoc-members:
    :show-inheritance:
 
+pylablib.core.utils.crc module
+------------------------------
+
+.. automodule:: pylablib.core.utils.crc
+   :members:
+   :inherited-members:
+   :undoc-members:
+   :show-inheritance:
+
 pylablib.core.utils.ctypes\_wrap module
 ---------------------------------------
 
