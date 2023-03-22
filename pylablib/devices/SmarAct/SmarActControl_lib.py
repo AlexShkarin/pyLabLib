@@ -215,7 +215,7 @@ class SmarActControlLib:
         self.SA_CTL_SetProperty_i32=wrapper(lib.SA_CTL_SetProperty_i32)
         #  SA_CTL_Result_t SA_CTL_SetPropertyArray_i32(SA_CTL_DeviceHandle_t dHandle, ctypes.c_int8 idx, SA_CTL_PropertyKey_t pkey, ctypes.POINTER(ctypes.c_int32) values, ctypes.c_size_t arraySize)
         self.SA_CTL_SetPropertyArray_i32=wrapper(lib.SA_CTL_SetPropertyArray_i32, rvals=[], args=["dHandle","idx","pkey","values"],
-            argprep={"arraySize":lambda values:len(values)})
+            argprep={"arraySize":lambda values:len(values)})  # pylint: disable=unnecessary-lambda
         #  SA_CTL_Result_t SA_CTL_GetProperty_i64(SA_CTL_DeviceHandle_t dHandle, ctypes.c_int8 idx, SA_CTL_PropertyKey_t pkey, ctypes.POINTER(ctypes.c_int64) value, ctypes.POINTER(ctypes.c_size_t) ioArraySize)
         self.SA_CTL_GetProperty_i64_lib=wrapper(lib.SA_CTL_GetProperty_i64, args="all", rvals=["ioArraySize"])
         #  SA_CTL_Result_t SA_CTL_GetProperty_i64(SA_CTL_DeviceHandle_t dHandle, ctypes.c_int8 idx, SA_CTL_PropertyKey_t pkey, ctypes.POINTER(ctypes.c_int64) value, ctypes.POINTER(ctypes.c_size_t) ioArraySize)
@@ -225,7 +225,7 @@ class SmarActControlLib:
         self.SA_CTL_SetProperty_i64=wrapper(lib.SA_CTL_SetProperty_i64)
         #  SA_CTL_Result_t SA_CTL_SetPropertyArray_i64(SA_CTL_DeviceHandle_t dHandle, ctypes.c_int8 idx, SA_CTL_PropertyKey_t pkey, ctypes.POINTER(ctypes.c_int64) values, ctypes.c_size_t arraySize)
         self.SA_CTL_SetPropertyArray_i64=wrapper(lib.SA_CTL_SetPropertyArray_i64, args=["dHandle","idx","pkey","values"],
-            argprep={"arraySize":lambda values:len(values)})
+            argprep={"arraySize":lambda values:len(values)})  # pylint: disable=unnecessary-lambda
         #  SA_CTL_Result_t SA_CTL_GetProperty_s(SA_CTL_DeviceHandle_t dHandle, ctypes.c_int8 idx, SA_CTL_PropertyKey_t pkey, ctypes.c_char_p value, ctypes.POINTER(ctypes.c_size_t) ioArraySize)
         self.SA_CTL_GetProperty_s=wrapper(lib.SA_CTL_GetProperty_s, args=["dHandle","idx","pkey"], rvals=["value"],
             argprep={"value":prop_strprep,"ioArraySize":prop_strlen}, byref=["ioArraySize"])

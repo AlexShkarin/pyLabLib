@@ -457,3 +457,12 @@ strerror
 libusb
 timebase
 samps
+modbus
+cython
+crc
+KLD
+TLD
+RTU
+daddr
+api
+Lumel

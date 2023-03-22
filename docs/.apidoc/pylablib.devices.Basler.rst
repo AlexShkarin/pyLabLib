@@ -13,6 +13,15 @@ pylablib.devices.Basler.pylon module
    :undoc-members:
    :show-inheritance:
 
+pylablib.devices.Basler.utils module
+------------------------------------
+
+.. automodule:: pylablib.devices.Basler.utils
+   :members:
+   :inherited-members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 

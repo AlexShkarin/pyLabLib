@@ -430,7 +430,7 @@ class MCS2(stage.IMultiaxisStage):
         Home (reference) the given axis.
         
         If ``sync==True``, wait until the homing is done.
-        The other parameters are flags setting up the referencing behavior. See MCS2 programming manual section on refence marks for the details.
+        The other parameters are flags setting up the referencing behavior. See MCS2 programming manual section on reference marks for the details.
         """
         ropt=0
         for v,m in [(not start_direction,0x01),(reverse_direction,0x02),(abort_on_stop,0x04),(auto_zero,0x08),(continue_on_found,0x10),(stop_on_found,0x20)]:
