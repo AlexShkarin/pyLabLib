@@ -100,8 +100,8 @@ class BasicKinesisDevice(comm_backend.ICommBackendWrapper):
             return re.match(r"^\d{8}$",did[0]) is not None
         dids=comm_backend.FT232DeviceBackend.list_resources(desc=True)
         if filter_ids:
-            ids=[did for did in dids if _is_thorlabs_id(did)]
-        return ids
+            return [did for did in dids if _is_thorlabs_id(did)]
+        return dids
     def send_comm(self, messageID, param1=0x00, param2=0x00, source=0x01, dest="host"):
         """
         Send a message with no associated data.
