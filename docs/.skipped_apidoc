@@ -9,6 +9,8 @@
 ..\pylablib\devices\Andor\atcore_lib.py
 ..\pylablib\devices\Andor\atmcd32d_defs.py
 ..\pylablib\devices\Andor\atmcd32d_lib.py
+..\pylablib\devices\Andor\ShamrockCIF_defs.py
+..\pylablib\devices\Andor\ShamrockCIF_lib.py
 ..\pylablib\devices\Arcus\ArcusPerformaxDriver_defs.py
 ..\pylablib\devices\Arcus\ArcusPerformaxDriver_lib.py
 ..\pylablib\devices\Basler\pylonC_defs.py

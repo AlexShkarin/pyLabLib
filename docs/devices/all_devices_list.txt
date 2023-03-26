@@ -24,6 +24,7 @@
 - :ref:`Tektronix oscilloscopes <oscilloscopes_tektronix>`. Tested with TDS2002B, TDS2004B, and DPO2004B.
 - :ref:`NI DAQs <daqs_nidaq>`. Tested with NI USB-6008, NI USB-6343, and NI PCIe-6323.
 - :ref:`Generic AWGs <awg_generic>`. Tested with Agilent 33500 and 33220A, Rigol DG1022, Tektronix AFG1022, GW Instek AFG2225 and AFG2115, and RS Comp AFG21005.
+- :ref:`Andor spectrographs <spectr_andor>`. Tested with Kymera 328i spectrograph connected via an Andor Newton camera through I2C interface.
 - :ref:`Miscellaneous Thorlabs devices <misc_thorlabs>`: :ref:`MFF101/102 <misc_thorlabs_mff>` motorized flip mirror mount, :ref:`FW102/212 <misc_thorlabs_fw>` motorized filter wheel, and :ref:`MDT693/694 <misc_thorlabs_mdt693>` high-voltage source. 
 - :ref:`Miscellaneous OZOptics devices <misc_ozoptics>`: :ref:`EPC04 <misc_ozoptics_epc04>` fiber polarization controller, :ref:`DD100 <misc_ozoptics_dd100>` motorized fiber attenuator, and :ref:`TF100 <misc_ozoptics_tf100>` motorized fiber filter. 
 - :ref:`Miscellaneous devices <misc_devices>`

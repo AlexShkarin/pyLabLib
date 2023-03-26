@@ -22,6 +22,15 @@ pylablib.devices.Andor.AndorSDK3 module
    :undoc-members:
    :show-inheritance:
 
+pylablib.devices.Andor.Shamrock module
+--------------------------------------
+
+.. automodule:: pylablib.devices.Andor.Shamrock
+   :members:
+   :inherited-members:
+   :undoc-members:
+   :show-inheritance:
+
 pylablib.devices.Andor.atcore\_features module
 ----------------------------------------------
 

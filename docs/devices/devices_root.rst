@@ -25,6 +25,7 @@ Currently supported devices:
     Rigol
     nidaq
     generic_awgs
+    AndorShamrock
     Thorlabs_misc
     OZOptics
     ElektroAutomatik
