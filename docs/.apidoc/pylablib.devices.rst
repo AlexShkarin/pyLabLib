@@ -29,6 +29,7 @@ Subpackages
    pylablib.devices.LaserQuantum
    pylablib.devices.Leybold
    pylablib.devices.LighthousePhotonics
+   pylablib.devices.Lumel
    pylablib.devices.M2
    pylablib.devices.Mightex
    pylablib.devices.Modbus

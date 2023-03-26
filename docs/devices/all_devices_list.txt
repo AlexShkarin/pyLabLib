@@ -27,6 +27,7 @@
 - :ref:`Andor spectrographs <spectr_andor>`. Tested with Kymera 328i spectrograph connected via an Andor Newton camera through I2C interface.
 - :ref:`Miscellaneous Thorlabs devices <misc_thorlabs>`: :ref:`MFF101/102 <misc_thorlabs_mff>` motorized flip mirror mount, :ref:`FW102/212 <misc_thorlabs_fw>` motorized filter wheel, and :ref:`MDT693/694 <misc_thorlabs_mdt693>` high-voltage source. 
 - :ref:`Miscellaneous OZOptics devices <misc_ozoptics>`: :ref:`EPC04 <misc_ozoptics_epc04>` fiber polarization controller, :ref:`DD100 <misc_ozoptics_dd100>` motorized fiber attenuator, and :ref:`TF100 <misc_ozoptics_tf100>` motorized fiber filter. 
+- :ref:`Lumel devices <misc_lumel>`: :ref:`RE72 <misc_lumel_RE72>` temperature controller 
 - :ref:`Miscellaneous devices <misc_devices>`
 
     - :ref:`Conrad relay board <misc_devices_conrad_relay>`

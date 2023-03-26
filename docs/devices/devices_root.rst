@@ -30,5 +30,6 @@ Currently supported devices:
     OZOptics
     ElektroAutomatik
     Voltcraft
+    Lumel
     misc_devices
     protocols
