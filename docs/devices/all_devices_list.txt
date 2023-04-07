@@ -20,6 +20,7 @@
     - :ref:`M2 Solstis laser <lasers_m2>`
     - :ref:`Toptica iBeam Smart laser <lasers_toptica>`
     - :ref:`Sirah Matisse laser <lasers_sirah>`
+    - :ref:`NKT Photonics lasers <lasers_NKT>`
 
 - :ref:`Tektronix oscilloscopes <oscilloscopes_tektronix>`. Tested with TDS2002B, TDS2004B, and DPO2004B.
 - :ref:`NI DAQs <daqs_nidaq>`. Tested with NI USB-6008, NI USB-6343, and NI PCIe-6323.

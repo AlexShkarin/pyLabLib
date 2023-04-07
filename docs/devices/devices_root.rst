@@ -20,6 +20,7 @@ Currently supported devices:
     M2
     Toptica
     Sirah
+    NKT
     Tektronix
     Keithley
     Rigol

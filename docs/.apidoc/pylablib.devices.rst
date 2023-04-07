@@ -34,6 +34,7 @@ Subpackages
    pylablib.devices.Mightex
    pylablib.devices.Modbus
    pylablib.devices.NI
+   pylablib.devices.NKT
    pylablib.devices.Newport
    pylablib.devices.OZOptics
    pylablib.devices.Ophir
