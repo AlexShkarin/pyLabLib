@@ -6,7 +6,7 @@
 Thorlabs APT/Kinesis devices
 ==============================
 
-Thorlabs has a variety of APT/Kinesis devices for various motion-related functionality (mostly motor controllers and piezo drivers), which share the same API. The library uses an older and more low-level APT protocol to communicate with these devices. So far it has been only implemented for motor controllers and some :ref:`specialized devices <misc_thorlabs>` and tested with KDC101, K10CR1, and BSC201 motor controllers, KIM101 piezo motor controller, and TPA101 quadrature sensor controller.
+Thorlabs has a variety of APT/Kinesis devices for various motion-related functionality (mostly motor controllers and piezo drivers), which share the same API. The library uses an older and more low-level APT protocol to communicate with these devices. So far it has been only implemented for motor controllers and some :ref:`specialized devices <misc_thorlabs>` and tested with KDC101, KST101, K10CR1, and BSC201 motor controllers, KIM101 piezo motor controller, and TPA101 quadrature sensor controller.
 
 The main device classes are :class:`pylablib.devices.Thorlabs.BasicKinesisDevice<.kinesis.BasicKinesisDevice>` for a generic Kinesis/APT devices :class:`pylablib.devices.Thorlabs.KinesisMotor<.kinesis.KinesisMotor>` aimed at motor controllers such as K10CR1 or KDC101, and :class:`pylablib.devices.Thorlabs.KinesisPiezoMotor<.kinesis.KinesisPiezoMotor>` for piezo drivers such as KIM and TIM.
 

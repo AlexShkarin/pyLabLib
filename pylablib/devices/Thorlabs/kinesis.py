@@ -648,7 +648,7 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         return self._get_homing_parameters(channel=channel,scale=scale)
 
     _p_hw_limit_kind=interface.EnumParameterClass("hw_limit_kind",{"ignore":1,"make":2,"break":3,"make_home":4,"break_home":5,"index_mark":6})
-    _p_sw_limit_kind=interface.EnumParameterClass("sw_limit_kind",{"ignore":1,"stop_imm":2,"stop_prof":3})
+    _p_sw_limit_kind=interface.EnumParameterClass("sw_limit_kind",{"ignore":1,"stop_imm":2,"stop_prof":3,"full_move_only":0})
     @muxchannel
     @interface.use_parameters(_returns=["hw_limit_kind","hw_limit_kind",None,None,None,"sw_limit_kind"])
     def _get_limit_switch_parameters(self, channel=None, scale=True):
@@ -1118,7 +1118,8 @@ class KinesisMotor(KinesisDevice):
         else:
             self._add_settings_variable("polctl_parameter",self.get_polctl_parameters,self.setup_polctl)
         if self._model in ["KDC101","KST101","KBD101"]:
-            self._add_settings_variable("kcube_trigio_parameters",self.get_kcube_trigio_parameters,self.setup_kcube_trigio)
+            if self._model!="KST101":
+                self._add_settings_variable("kcube_trigio_parameters",self.get_kcube_trigio_parameters,self.setup_kcube_trigio)
             self._add_settings_variable("kcube_trigpos_parameters",self.get_kcube_trigpos_parameters,self.setup_kcube_trigpos)
         with self._close_on_error():
             self.send_comm(0x0012) # disable automatic update

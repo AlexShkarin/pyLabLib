@@ -164,6 +164,8 @@ class TracePlotter(QLayoutManagedWidget):
         ``"color"`` - channel plot color; ``"end_marker"`` - overrides global ``end_marker`` property of the plotter;
         ``"factor"`` - rescaling factor applied before plotting.
         """
+        if isinstance(channels,(list,tuple)):
+            channels={ch:{} for ch in channels}
         self.channels=channels.copy()
         self.channel_indices=channel_indices or list(channels)
         colors=all_colors*len(channels)

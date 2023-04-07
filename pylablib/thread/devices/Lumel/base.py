@@ -27,7 +27,7 @@ class LumelRE72ControllerThread(device_thread.DeviceThread):
         self.remote=remote
         self.add_job("update_measurements",self.update_measurements,0.5)
         self.add_job("update_parameters",self.update_parameters,2)
-        self.add_device_command("set_setpointi",post_update=["update_measurements","update_parameters"])
+        self.add_device_command("set_setpointi",post_update=["update_measurements","update_parameters"],limit_queue=1,on_full_queue="skip_oldest")
     def update_measurements(self):
         """Update current measurements"""
         if self.open():
