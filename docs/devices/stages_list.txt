@@ -4,5 +4,6 @@
 - :ref:`Newport Picomotor <stages_newport_picomotor>`: precision piezo-actuated screws based on slip-stick principle. Tested with Newport 8742 Picomotor driver using Ethernet or USB connection.
 - :ref:`Arcus Performax <stages_arcus_performax>`: fairly common single- and multi-axis motor controllers sold under different brands: Arcus, Nippon Pulse America, or Newmark Systems. Tested with PMX-4EX device with USB connection.
 - :ref:`Trinamic <stages_trinamic>`: universal motor controllers and drivers. Tested with a single-axis TMCM-1110 controller with USB connection.
+- :ref:`Standa <stages_standa>`: Standa motorized positioners. Tested with a 8SMC4-USB single-axis controller and 8MT167-25 stepper motor stage.
 - :ref:`SmarAct <stages_smaract>`: high-performance piezo sliders. Currently simple open-loop :ref:`SCU controllers <stages_smaract_scu>` and :ref:`MCS2 controllers <stages_smaract_mcs>` are supported. Tested with a standard HCU controller unit and an MCS2 controller with several SLx stages.
 - :ref:`Physik Instrumente <stages_PI>`: piezo controllers. So far only PI E-515 and PI E-516 is supported and tested.

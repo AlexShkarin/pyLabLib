@@ -47,6 +47,7 @@ Subpackages
    pylablib.devices.SiliconSoftware
    pylablib.devices.Sirah
    pylablib.devices.SmarAct
+   pylablib.devices.Standa
    pylablib.devices.Tektronix
    pylablib.devices.Thorlabs
    pylablib.devices.Toptica
