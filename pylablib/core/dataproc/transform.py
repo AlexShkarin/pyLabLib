@@ -18,8 +18,8 @@ class LinearTransform:
             ndim=tmatr.shape[0]
         elif shift is not None:
             ndim=shift.shape[0]
-        self.tmatr=tmatr if tmatr is not None else np.eye(ndim)
-        self.shift=shift if shift is not None else np.zeros(ndim)
+        self.tmatr=tmatr if tmatr is not None else self._geteye(ndim)
+        self.shift=shift if shift is not None else self._getzeros(ndim)
         if self.tmatr.ndim!=2 or self.tmatr.shape[0]!=self.tmatr.shape[1]:
             raise ValueError("transformation matrix should be a 2D square array")
         if self.shift.ndim!=1:
@@ -27,6 +27,12 @@ class LinearTransform:
         if self.tmatr.shape[0]!=self.shift.shape[0]:
             raise ValueError("transformation matrix and shift should have the same size")
     
+    _eyes=[np.eye(d) for d in range(10)]
+    _zeros=[np.zeros(d) for d in range(10)]
+    def _geteye(self, d):
+        return np.eye(d) if d>=10 else self._eyes[d]
+    def _getzeros(self, d):
+        return np.zeros(d) if d>=10 else self._zeros[d]
     def _build_new(self, tmatr, shift):
         return type(self)(tmatr,shift)
     def __call__(self, coord, shift=True):
@@ -53,7 +59,7 @@ class LinearTransform:
         shift=trans.shift+np.dot(trans.tmatr,self.shift)
         return self._build_new(tmatr,shift)
     def _combined(self, trans, preceded):
-        return self.preceded(trans) if preceded else self.followed(trans)
+        return trans.followed(self) if preceded else self.followed(trans)
     
     def shifted(self, shift, preceded=False):
         """Return a transform with an added shift before or after (depending of `preceded`) the current one"""
@@ -65,7 +71,7 @@ class LinearTransform:
         `mult` can be a single number (scale), a 1D vector (scaling for each axis independently), or a matrix.
         """
         if np.ndim(mult)==0:
-            tmatr=np.eye(self.tmatr.shape[0])*mult
+            tmatr=self._geteye(self.tmatr.shape[0])*mult
         elif np.ndim(mult)==1:
             tmatr=np.diag(mult)
         else:
