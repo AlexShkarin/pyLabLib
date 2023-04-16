@@ -799,6 +799,98 @@ class Timer:
         return nack
 
 
+class TimeTracker:
+    """
+    Time tracker used for estimating time for different sections of code.
+
+    Args:
+        verbose: determines the verbosity level;
+            can be ``"all"`` (print on mark and on summary), ``"summary"`` (only print summery), or ``"none"`` (do not print anything)
+    """
+    def __init__(self, verbose="all"):
+        self.reset()
+        vlevels=["all","summary","none"]
+        if verbose not in vlevels:
+            raise ValueError("unrecognized verbosity level: {}; allowed levels are {}".format(verbose,", ".join(vlevels)))
+        self.verbose=verbose
+    def reset(self):
+        """Reset the internal timer"""
+        self.t0=time.time()
+        self.records=[(None,self.t0)]
+        self._last_summary_print=time.time()
+    def __call__(self, msg=None, lap=True):
+        """Mark the current time point with the given message and reset the section timer (if ``lap==True``)"""
+        t=time.time()
+        if self.verbose=="all" and msg is not None:
+            print("{}: {:.3}s".format(msg,t-self.t0))
+        self.records.append((msg,t))
+        if lap:
+            self.t0=t
+    def _collect_summary(self, join_records):
+        if join_records=="auto":
+            join_records=False
+            msgs=set()
+            for m,_ in self.records[1:]:
+                if m is not None:
+                    if m in msgs:
+                        join_records=True
+                        break
+                    msgs.add(m)
+        ttot=self.records[-1][1]-self.records[0][1]
+        if join_records:
+            all_times={}
+            for (m,t),(_,pt) in zip(self.records[1:],self.records[:-1]):
+                if m is not None:
+                    n,tt=all_times.get(m,(0,0))
+                    all_times[m]=n+1,tt+(t-pt)
+            return join_records,ttot,[(m,n,tt) for m,(n,tt) in all_times.items()]
+        times=[]
+        for (m,t),(_,pt) in zip(self.records[1:],self.records[:-1]):
+            if m is not None:
+                times.append((m,t-pt))
+        return join_records,ttot,times
+    def summary(self, join_records="auto", exclude_untracked=True, compact=False, reset=True, period=None):
+        """
+        Print the sections runtime summary.
+        
+        If ``join_records==True``, count all records with the same message as the same event and present total / per call statistics;
+        otherwise, print one line per record.
+        If ``join_records=="auto"``, set to ``True`` if there are several records with the same name.
+        If ``exclude_untracked==True``, exclude code periods marked with no message (i.e., ``None``) from the total time calculation.
+        If ``compact==True``, only print one line per record; otherwise, also include header and total time.
+        If ``reset==True``, reset the sections history.
+        If `period` is not ``None``, defines the maximal summary printing period.
+        """
+        if period:
+            t=time.time()
+            if t-self._last_summary_print<period:
+                return
+            self._last_summary_print=t
+        if self.verbose!="none":
+            if not compact:
+                print("Summary:")
+                if len(self.records)<2:
+                    print("\tNo events")
+                    return
+            elif len(self.records)<2:
+                return
+            join_records,ttot,times=self._collect_summary(join_records)
+            maxtextlen=max(max(len(r[0]) for r in times),len("TOTAL"))
+            if exclude_untracked:
+                ttot=sum(r[-1] for r in times)
+            else:
+                ttot=self.records[-1][1]-self.records[0][1]
+            if not compact:
+                print("\t{} {:8.3f}s".format("TOTAL".ljust(maxtextlen),ttot))
+            if join_records:
+                for m,n,dt in times:
+                    print("\t{} {:8.3f}s ({:4.1f}%) / {:5d} = {:11.6f}s".format(m.ljust(maxtextlen),dt,dt/(ttot+1E-5)*100,n,dt/n))
+            else:
+                for m,dt in times:
+                    print("\t{} {:8.3f}s ({:4.1f}%)".format(m.ljust(maxtextlen),dt,dt/(ttot+1E-5)*100))
+        if reset:
+            self.reset()
+
 
 ### Stream redirection ###
 
