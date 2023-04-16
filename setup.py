@@ -9,6 +9,7 @@ from setuptools import Extension, setup, find_packages
 from codecs import open
 from os import path
 import pathlib
+import numpy as np
 
 here = path.abspath(path.dirname(__file__))
 
@@ -64,7 +65,7 @@ setup(
     install_requires=dep_base+dep_extra+dep_devio+dep_pyqt5,
     extras_require={
         'devio-full':dep_devio_extra,
-    }
+    },
     # install_requires=dep_base,
     # extras_require={
     #     'extra':dep_extra,
@@ -73,4 +74,5 @@ setup(
     #     'gui-pyqt5':dep_pyqt5,
     #     'gui-pyside2':dep_pyside2,
     # }
+    include_dirs=[np.get_include()],
 )

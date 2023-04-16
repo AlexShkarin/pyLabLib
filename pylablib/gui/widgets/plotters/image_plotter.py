@@ -14,8 +14,8 @@ from ....core.gui.widgets.container import QWidgetContainer
 from ....core.gui.widgets.layout_manager import QLayoutManagedWidget
 from ....core.gui.value_handling import virtual_gui_values
 from ....core.thread import controller
-from ....core.utils import funcargparse, module, dictionary
-from ....core.dataproc import filters, transform
+from ....core.utils import funcargparse, module, dictionary, general
+from ....core.dataproc import filters, ctransform
 
 import pyqtgraph
 
@@ -201,6 +201,59 @@ class ImagePlotterCtl(QWidgetContainer):
 
 
 
+class PaintTimer(QtCore.QObject):
+    """
+    Repaint timer.
+
+    Keeps track of the image updates and painting events to avoid pyqtgraph consuming all process time.
+    """
+    _infty_time=1E9
+    def __init__(self):
+        super().__init__()
+        self.min_nonpaint_delay=0.02
+        self.requests=[]
+        self.startTimer(2)
+        self._last_paint_time=None
+    def timerEvent(self, evt):
+        super().timerEvent(evt)
+        self.call_request()
+    def add_request(self, widget, call):
+        """Add the given call request associated with the given widget"""
+        wi=None
+        for i,(w,_) in enumerate(self.requests):
+            if w is widget:
+                wi=i
+                break
+        if wi is not None:
+            self.requests[wi]=(widget,call)
+        else:
+            self.requests.append((widget,call))
+        return wi is not None
+    def check_time(self, widget):  # pylint: disable=unused-argument
+        """Check if the updating can be called at the present time"""
+        return True if self._last_paint_time is None else self._last_paint_time+self.min_nonpaint_delay<time.time()
+    def call_request(self):
+        """Check if there are any unprocessed requests and try to schedule them"""
+        if self.requests:
+            ipop=None
+            for i,(w,c) in enumerate(self.requests):
+                if self.check_time(w):
+                    ipop=i
+                    c()
+                    break
+            if ipop is not None:
+                del self.requests[ipop]
+    def paint_stop(self):
+        """Mark paint stopping event"""
+        self._last_paint_time=time.time()
+_paint_timer=[]
+def _get_paint_timer():
+    if not _paint_timer:
+        _paint_timer.append(PaintTimer())
+    return _paint_timer[0]
+
+# _ttrack=general.TimeTracker(verbose="summary")
+# _ttrack=general.TimeTracker(verbose="none")
 
 class EImageItem(pyqtgraph.ImageItem):
     """Minor extension of :class:`pyqtgraph.ImageItem` which keeps track of painting events (last time and number of calls)"""
@@ -221,6 +274,7 @@ class EImageItem(pyqtgraph.ImageItem):
         super().paint(*args)
         self.paint_time=time.time()
         self.paint_cnt+=1
+        _get_paint_timer().paint_stop()
     mouse_clicked=Signal(object)
     def mouseClickEvent(self, ev):
         super().mouseClickEvent(ev)
@@ -343,19 +397,32 @@ class ImagePlotter(QLayoutManagedWidget):
             trans: transform connecting this coordinate system to an already defined one
             src: source coordinate system (if ``None``, consider it to be the root system)
             label: coordinate system label (used in the control dropdown menu)
+            cache_transform: if ``True``, cache the full transform until :meth:`invalidate` method is called
         """
-        def __init__(self, trans=None, src=None, label=""):
-            self.trans=trans or transform.Indexed2DTransform()
+        def __init__(self, trans=None, src=None, label="", cache_transform=True):
+            self.trans=trans or ctransform.CLinear2DTransform()
             self.src=src
             self.label=label
+            self.cache_transform=cache_transform
+            self._full_trans=None
+        def invalidate(self):
+            """Invalidate transform cache"""
+            self._full_trans=None
         def update(self, trans=None):
+            """Change the transform"""
             if trans is not None:
-                self.trans=trans
-        def transform(self):
-            """Get the transform which transforms the root coordinates to this system"""
+                self.trans=trans.copy()
+        def _calc_full_transform(self):
             if self.src is None:
                 return self.trans
-            return self.trans.preceded(self.src.transform())
+            return self.trans.copy().precede(self.src.transform())
+        def transform(self):
+            """Get the transform which transforms the root coordinates to this system"""
+            if not self.cache_transform:
+                return self._calc_full_transform()
+            if self._full_trans is None:
+                self._full_trans=self._calc_full_transform()
+            return self._full_trans.copy()
     def setup(self, name=None, img_size=(1024,1024), min_size=None):  # pylint: disable=arguments-differ, arguments-renamed
         """
         Setup the image plotter.
@@ -377,9 +444,6 @@ class ImagePlotter(QLayoutManagedWidget):
         self.ybin=1
         self.dec="mean"
         self._updating_image=False
-        self._last_paint_time=None
-        self._last_img_paint_cnt=None
-        self._last_curve_paint_cnt=[None,None]
         if min_size:
             self.setMinimumSize(QtCore.QSize(*min_size))
         self.image_window=pyqtgraph.ImageView(self,imageItem=EImageItem(image=self.img))
@@ -429,6 +493,7 @@ class ImagePlotter(QLayoutManagedWidget):
         self.image_window.imageItem.mouse_clicked.connect(on_click,QtCore.Qt.DirectConnection)
         self.rectangles={}
         self.coord_systems={"display":self.CoordinateSystem(label="Display")}
+        self._coord_systems_par=None
         self.set_coordinate_system("image",src="display",label="Image")
         self.set_coordinate_system("image_normalized",src="image")
         self._control_coord_system="display"
@@ -572,26 +637,34 @@ class ImagePlotter(QLayoutManagedWidget):
     def _update_coordinate_systems(self):
         values=self._get_values()
         imshape=self.img.shape[:2]
+        coord_systems_par=imshape,values.v["transpose"],values.v["flip_x"],values.v["flip_y"]
+        if self._coord_systems_par==coord_systems_par:
+            return
+        self._coord_systems_par=coord_systems_par
+        transpose,flip_x,flip_y=coord_systems_par[1:]
         dimshape=imshape
-        im2disp=transform.Indexed2DTransform()
-        im2disp=im2disp.multiplied([1/self.xbin,1/self.ybin])
-        if values.v["transpose"]:
-            im2disp=im2disp.multiplied([[0,1],[1,0]])
+        im2disp=ctransform.CLinear2DTransform()
+        if (self.xbin,self.ybin)!=(1,1):
+            im2disp.scale(1/self.xbin,1/self.ybin)
+        if transpose:
+            im2disp.transpose()
             dimshape=dimshape[::-1]
-        if values.v["flip_x"]:
-            im2disp=im2disp.multiplied([-1,1]).shifted([dimshape[0],0])
-        if values.v["flip_y"]:
-            im2disp=im2disp.multiplied([1,-1]).shifted([0,dimshape[1]])
-        self.coord_systems["image"].update(im2disp.inverted())
-        im2norm=transform.Indexed2DTransform().multiplied([1/imshape[0],1/imshape[1]])
+        if flip_x:
+            im2disp.scale(-1,1).shift(dimshape[0],0)
+        if flip_y:
+            im2disp.scale(1,-1).shift(0,dimshape[1])
+        self.coord_systems["image"].update(im2disp.invert())
+        im2norm=ctransform.CLinear2DTransform().scale(1/imshape[0],1/imshape[1])
         self.coord_systems["image_normalized"].update(im2norm)
+        for cs in self.coord_systems.values():
+            cs.invalidate()
     def _convert_coordinates(self, coord, src="display", dst="display"):
         if src!="display":
             strans=self.coord_systems[src].transform()
-            coord=strans.i(coord)
+            coord=strans.i(coord[0],coord[1])
         if dst!="display":
             dtrans=self.coord_systems[dst].transform()
-            coord=dtrans(coord)
+            coord=dtrans(coord[0],coord[1])
         return tuple(coord)
     def _convert_rectangle(self, center, size, src="display", dst="display"):
         ll=np.array(self._convert_coordinates(np.asarray(center)-np.asarray(size)/2,src=src,dst=dst))
@@ -636,7 +709,7 @@ class ImagePlotter(QLayoutManagedWidget):
         imcenter,imsize=self._convert_rectangle(np.array(img_shape)/2,np.array(img_shape),dst=rect.coord_system)
         updated=rect.truncate_to_range(imcenter,imsize) or updated
         center,size=self._convert_rectangle(rect.center,rect.size,src=rect.coord_system)
-        updated=updated or np.any(rect.rect.pos()!=(center-size/2)) or np.any(rect.rect.size()!=size)
+        updated=updated or np.any(rect.rect.state["pos"]!=(center-size/2)) or np.any(rect.rect.state["size"]!=size)
         if updated:
             rect.rect.setPos(center-size/2)
             rect.rect.setSize(size)
@@ -807,19 +880,6 @@ class ImagePlotter(QLayoutManagedWidget):
             img=img.copy()
             img[0,0]+=1
         return img
-    def _check_paint_done(self, dt=0):
-        items=[self.image_window.imageItem]+self.cut_lines
-        counters=[self._last_img_paint_cnt]+self._last_curve_paint_cnt
-        if self._last_img_paint_cnt==self.image_window.imageItem.paint_cnt:
-            return False
-        for itm,cnt in zip(items,counters):
-            if itm.paint_cnt==cnt:
-                return False
-        t=time.time()
-        passed_time=min([t-(itm.paint_time or 0) for itm in items])
-        if passed_time<dt:
-            return False
-        return True
     # Update image plot
     def _get_draw_img(self):
         values=self._get_values()
@@ -887,7 +947,6 @@ class ImagePlotter(QLayoutManagedWidget):
                 self.cut_plot_window.disableAutoRange()
                 self.cut_lines[0].setData(np.arange(len(x_cut)),x_cut)
                 self.cut_lines[1].setData(np.arange(len(y_cut)),y_cut)
-                self._last_img_paint_cnt=[cl.paint_cnt for cl in self.cut_lines]
                 if any(autorange):
                     self.cut_plot_window.enableAutoRange(x=autorange[0],y=autorange[1])
                 self.cut_plot_panel.setVisible(True)
@@ -901,15 +960,14 @@ class ImagePlotter(QLayoutManagedWidget):
         """
         if self._updating_image:
             return False
-        dt=min(time.time()-self._last_paint_time,0.1) if self._last_paint_time else 0.1
-        if not self._check_paint_done(dt*0.1):
+        if not _get_paint_timer().check_time(self):
             return False
         if not do_redraw:
             if not self.new_image_set and (only_new_image or not self.do_image_update):
                 return False
         return self.isVisible() or not self.update_only_on_visible
     @controller.exsafe
-    def update_image(self, update_controls=True, do_redraw=False, only_new_image=True):
+    def update_image(self, update_controls=True, do_redraw=False, only_new_image=True, allow_scheduling=False):
         """
         Update displayed image.
 
@@ -919,8 +977,9 @@ class ImagePlotter(QLayoutManagedWidget):
         """
         if self._updating_image:
             return
-        dt=min(time.time()-self._last_paint_time,0.1) if self._last_paint_time else 0.1
-        if not self._check_paint_done(dt*0.1) and not do_redraw:
+        if not do_redraw and not _get_paint_timer().check_time(self):
+            if allow_scheduling:
+                _get_paint_timer().add_request(self,lambda: self.update_image(update_controls=update_controls,do_redraw=do_redraw,only_new_image=only_new_image))
             return
         with self._while_updating():
             values=self._get_values()
@@ -943,7 +1002,6 @@ class ImagePlotter(QLayoutManagedWidget):
                     if hist_range[0]==hist_range[1]:
                         hist_range=hist_range[0]-.5,hist_range[1]+.5
                     self.image_window.ui.histogram.setHistogramRange(*hist_range)
-                self._last_img_paint_cnt=self.image_window.imageItem.paint_cnt
             if update_controls:
                 if autoscale:
                     self._update_levels_controls(levels,draw_img)
@@ -952,7 +1010,6 @@ class ImagePlotter(QLayoutManagedWidget):
             values.i["minlim"]=img_levels[0]
             values.i["maxlim"]=img_levels[1]
             values.v["size"]="{} x {}".format(*draw_img.shape)
-            self._last_paint_time=time.time()
             return values
 
 
