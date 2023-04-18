@@ -1,45 +1,5 @@
 import cython
 
-import numpy as np
-cimport numpy as np
-np.import_array()
-
-ctypedef double _vec_t[2]
-ctypedef fused vectype:
-    int
-    float
-    double
-
-cdef inline nptype(vectype *x=NULL):
-    if vectype is int:
-        return np.intc
-    if vectype is double:
-        return np.double
-    if vectype is float:
-        return np.float
-
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-cdef inline as_vec(vectype *v, size_t l):
-    """Convert C 1D array into numpy array"""
-    res=np.empty(l,dtype=nptype[vectype]())
-    for i in range(l):
-        res[i]=v[0]
-        v+=1
-    return res
-@cython.boundscheck(False)
-@cython.wraparound(False)
-cdef inline as_matr(vectype *v, size_t l1, size_t l2):
-    """Convert C 2D array into numpy array"""
-    res=np.empty((l1,l2),dtype=nptype[vectype]())
-    for i in range(l1):
-        for j in range(l2):
-            res[i,j]=v[0]
-            v+=1
-    return res
-
-
 
 cdef void _vadd(double v[2], double v2[2]):
     v2[0]+=v[0]
@@ -79,15 +39,6 @@ cdef class CLinear2DTransform:
         self.m[1][1]=1.
         self.mi[0][0]=1.
         self.mi[1][1]=1.
-    
-    @property
-    def tmatr(self):
-        """Get transform matrix as a numpy array"""
-        return as_matr[double](&(self.m[0][0]),2,2)
-    @property
-    def svec(self):
-        """Get shift vector as a numpy array"""
-        return as_vec(self.s,2)
     
     @cython.cdivision(True)
     cdef void _set_inv(self):
