@@ -14,8 +14,8 @@ from ....core.gui.widgets.container import QWidgetContainer
 from ....core.gui.widgets.layout_manager import QLayoutManagedWidget
 from ....core.gui.value_handling import virtual_gui_values
 from ....core.thread import controller
-from ....core.utils import funcargparse, module, dictionary, general
-from ....core.dataproc import filters, ctransform
+from ....core.utils import funcargparse, module, dictionary
+from ....core.dataproc import filters, ctransform, transform
 
 import pyqtgraph
 
@@ -400,18 +400,24 @@ class ImagePlotter(QLayoutManagedWidget):
             cache_transform: if ``True``, cache the full transform until :meth:`invalidate` method is called
         """
         def __init__(self, trans=None, src=None, label="", cache_transform=True):
-            self.trans=trans or ctransform.CLinear2DTransform()
+            self.trans=self._as_c_transform(trans) or ctransform.CLinear2DTransform()
             self.src=src
             self.label=label
             self.cache_transform=cache_transform
             self._full_trans=None
+        def _as_c_transform(self, trans, copy=True):
+            if trans is None:
+                return None
+            if isinstance(trans,transform.Indexed2DTransform):
+                return ctransform.CLinear2DTransform.from_matr_shift(trans.tmatr,trans.shift)
+            return trans.copy() if copy else trans
         def invalidate(self):
             """Invalidate transform cache"""
             self._full_trans=None
         def update(self, trans=None):
             """Change the transform"""
             if trans is not None:
-                self.trans=trans.copy()
+                self.trans=self._as_c_transform(trans)
         def _calc_full_transform(self):
             if self.src is None:
                 return self.trans

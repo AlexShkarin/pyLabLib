@@ -969,7 +969,7 @@ static const char *__pyx_f[] = {
 /*--- Type declarations ---*/
 struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform;
 
-/* "pylablib/core/dataproc/ctransform.pyx":31
+/* "pylablib/core/dataproc/ctransform.pyx":32
  * 
  * 
  * cdef class CLinear2DTransform:             # <<<<<<<<<<<<<<
@@ -1169,6 +1169,30 @@ static CYTHON_INLINE PyObject* __Pyx_PyObject_CallOneArg(PyObject *func, PyObjec
 /* ExtTypeTest.proto */
 static CYTHON_INLINE int __Pyx_TypeTest(PyObject *obj, PyTypeObject *type);
 
+/* GetModuleGlobalName.proto */
+#if CYTHON_USE_DICT_VERSIONS
+#define __Pyx_GetModuleGlobalName(var, name)  do {\
+    static PY_UINT64_T __pyx_dict_version = 0;\
+    static PyObject *__pyx_dict_cached_value = NULL;\
+    (var) = (likely(__pyx_dict_version == __PYX_GET_DICT_VERSION(__pyx_d))) ?\
+        (likely(__pyx_dict_cached_value) ? __Pyx_NewRef(__pyx_dict_cached_value) : __Pyx_GetBuiltinName(name)) :\
+        __Pyx__GetModuleGlobalName(name, &__pyx_dict_version, &__pyx_dict_cached_value);\
+} while(0)
+#define __Pyx_GetModuleGlobalNameUncached(var, name)  do {\
+    PY_UINT64_T __pyx_dict_version;\
+    PyObject *__pyx_dict_cached_value;\
+    (var) = __Pyx__GetModuleGlobalName(name, &__pyx_dict_version, &__pyx_dict_cached_value);\
+} while(0)
+static PyObject *__Pyx__GetModuleGlobalName(PyObject *name, PY_UINT64_T *dict_version, PyObject **dict_cached_value);
+#else
+#define __Pyx_GetModuleGlobalName(var, name)  (var) = __Pyx__GetModuleGlobalName(name)
+#define __Pyx_GetModuleGlobalNameUncached(var, name)  (var) = __Pyx__GetModuleGlobalName(name)
+static CYTHON_INLINE PyObject *__Pyx__GetModuleGlobalName(PyObject *name);
+#endif
+
+/* PyObjectCall2Args.proto */
+static CYTHON_UNUSED PyObject* __Pyx_PyObject_Call2Args(PyObject* function, PyObject* arg1, PyObject* arg2);
+
 /* ArgTypeTest.proto */
 #define __Pyx_ArgTypeTest(obj, type, none_allowed, name, exact)\
     ((likely((Py_TYPE(obj) == type) | (none_allowed && (obj == Py_None)))) ? 1 :\
@@ -1252,6 +1276,17 @@ static CYTHON_INLINE PyObject* __Pyx_PyObject_GetAttrStrNoError(PyObject* obj, P
 
 /* SetupReduce.proto */
 static int __Pyx_setup_reduce(PyObject* type_obj);
+
+/* Import.proto */
+static PyObject *__Pyx_Import(PyObject *name, PyObject *from_list, int level);
+
+/* ClassMethod.proto */
+#include "descrobject.h"
+static CYTHON_UNUSED PyObject* __Pyx_Method_ClassMethod(PyObject *method);
+
+/* GetNameInClass.proto */
+#define __Pyx_GetNameInClass(var, nmspace, name)  (var) = __Pyx__GetNameInClass(nmspace, name)
+static PyObject *__Pyx__GetNameInClass(PyObject *nmspace, PyObject *name);
 
 /* CLineInTraceback.proto */
 #ifdef CYTHON_CLINE_IN_TRACEBACK
@@ -1340,33 +1375,60 @@ static PyObject *__pyx_builtin_range;
 static PyObject *__pyx_builtin_TypeError;
 static const char __pyx_k_x[] = "x";
 static const char __pyx_k_y[] = "y";
+static const char __pyx_k_np[] = "np";
 static const char __pyx_k_s1[] = "s1";
 static const char __pyx_k_s2[] = "s2";
+static const char __pyx_k_m11[] = "m11";
+static const char __pyx_k_m12[] = "m12";
+static const char __pyx_k_m21[] = "m21";
+static const char __pyx_k_m22[] = "m22";
 static const char __pyx_k_copy[] = "copy";
 static const char __pyx_k_main[] = "__main__";
+static const char __pyx_k_matr[] = "matr";
 static const char __pyx_k_name[] = "__name__";
 static const char __pyx_k_test[] = "__test__";
+static const char __pyx_k_array[] = "array";
+static const char __pyx_k_numpy[] = "numpy";
 static const char __pyx_k_range[] = "range";
+static const char __pyx_k_shift[] = "shift";
+static const char __pyx_k_import[] = "__import__";
 static const char __pyx_k_reduce[] = "__reduce__";
+static const char __pyx_k_asarray[] = "asarray";
+static const char __pyx_k_flatten[] = "flatten";
 static const char __pyx_k_getstate[] = "__getstate__";
+static const char __pyx_k_multiply[] = "multiply";
 static const char __pyx_k_preceded[] = "preceded";
 static const char __pyx_k_setstate[] = "__setstate__";
 static const char __pyx_k_TypeError[] = "TypeError";
 static const char __pyx_k_reduce_ex[] = "__reduce_ex__";
 static const char __pyx_k_pyx_vtable[] = "__pyx_vtable__";
 static const char __pyx_k_reduce_cython[] = "__reduce_cython__";
+static const char __pyx_k_from_matr_shift[] = "from_matr_shift";
 static const char __pyx_k_setstate_cython[] = "__setstate_cython__";
 static const char __pyx_k_CLinear2DTransform[] = "CLinear2DTransform";
 static const char __pyx_k_cline_in_traceback[] = "cline_in_traceback";
 static const char __pyx_k_no_default___reduce___due_to_non[] = "no default __reduce__ due to non-trivial __cinit__";
 static PyObject *__pyx_n_s_CLinear2DTransform;
 static PyObject *__pyx_n_s_TypeError;
+static PyObject *__pyx_n_s_array;
+static PyObject *__pyx_n_s_asarray;
 static PyObject *__pyx_n_s_cline_in_traceback;
 static PyObject *__pyx_n_s_copy;
+static PyObject *__pyx_n_s_flatten;
+static PyObject *__pyx_n_s_from_matr_shift;
 static PyObject *__pyx_n_s_getstate;
+static PyObject *__pyx_n_s_import;
+static PyObject *__pyx_n_s_m11;
+static PyObject *__pyx_n_s_m12;
+static PyObject *__pyx_n_s_m21;
+static PyObject *__pyx_n_s_m22;
 static PyObject *__pyx_n_s_main;
+static PyObject *__pyx_n_s_matr;
+static PyObject *__pyx_n_s_multiply;
 static PyObject *__pyx_n_s_name;
 static PyObject *__pyx_kp_s_no_default___reduce___due_to_non;
+static PyObject *__pyx_n_s_np;
+static PyObject *__pyx_n_s_numpy;
 static PyObject *__pyx_n_s_preceded;
 static PyObject *__pyx_n_s_pyx_vtable;
 static PyObject *__pyx_n_s_range;
@@ -1377,27 +1439,32 @@ static PyObject *__pyx_n_s_s1;
 static PyObject *__pyx_n_s_s2;
 static PyObject *__pyx_n_s_setstate;
 static PyObject *__pyx_n_s_setstate_cython;
+static PyObject *__pyx_n_s_shift;
 static PyObject *__pyx_n_s_test;
 static PyObject *__pyx_n_s_x;
 static PyObject *__pyx_n_s_y;
 static int __pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform___cinit__(struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_self); /* proto */
 static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_2copy(struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_5tmatr___get__(struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_4svec___get__(struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_self); /* proto */
 static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_4invert(struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_self); /* proto */
 static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_6precede(struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_self, struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_trans); /* proto */
 static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_8follow(struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_self, struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_trans); /* proto */
 static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_10__call__(struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_self, double __pyx_v_x, double __pyx_v_y); /* proto */
 static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_12i(struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_self, double __pyx_v_x, double __pyx_v_y); /* proto */
 static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_14shift(struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_self, double __pyx_v_s1, double __pyx_v_s2, int __pyx_v_preceded); /* proto */
-static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_16scale(struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_self, double __pyx_v_s1, double __pyx_v_s2, int __pyx_v_preceded); /* proto */
-static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_18transpose(struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_self, PyObject *__pyx_v_preceded); /* proto */
-static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_20__reduce_cython__(CYTHON_UNUSED struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_self); /* proto */
-static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_22__setstate_cython__(CYTHON_UNUSED struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_self, CYTHON_UNUSED PyObject *__pyx_v___pyx_state); /* proto */
+static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_16multiply(struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_self, double __pyx_v_m11, double __pyx_v_m12, double __pyx_v_m21, double __pyx_v_m22, PyObject *__pyx_v_preceded); /* proto */
+static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_18scale(struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_self, double __pyx_v_s1, double __pyx_v_s2, int __pyx_v_preceded); /* proto */
+static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_20transpose(struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_self, PyObject *__pyx_v_preceded); /* proto */
+static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_22from_matr_shift(PyTypeObject *__pyx_v_cls, PyObject *__pyx_v_matr, PyObject *__pyx_v_shift); /* proto */
+static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_24__reduce_cython__(CYTHON_UNUSED struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_26__setstate_cython__(CYTHON_UNUSED struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_self, CYTHON_UNUSED PyObject *__pyx_v___pyx_state); /* proto */
 static PyObject *__pyx_tp_new_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
 static PyObject *__pyx_tuple_;
 static PyObject *__pyx_tuple__2;
 /* Late includes */
 
-/* "pylablib/core/dataproc/ctransform.pyx":4
+/* "pylablib/core/dataproc/ctransform.pyx":5
  * 
  * 
  * cdef void _vadd(double v[2], double v2[2]):             # <<<<<<<<<<<<<<
@@ -1410,7 +1477,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform__vadd(double *__pyx_v
   long __pyx_t_1;
   __Pyx_RefNannySetupContext("_vadd", 0);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":5
+  /* "pylablib/core/dataproc/ctransform.pyx":6
  * 
  * cdef void _vadd(double v[2], double v2[2]):
  *     v2[0]+=v[0]             # <<<<<<<<<<<<<<
@@ -1420,7 +1487,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform__vadd(double *__pyx_v
   __pyx_t_1 = 0;
   (__pyx_v_v2[__pyx_t_1]) = ((__pyx_v_v2[__pyx_t_1]) + (__pyx_v_v[0]));
 
-  /* "pylablib/core/dataproc/ctransform.pyx":6
+  /* "pylablib/core/dataproc/ctransform.pyx":7
  * cdef void _vadd(double v[2], double v2[2]):
  *     v2[0]+=v[0]
  *     v2[1]+=v[1]             # <<<<<<<<<<<<<<
@@ -1430,7 +1497,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform__vadd(double *__pyx_v
   __pyx_t_1 = 1;
   (__pyx_v_v2[__pyx_t_1]) = ((__pyx_v_v2[__pyx_t_1]) + (__pyx_v_v[1]));
 
-  /* "pylablib/core/dataproc/ctransform.pyx":4
+  /* "pylablib/core/dataproc/ctransform.pyx":5
  * 
  * 
  * cdef void _vadd(double v[2], double v2[2]):             # <<<<<<<<<<<<<<
@@ -1442,7 +1509,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform__vadd(double *__pyx_v
   __Pyx_RefNannyFinishContext();
 }
 
-/* "pylablib/core/dataproc/ctransform.pyx":7
+/* "pylablib/core/dataproc/ctransform.pyx":8
  *     v2[0]+=v[0]
  *     v2[1]+=v[1]
  * cdef void _vdot(double m[2][2], double v2[2]):             # <<<<<<<<<<<<<<
@@ -1455,7 +1522,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform__vdot(double (*__pyx_
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("_vdot", 0);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":8
+  /* "pylablib/core/dataproc/ctransform.pyx":9
  *     v2[1]+=v[1]
  * cdef void _vdot(double m[2][2], double v2[2]):
  *     cdef double t=m[0][0]*v2[0]+m[0][1]*v2[1]             # <<<<<<<<<<<<<<
@@ -1464,7 +1531,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform__vdot(double (*__pyx_
  */
   __pyx_v_t = ((((__pyx_v_m[0])[0]) * (__pyx_v_v2[0])) + (((__pyx_v_m[0])[1]) * (__pyx_v_v2[1])));
 
-  /* "pylablib/core/dataproc/ctransform.pyx":9
+  /* "pylablib/core/dataproc/ctransform.pyx":10
  * cdef void _vdot(double m[2][2], double v2[2]):
  *     cdef double t=m[0][0]*v2[0]+m[0][1]*v2[1]
  *     v2[1]=m[1][0]*v2[0]+m[1][1]*v2[1]             # <<<<<<<<<<<<<<
@@ -1473,7 +1540,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform__vdot(double (*__pyx_
  */
   (__pyx_v_v2[1]) = ((((__pyx_v_m[1])[0]) * (__pyx_v_v2[0])) + (((__pyx_v_m[1])[1]) * (__pyx_v_v2[1])));
 
-  /* "pylablib/core/dataproc/ctransform.pyx":10
+  /* "pylablib/core/dataproc/ctransform.pyx":11
  *     cdef double t=m[0][0]*v2[0]+m[0][1]*v2[1]
  *     v2[1]=m[1][0]*v2[0]+m[1][1]*v2[1]
  *     v2[0]=t             # <<<<<<<<<<<<<<
@@ -1482,7 +1549,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform__vdot(double (*__pyx_
  */
   (__pyx_v_v2[0]) = __pyx_v_t;
 
-  /* "pylablib/core/dataproc/ctransform.pyx":7
+  /* "pylablib/core/dataproc/ctransform.pyx":8
  *     v2[0]+=v[0]
  *     v2[1]+=v[1]
  * cdef void _vdot(double m[2][2], double v2[2]):             # <<<<<<<<<<<<<<
@@ -1494,7 +1561,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform__vdot(double (*__pyx_
   __Pyx_RefNannyFinishContext();
 }
 
-/* "pylablib/core/dataproc/ctransform.pyx":11
+/* "pylablib/core/dataproc/ctransform.pyx":12
  *     v2[1]=m[1][0]*v2[0]+m[1][1]*v2[1]
  *     v2[0]=t
  * cdef void _mldot(double m[2][2], double m2[2][2]):             # <<<<<<<<<<<<<<
@@ -1510,7 +1577,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform__mldot(double (*__pyx
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("_mldot", 0);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":12
+  /* "pylablib/core/dataproc/ctransform.pyx":13
  *     v2[0]=t
  * cdef void _mldot(double m[2][2], double m2[2][2]):
  *     cdef double m00=m[0][0]*m2[0][0]+m[0][1]*m2[1][0]             # <<<<<<<<<<<<<<
@@ -1519,7 +1586,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform__mldot(double (*__pyx
  */
   __pyx_v_m00 = ((((__pyx_v_m[0])[0]) * ((__pyx_v_m2[0])[0])) + (((__pyx_v_m[0])[1]) * ((__pyx_v_m2[1])[0])));
 
-  /* "pylablib/core/dataproc/ctransform.pyx":13
+  /* "pylablib/core/dataproc/ctransform.pyx":14
  * cdef void _mldot(double m[2][2], double m2[2][2]):
  *     cdef double m00=m[0][0]*m2[0][0]+m[0][1]*m2[1][0]
  *     cdef double m01=m[0][0]*m2[0][1]+m[0][1]*m2[1][1]             # <<<<<<<<<<<<<<
@@ -1528,7 +1595,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform__mldot(double (*__pyx
  */
   __pyx_v_m01 = ((((__pyx_v_m[0])[0]) * ((__pyx_v_m2[0])[1])) + (((__pyx_v_m[0])[1]) * ((__pyx_v_m2[1])[1])));
 
-  /* "pylablib/core/dataproc/ctransform.pyx":14
+  /* "pylablib/core/dataproc/ctransform.pyx":15
  *     cdef double m00=m[0][0]*m2[0][0]+m[0][1]*m2[1][0]
  *     cdef double m01=m[0][0]*m2[0][1]+m[0][1]*m2[1][1]
  *     cdef double m10=m[1][0]*m2[0][0]+m[1][1]*m2[1][0]             # <<<<<<<<<<<<<<
@@ -1537,7 +1604,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform__mldot(double (*__pyx
  */
   __pyx_v_m10 = ((((__pyx_v_m[1])[0]) * ((__pyx_v_m2[0])[0])) + (((__pyx_v_m[1])[1]) * ((__pyx_v_m2[1])[0])));
 
-  /* "pylablib/core/dataproc/ctransform.pyx":15
+  /* "pylablib/core/dataproc/ctransform.pyx":16
  *     cdef double m01=m[0][0]*m2[0][1]+m[0][1]*m2[1][1]
  *     cdef double m10=m[1][0]*m2[0][0]+m[1][1]*m2[1][0]
  *     cdef double m11=m[1][0]*m2[0][1]+m[1][1]*m2[1][1]             # <<<<<<<<<<<<<<
@@ -1546,7 +1613,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform__mldot(double (*__pyx
  */
   __pyx_v_m11 = ((((__pyx_v_m[1])[0]) * ((__pyx_v_m2[0])[1])) + (((__pyx_v_m[1])[1]) * ((__pyx_v_m2[1])[1])));
 
-  /* "pylablib/core/dataproc/ctransform.pyx":16
+  /* "pylablib/core/dataproc/ctransform.pyx":17
  *     cdef double m10=m[1][0]*m2[0][0]+m[1][1]*m2[1][0]
  *     cdef double m11=m[1][0]*m2[0][1]+m[1][1]*m2[1][1]
  *     m2[0][0]=m00             # <<<<<<<<<<<<<<
@@ -1555,7 +1622,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform__mldot(double (*__pyx
  */
   ((__pyx_v_m2[0])[0]) = __pyx_v_m00;
 
-  /* "pylablib/core/dataproc/ctransform.pyx":17
+  /* "pylablib/core/dataproc/ctransform.pyx":18
  *     cdef double m11=m[1][0]*m2[0][1]+m[1][1]*m2[1][1]
  *     m2[0][0]=m00
  *     m2[0][1]=m01             # <<<<<<<<<<<<<<
@@ -1564,7 +1631,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform__mldot(double (*__pyx
  */
   ((__pyx_v_m2[0])[1]) = __pyx_v_m01;
 
-  /* "pylablib/core/dataproc/ctransform.pyx":18
+  /* "pylablib/core/dataproc/ctransform.pyx":19
  *     m2[0][0]=m00
  *     m2[0][1]=m01
  *     m2[1][0]=m10             # <<<<<<<<<<<<<<
@@ -1573,7 +1640,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform__mldot(double (*__pyx
  */
   ((__pyx_v_m2[1])[0]) = __pyx_v_m10;
 
-  /* "pylablib/core/dataproc/ctransform.pyx":19
+  /* "pylablib/core/dataproc/ctransform.pyx":20
  *     m2[0][1]=m01
  *     m2[1][0]=m10
  *     m2[1][1]=m11             # <<<<<<<<<<<<<<
@@ -1582,7 +1649,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform__mldot(double (*__pyx
  */
   ((__pyx_v_m2[1])[1]) = __pyx_v_m11;
 
-  /* "pylablib/core/dataproc/ctransform.pyx":11
+  /* "pylablib/core/dataproc/ctransform.pyx":12
  *     v2[1]=m[1][0]*v2[0]+m[1][1]*v2[1]
  *     v2[0]=t
  * cdef void _mldot(double m[2][2], double m2[2][2]):             # <<<<<<<<<<<<<<
@@ -1594,7 +1661,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform__mldot(double (*__pyx
   __Pyx_RefNannyFinishContext();
 }
 
-/* "pylablib/core/dataproc/ctransform.pyx":20
+/* "pylablib/core/dataproc/ctransform.pyx":21
  *     m2[1][0]=m10
  *     m2[1][1]=m11
  * cdef void _mrdot(double m2[2][2], double m[2][2]):             # <<<<<<<<<<<<<<
@@ -1610,7 +1677,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform__mrdot(double (*__pyx
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("_mrdot", 0);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":21
+  /* "pylablib/core/dataproc/ctransform.pyx":22
  *     m2[1][1]=m11
  * cdef void _mrdot(double m2[2][2], double m[2][2]):
  *     cdef double m00=m2[0][0]*m[0][0]+m2[0][1]*m[1][0]             # <<<<<<<<<<<<<<
@@ -1619,7 +1686,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform__mrdot(double (*__pyx
  */
   __pyx_v_m00 = ((((__pyx_v_m2[0])[0]) * ((__pyx_v_m[0])[0])) + (((__pyx_v_m2[0])[1]) * ((__pyx_v_m[1])[0])));
 
-  /* "pylablib/core/dataproc/ctransform.pyx":22
+  /* "pylablib/core/dataproc/ctransform.pyx":23
  * cdef void _mrdot(double m2[2][2], double m[2][2]):
  *     cdef double m00=m2[0][0]*m[0][0]+m2[0][1]*m[1][0]
  *     cdef double m01=m2[0][0]*m[0][1]+m2[0][1]*m[1][1]             # <<<<<<<<<<<<<<
@@ -1628,7 +1695,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform__mrdot(double (*__pyx
  */
   __pyx_v_m01 = ((((__pyx_v_m2[0])[0]) * ((__pyx_v_m[0])[1])) + (((__pyx_v_m2[0])[1]) * ((__pyx_v_m[1])[1])));
 
-  /* "pylablib/core/dataproc/ctransform.pyx":23
+  /* "pylablib/core/dataproc/ctransform.pyx":24
  *     cdef double m00=m2[0][0]*m[0][0]+m2[0][1]*m[1][0]
  *     cdef double m01=m2[0][0]*m[0][1]+m2[0][1]*m[1][1]
  *     cdef double m10=m2[1][0]*m[0][0]+m2[1][1]*m[1][0]             # <<<<<<<<<<<<<<
@@ -1637,7 +1704,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform__mrdot(double (*__pyx
  */
   __pyx_v_m10 = ((((__pyx_v_m2[1])[0]) * ((__pyx_v_m[0])[0])) + (((__pyx_v_m2[1])[1]) * ((__pyx_v_m[1])[0])));
 
-  /* "pylablib/core/dataproc/ctransform.pyx":24
+  /* "pylablib/core/dataproc/ctransform.pyx":25
  *     cdef double m01=m2[0][0]*m[0][1]+m2[0][1]*m[1][1]
  *     cdef double m10=m2[1][0]*m[0][0]+m2[1][1]*m[1][0]
  *     cdef double m11=m2[1][0]*m[0][1]+m2[1][1]*m[1][1]             # <<<<<<<<<<<<<<
@@ -1646,7 +1713,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform__mrdot(double (*__pyx
  */
   __pyx_v_m11 = ((((__pyx_v_m2[1])[0]) * ((__pyx_v_m[0])[1])) + (((__pyx_v_m2[1])[1]) * ((__pyx_v_m[1])[1])));
 
-  /* "pylablib/core/dataproc/ctransform.pyx":25
+  /* "pylablib/core/dataproc/ctransform.pyx":26
  *     cdef double m10=m2[1][0]*m[0][0]+m2[1][1]*m[1][0]
  *     cdef double m11=m2[1][0]*m[0][1]+m2[1][1]*m[1][1]
  *     m2[0][0]=m00             # <<<<<<<<<<<<<<
@@ -1655,7 +1722,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform__mrdot(double (*__pyx
  */
   ((__pyx_v_m2[0])[0]) = __pyx_v_m00;
 
-  /* "pylablib/core/dataproc/ctransform.pyx":26
+  /* "pylablib/core/dataproc/ctransform.pyx":27
  *     cdef double m11=m2[1][0]*m[0][1]+m2[1][1]*m[1][1]
  *     m2[0][0]=m00
  *     m2[0][1]=m01             # <<<<<<<<<<<<<<
@@ -1664,7 +1731,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform__mrdot(double (*__pyx
  */
   ((__pyx_v_m2[0])[1]) = __pyx_v_m01;
 
-  /* "pylablib/core/dataproc/ctransform.pyx":27
+  /* "pylablib/core/dataproc/ctransform.pyx":28
  *     m2[0][0]=m00
  *     m2[0][1]=m01
  *     m2[1][0]=m10             # <<<<<<<<<<<<<<
@@ -1673,7 +1740,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform__mrdot(double (*__pyx
  */
   ((__pyx_v_m2[1])[0]) = __pyx_v_m10;
 
-  /* "pylablib/core/dataproc/ctransform.pyx":28
+  /* "pylablib/core/dataproc/ctransform.pyx":29
  *     m2[0][1]=m01
  *     m2[1][0]=m10
  *     m2[1][1]=m11             # <<<<<<<<<<<<<<
@@ -1682,7 +1749,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform__mrdot(double (*__pyx
  */
   ((__pyx_v_m2[1])[1]) = __pyx_v_m11;
 
-  /* "pylablib/core/dataproc/ctransform.pyx":20
+  /* "pylablib/core/dataproc/ctransform.pyx":21
  *     m2[1][0]=m10
  *     m2[1][1]=m11
  * cdef void _mrdot(double m2[2][2], double m[2][2]):             # <<<<<<<<<<<<<<
@@ -1694,7 +1761,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform__mrdot(double (*__pyx
   __Pyx_RefNannyFinishContext();
 }
 
-/* "pylablib/core/dataproc/ctransform.pyx":37
+/* "pylablib/core/dataproc/ctransform.pyx":38
  *     cdef double mi[2][2]
  *     cdef double si[2]
  *     def __cinit__(self):             # <<<<<<<<<<<<<<
@@ -1723,7 +1790,7 @@ static int __pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__cinit__", 0);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":38
+  /* "pylablib/core/dataproc/ctransform.pyx":39
  *     cdef double si[2]
  *     def __cinit__(self):
  *         self.m[0][0]=1.             # <<<<<<<<<<<<<<
@@ -1732,7 +1799,7 @@ static int __pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_
  */
   ((__pyx_v_self->m[0])[0]) = 1.;
 
-  /* "pylablib/core/dataproc/ctransform.pyx":39
+  /* "pylablib/core/dataproc/ctransform.pyx":40
  *     def __cinit__(self):
  *         self.m[0][0]=1.
  *         self.m[1][1]=1.             # <<<<<<<<<<<<<<
@@ -1741,7 +1808,7 @@ static int __pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_
  */
   ((__pyx_v_self->m[1])[1]) = 1.;
 
-  /* "pylablib/core/dataproc/ctransform.pyx":40
+  /* "pylablib/core/dataproc/ctransform.pyx":41
  *         self.m[0][0]=1.
  *         self.m[1][1]=1.
  *         self.mi[0][0]=1.             # <<<<<<<<<<<<<<
@@ -1750,7 +1817,7 @@ static int __pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_
  */
   ((__pyx_v_self->mi[0])[0]) = 1.;
 
-  /* "pylablib/core/dataproc/ctransform.pyx":41
+  /* "pylablib/core/dataproc/ctransform.pyx":42
  *         self.m[1][1]=1.
  *         self.mi[0][0]=1.
  *         self.mi[1][1]=1.             # <<<<<<<<<<<<<<
@@ -1759,7 +1826,7 @@ static int __pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_
  */
   ((__pyx_v_self->mi[1])[1]) = 1.;
 
-  /* "pylablib/core/dataproc/ctransform.pyx":37
+  /* "pylablib/core/dataproc/ctransform.pyx":38
  *     cdef double mi[2][2]
  *     cdef double si[2]
  *     def __cinit__(self):             # <<<<<<<<<<<<<<
@@ -1773,7 +1840,7 @@ static int __pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_
   return __pyx_r;
 }
 
-/* "pylablib/core/dataproc/ctransform.pyx":44
+/* "pylablib/core/dataproc/ctransform.pyx":45
  * 
  *     @cython.cdivision(True)
  *     cdef void _set_inv(self):             # <<<<<<<<<<<<<<
@@ -1786,7 +1853,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("_set_inv", 0);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":45
+  /* "pylablib/core/dataproc/ctransform.pyx":46
  *     @cython.cdivision(True)
  *     cdef void _set_inv(self):
  *         cdef double d=self.m[0][0]*self.m[1][1]-self.m[0][1]*self.m[1][0]             # <<<<<<<<<<<<<<
@@ -1795,7 +1862,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_
  */
   __pyx_v_d = ((((__pyx_v_self->m[0])[0]) * ((__pyx_v_self->m[1])[1])) - (((__pyx_v_self->m[0])[1]) * ((__pyx_v_self->m[1])[0])));
 
-  /* "pylablib/core/dataproc/ctransform.pyx":46
+  /* "pylablib/core/dataproc/ctransform.pyx":47
  *     cdef void _set_inv(self):
  *         cdef double d=self.m[0][0]*self.m[1][1]-self.m[0][1]*self.m[1][0]
  *         self.mi[0][0]=self.m[1][1]/d             # <<<<<<<<<<<<<<
@@ -1804,7 +1871,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_
  */
   ((__pyx_v_self->mi[0])[0]) = (((__pyx_v_self->m[1])[1]) / __pyx_v_d);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":47
+  /* "pylablib/core/dataproc/ctransform.pyx":48
  *         cdef double d=self.m[0][0]*self.m[1][1]-self.m[0][1]*self.m[1][0]
  *         self.mi[0][0]=self.m[1][1]/d
  *         self.mi[0][1]=-self.m[0][1]/d             # <<<<<<<<<<<<<<
@@ -1813,7 +1880,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_
  */
   ((__pyx_v_self->mi[0])[1]) = ((-((__pyx_v_self->m[0])[1])) / __pyx_v_d);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":48
+  /* "pylablib/core/dataproc/ctransform.pyx":49
  *         self.mi[0][0]=self.m[1][1]/d
  *         self.mi[0][1]=-self.m[0][1]/d
  *         self.mi[1][0]=-self.m[1][0]/d             # <<<<<<<<<<<<<<
@@ -1822,7 +1889,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_
  */
   ((__pyx_v_self->mi[1])[0]) = ((-((__pyx_v_self->m[1])[0])) / __pyx_v_d);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":49
+  /* "pylablib/core/dataproc/ctransform.pyx":50
  *         self.mi[0][1]=-self.m[0][1]/d
  *         self.mi[1][0]=-self.m[1][0]/d
  *         self.mi[1][1]=self.m[0][0]/d             # <<<<<<<<<<<<<<
@@ -1831,7 +1898,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_
  */
   ((__pyx_v_self->mi[1])[1]) = (((__pyx_v_self->m[0])[0]) / __pyx_v_d);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":50
+  /* "pylablib/core/dataproc/ctransform.pyx":51
  *         self.mi[1][0]=-self.m[1][0]/d
  *         self.mi[1][1]=self.m[0][0]/d
  *         self.si[0]=-(self.mi[0][0]*self.s[0]+self.mi[0][1]*self.s[1])             # <<<<<<<<<<<<<<
@@ -1840,7 +1907,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_
  */
   (__pyx_v_self->si[0]) = (-((((__pyx_v_self->mi[0])[0]) * (__pyx_v_self->s[0])) + (((__pyx_v_self->mi[0])[1]) * (__pyx_v_self->s[1]))));
 
-  /* "pylablib/core/dataproc/ctransform.pyx":51
+  /* "pylablib/core/dataproc/ctransform.pyx":52
  *         self.mi[1][1]=self.m[0][0]/d
  *         self.si[0]=-(self.mi[0][0]*self.s[0]+self.mi[0][1]*self.s[1])
  *         self.si[1]=-(self.mi[1][0]*self.s[0]+self.mi[1][1]*self.s[1])             # <<<<<<<<<<<<<<
@@ -1849,7 +1916,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_
  */
   (__pyx_v_self->si[1]) = (-((((__pyx_v_self->mi[1])[0]) * (__pyx_v_self->s[0])) + (((__pyx_v_self->mi[1])[1]) * (__pyx_v_self->s[1]))));
 
-  /* "pylablib/core/dataproc/ctransform.pyx":44
+  /* "pylablib/core/dataproc/ctransform.pyx":45
  * 
  *     @cython.cdivision(True)
  *     cdef void _set_inv(self):             # <<<<<<<<<<<<<<
@@ -1861,7 +1928,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_
   __Pyx_RefNannyFinishContext();
 }
 
-/* "pylablib/core/dataproc/ctransform.pyx":53
+/* "pylablib/core/dataproc/ctransform.pyx":54
  *         self.si[1]=-(self.mi[1][0]*self.s[0]+self.mi[1][1]*self.s[1])
  * 
  *     cdef CLinear2DTransform _from_ms(self, double m[2][2], double s[2]):             # <<<<<<<<<<<<<<
@@ -1882,19 +1949,19 @@ static struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransfor
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("_from_ms", 0);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":54
+  /* "pylablib/core/dataproc/ctransform.pyx":55
  * 
  *     cdef CLinear2DTransform _from_ms(self, double m[2][2], double s[2]):
  *         r=CLinear2DTransform()             # <<<<<<<<<<<<<<
  *         for i in range(2):
  *             r.s[i]=s[i]
  */
-  __pyx_t_1 = __Pyx_PyObject_CallNoArg(((PyObject *)__pyx_ptype_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 54, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_CallNoArg(((PyObject *)__pyx_ptype_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 55, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_r = ((struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "pylablib/core/dataproc/ctransform.pyx":55
+  /* "pylablib/core/dataproc/ctransform.pyx":56
  *     cdef CLinear2DTransform _from_ms(self, double m[2][2], double s[2]):
  *         r=CLinear2DTransform()
  *         for i in range(2):             # <<<<<<<<<<<<<<
@@ -1904,7 +1971,7 @@ static struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransfor
   for (__pyx_t_2 = 0; __pyx_t_2 < 2; __pyx_t_2+=1) {
     __pyx_v_i = __pyx_t_2;
 
-    /* "pylablib/core/dataproc/ctransform.pyx":56
+    /* "pylablib/core/dataproc/ctransform.pyx":57
  *         r=CLinear2DTransform()
  *         for i in range(2):
  *             r.s[i]=s[i]             # <<<<<<<<<<<<<<
@@ -1914,7 +1981,7 @@ static struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransfor
     (__pyx_v_r->s[__pyx_v_i]) = (__pyx_v_s[__pyx_v_i]);
   }
 
-  /* "pylablib/core/dataproc/ctransform.pyx":57
+  /* "pylablib/core/dataproc/ctransform.pyx":58
  *         for i in range(2):
  *             r.s[i]=s[i]
  *         for j in range(4):             # <<<<<<<<<<<<<<
@@ -1924,7 +1991,7 @@ static struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransfor
   for (__pyx_t_2 = 0; __pyx_t_2 < 4; __pyx_t_2+=1) {
     __pyx_v_j = __pyx_t_2;
 
-    /* "pylablib/core/dataproc/ctransform.pyx":58
+    /* "pylablib/core/dataproc/ctransform.pyx":59
  *             r.s[i]=s[i]
  *         for j in range(4):
  *             r.m[j]=m[j]             # <<<<<<<<<<<<<<
@@ -1934,7 +2001,7 @@ static struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransfor
     memcpy(&((__pyx_v_r->m[__pyx_v_j])[0]), (__pyx_v_m[__pyx_v_j]), sizeof((__pyx_v_r->m[__pyx_v_j])[0]) * (2));
   }
 
-  /* "pylablib/core/dataproc/ctransform.pyx":59
+  /* "pylablib/core/dataproc/ctransform.pyx":60
  *         for j in range(4):
  *             r.m[j]=m[j]
  *         r._set_inv()             # <<<<<<<<<<<<<<
@@ -1943,7 +2010,7 @@ static struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransfor
  */
   ((struct __pyx_vtabstruct_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_r->__pyx_vtab)->_set_inv(__pyx_v_r);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":60
+  /* "pylablib/core/dataproc/ctransform.pyx":61
  *             r.m[j]=m[j]
  *         r._set_inv()
  *         return r             # <<<<<<<<<<<<<<
@@ -1955,7 +2022,7 @@ static struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransfor
   __pyx_r = __pyx_v_r;
   goto __pyx_L0;
 
-  /* "pylablib/core/dataproc/ctransform.pyx":53
+  /* "pylablib/core/dataproc/ctransform.pyx":54
  *         self.si[1]=-(self.mi[1][0]*self.s[0]+self.mi[1][1]*self.s[1])
  * 
  *     cdef CLinear2DTransform _from_ms(self, double m[2][2], double s[2]):             # <<<<<<<<<<<<<<
@@ -1975,7 +2042,7 @@ static struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransfor
   return __pyx_r;
 }
 
-/* "pylablib/core/dataproc/ctransform.pyx":61
+/* "pylablib/core/dataproc/ctransform.pyx":62
  *         r._set_inv()
  *         return r
  *     cpdef CLinear2DTransform copy(self):             # <<<<<<<<<<<<<<
@@ -2004,7 +2071,7 @@ static struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransfor
     if (unlikely(!__Pyx_object_dict_version_matches(((PyObject *)__pyx_v_self), __pyx_tp_dict_version, __pyx_obj_dict_version))) {
       PY_UINT64_T __pyx_type_dict_guard = __Pyx_get_tp_dict_version(((PyObject *)__pyx_v_self));
       #endif
-      __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_copy); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 61, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_copy); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 62, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
       if (!PyCFunction_Check(__pyx_t_1) || (PyCFunction_GET_FUNCTION(__pyx_t_1) != (PyCFunction)(void*)__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_3copy)) {
         __Pyx_XDECREF(((PyObject *)__pyx_r));
@@ -2021,10 +2088,10 @@ static struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransfor
         }
         __pyx_t_2 = (__pyx_t_4) ? __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_4) : __Pyx_PyObject_CallNoArg(__pyx_t_3);
         __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
-        if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 61, __pyx_L1_error)
+        if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 62, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_2);
         __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-        if (!(likely(((__pyx_t_2) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_2, __pyx_ptype_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform))))) __PYX_ERR(0, 61, __pyx_L1_error)
+        if (!(likely(((__pyx_t_2) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_2, __pyx_ptype_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform))))) __PYX_ERR(0, 62, __pyx_L1_error)
         __pyx_r = ((struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_t_2);
         __pyx_t_2 = 0;
         __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
@@ -2043,7 +2110,7 @@ static struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransfor
     #endif
   }
 
-  /* "pylablib/core/dataproc/ctransform.pyx":63
+  /* "pylablib/core/dataproc/ctransform.pyx":64
  *     cpdef CLinear2DTransform copy(self):
  *         """Copy the transform"""
  *         return self._from_ms(self.m,self.s)             # <<<<<<<<<<<<<<
@@ -2051,13 +2118,13 @@ static struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransfor
  *         if preceded:
  */
   __Pyx_XDECREF(((PyObject *)__pyx_r));
-  __pyx_t_1 = ((PyObject *)((struct __pyx_vtabstruct_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_self->__pyx_vtab)->_from_ms(__pyx_v_self, __pyx_v_self->m, __pyx_v_self->s)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 63, __pyx_L1_error)
+  __pyx_t_1 = ((PyObject *)((struct __pyx_vtabstruct_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_self->__pyx_vtab)->_from_ms(__pyx_v_self, __pyx_v_self->m, __pyx_v_self->s)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 64, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = ((struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_t_1);
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "pylablib/core/dataproc/ctransform.pyx":61
+  /* "pylablib/core/dataproc/ctransform.pyx":62
  *         r._set_inv()
  *         return r
  *     cpdef CLinear2DTransform copy(self):             # <<<<<<<<<<<<<<
@@ -2102,7 +2169,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("copy", 0);
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = ((PyObject *)__pyx_f_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_copy(__pyx_v_self, 1)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 61, __pyx_L1_error)
+  __pyx_t_1 = ((PyObject *)__pyx_f_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_copy(__pyx_v_self, 1)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 62, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -2119,7 +2186,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   return __pyx_r;
 }
 
-/* "pylablib/core/dataproc/ctransform.pyx":64
+/* "pylablib/core/dataproc/ctransform.pyx":65
  *         """Copy the transform"""
  *         return self._from_ms(self.m,self.s)
  *     cdef _multiply(self, double m[2][2], int preceded):             # <<<<<<<<<<<<<<
@@ -2133,7 +2200,7 @@ static PyObject *__pyx_f_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTrans
   int __pyx_t_1;
   __Pyx_RefNannySetupContext("_multiply", 0);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":65
+  /* "pylablib/core/dataproc/ctransform.pyx":66
  *         return self._from_ms(self.m,self.s)
  *     cdef _multiply(self, double m[2][2], int preceded):
  *         if preceded:             # <<<<<<<<<<<<<<
@@ -2143,7 +2210,7 @@ static PyObject *__pyx_f_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTrans
   __pyx_t_1 = (__pyx_v_preceded != 0);
   if (__pyx_t_1) {
 
-    /* "pylablib/core/dataproc/ctransform.pyx":66
+    /* "pylablib/core/dataproc/ctransform.pyx":67
  *     cdef _multiply(self, double m[2][2], int preceded):
  *         if preceded:
  *             _mrdot(self.m,m)             # <<<<<<<<<<<<<<
@@ -2152,7 +2219,7 @@ static PyObject *__pyx_f_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTrans
  */
     __pyx_f_8pylablib_4core_8dataproc_10ctransform__mrdot(__pyx_v_self->m, __pyx_v_m);
 
-    /* "pylablib/core/dataproc/ctransform.pyx":65
+    /* "pylablib/core/dataproc/ctransform.pyx":66
  *         return self._from_ms(self.m,self.s)
  *     cdef _multiply(self, double m[2][2], int preceded):
  *         if preceded:             # <<<<<<<<<<<<<<
@@ -2162,7 +2229,7 @@ static PyObject *__pyx_f_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTrans
     goto __pyx_L3;
   }
 
-  /* "pylablib/core/dataproc/ctransform.pyx":68
+  /* "pylablib/core/dataproc/ctransform.pyx":69
  *             _mrdot(self.m,m)
  *         else:
  *             _mldot(m,self.m)             # <<<<<<<<<<<<<<
@@ -2172,7 +2239,7 @@ static PyObject *__pyx_f_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTrans
   /*else*/ {
     __pyx_f_8pylablib_4core_8dataproc_10ctransform__mldot(__pyx_v_m, __pyx_v_self->m);
 
-    /* "pylablib/core/dataproc/ctransform.pyx":69
+    /* "pylablib/core/dataproc/ctransform.pyx":70
  *         else:
  *             _mldot(m,self.m)
  *             _vdot(m,self.s)             # <<<<<<<<<<<<<<
@@ -2183,7 +2250,7 @@ static PyObject *__pyx_f_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTrans
   }
   __pyx_L3:;
 
-  /* "pylablib/core/dataproc/ctransform.pyx":64
+  /* "pylablib/core/dataproc/ctransform.pyx":65
  *         """Copy the transform"""
  *         return self._from_ms(self.m,self.s)
  *     cdef _multiply(self, double m[2][2], int preceded):             # <<<<<<<<<<<<<<
@@ -2198,7 +2265,7 @@ static PyObject *__pyx_f_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTrans
   return __pyx_r;
 }
 
-/* "pylablib/core/dataproc/ctransform.pyx":70
+/* "pylablib/core/dataproc/ctransform.pyx":71
  *             _mldot(m,self.m)
  *             _vdot(m,self.s)
  *     cdef void _shift(self, double s1, double s2, int preceded):             # <<<<<<<<<<<<<<
@@ -2212,7 +2279,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_
   long __pyx_t_2;
   __Pyx_RefNannySetupContext("_shift", 0);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":71
+  /* "pylablib/core/dataproc/ctransform.pyx":72
  *             _vdot(m,self.s)
  *     cdef void _shift(self, double s1, double s2, int preceded):
  *         if preceded:             # <<<<<<<<<<<<<<
@@ -2222,7 +2289,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_
   __pyx_t_1 = (__pyx_v_preceded != 0);
   if (__pyx_t_1) {
 
-    /* "pylablib/core/dataproc/ctransform.pyx":72
+    /* "pylablib/core/dataproc/ctransform.pyx":73
  *     cdef void _shift(self, double s1, double s2, int preceded):
  *         if preceded:
  *             self.s[0]+=self.m[0][0]*s1+self.m[0][1]*s2             # <<<<<<<<<<<<<<
@@ -2232,7 +2299,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_
     __pyx_t_2 = 0;
     (__pyx_v_self->s[__pyx_t_2]) = ((__pyx_v_self->s[__pyx_t_2]) + ((((__pyx_v_self->m[0])[0]) * __pyx_v_s1) + (((__pyx_v_self->m[0])[1]) * __pyx_v_s2)));
 
-    /* "pylablib/core/dataproc/ctransform.pyx":73
+    /* "pylablib/core/dataproc/ctransform.pyx":74
  *         if preceded:
  *             self.s[0]+=self.m[0][0]*s1+self.m[0][1]*s2
  *             self.s[1]+=self.m[1][0]*s1+self.m[1][1]*s2             # <<<<<<<<<<<<<<
@@ -2242,7 +2309,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_
     __pyx_t_2 = 1;
     (__pyx_v_self->s[__pyx_t_2]) = ((__pyx_v_self->s[__pyx_t_2]) + ((((__pyx_v_self->m[1])[0]) * __pyx_v_s1) + (((__pyx_v_self->m[1])[1]) * __pyx_v_s2)));
 
-    /* "pylablib/core/dataproc/ctransform.pyx":71
+    /* "pylablib/core/dataproc/ctransform.pyx":72
  *             _vdot(m,self.s)
  *     cdef void _shift(self, double s1, double s2, int preceded):
  *         if preceded:             # <<<<<<<<<<<<<<
@@ -2252,7 +2319,7 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_
     goto __pyx_L3;
   }
 
-  /* "pylablib/core/dataproc/ctransform.pyx":75
+  /* "pylablib/core/dataproc/ctransform.pyx":76
  *             self.s[1]+=self.m[1][0]*s1+self.m[1][1]*s2
  *         else:
  *             self.s[0]+=s1             # <<<<<<<<<<<<<<
@@ -2263,28 +2330,28 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_
     __pyx_t_2 = 0;
     (__pyx_v_self->s[__pyx_t_2]) = ((__pyx_v_self->s[__pyx_t_2]) + __pyx_v_s1);
 
-    /* "pylablib/core/dataproc/ctransform.pyx":76
+    /* "pylablib/core/dataproc/ctransform.pyx":77
  *         else:
  *             self.s[0]+=s1
  *             self.s[1]+=s2             # <<<<<<<<<<<<<<
  *         self._set_inv()
- * 
+ *     @property
  */
     __pyx_t_2 = 1;
     (__pyx_v_self->s[__pyx_t_2]) = ((__pyx_v_self->s[__pyx_t_2]) + __pyx_v_s2);
   }
   __pyx_L3:;
 
-  /* "pylablib/core/dataproc/ctransform.pyx":77
+  /* "pylablib/core/dataproc/ctransform.pyx":78
  *             self.s[0]+=s1
  *             self.s[1]+=s2
  *         self._set_inv()             # <<<<<<<<<<<<<<
- * 
- *     def invert(self):
+ *     @property
+ *     def tmatr(self):
  */
   ((struct __pyx_vtabstruct_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_self->__pyx_vtab)->_set_inv(__pyx_v_self);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":70
+  /* "pylablib/core/dataproc/ctransform.pyx":71
  *             _mldot(m,self.m)
  *             _vdot(m,self.s)
  *     cdef void _shift(self, double s1, double s2, int preceded):             # <<<<<<<<<<<<<<
@@ -2296,8 +2363,234 @@ static void __pyx_f_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_
   __Pyx_RefNannyFinishContext();
 }
 
-/* "pylablib/core/dataproc/ctransform.pyx":79
+/* "pylablib/core/dataproc/ctransform.pyx":80
  *         self._set_inv()
+ *     @property
+ *     def tmatr(self):             # <<<<<<<<<<<<<<
+ *         """Transform matrix as a 2x2 numpy array"""
+ *         return np.array([[self.m[0][0],self.m[0][1]],[self.m[1][0],self.m[1][1]]])
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_5tmatr_1__get__(PyObject *__pyx_v_self); /*proto*/
+static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_5tmatr_1__get__(PyObject *__pyx_v_self) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("__get__ (wrapper)", 0);
+  __pyx_r = __pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_5tmatr___get__(((struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_5tmatr___get__(struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
+  PyObject *__pyx_t_3 = NULL;
+  PyObject *__pyx_t_4 = NULL;
+  PyObject *__pyx_t_5 = NULL;
+  PyObject *__pyx_t_6 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("__get__", 0);
+
+  /* "pylablib/core/dataproc/ctransform.pyx":82
+ *     def tmatr(self):
+ *         """Transform matrix as a 2x2 numpy array"""
+ *         return np.array([[self.m[0][0],self.m[0][1]],[self.m[1][0],self.m[1][1]]])             # <<<<<<<<<<<<<<
+ *     @property
+ *     def svec(self):
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_np); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 82, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_array); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 82, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_3);
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __pyx_t_2 = PyFloat_FromDouble(((__pyx_v_self->m[0])[0])); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 82, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __pyx_t_4 = PyFloat_FromDouble(((__pyx_v_self->m[0])[1])); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 82, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_4);
+  __pyx_t_5 = PyList_New(2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 82, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_5);
+  __Pyx_GIVEREF(__pyx_t_2);
+  PyList_SET_ITEM(__pyx_t_5, 0, __pyx_t_2);
+  __Pyx_GIVEREF(__pyx_t_4);
+  PyList_SET_ITEM(__pyx_t_5, 1, __pyx_t_4);
+  __pyx_t_2 = 0;
+  __pyx_t_4 = 0;
+  __pyx_t_4 = PyFloat_FromDouble(((__pyx_v_self->m[1])[0])); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 82, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_4);
+  __pyx_t_2 = PyFloat_FromDouble(((__pyx_v_self->m[1])[1])); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 82, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __pyx_t_6 = PyList_New(2); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 82, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_6);
+  __Pyx_GIVEREF(__pyx_t_4);
+  PyList_SET_ITEM(__pyx_t_6, 0, __pyx_t_4);
+  __Pyx_GIVEREF(__pyx_t_2);
+  PyList_SET_ITEM(__pyx_t_6, 1, __pyx_t_2);
+  __pyx_t_4 = 0;
+  __pyx_t_2 = 0;
+  __pyx_t_2 = PyList_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 82, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __Pyx_GIVEREF(__pyx_t_5);
+  PyList_SET_ITEM(__pyx_t_2, 0, __pyx_t_5);
+  __Pyx_GIVEREF(__pyx_t_6);
+  PyList_SET_ITEM(__pyx_t_2, 1, __pyx_t_6);
+  __pyx_t_5 = 0;
+  __pyx_t_6 = 0;
+  __pyx_t_6 = NULL;
+  if (CYTHON_UNPACK_METHODS && unlikely(PyMethod_Check(__pyx_t_3))) {
+    __pyx_t_6 = PyMethod_GET_SELF(__pyx_t_3);
+    if (likely(__pyx_t_6)) {
+      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_3);
+      __Pyx_INCREF(__pyx_t_6);
+      __Pyx_INCREF(function);
+      __Pyx_DECREF_SET(__pyx_t_3, function);
+    }
+  }
+  __pyx_t_1 = (__pyx_t_6) ? __Pyx_PyObject_Call2Args(__pyx_t_3, __pyx_t_6, __pyx_t_2) : __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 82, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "pylablib/core/dataproc/ctransform.pyx":80
+ *         self._set_inv()
+ *     @property
+ *     def tmatr(self):             # <<<<<<<<<<<<<<
+ *         """Transform matrix as a 2x2 numpy array"""
+ *         return np.array([[self.m[0][0],self.m[0][1]],[self.m[1][0],self.m[1][1]]])
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_3);
+  __Pyx_XDECREF(__pyx_t_4);
+  __Pyx_XDECREF(__pyx_t_5);
+  __Pyx_XDECREF(__pyx_t_6);
+  __Pyx_AddTraceback("pylablib.core.dataproc.ctransform.CLinear2DTransform.tmatr.__get__", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "pylablib/core/dataproc/ctransform.pyx":84
+ *         return np.array([[self.m[0][0],self.m[0][1]],[self.m[1][0],self.m[1][1]]])
+ *     @property
+ *     def svec(self):             # <<<<<<<<<<<<<<
+ *         """Transform matrix as a numpy array"""
+ *         return np.array([self.s[0],self.s[1]])
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_4svec_1__get__(PyObject *__pyx_v_self); /*proto*/
+static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_4svec_1__get__(PyObject *__pyx_v_self) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("__get__ (wrapper)", 0);
+  __pyx_r = __pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_4svec___get__(((struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_4svec___get__(struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
+  PyObject *__pyx_t_3 = NULL;
+  PyObject *__pyx_t_4 = NULL;
+  PyObject *__pyx_t_5 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("__get__", 0);
+
+  /* "pylablib/core/dataproc/ctransform.pyx":86
+ *     def svec(self):
+ *         """Transform matrix as a numpy array"""
+ *         return np.array([self.s[0],self.s[1]])             # <<<<<<<<<<<<<<
+ * 
+ *     def invert(self):
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_np); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 86, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_array); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 86, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_3);
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __pyx_t_2 = PyFloat_FromDouble((__pyx_v_self->s[0])); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 86, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __pyx_t_4 = PyFloat_FromDouble((__pyx_v_self->s[1])); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 86, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_4);
+  __pyx_t_5 = PyList_New(2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 86, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_5);
+  __Pyx_GIVEREF(__pyx_t_2);
+  PyList_SET_ITEM(__pyx_t_5, 0, __pyx_t_2);
+  __Pyx_GIVEREF(__pyx_t_4);
+  PyList_SET_ITEM(__pyx_t_5, 1, __pyx_t_4);
+  __pyx_t_2 = 0;
+  __pyx_t_4 = 0;
+  __pyx_t_4 = NULL;
+  if (CYTHON_UNPACK_METHODS && unlikely(PyMethod_Check(__pyx_t_3))) {
+    __pyx_t_4 = PyMethod_GET_SELF(__pyx_t_3);
+    if (likely(__pyx_t_4)) {
+      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_3);
+      __Pyx_INCREF(__pyx_t_4);
+      __Pyx_INCREF(function);
+      __Pyx_DECREF_SET(__pyx_t_3, function);
+    }
+  }
+  __pyx_t_1 = (__pyx_t_4) ? __Pyx_PyObject_Call2Args(__pyx_t_3, __pyx_t_4, __pyx_t_5) : __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_5);
+  __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
+  __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+  if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 86, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "pylablib/core/dataproc/ctransform.pyx":84
+ *         return np.array([[self.m[0][0],self.m[0][1]],[self.m[1][0],self.m[1][1]]])
+ *     @property
+ *     def svec(self):             # <<<<<<<<<<<<<<
+ *         """Transform matrix as a numpy array"""
+ *         return np.array([self.s[0],self.s[1]])
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_3);
+  __Pyx_XDECREF(__pyx_t_4);
+  __Pyx_XDECREF(__pyx_t_5);
+  __Pyx_AddTraceback("pylablib.core.dataproc.ctransform.CLinear2DTransform.svec.__get__", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "pylablib/core/dataproc/ctransform.pyx":88
+ *         return np.array([self.s[0],self.s[1]])
  * 
  *     def invert(self):             # <<<<<<<<<<<<<<
  *         """Invert the transform"""
@@ -2327,7 +2620,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   long __pyx_t_2;
   __Pyx_RefNannySetupContext("invert", 0);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":81
+  /* "pylablib/core/dataproc/ctransform.pyx":90
  *     def invert(self):
  *         """Invert the transform"""
  *         for i in range(2):             # <<<<<<<<<<<<<<
@@ -2337,7 +2630,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   for (__pyx_t_1 = 0; __pyx_t_1 < 2; __pyx_t_1+=1) {
     __pyx_v_i = __pyx_t_1;
 
-    /* "pylablib/core/dataproc/ctransform.pyx":82
+    /* "pylablib/core/dataproc/ctransform.pyx":91
  *         """Invert the transform"""
  *         for i in range(2):
  *             self.s[i]=self.si[i]             # <<<<<<<<<<<<<<
@@ -2346,7 +2639,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
  */
     (__pyx_v_self->s[__pyx_v_i]) = (__pyx_v_self->si[__pyx_v_i]);
 
-    /* "pylablib/core/dataproc/ctransform.pyx":83
+    /* "pylablib/core/dataproc/ctransform.pyx":92
  *         for i in range(2):
  *             self.s[i]=self.si[i]
  *             for j in range(2):             # <<<<<<<<<<<<<<
@@ -2356,7 +2649,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
     for (__pyx_t_2 = 0; __pyx_t_2 < 2; __pyx_t_2+=1) {
       __pyx_v_j = __pyx_t_2;
 
-      /* "pylablib/core/dataproc/ctransform.pyx":84
+      /* "pylablib/core/dataproc/ctransform.pyx":93
  *             self.s[i]=self.si[i]
  *             for j in range(2):
  *                 self.m[i][j]=self.mi[i][j]             # <<<<<<<<<<<<<<
@@ -2367,7 +2660,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
     }
   }
 
-  /* "pylablib/core/dataproc/ctransform.pyx":85
+  /* "pylablib/core/dataproc/ctransform.pyx":94
  *             for j in range(2):
  *                 self.m[i][j]=self.mi[i][j]
  *         self._set_inv()             # <<<<<<<<<<<<<<
@@ -2376,7 +2669,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
  */
   ((struct __pyx_vtabstruct_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_self->__pyx_vtab)->_set_inv(__pyx_v_self);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":86
+  /* "pylablib/core/dataproc/ctransform.pyx":95
  *                 self.m[i][j]=self.mi[i][j]
  *         self._set_inv()
  *         return self             # <<<<<<<<<<<<<<
@@ -2388,8 +2681,8 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   __pyx_r = ((PyObject *)__pyx_v_self);
   goto __pyx_L0;
 
-  /* "pylablib/core/dataproc/ctransform.pyx":79
- *         self._set_inv()
+  /* "pylablib/core/dataproc/ctransform.pyx":88
+ *         return np.array([self.s[0],self.s[1]])
  * 
  *     def invert(self):             # <<<<<<<<<<<<<<
  *         """Invert the transform"""
@@ -2403,7 +2696,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   return __pyx_r;
 }
 
-/* "pylablib/core/dataproc/ctransform.pyx":87
+/* "pylablib/core/dataproc/ctransform.pyx":96
  *         self._set_inv()
  *         return self
  *     def precede(self, CLinear2DTransform trans):             # <<<<<<<<<<<<<<
@@ -2421,7 +2714,7 @@ static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("precede (wrapper)", 0);
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_trans), __pyx_ptype_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform, 1, "trans", 0))) __PYX_ERR(0, 87, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_trans), __pyx_ptype_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform, 1, "trans", 0))) __PYX_ERR(0, 96, __pyx_L1_error)
   __pyx_r = __pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_6precede(((struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_self), ((struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_trans));
 
   /* function exit code */
@@ -2440,7 +2733,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   double __pyx_t_1[2];
   __Pyx_RefNannySetupContext("precede", 0);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":89
+  /* "pylablib/core/dataproc/ctransform.pyx":98
  *     def precede(self, CLinear2DTransform trans):
  *         """Precede the transform with a different transform"""
  *         cdef double[2] s=[trans.s[0],trans.s[1]]             # <<<<<<<<<<<<<<
@@ -2451,7 +2744,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   __pyx_t_1[1] = (__pyx_v_trans->s[1]);
   memcpy(&(__pyx_v_s[0]), __pyx_t_1, sizeof(__pyx_v_s[0]) * (2));
 
-  /* "pylablib/core/dataproc/ctransform.pyx":90
+  /* "pylablib/core/dataproc/ctransform.pyx":99
  *         """Precede the transform with a different transform"""
  *         cdef double[2] s=[trans.s[0],trans.s[1]]
  *         _vdot(self.m,s)             # <<<<<<<<<<<<<<
@@ -2460,7 +2753,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
  */
   __pyx_f_8pylablib_4core_8dataproc_10ctransform__vdot(__pyx_v_self->m, __pyx_v_s);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":91
+  /* "pylablib/core/dataproc/ctransform.pyx":100
  *         cdef double[2] s=[trans.s[0],trans.s[1]]
  *         _vdot(self.m,s)
  *         _vadd(s,self.s)             # <<<<<<<<<<<<<<
@@ -2469,7 +2762,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
  */
   __pyx_f_8pylablib_4core_8dataproc_10ctransform__vadd(__pyx_v_s, __pyx_v_self->s);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":92
+  /* "pylablib/core/dataproc/ctransform.pyx":101
  *         _vdot(self.m,s)
  *         _vadd(s,self.s)
  *         _mrdot(self.m,trans.m)             # <<<<<<<<<<<<<<
@@ -2478,7 +2771,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
  */
   __pyx_f_8pylablib_4core_8dataproc_10ctransform__mrdot(__pyx_v_self->m, __pyx_v_trans->m);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":93
+  /* "pylablib/core/dataproc/ctransform.pyx":102
  *         _vadd(s,self.s)
  *         _mrdot(self.m,trans.m)
  *         self._set_inv()             # <<<<<<<<<<<<<<
@@ -2487,7 +2780,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
  */
   ((struct __pyx_vtabstruct_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_self->__pyx_vtab)->_set_inv(__pyx_v_self);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":94
+  /* "pylablib/core/dataproc/ctransform.pyx":103
  *         _mrdot(self.m,trans.m)
  *         self._set_inv()
  *         return self             # <<<<<<<<<<<<<<
@@ -2499,7 +2792,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   __pyx_r = ((PyObject *)__pyx_v_self);
   goto __pyx_L0;
 
-  /* "pylablib/core/dataproc/ctransform.pyx":87
+  /* "pylablib/core/dataproc/ctransform.pyx":96
  *         self._set_inv()
  *         return self
  *     def precede(self, CLinear2DTransform trans):             # <<<<<<<<<<<<<<
@@ -2514,7 +2807,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   return __pyx_r;
 }
 
-/* "pylablib/core/dataproc/ctransform.pyx":95
+/* "pylablib/core/dataproc/ctransform.pyx":104
  *         self._set_inv()
  *         return self
  *     def follow(self, CLinear2DTransform trans):             # <<<<<<<<<<<<<<
@@ -2532,7 +2825,7 @@ static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("follow (wrapper)", 0);
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_trans), __pyx_ptype_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform, 1, "trans", 0))) __PYX_ERR(0, 95, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_trans), __pyx_ptype_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform, 1, "trans", 0))) __PYX_ERR(0, 104, __pyx_L1_error)
   __pyx_r = __pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_8follow(((struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_self), ((struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_trans));
 
   /* function exit code */
@@ -2549,7 +2842,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("follow", 0);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":97
+  /* "pylablib/core/dataproc/ctransform.pyx":106
  *     def follow(self, CLinear2DTransform trans):
  *         """Follow the transform with a different transform"""
  *         _vdot(trans.m,self.s)             # <<<<<<<<<<<<<<
@@ -2558,7 +2851,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
  */
   __pyx_f_8pylablib_4core_8dataproc_10ctransform__vdot(__pyx_v_trans->m, __pyx_v_self->s);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":98
+  /* "pylablib/core/dataproc/ctransform.pyx":107
  *         """Follow the transform with a different transform"""
  *         _vdot(trans.m,self.s)
  *         _vadd(trans.s,self.s)             # <<<<<<<<<<<<<<
@@ -2567,7 +2860,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
  */
   __pyx_f_8pylablib_4core_8dataproc_10ctransform__vadd(__pyx_v_trans->s, __pyx_v_self->s);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":99
+  /* "pylablib/core/dataproc/ctransform.pyx":108
  *         _vdot(trans.m,self.s)
  *         _vadd(trans.s,self.s)
  *         _mldot(trans.m,self.m)             # <<<<<<<<<<<<<<
@@ -2576,7 +2869,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
  */
   __pyx_f_8pylablib_4core_8dataproc_10ctransform__mldot(__pyx_v_trans->m, __pyx_v_self->m);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":100
+  /* "pylablib/core/dataproc/ctransform.pyx":109
  *         _vadd(trans.s,self.s)
  *         _mldot(trans.m,self.m)
  *         self._set_inv()             # <<<<<<<<<<<<<<
@@ -2585,7 +2878,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
  */
   ((struct __pyx_vtabstruct_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_self->__pyx_vtab)->_set_inv(__pyx_v_self);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":101
+  /* "pylablib/core/dataproc/ctransform.pyx":110
  *         _mldot(trans.m,self.m)
  *         self._set_inv()
  *         return self             # <<<<<<<<<<<<<<
@@ -2597,7 +2890,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   __pyx_r = ((PyObject *)__pyx_v_self);
   goto __pyx_L0;
 
-  /* "pylablib/core/dataproc/ctransform.pyx":95
+  /* "pylablib/core/dataproc/ctransform.pyx":104
  *         self._set_inv()
  *         return self
  *     def follow(self, CLinear2DTransform trans):             # <<<<<<<<<<<<<<
@@ -2612,7 +2905,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   return __pyx_r;
 }
 
-/* "pylablib/core/dataproc/ctransform.pyx":103
+/* "pylablib/core/dataproc/ctransform.pyx":112
  *         return self
  * 
  *     def __call__(self, double x, double y):             # <<<<<<<<<<<<<<
@@ -2658,11 +2951,11 @@ static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
         case  1:
         if (likely((values[1] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_y)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("__call__", 1, 2, 2, 1); __PYX_ERR(0, 103, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("__call__", 1, 2, 2, 1); __PYX_ERR(0, 112, __pyx_L3_error)
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__call__") < 0)) __PYX_ERR(0, 103, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__call__") < 0)) __PYX_ERR(0, 112, __pyx_L3_error)
       }
     } else if (PyTuple_GET_SIZE(__pyx_args) != 2) {
       goto __pyx_L5_argtuple_error;
@@ -2670,12 +2963,12 @@ static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
       values[0] = PyTuple_GET_ITEM(__pyx_args, 0);
       values[1] = PyTuple_GET_ITEM(__pyx_args, 1);
     }
-    __pyx_v_x = __pyx_PyFloat_AsDouble(values[0]); if (unlikely((__pyx_v_x == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 103, __pyx_L3_error)
-    __pyx_v_y = __pyx_PyFloat_AsDouble(values[1]); if (unlikely((__pyx_v_y == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 103, __pyx_L3_error)
+    __pyx_v_x = __pyx_PyFloat_AsDouble(values[0]); if (unlikely((__pyx_v_x == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 112, __pyx_L3_error)
+    __pyx_v_y = __pyx_PyFloat_AsDouble(values[1]); if (unlikely((__pyx_v_y == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 112, __pyx_L3_error)
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("__call__", 1, 2, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 103, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("__call__", 1, 2, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 112, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("pylablib.core.dataproc.ctransform.CLinear2DTransform.__call__", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -2700,7 +2993,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__call__", 0);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":105
+  /* "pylablib/core/dataproc/ctransform.pyx":114
  *     def __call__(self, double x, double y):
  *         """Apply the transform to the given point"""
  *         cdef double[2] vec=[x,y]             # <<<<<<<<<<<<<<
@@ -2711,7 +3004,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   __pyx_t_1[1] = __pyx_v_y;
   memcpy(&(__pyx_v_vec[0]), __pyx_t_1, sizeof(__pyx_v_vec[0]) * (2));
 
-  /* "pylablib/core/dataproc/ctransform.pyx":106
+  /* "pylablib/core/dataproc/ctransform.pyx":115
  *         """Apply the transform to the given point"""
  *         cdef double[2] vec=[x,y]
  *         _vdot(self.m,vec)             # <<<<<<<<<<<<<<
@@ -2720,7 +3013,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
  */
   __pyx_f_8pylablib_4core_8dataproc_10ctransform__vdot(__pyx_v_self->m, __pyx_v_vec);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":107
+  /* "pylablib/core/dataproc/ctransform.pyx":116
  *         cdef double[2] vec=[x,y]
  *         _vdot(self.m,vec)
  *         vec[0]+=self.s[0]             # <<<<<<<<<<<<<<
@@ -2730,7 +3023,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   __pyx_t_2 = 0;
   (__pyx_v_vec[__pyx_t_2]) = ((__pyx_v_vec[__pyx_t_2]) + (__pyx_v_self->s[0]));
 
-  /* "pylablib/core/dataproc/ctransform.pyx":108
+  /* "pylablib/core/dataproc/ctransform.pyx":117
  *         _vdot(self.m,vec)
  *         vec[0]+=self.s[0]
  *         vec[1]+=self.s[1]             # <<<<<<<<<<<<<<
@@ -2740,7 +3033,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   __pyx_t_2 = 1;
   (__pyx_v_vec[__pyx_t_2]) = ((__pyx_v_vec[__pyx_t_2]) + (__pyx_v_self->s[1]));
 
-  /* "pylablib/core/dataproc/ctransform.pyx":109
+  /* "pylablib/core/dataproc/ctransform.pyx":118
  *         vec[0]+=self.s[0]
  *         vec[1]+=self.s[1]
  *         return vec             # <<<<<<<<<<<<<<
@@ -2748,13 +3041,13 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
  *         """Apply the inverse transform to the given point"""
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_3 = __Pyx_carray_to_py_double(__pyx_v_vec, 2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 109, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_carray_to_py_double(__pyx_v_vec, 2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 118, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __pyx_r = __pyx_t_3;
   __pyx_t_3 = 0;
   goto __pyx_L0;
 
-  /* "pylablib/core/dataproc/ctransform.pyx":103
+  /* "pylablib/core/dataproc/ctransform.pyx":112
  *         return self
  * 
  *     def __call__(self, double x, double y):             # <<<<<<<<<<<<<<
@@ -2773,7 +3066,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   return __pyx_r;
 }
 
-/* "pylablib/core/dataproc/ctransform.pyx":110
+/* "pylablib/core/dataproc/ctransform.pyx":119
  *         vec[1]+=self.s[1]
  *         return vec
  *     def i(self, double x, double y):             # <<<<<<<<<<<<<<
@@ -2816,11 +3109,11 @@ static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
         case  1:
         if (likely((values[1] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_y)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("i", 1, 2, 2, 1); __PYX_ERR(0, 110, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("i", 1, 2, 2, 1); __PYX_ERR(0, 119, __pyx_L3_error)
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "i") < 0)) __PYX_ERR(0, 110, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "i") < 0)) __PYX_ERR(0, 119, __pyx_L3_error)
       }
     } else if (PyTuple_GET_SIZE(__pyx_args) != 2) {
       goto __pyx_L5_argtuple_error;
@@ -2828,12 +3121,12 @@ static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
       values[0] = PyTuple_GET_ITEM(__pyx_args, 0);
       values[1] = PyTuple_GET_ITEM(__pyx_args, 1);
     }
-    __pyx_v_x = __pyx_PyFloat_AsDouble(values[0]); if (unlikely((__pyx_v_x == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 110, __pyx_L3_error)
-    __pyx_v_y = __pyx_PyFloat_AsDouble(values[1]); if (unlikely((__pyx_v_y == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 110, __pyx_L3_error)
+    __pyx_v_x = __pyx_PyFloat_AsDouble(values[0]); if (unlikely((__pyx_v_x == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 119, __pyx_L3_error)
+    __pyx_v_y = __pyx_PyFloat_AsDouble(values[1]); if (unlikely((__pyx_v_y == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 119, __pyx_L3_error)
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("i", 1, 2, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 110, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("i", 1, 2, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 119, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("pylablib.core.dataproc.ctransform.CLinear2DTransform.i", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -2858,7 +3151,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("i", 0);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":112
+  /* "pylablib/core/dataproc/ctransform.pyx":121
  *     def i(self, double x, double y):
  *         """Apply the inverse transform to the given point"""
  *         cdef double[2] vec=[x,y]             # <<<<<<<<<<<<<<
@@ -2869,7 +3162,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   __pyx_t_1[1] = __pyx_v_y;
   memcpy(&(__pyx_v_vec[0]), __pyx_t_1, sizeof(__pyx_v_vec[0]) * (2));
 
-  /* "pylablib/core/dataproc/ctransform.pyx":113
+  /* "pylablib/core/dataproc/ctransform.pyx":122
  *         """Apply the inverse transform to the given point"""
  *         cdef double[2] vec=[x,y]
  *         _vdot(self.mi,vec)             # <<<<<<<<<<<<<<
@@ -2878,7 +3171,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
  */
   __pyx_f_8pylablib_4core_8dataproc_10ctransform__vdot(__pyx_v_self->mi, __pyx_v_vec);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":114
+  /* "pylablib/core/dataproc/ctransform.pyx":123
  *         cdef double[2] vec=[x,y]
  *         _vdot(self.mi,vec)
  *         vec[0]+=self.si[0]             # <<<<<<<<<<<<<<
@@ -2888,7 +3181,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   __pyx_t_2 = 0;
   (__pyx_v_vec[__pyx_t_2]) = ((__pyx_v_vec[__pyx_t_2]) + (__pyx_v_self->si[0]));
 
-  /* "pylablib/core/dataproc/ctransform.pyx":115
+  /* "pylablib/core/dataproc/ctransform.pyx":124
  *         _vdot(self.mi,vec)
  *         vec[0]+=self.si[0]
  *         vec[1]+=self.si[1]             # <<<<<<<<<<<<<<
@@ -2898,7 +3191,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   __pyx_t_2 = 1;
   (__pyx_v_vec[__pyx_t_2]) = ((__pyx_v_vec[__pyx_t_2]) + (__pyx_v_self->si[1]));
 
-  /* "pylablib/core/dataproc/ctransform.pyx":116
+  /* "pylablib/core/dataproc/ctransform.pyx":125
  *         vec[0]+=self.si[0]
  *         vec[1]+=self.si[1]
  *         return vec             # <<<<<<<<<<<<<<
@@ -2906,13 +3199,13 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
  *     def shift(self, double s1, double s2, int preceded=False):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_3 = __Pyx_carray_to_py_double(__pyx_v_vec, 2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 116, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_carray_to_py_double(__pyx_v_vec, 2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 125, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __pyx_r = __pyx_t_3;
   __pyx_t_3 = 0;
   goto __pyx_L0;
 
-  /* "pylablib/core/dataproc/ctransform.pyx":110
+  /* "pylablib/core/dataproc/ctransform.pyx":119
  *         vec[1]+=self.s[1]
  *         return vec
  *     def i(self, double x, double y):             # <<<<<<<<<<<<<<
@@ -2931,7 +3224,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   return __pyx_r;
 }
 
-/* "pylablib/core/dataproc/ctransform.pyx":118
+/* "pylablib/core/dataproc/ctransform.pyx":127
  *         return vec
  * 
  *     def shift(self, double s1, double s2, int preceded=False):             # <<<<<<<<<<<<<<
@@ -2977,7 +3270,7 @@ static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
         case  1:
         if (likely((values[1] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_s2)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("shift", 0, 2, 3, 1); __PYX_ERR(0, 118, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("shift", 0, 2, 3, 1); __PYX_ERR(0, 127, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  2:
@@ -2987,7 +3280,7 @@ static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "shift") < 0)) __PYX_ERR(0, 118, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "shift") < 0)) __PYX_ERR(0, 127, __pyx_L3_error)
       }
     } else {
       switch (PyTuple_GET_SIZE(__pyx_args)) {
@@ -2999,17 +3292,17 @@ static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
         default: goto __pyx_L5_argtuple_error;
       }
     }
-    __pyx_v_s1 = __pyx_PyFloat_AsDouble(values[0]); if (unlikely((__pyx_v_s1 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 118, __pyx_L3_error)
-    __pyx_v_s2 = __pyx_PyFloat_AsDouble(values[1]); if (unlikely((__pyx_v_s2 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 118, __pyx_L3_error)
+    __pyx_v_s1 = __pyx_PyFloat_AsDouble(values[0]); if (unlikely((__pyx_v_s1 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 127, __pyx_L3_error)
+    __pyx_v_s2 = __pyx_PyFloat_AsDouble(values[1]); if (unlikely((__pyx_v_s2 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 127, __pyx_L3_error)
     if (values[2]) {
-      __pyx_v_preceded = __Pyx_PyInt_As_int(values[2]); if (unlikely((__pyx_v_preceded == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 118, __pyx_L3_error)
+      __pyx_v_preceded = __Pyx_PyInt_As_int(values[2]); if (unlikely((__pyx_v_preceded == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 127, __pyx_L3_error)
     } else {
       __pyx_v_preceded = ((int)0);
     }
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("shift", 0, 2, 3, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 118, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("shift", 0, 2, 3, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 127, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("pylablib.core.dataproc.ctransform.CLinear2DTransform.shift", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -3027,7 +3320,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("shift", 0);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":120
+  /* "pylablib/core/dataproc/ctransform.pyx":129
  *     def shift(self, double s1, double s2, int preceded=False):
  *         """Apply a shift transform before or after (default) the given transform"""
  *         self._shift(s1,s2,preceded)             # <<<<<<<<<<<<<<
@@ -3036,19 +3329,19 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
  */
   ((struct __pyx_vtabstruct_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_self->__pyx_vtab)->_shift(__pyx_v_self, __pyx_v_s1, __pyx_v_s2, __pyx_v_preceded);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":121
+  /* "pylablib/core/dataproc/ctransform.pyx":130
  *         """Apply a shift transform before or after (default) the given transform"""
  *         self._shift(s1,s2,preceded)
  *         return self             # <<<<<<<<<<<<<<
  * 
- *     def scale(self, double s1, double s2, int preceded=False):
+ *     def multiply(self, double m11, double m12, double m21, double m22, preceded=False):
  */
   __Pyx_XDECREF(__pyx_r);
   __Pyx_INCREF(((PyObject *)__pyx_v_self));
   __pyx_r = ((PyObject *)__pyx_v_self);
   goto __pyx_L0;
 
-  /* "pylablib/core/dataproc/ctransform.pyx":118
+  /* "pylablib/core/dataproc/ctransform.pyx":127
  *         return vec
  * 
  *     def shift(self, double s1, double s2, int preceded=False):             # <<<<<<<<<<<<<<
@@ -3063,18 +3356,199 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   return __pyx_r;
 }
 
-/* "pylablib/core/dataproc/ctransform.pyx":123
+/* "pylablib/core/dataproc/ctransform.pyx":132
  *         return self
  * 
+ *     def multiply(self, double m11, double m12, double m21, double m22, preceded=False):             # <<<<<<<<<<<<<<
+ *         """Apply a matrix multiplication transform before or after (default) the given transform"""
+ *         self._multiply([[m11,m12],[m21,m22]],preceded)
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_17multiply(PyObject *__pyx_v_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
+static char __pyx_doc_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_16multiply[] = "Apply a matrix multiplication transform before or after (default) the given transform";
+static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_17multiply(PyObject *__pyx_v_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
+  double __pyx_v_m11;
+  double __pyx_v_m12;
+  double __pyx_v_m21;
+  double __pyx_v_m22;
+  PyObject *__pyx_v_preceded = 0;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("multiply (wrapper)", 0);
+  {
+    static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_m11,&__pyx_n_s_m12,&__pyx_n_s_m21,&__pyx_n_s_m22,&__pyx_n_s_preceded,0};
+    PyObject* values[5] = {0,0,0,0,0};
+    values[4] = ((PyObject *)Py_False);
+    if (unlikely(__pyx_kwds)) {
+      Py_ssize_t kw_args;
+      const Py_ssize_t pos_args = PyTuple_GET_SIZE(__pyx_args);
+      switch (pos_args) {
+        case  5: values[4] = PyTuple_GET_ITEM(__pyx_args, 4);
+        CYTHON_FALLTHROUGH;
+        case  4: values[3] = PyTuple_GET_ITEM(__pyx_args, 3);
+        CYTHON_FALLTHROUGH;
+        case  3: values[2] = PyTuple_GET_ITEM(__pyx_args, 2);
+        CYTHON_FALLTHROUGH;
+        case  2: values[1] = PyTuple_GET_ITEM(__pyx_args, 1);
+        CYTHON_FALLTHROUGH;
+        case  1: values[0] = PyTuple_GET_ITEM(__pyx_args, 0);
+        CYTHON_FALLTHROUGH;
+        case  0: break;
+        default: goto __pyx_L5_argtuple_error;
+      }
+      kw_args = PyDict_Size(__pyx_kwds);
+      switch (pos_args) {
+        case  0:
+        if (likely((values[0] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_m11)) != 0)) kw_args--;
+        else goto __pyx_L5_argtuple_error;
+        CYTHON_FALLTHROUGH;
+        case  1:
+        if (likely((values[1] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_m12)) != 0)) kw_args--;
+        else {
+          __Pyx_RaiseArgtupleInvalid("multiply", 0, 4, 5, 1); __PYX_ERR(0, 132, __pyx_L3_error)
+        }
+        CYTHON_FALLTHROUGH;
+        case  2:
+        if (likely((values[2] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_m21)) != 0)) kw_args--;
+        else {
+          __Pyx_RaiseArgtupleInvalid("multiply", 0, 4, 5, 2); __PYX_ERR(0, 132, __pyx_L3_error)
+        }
+        CYTHON_FALLTHROUGH;
+        case  3:
+        if (likely((values[3] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_m22)) != 0)) kw_args--;
+        else {
+          __Pyx_RaiseArgtupleInvalid("multiply", 0, 4, 5, 3); __PYX_ERR(0, 132, __pyx_L3_error)
+        }
+        CYTHON_FALLTHROUGH;
+        case  4:
+        if (kw_args > 0) {
+          PyObject* value = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_preceded);
+          if (value) { values[4] = value; kw_args--; }
+        }
+      }
+      if (unlikely(kw_args > 0)) {
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "multiply") < 0)) __PYX_ERR(0, 132, __pyx_L3_error)
+      }
+    } else {
+      switch (PyTuple_GET_SIZE(__pyx_args)) {
+        case  5: values[4] = PyTuple_GET_ITEM(__pyx_args, 4);
+        CYTHON_FALLTHROUGH;
+        case  4: values[3] = PyTuple_GET_ITEM(__pyx_args, 3);
+        values[2] = PyTuple_GET_ITEM(__pyx_args, 2);
+        values[1] = PyTuple_GET_ITEM(__pyx_args, 1);
+        values[0] = PyTuple_GET_ITEM(__pyx_args, 0);
+        break;
+        default: goto __pyx_L5_argtuple_error;
+      }
+    }
+    __pyx_v_m11 = __pyx_PyFloat_AsDouble(values[0]); if (unlikely((__pyx_v_m11 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 132, __pyx_L3_error)
+    __pyx_v_m12 = __pyx_PyFloat_AsDouble(values[1]); if (unlikely((__pyx_v_m12 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 132, __pyx_L3_error)
+    __pyx_v_m21 = __pyx_PyFloat_AsDouble(values[2]); if (unlikely((__pyx_v_m21 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 132, __pyx_L3_error)
+    __pyx_v_m22 = __pyx_PyFloat_AsDouble(values[3]); if (unlikely((__pyx_v_m22 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 132, __pyx_L3_error)
+    __pyx_v_preceded = values[4];
+  }
+  goto __pyx_L4_argument_unpacking_done;
+  __pyx_L5_argtuple_error:;
+  __Pyx_RaiseArgtupleInvalid("multiply", 0, 4, 5, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 132, __pyx_L3_error)
+  __pyx_L3_error:;
+  __Pyx_AddTraceback("pylablib.core.dataproc.ctransform.CLinear2DTransform.multiply", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_RefNannyFinishContext();
+  return NULL;
+  __pyx_L4_argument_unpacking_done:;
+  __pyx_r = __pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_16multiply(((struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_self), __pyx_v_m11, __pyx_v_m12, __pyx_v_m21, __pyx_v_m22, __pyx_v_preceded);
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_16multiply(struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_self, double __pyx_v_m11, double __pyx_v_m12, double __pyx_v_m21, double __pyx_v_m22, PyObject *__pyx_v_preceded) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  double __pyx_t_1[2];
+  double __pyx_t_2[2];
+  double __pyx_t_3[2][2];
+  int __pyx_t_4;
+  PyObject *__pyx_t_5 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("multiply", 0);
+
+  /* "pylablib/core/dataproc/ctransform.pyx":134
+ *     def multiply(self, double m11, double m12, double m21, double m22, preceded=False):
+ *         """Apply a matrix multiplication transform before or after (default) the given transform"""
+ *         self._multiply([[m11,m12],[m21,m22]],preceded)             # <<<<<<<<<<<<<<
+ *         self._set_inv()
+ *         return self
+ */
+  __pyx_t_1[0] = __pyx_v_m11;
+  __pyx_t_1[1] = __pyx_v_m12;
+  __pyx_t_2[0] = __pyx_v_m21;
+  __pyx_t_2[1] = __pyx_v_m22;
+  memcpy(&(__pyx_t_3[0]), __pyx_t_1, sizeof(__pyx_t_3[0]));
+  memcpy(&(__pyx_t_3[1]), __pyx_t_2, sizeof(__pyx_t_3[0]));
+  __pyx_t_4 = __Pyx_PyInt_As_int(__pyx_v_preceded); if (unlikely((__pyx_t_4 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 134, __pyx_L1_error)
+  __pyx_t_5 = ((struct __pyx_vtabstruct_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_self->__pyx_vtab)->_multiply(__pyx_v_self, __pyx_t_3, __pyx_t_4); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 134, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_5);
+  __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+
+  /* "pylablib/core/dataproc/ctransform.pyx":135
+ *         """Apply a matrix multiplication transform before or after (default) the given transform"""
+ *         self._multiply([[m11,m12],[m21,m22]],preceded)
+ *         self._set_inv()             # <<<<<<<<<<<<<<
+ *         return self
+ *     def scale(self, double s1, double s2, int preceded=False):
+ */
+  ((struct __pyx_vtabstruct_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_self->__pyx_vtab)->_set_inv(__pyx_v_self);
+
+  /* "pylablib/core/dataproc/ctransform.pyx":136
+ *         self._multiply([[m11,m12],[m21,m22]],preceded)
+ *         self._set_inv()
+ *         return self             # <<<<<<<<<<<<<<
+ *     def scale(self, double s1, double s2, int preceded=False):
+ *         """Apply a scale transform before or after (default) the given transform"""
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __Pyx_INCREF(((PyObject *)__pyx_v_self));
+  __pyx_r = ((PyObject *)__pyx_v_self);
+  goto __pyx_L0;
+
+  /* "pylablib/core/dataproc/ctransform.pyx":132
+ *         return self
+ * 
+ *     def multiply(self, double m11, double m12, double m21, double m22, preceded=False):             # <<<<<<<<<<<<<<
+ *         """Apply a matrix multiplication transform before or after (default) the given transform"""
+ *         self._multiply([[m11,m12],[m21,m22]],preceded)
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_5);
+  __Pyx_AddTraceback("pylablib.core.dataproc.ctransform.CLinear2DTransform.multiply", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "pylablib/core/dataproc/ctransform.pyx":137
+ *         self._set_inv()
+ *         return self
  *     def scale(self, double s1, double s2, int preceded=False):             # <<<<<<<<<<<<<<
  *         """Apply a scale transform before or after (default) the given transform"""
  *         self._multiply([[s1,0],[0,s2]],preceded)
  */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_17scale(PyObject *__pyx_v_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
-static char __pyx_doc_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_16scale[] = "Apply a scale transform before or after (default) the given transform";
-static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_17scale(PyObject *__pyx_v_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
+static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_19scale(PyObject *__pyx_v_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
+static char __pyx_doc_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_18scale[] = "Apply a scale transform before or after (default) the given transform";
+static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_19scale(PyObject *__pyx_v_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
   double __pyx_v_s1;
   double __pyx_v_s2;
   int __pyx_v_preceded;
@@ -3109,7 +3583,7 @@ static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
         case  1:
         if (likely((values[1] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_s2)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("scale", 0, 2, 3, 1); __PYX_ERR(0, 123, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("scale", 0, 2, 3, 1); __PYX_ERR(0, 137, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  2:
@@ -3119,7 +3593,7 @@ static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "scale") < 0)) __PYX_ERR(0, 123, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "scale") < 0)) __PYX_ERR(0, 137, __pyx_L3_error)
       }
     } else {
       switch (PyTuple_GET_SIZE(__pyx_args)) {
@@ -3131,30 +3605,30 @@ static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
         default: goto __pyx_L5_argtuple_error;
       }
     }
-    __pyx_v_s1 = __pyx_PyFloat_AsDouble(values[0]); if (unlikely((__pyx_v_s1 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 123, __pyx_L3_error)
-    __pyx_v_s2 = __pyx_PyFloat_AsDouble(values[1]); if (unlikely((__pyx_v_s2 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 123, __pyx_L3_error)
+    __pyx_v_s1 = __pyx_PyFloat_AsDouble(values[0]); if (unlikely((__pyx_v_s1 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 137, __pyx_L3_error)
+    __pyx_v_s2 = __pyx_PyFloat_AsDouble(values[1]); if (unlikely((__pyx_v_s2 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 137, __pyx_L3_error)
     if (values[2]) {
-      __pyx_v_preceded = __Pyx_PyInt_As_int(values[2]); if (unlikely((__pyx_v_preceded == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 123, __pyx_L3_error)
+      __pyx_v_preceded = __Pyx_PyInt_As_int(values[2]); if (unlikely((__pyx_v_preceded == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 137, __pyx_L3_error)
     } else {
       __pyx_v_preceded = ((int)0);
     }
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("scale", 0, 2, 3, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 123, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("scale", 0, 2, 3, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 137, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("pylablib.core.dataproc.ctransform.CLinear2DTransform.scale", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  __pyx_r = __pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_16scale(((struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_self), __pyx_v_s1, __pyx_v_s2, __pyx_v_preceded);
+  __pyx_r = __pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_18scale(((struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_self), __pyx_v_s1, __pyx_v_s2, __pyx_v_preceded);
 
   /* function exit code */
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_16scale(struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_self, double __pyx_v_s1, double __pyx_v_s2, int __pyx_v_preceded) {
+static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_18scale(struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_self, double __pyx_v_s1, double __pyx_v_s2, int __pyx_v_preceded) {
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   double __pyx_t_1[2];
@@ -3166,7 +3640,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("scale", 0);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":125
+  /* "pylablib/core/dataproc/ctransform.pyx":139
  *     def scale(self, double s1, double s2, int preceded=False):
  *         """Apply a scale transform before or after (default) the given transform"""
  *         self._multiply([[s1,0],[0,s2]],preceded)             # <<<<<<<<<<<<<<
@@ -3179,11 +3653,11 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   __pyx_t_2[1] = __pyx_v_s2;
   memcpy(&(__pyx_t_3[0]), __pyx_t_1, sizeof(__pyx_t_3[0]));
   memcpy(&(__pyx_t_3[1]), __pyx_t_2, sizeof(__pyx_t_3[0]));
-  __pyx_t_4 = ((struct __pyx_vtabstruct_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_self->__pyx_vtab)->_multiply(__pyx_v_self, __pyx_t_3, __pyx_v_preceded); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 125, __pyx_L1_error)
+  __pyx_t_4 = ((struct __pyx_vtabstruct_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_self->__pyx_vtab)->_multiply(__pyx_v_self, __pyx_t_3, __pyx_v_preceded); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 139, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "pylablib/core/dataproc/ctransform.pyx":126
+  /* "pylablib/core/dataproc/ctransform.pyx":140
  *         """Apply a scale transform before or after (default) the given transform"""
  *         self._multiply([[s1,0],[0,s2]],preceded)
  *         self._set_inv()             # <<<<<<<<<<<<<<
@@ -3192,7 +3666,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
  */
   ((struct __pyx_vtabstruct_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_self->__pyx_vtab)->_set_inv(__pyx_v_self);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":127
+  /* "pylablib/core/dataproc/ctransform.pyx":141
  *         self._multiply([[s1,0],[0,s2]],preceded)
  *         self._set_inv()
  *         return self             # <<<<<<<<<<<<<<
@@ -3204,9 +3678,9 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   __pyx_r = ((PyObject *)__pyx_v_self);
   goto __pyx_L0;
 
-  /* "pylablib/core/dataproc/ctransform.pyx":123
+  /* "pylablib/core/dataproc/ctransform.pyx":137
+ *         self._set_inv()
  *         return self
- * 
  *     def scale(self, double s1, double s2, int preceded=False):             # <<<<<<<<<<<<<<
  *         """Apply a scale transform before or after (default) the given transform"""
  *         self._multiply([[s1,0],[0,s2]],preceded)
@@ -3223,7 +3697,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   return __pyx_r;
 }
 
-/* "pylablib/core/dataproc/ctransform.pyx":128
+/* "pylablib/core/dataproc/ctransform.pyx":142
  *         self._set_inv()
  *         return self
  *     def transpose(self, preceded=False):             # <<<<<<<<<<<<<<
@@ -3232,9 +3706,9 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
  */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_19transpose(PyObject *__pyx_v_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
-static char __pyx_doc_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_18transpose[] = "Apply a transpose transform before or after (default) the given transform";
-static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_19transpose(PyObject *__pyx_v_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
+static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_21transpose(PyObject *__pyx_v_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
+static char __pyx_doc_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_20transpose[] = "Apply a transpose transform before or after (default) the given transform";
+static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_21transpose(PyObject *__pyx_v_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
   PyObject *__pyx_v_preceded = 0;
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
@@ -3264,7 +3738,7 @@ static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "transpose") < 0)) __PYX_ERR(0, 128, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "transpose") < 0)) __PYX_ERR(0, 142, __pyx_L3_error)
       }
     } else {
       switch (PyTuple_GET_SIZE(__pyx_args)) {
@@ -3278,20 +3752,20 @@ static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("transpose", 0, 0, 1, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 128, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("transpose", 0, 0, 1, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 142, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("pylablib.core.dataproc.ctransform.CLinear2DTransform.transpose", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  __pyx_r = __pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_18transpose(((struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_self), __pyx_v_preceded);
+  __pyx_r = __pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_20transpose(((struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_self), __pyx_v_preceded);
 
   /* function exit code */
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_18transpose(struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_self, PyObject *__pyx_v_preceded) {
+static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_20transpose(struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_self, PyObject *__pyx_v_preceded) {
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   double __pyx_t_1[2];
@@ -3304,7 +3778,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("transpose", 0);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":130
+  /* "pylablib/core/dataproc/ctransform.pyx":144
  *     def transpose(self, preceded=False):
  *         """Apply a transpose transform before or after (default) the given transform"""
  *         self._multiply([[0,1],[1,0]],preceded)             # <<<<<<<<<<<<<<
@@ -3317,30 +3791,33 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   __pyx_t_2[1] = 0.0;
   memcpy(&(__pyx_t_3[0]), __pyx_t_1, sizeof(__pyx_t_3[0]));
   memcpy(&(__pyx_t_3[1]), __pyx_t_2, sizeof(__pyx_t_3[0]));
-  __pyx_t_4 = __Pyx_PyInt_As_int(__pyx_v_preceded); if (unlikely((__pyx_t_4 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 130, __pyx_L1_error)
-  __pyx_t_5 = ((struct __pyx_vtabstruct_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_self->__pyx_vtab)->_multiply(__pyx_v_self, __pyx_t_3, __pyx_t_4); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 130, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyInt_As_int(__pyx_v_preceded); if (unlikely((__pyx_t_4 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 144, __pyx_L1_error)
+  __pyx_t_5 = ((struct __pyx_vtabstruct_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_self->__pyx_vtab)->_multiply(__pyx_v_self, __pyx_t_3, __pyx_t_4); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 144, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "pylablib/core/dataproc/ctransform.pyx":131
+  /* "pylablib/core/dataproc/ctransform.pyx":145
  *         """Apply a transpose transform before or after (default) the given transform"""
  *         self._multiply([[0,1],[1,0]],preceded)
  *         self._set_inv()             # <<<<<<<<<<<<<<
  *         return self
+ * 
  */
   ((struct __pyx_vtabstruct_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_self->__pyx_vtab)->_set_inv(__pyx_v_self);
 
-  /* "pylablib/core/dataproc/ctransform.pyx":132
+  /* "pylablib/core/dataproc/ctransform.pyx":146
  *         self._multiply([[0,1],[1,0]],preceded)
  *         self._set_inv()
  *         return self             # <<<<<<<<<<<<<<
+ * 
+ *     @classmethod
  */
   __Pyx_XDECREF(__pyx_r);
   __Pyx_INCREF(((PyObject *)__pyx_v_self));
   __pyx_r = ((PyObject *)__pyx_v_self);
   goto __pyx_L0;
 
-  /* "pylablib/core/dataproc/ctransform.pyx":128
+  /* "pylablib/core/dataproc/ctransform.pyx":142
  *         self._set_inv()
  *         return self
  *     def transpose(self, preceded=False):             # <<<<<<<<<<<<<<
@@ -3359,6 +3836,194 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   return __pyx_r;
 }
 
+/* "pylablib/core/dataproc/ctransform.pyx":149
+ * 
+ *     @classmethod
+ *     def from_matr_shift(cls, matr, shift):             # <<<<<<<<<<<<<<
+ *         """Build a transfrom from a 2x2 transform matrix and a shift vector"""
+ *         t=cls()
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_23from_matr_shift(PyObject *__pyx_v_cls, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
+static char __pyx_doc_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_22from_matr_shift[] = "Build a transfrom from a 2x2 transform matrix and a shift vector";
+static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_23from_matr_shift(PyObject *__pyx_v_cls, PyObject *__pyx_args, PyObject *__pyx_kwds) {
+  PyObject *__pyx_v_matr = 0;
+  PyObject *__pyx_v_shift = 0;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("from_matr_shift (wrapper)", 0);
+  {
+    static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_matr,&__pyx_n_s_shift,0};
+    PyObject* values[2] = {0,0};
+    if (unlikely(__pyx_kwds)) {
+      Py_ssize_t kw_args;
+      const Py_ssize_t pos_args = PyTuple_GET_SIZE(__pyx_args);
+      switch (pos_args) {
+        case  2: values[1] = PyTuple_GET_ITEM(__pyx_args, 1);
+        CYTHON_FALLTHROUGH;
+        case  1: values[0] = PyTuple_GET_ITEM(__pyx_args, 0);
+        CYTHON_FALLTHROUGH;
+        case  0: break;
+        default: goto __pyx_L5_argtuple_error;
+      }
+      kw_args = PyDict_Size(__pyx_kwds);
+      switch (pos_args) {
+        case  0:
+        if (likely((values[0] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_matr)) != 0)) kw_args--;
+        else goto __pyx_L5_argtuple_error;
+        CYTHON_FALLTHROUGH;
+        case  1:
+        if (likely((values[1] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_shift)) != 0)) kw_args--;
+        else {
+          __Pyx_RaiseArgtupleInvalid("from_matr_shift", 1, 2, 2, 1); __PYX_ERR(0, 149, __pyx_L3_error)
+        }
+      }
+      if (unlikely(kw_args > 0)) {
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "from_matr_shift") < 0)) __PYX_ERR(0, 149, __pyx_L3_error)
+      }
+    } else if (PyTuple_GET_SIZE(__pyx_args) != 2) {
+      goto __pyx_L5_argtuple_error;
+    } else {
+      values[0] = PyTuple_GET_ITEM(__pyx_args, 0);
+      values[1] = PyTuple_GET_ITEM(__pyx_args, 1);
+    }
+    __pyx_v_matr = values[0];
+    __pyx_v_shift = values[1];
+  }
+  goto __pyx_L4_argument_unpacking_done;
+  __pyx_L5_argtuple_error:;
+  __Pyx_RaiseArgtupleInvalid("from_matr_shift", 1, 2, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 149, __pyx_L3_error)
+  __pyx_L3_error:;
+  __Pyx_AddTraceback("pylablib.core.dataproc.ctransform.CLinear2DTransform.from_matr_shift", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_RefNannyFinishContext();
+  return NULL;
+  __pyx_L4_argument_unpacking_done:;
+  __pyx_r = __pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_22from_matr_shift(((PyTypeObject*)__pyx_v_cls), __pyx_v_matr, __pyx_v_shift);
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_22from_matr_shift(PyTypeObject *__pyx_v_cls, PyObject *__pyx_v_matr, PyObject *__pyx_v_shift) {
+  PyObject *__pyx_v_t = NULL;
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
+  PyObject *__pyx_t_3 = NULL;
+  PyObject *__pyx_t_4 = NULL;
+  PyObject *__pyx_t_5 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("from_matr_shift", 0);
+
+  /* "pylablib/core/dataproc/ctransform.pyx":151
+ *     def from_matr_shift(cls, matr, shift):
+ *         """Build a transfrom from a 2x2 transform matrix and a shift vector"""
+ *         t=cls()             # <<<<<<<<<<<<<<
+ *         return t.multiply(*np.asarray(matr).flatten()).shift(*shift)
+ */
+  __pyx_t_1 = __Pyx_PyObject_CallNoArg(((PyObject *)__pyx_v_cls)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 151, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_v_t = __pyx_t_1;
+  __pyx_t_1 = 0;
+
+  /* "pylablib/core/dataproc/ctransform.pyx":152
+ *         """Build a transfrom from a 2x2 transform matrix and a shift vector"""
+ *         t=cls()
+ *         return t.multiply(*np.asarray(matr).flatten()).shift(*shift)             # <<<<<<<<<<<<<<
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_t, __pyx_n_s_multiply); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 152, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __Pyx_GetModuleGlobalName(__pyx_t_4, __pyx_n_s_np); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 152, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_4);
+  __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_asarray); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 152, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_5);
+  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+  __pyx_t_4 = NULL;
+  if (CYTHON_UNPACK_METHODS && unlikely(PyMethod_Check(__pyx_t_5))) {
+    __pyx_t_4 = PyMethod_GET_SELF(__pyx_t_5);
+    if (likely(__pyx_t_4)) {
+      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_5);
+      __Pyx_INCREF(__pyx_t_4);
+      __Pyx_INCREF(function);
+      __Pyx_DECREF_SET(__pyx_t_5, function);
+    }
+  }
+  __pyx_t_3 = (__pyx_t_4) ? __Pyx_PyObject_Call2Args(__pyx_t_5, __pyx_t_4, __pyx_v_matr) : __Pyx_PyObject_CallOneArg(__pyx_t_5, __pyx_v_matr);
+  __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
+  if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 152, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_3);
+  __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+  __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_flatten); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 152, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_5);
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  __pyx_t_3 = NULL;
+  if (CYTHON_UNPACK_METHODS && likely(PyMethod_Check(__pyx_t_5))) {
+    __pyx_t_3 = PyMethod_GET_SELF(__pyx_t_5);
+    if (likely(__pyx_t_3)) {
+      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_5);
+      __Pyx_INCREF(__pyx_t_3);
+      __Pyx_INCREF(function);
+      __Pyx_DECREF_SET(__pyx_t_5, function);
+    }
+  }
+  __pyx_t_2 = (__pyx_t_3) ? __Pyx_PyObject_CallOneArg(__pyx_t_5, __pyx_t_3) : __Pyx_PyObject_CallNoArg(__pyx_t_5);
+  __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
+  if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 152, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+  __pyx_t_5 = __Pyx_PySequence_Tuple(__pyx_t_2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 152, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_5);
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_5, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 152, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+  __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_shift); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 152, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_5);
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __pyx_t_2 = __Pyx_PySequence_Tuple(__pyx_v_shift); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 152, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_2, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 152, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "pylablib/core/dataproc/ctransform.pyx":149
+ * 
+ *     @classmethod
+ *     def from_matr_shift(cls, matr, shift):             # <<<<<<<<<<<<<<
+ *         """Build a transfrom from a 2x2 transform matrix and a shift vector"""
+ *         t=cls()
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_3);
+  __Pyx_XDECREF(__pyx_t_4);
+  __Pyx_XDECREF(__pyx_t_5);
+  __Pyx_AddTraceback("pylablib.core.dataproc.ctransform.CLinear2DTransform.from_matr_shift", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XDECREF(__pyx_v_t);
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
 /* "(tree fragment)":1
  * def __reduce_cython__(self):             # <<<<<<<<<<<<<<
  *     raise TypeError("no default __reduce__ due to non-trivial __cinit__")
@@ -3366,19 +4031,19 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
  */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_21__reduce_cython__(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
-static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_21__reduce_cython__(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused) {
+static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_25__reduce_cython__(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_25__reduce_cython__(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused) {
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__reduce_cython__ (wrapper)", 0);
-  __pyx_r = __pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_20__reduce_cython__(((struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_self));
+  __pyx_r = __pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_24__reduce_cython__(((struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_self));
 
   /* function exit code */
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_20__reduce_cython__(CYTHON_UNUSED struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_self) {
+static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_24__reduce_cython__(CYTHON_UNUSED struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_self) {
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
@@ -3423,19 +4088,19 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
  */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_23__setstate_cython__(PyObject *__pyx_v_self, PyObject *__pyx_v___pyx_state); /*proto*/
-static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_23__setstate_cython__(PyObject *__pyx_v_self, PyObject *__pyx_v___pyx_state) {
+static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_27__setstate_cython__(PyObject *__pyx_v_self, PyObject *__pyx_v___pyx_state); /*proto*/
+static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_27__setstate_cython__(PyObject *__pyx_v_self, PyObject *__pyx_v___pyx_state) {
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__setstate_cython__ (wrapper)", 0);
-  __pyx_r = __pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_22__setstate_cython__(((struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_self), ((PyObject *)__pyx_v___pyx_state));
+  __pyx_r = __pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_26__setstate_cython__(((struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *)__pyx_v_self), ((PyObject *)__pyx_v___pyx_state));
 
   /* function exit code */
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_22__setstate_cython__(CYTHON_UNUSED struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_self, CYTHON_UNUSED PyObject *__pyx_v___pyx_state) {
+static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_26__setstate_cython__(CYTHON_UNUSED struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *__pyx_v_self, CYTHON_UNUSED PyObject *__pyx_v___pyx_state) {
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
@@ -3719,6 +4384,14 @@ static void __pyx_tp_dealloc_8pylablib_4core_8dataproc_10ctransform_CLinear2DTra
   (*Py_TYPE(o)->tp_free)(o);
 }
 
+static PyObject *__pyx_getprop_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_tmatr(PyObject *o, CYTHON_UNUSED void *x) {
+  return __pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_5tmatr_1__get__(o);
+}
+
+static PyObject *__pyx_getprop_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_svec(PyObject *o, CYTHON_UNUSED void *x) {
+  return __pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_4svec_1__get__(o);
+}
+
 static PyMethodDef __pyx_methods_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform[] = {
   {"copy", (PyCFunction)__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_3copy, METH_NOARGS, __pyx_doc_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_2copy},
   {"invert", (PyCFunction)__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_5invert, METH_NOARGS, __pyx_doc_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_4invert},
@@ -3726,11 +4399,19 @@ static PyMethodDef __pyx_methods_8pylablib_4core_8dataproc_10ctransform_CLinear2
   {"follow", (PyCFunction)__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_9follow, METH_O, __pyx_doc_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_8follow},
   {"i", (PyCFunction)(void*)(PyCFunctionWithKeywords)__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_13i, METH_VARARGS|METH_KEYWORDS, __pyx_doc_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_12i},
   {"shift", (PyCFunction)(void*)(PyCFunctionWithKeywords)__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_15shift, METH_VARARGS|METH_KEYWORDS, __pyx_doc_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_14shift},
-  {"scale", (PyCFunction)(void*)(PyCFunctionWithKeywords)__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_17scale, METH_VARARGS|METH_KEYWORDS, __pyx_doc_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_16scale},
-  {"transpose", (PyCFunction)(void*)(PyCFunctionWithKeywords)__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_19transpose, METH_VARARGS|METH_KEYWORDS, __pyx_doc_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_18transpose},
-  {"__reduce_cython__", (PyCFunction)__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_21__reduce_cython__, METH_NOARGS, 0},
-  {"__setstate_cython__", (PyCFunction)__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_23__setstate_cython__, METH_O, 0},
+  {"multiply", (PyCFunction)(void*)(PyCFunctionWithKeywords)__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_17multiply, METH_VARARGS|METH_KEYWORDS, __pyx_doc_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_16multiply},
+  {"scale", (PyCFunction)(void*)(PyCFunctionWithKeywords)__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_19scale, METH_VARARGS|METH_KEYWORDS, __pyx_doc_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_18scale},
+  {"transpose", (PyCFunction)(void*)(PyCFunctionWithKeywords)__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_21transpose, METH_VARARGS|METH_KEYWORDS, __pyx_doc_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_20transpose},
+  {"from_matr_shift", (PyCFunction)(void*)(PyCFunctionWithKeywords)__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_23from_matr_shift, METH_VARARGS|METH_KEYWORDS, __pyx_doc_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_22from_matr_shift},
+  {"__reduce_cython__", (PyCFunction)__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_25__reduce_cython__, METH_NOARGS, 0},
+  {"__setstate_cython__", (PyCFunction)__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_27__setstate_cython__, METH_O, 0},
   {0, 0, 0, 0}
+};
+
+static struct PyGetSetDef __pyx_getsets_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform[] = {
+  {(char *)"tmatr", __pyx_getprop_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_tmatr, 0, (char *)"Transform matrix as a 2x2 numpy array", 0},
+  {(char *)"svec", __pyx_getprop_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_svec, 0, (char *)"Transform matrix as a numpy array", 0},
+  {0, 0, 0, 0, 0}
 };
 
 static PyTypeObject __pyx_type_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform = {
@@ -3773,7 +4454,7 @@ static PyTypeObject __pyx_type_8pylablib_4core_8dataproc_10ctransform_CLinear2DT
   0, /*tp_iternext*/
   __pyx_methods_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform, /*tp_methods*/
   0, /*tp_members*/
-  0, /*tp_getset*/
+  __pyx_getsets_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform, /*tp_getset*/
   0, /*tp_base*/
   0, /*tp_dict*/
   0, /*tp_descr_get*/
@@ -3853,12 +4534,25 @@ static struct PyModuleDef __pyx_moduledef = {
 static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_CLinear2DTransform, __pyx_k_CLinear2DTransform, sizeof(__pyx_k_CLinear2DTransform), 0, 0, 1, 1},
   {&__pyx_n_s_TypeError, __pyx_k_TypeError, sizeof(__pyx_k_TypeError), 0, 0, 1, 1},
+  {&__pyx_n_s_array, __pyx_k_array, sizeof(__pyx_k_array), 0, 0, 1, 1},
+  {&__pyx_n_s_asarray, __pyx_k_asarray, sizeof(__pyx_k_asarray), 0, 0, 1, 1},
   {&__pyx_n_s_cline_in_traceback, __pyx_k_cline_in_traceback, sizeof(__pyx_k_cline_in_traceback), 0, 0, 1, 1},
   {&__pyx_n_s_copy, __pyx_k_copy, sizeof(__pyx_k_copy), 0, 0, 1, 1},
+  {&__pyx_n_s_flatten, __pyx_k_flatten, sizeof(__pyx_k_flatten), 0, 0, 1, 1},
+  {&__pyx_n_s_from_matr_shift, __pyx_k_from_matr_shift, sizeof(__pyx_k_from_matr_shift), 0, 0, 1, 1},
   {&__pyx_n_s_getstate, __pyx_k_getstate, sizeof(__pyx_k_getstate), 0, 0, 1, 1},
+  {&__pyx_n_s_import, __pyx_k_import, sizeof(__pyx_k_import), 0, 0, 1, 1},
+  {&__pyx_n_s_m11, __pyx_k_m11, sizeof(__pyx_k_m11), 0, 0, 1, 1},
+  {&__pyx_n_s_m12, __pyx_k_m12, sizeof(__pyx_k_m12), 0, 0, 1, 1},
+  {&__pyx_n_s_m21, __pyx_k_m21, sizeof(__pyx_k_m21), 0, 0, 1, 1},
+  {&__pyx_n_s_m22, __pyx_k_m22, sizeof(__pyx_k_m22), 0, 0, 1, 1},
   {&__pyx_n_s_main, __pyx_k_main, sizeof(__pyx_k_main), 0, 0, 1, 1},
+  {&__pyx_n_s_matr, __pyx_k_matr, sizeof(__pyx_k_matr), 0, 0, 1, 1},
+  {&__pyx_n_s_multiply, __pyx_k_multiply, sizeof(__pyx_k_multiply), 0, 0, 1, 1},
   {&__pyx_n_s_name, __pyx_k_name, sizeof(__pyx_k_name), 0, 0, 1, 1},
   {&__pyx_kp_s_no_default___reduce___due_to_non, __pyx_k_no_default___reduce___due_to_non, sizeof(__pyx_k_no_default___reduce___due_to_non), 0, 0, 1, 0},
+  {&__pyx_n_s_np, __pyx_k_np, sizeof(__pyx_k_np), 0, 0, 1, 1},
+  {&__pyx_n_s_numpy, __pyx_k_numpy, sizeof(__pyx_k_numpy), 0, 0, 1, 1},
   {&__pyx_n_s_preceded, __pyx_k_preceded, sizeof(__pyx_k_preceded), 0, 0, 1, 1},
   {&__pyx_n_s_pyx_vtable, __pyx_k_pyx_vtable, sizeof(__pyx_k_pyx_vtable), 0, 0, 1, 1},
   {&__pyx_n_s_range, __pyx_k_range, sizeof(__pyx_k_range), 0, 0, 1, 1},
@@ -3869,13 +4563,14 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_s2, __pyx_k_s2, sizeof(__pyx_k_s2), 0, 0, 1, 1},
   {&__pyx_n_s_setstate, __pyx_k_setstate, sizeof(__pyx_k_setstate), 0, 0, 1, 1},
   {&__pyx_n_s_setstate_cython, __pyx_k_setstate_cython, sizeof(__pyx_k_setstate_cython), 0, 0, 1, 1},
+  {&__pyx_n_s_shift, __pyx_k_shift, sizeof(__pyx_k_shift), 0, 0, 1, 1},
   {&__pyx_n_s_test, __pyx_k_test, sizeof(__pyx_k_test), 0, 0, 1, 1},
   {&__pyx_n_s_x, __pyx_k_x, sizeof(__pyx_k_x), 0, 0, 1, 1},
   {&__pyx_n_s_y, __pyx_k_y, sizeof(__pyx_k_y), 0, 0, 1, 1},
   {0, 0, 0, 0, 0, 0, 0}
 };
 static CYTHON_SMALL_CODE int __Pyx_InitCachedBuiltins(void) {
-  __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_n_s_range); if (!__pyx_builtin_range) __PYX_ERR(0, 55, __pyx_L1_error)
+  __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_n_s_range); if (!__pyx_builtin_range) __PYX_ERR(0, 56, __pyx_L1_error)
   __pyx_builtin_TypeError = __Pyx_GetBuiltinName(__pyx_n_s_TypeError); if (!__pyx_builtin_TypeError) __PYX_ERR(1, 2, __pyx_L1_error)
   return 0;
   __pyx_L1_error:;
@@ -3963,7 +4658,7 @@ static int __Pyx_modinit_type_init_code(void) {
   __pyx_vtable_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform.copy = (struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *(*)(struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *, int __pyx_skip_dispatch))__pyx_f_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_copy;
   __pyx_vtable_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform._multiply = (PyObject *(*)(struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *, double (*)[2], int))__pyx_f_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform__multiply;
   __pyx_vtable_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform._shift = (void (*)(struct __pyx_obj_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform *, double, double, int))__pyx_f_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform__shift;
-  if (PyType_Ready(&__pyx_type_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform) < 0) __PYX_ERR(0, 31, __pyx_L1_error)
+  if (PyType_Ready(&__pyx_type_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform) < 0) __PYX_ERR(0, 32, __pyx_L1_error)
   #if PY_VERSION_HEX < 0x030800B1
   __pyx_type_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform.tp_print = 0;
   #endif
@@ -3972,7 +4667,7 @@ static int __Pyx_modinit_type_init_code(void) {
   }
   #if CYTHON_UPDATE_DESCRIPTOR_DOC
   {
-    PyObject *wrapper = PyObject_GetAttrString((PyObject *)&__pyx_type_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform, "__call__"); if (unlikely(!wrapper)) __PYX_ERR(0, 31, __pyx_L1_error)
+    PyObject *wrapper = PyObject_GetAttrString((PyObject *)&__pyx_type_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform, "__call__"); if (unlikely(!wrapper)) __PYX_ERR(0, 32, __pyx_L1_error)
     if (Py_TYPE(wrapper) == &PyWrapperDescr_Type) {
       __pyx_wrapperbase_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_10__call__ = *((PyWrapperDescrObject *)wrapper)->d_base;
       __pyx_wrapperbase_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_10__call__.doc = __pyx_doc_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_10__call__;
@@ -3980,9 +4675,9 @@ static int __Pyx_modinit_type_init_code(void) {
     }
   }
   #endif
-  if (__Pyx_SetVtable(__pyx_type_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform.tp_dict, __pyx_vtabptr_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform) < 0) __PYX_ERR(0, 31, __pyx_L1_error)
-  if (PyObject_SetAttr(__pyx_m, __pyx_n_s_CLinear2DTransform, (PyObject *)&__pyx_type_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform) < 0) __PYX_ERR(0, 31, __pyx_L1_error)
-  if (__Pyx_setup_reduce((PyObject*)&__pyx_type_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform) < 0) __PYX_ERR(0, 31, __pyx_L1_error)
+  if (__Pyx_SetVtable(__pyx_type_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform.tp_dict, __pyx_vtabptr_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform) < 0) __PYX_ERR(0, 32, __pyx_L1_error)
+  if (PyObject_SetAttr(__pyx_m, __pyx_n_s_CLinear2DTransform, (PyObject *)&__pyx_type_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform) < 0) __PYX_ERR(0, 32, __pyx_L1_error)
+  if (__Pyx_setup_reduce((PyObject*)&__pyx_type_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform) < 0) __PYX_ERR(0, 32, __pyx_L1_error)
   __pyx_ptype_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform = &__pyx_type_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform;
   __Pyx_RefNannyFinishContext();
   return 0;
@@ -4110,6 +4805,7 @@ static CYTHON_SMALL_CODE int __pyx_pymod_exec_ctransform(PyObject *__pyx_pyinit_
 #endif
 {
   PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
@@ -4215,15 +4911,50 @@ if (!__Pyx_RefNanny) {
   if (__Pyx_patch_abc() < 0) __PYX_ERR(0, 1, __pyx_L1_error)
   #endif
 
-  /* "pylablib/core/dataproc/ctransform.pyx":1
- * import cython             # <<<<<<<<<<<<<<
+  /* "pylablib/core/dataproc/ctransform.pyx":2
+ * import cython
+ * import numpy as np             # <<<<<<<<<<<<<<
  * 
  * 
  */
-  __pyx_t_1 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 1, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_Import(__pyx_n_s_numpy, 0, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 2, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_test, __pyx_t_1) < 0) __PYX_ERR(0, 1, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_np, __pyx_t_1) < 0) __PYX_ERR(0, 2, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+  /* "pylablib/core/dataproc/ctransform.pyx":149
+ * 
+ *     @classmethod
+ *     def from_matr_shift(cls, matr, shift):             # <<<<<<<<<<<<<<
+ *         """Build a transfrom from a 2x2 transform matrix and a shift vector"""
+ *         t=cls()
+ */
+  __Pyx_GetNameInClass(__pyx_t_1, (PyObject *)__pyx_ptype_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform, __pyx_n_s_from_matr_shift); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 149, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+
+  /* "pylablib/core/dataproc/ctransform.pyx":148
+ *         return self
+ * 
+ *     @classmethod             # <<<<<<<<<<<<<<
+ *     def from_matr_shift(cls, matr, shift):
+ *         """Build a transfrom from a 2x2 transform matrix and a shift vector"""
+ */
+  __pyx_t_2 = __Pyx_Method_ClassMethod(__pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 148, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  if (PyDict_SetItem((PyObject *)__pyx_ptype_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform->tp_dict, __pyx_n_s_from_matr_shift, __pyx_t_2) < 0) __PYX_ERR(0, 149, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  PyType_Modified(__pyx_ptype_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform);
+
+  /* "pylablib/core/dataproc/ctransform.pyx":1
+ * import cython             # <<<<<<<<<<<<<<
+ * import numpy as np
+ * 
+ */
+  __pyx_t_2 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 1, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_test, __pyx_t_2) < 0) __PYX_ERR(0, 1, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
   /* "carray.to_py":124
  * 
@@ -4238,6 +4969,7 @@ if (!__Pyx_RefNanny) {
   goto __pyx_L0;
   __pyx_L1_error:;
   __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
   if (__pyx_m) {
     if (__pyx_d) {
       __Pyx_AddTraceback("init pylablib.core.dataproc.ctransform", __pyx_clineno, __pyx_lineno, __pyx_filename);
@@ -4650,6 +5382,70 @@ static CYTHON_INLINE int __Pyx_TypeTest(PyObject *obj, PyTypeObject *type) {
     PyErr_Format(PyExc_TypeError, "Cannot convert %.200s to %.200s",
                  Py_TYPE(obj)->tp_name, type->tp_name);
     return 0;
+}
+
+/* GetModuleGlobalName */
+#if CYTHON_USE_DICT_VERSIONS
+static PyObject *__Pyx__GetModuleGlobalName(PyObject *name, PY_UINT64_T *dict_version, PyObject **dict_cached_value)
+#else
+static CYTHON_INLINE PyObject *__Pyx__GetModuleGlobalName(PyObject *name)
+#endif
+{
+    PyObject *result;
+#if !CYTHON_AVOID_BORROWED_REFS
+#if CYTHON_COMPILING_IN_CPYTHON && PY_VERSION_HEX >= 0x030500A1
+    result = _PyDict_GetItem_KnownHash(__pyx_d, name, ((PyASCIIObject *) name)->hash);
+    __PYX_UPDATE_DICT_CACHE(__pyx_d, result, *dict_cached_value, *dict_version)
+    if (likely(result)) {
+        return __Pyx_NewRef(result);
+    } else if (unlikely(PyErr_Occurred())) {
+        return NULL;
+    }
+#else
+    result = PyDict_GetItem(__pyx_d, name);
+    __PYX_UPDATE_DICT_CACHE(__pyx_d, result, *dict_cached_value, *dict_version)
+    if (likely(result)) {
+        return __Pyx_NewRef(result);
+    }
+#endif
+#else
+    result = PyObject_GetItem(__pyx_d, name);
+    __PYX_UPDATE_DICT_CACHE(__pyx_d, result, *dict_cached_value, *dict_version)
+    if (likely(result)) {
+        return __Pyx_NewRef(result);
+    }
+    PyErr_Clear();
+#endif
+    return __Pyx_GetBuiltinName(name);
+}
+
+/* PyObjectCall2Args */
+static CYTHON_UNUSED PyObject* __Pyx_PyObject_Call2Args(PyObject* function, PyObject* arg1, PyObject* arg2) {
+    PyObject *args, *result = NULL;
+    #if CYTHON_FAST_PYCALL
+    if (PyFunction_Check(function)) {
+        PyObject *args[2] = {arg1, arg2};
+        return __Pyx_PyFunction_FastCall(function, args, 2);
+    }
+    #endif
+    #if CYTHON_FAST_PYCCALL
+    if (__Pyx_PyFastCFunction_Check(function)) {
+        PyObject *args[2] = {arg1, arg2};
+        return __Pyx_PyCFunction_FastCall(function, args, 2);
+    }
+    #endif
+    args = PyTuple_New(2);
+    if (unlikely(!args)) goto done;
+    Py_INCREF(arg1);
+    PyTuple_SET_ITEM(args, 0, arg1);
+    Py_INCREF(arg2);
+    PyTuple_SET_ITEM(args, 1, arg2);
+    Py_INCREF(function);
+    result = __Pyx_PyObject_Call(function, args, NULL);
+    Py_DECREF(args);
+    Py_DECREF(function);
+done:
+    return result;
 }
 
 /* ArgTypeTest */
@@ -5189,6 +5985,132 @@ __PYX_GOOD:
     Py_XDECREF(setstate);
     Py_XDECREF(setstate_cython);
     return ret;
+}
+
+/* Import */
+static PyObject *__Pyx_Import(PyObject *name, PyObject *from_list, int level) {
+    PyObject *empty_list = 0;
+    PyObject *module = 0;
+    PyObject *global_dict = 0;
+    PyObject *empty_dict = 0;
+    PyObject *list;
+    #if PY_MAJOR_VERSION < 3
+    PyObject *py_import;
+    py_import = __Pyx_PyObject_GetAttrStr(__pyx_b, __pyx_n_s_import);
+    if (!py_import)
+        goto bad;
+    #endif
+    if (from_list)
+        list = from_list;
+    else {
+        empty_list = PyList_New(0);
+        if (!empty_list)
+            goto bad;
+        list = empty_list;
+    }
+    global_dict = PyModule_GetDict(__pyx_m);
+    if (!global_dict)
+        goto bad;
+    empty_dict = PyDict_New();
+    if (!empty_dict)
+        goto bad;
+    {
+        #if PY_MAJOR_VERSION >= 3
+        if (level == -1) {
+            if ((1) && (strchr(__Pyx_MODULE_NAME, '.'))) {
+                module = PyImport_ImportModuleLevelObject(
+                    name, global_dict, empty_dict, list, 1);
+                if (!module) {
+                    if (!PyErr_ExceptionMatches(PyExc_ImportError))
+                        goto bad;
+                    PyErr_Clear();
+                }
+            }
+            level = 0;
+        }
+        #endif
+        if (!module) {
+            #if PY_MAJOR_VERSION < 3
+            PyObject *py_level = PyInt_FromLong(level);
+            if (!py_level)
+                goto bad;
+            module = PyObject_CallFunctionObjArgs(py_import,
+                name, global_dict, empty_dict, list, py_level, (PyObject *)NULL);
+            Py_DECREF(py_level);
+            #else
+            module = PyImport_ImportModuleLevelObject(
+                name, global_dict, empty_dict, list, level);
+            #endif
+        }
+    }
+bad:
+    #if PY_MAJOR_VERSION < 3
+    Py_XDECREF(py_import);
+    #endif
+    Py_XDECREF(empty_list);
+    Py_XDECREF(empty_dict);
+    return module;
+}
+
+/* ClassMethod */
+static PyObject* __Pyx_Method_ClassMethod(PyObject *method) {
+#if CYTHON_COMPILING_IN_PYPY && PYPY_VERSION_NUM <= 0x05080000
+    if (PyObject_TypeCheck(method, &PyWrapperDescr_Type)) {
+        return PyClassMethod_New(method);
+    }
+#else
+#if CYTHON_COMPILING_IN_PYSTON || CYTHON_COMPILING_IN_PYPY
+    if (PyMethodDescr_Check(method))
+#else
+    #if PY_MAJOR_VERSION == 2
+    static PyTypeObject *methoddescr_type = NULL;
+    if (methoddescr_type == NULL) {
+       PyObject *meth = PyObject_GetAttrString((PyObject*)&PyList_Type, "append");
+       if (!meth) return NULL;
+       methoddescr_type = Py_TYPE(meth);
+       Py_DECREF(meth);
+    }
+    #else
+    PyTypeObject *methoddescr_type = &PyMethodDescr_Type;
+    #endif
+    if (__Pyx_TypeCheck(method, methoddescr_type))
+#endif
+    {
+        PyMethodDescrObject *descr = (PyMethodDescrObject *)method;
+        #if PY_VERSION_HEX < 0x03020000
+        PyTypeObject *d_type = descr->d_type;
+        #else
+        PyTypeObject *d_type = descr->d_common.d_type;
+        #endif
+        return PyDescr_NewClassMethod(d_type, descr->d_method);
+    }
+#endif
+    else if (PyMethod_Check(method)) {
+        return PyClassMethod_New(PyMethod_GET_FUNCTION(method));
+    }
+    else {
+        return PyClassMethod_New(method);
+    }
+}
+
+/* GetNameInClass */
+static PyObject *__Pyx_GetGlobalNameAfterAttributeLookup(PyObject *name) {
+    PyObject *result;
+    __Pyx_PyThreadState_declare
+    __Pyx_PyThreadState_assign
+    if (unlikely(!__Pyx_PyErr_ExceptionMatches(PyExc_AttributeError)))
+        return NULL;
+    __Pyx_PyErr_Clear();
+    __Pyx_GetModuleGlobalNameUncached(result, name);
+    return result;
+}
+static PyObject *__Pyx__GetNameInClass(PyObject *nmspace, PyObject *name) {
+    PyObject *result;
+    result = __Pyx_PyObject_GetAttrStr(nmspace, name);
+    if (!result) {
+        result = __Pyx_GetGlobalNameAfterAttributeLookup(name);
+    }
+    return result;
 }
 
 /* CLineInTraceback */

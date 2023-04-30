@@ -1,4 +1,5 @@
 import cython
+import numpy as np
 
 
 cdef void _vadd(double v[2], double v2[2]):
@@ -75,6 +76,14 @@ cdef class CLinear2DTransform:
             self.s[0]+=s1
             self.s[1]+=s2
         self._set_inv()
+    @property
+    def tmatr(self):
+        """Transform matrix as a 2x2 numpy array"""
+        return np.array([[self.m[0][0],self.m[0][1]],[self.m[1][0],self.m[1][1]]])
+    @property
+    def svec(self):
+        """Transform matrix as a numpy array"""
+        return np.array([self.s[0],self.s[1]])
 
     def invert(self):
         """Invert the transform"""
@@ -120,6 +129,11 @@ cdef class CLinear2DTransform:
         self._shift(s1,s2,preceded)
         return self
     
+    def multiply(self, double m11, double m12, double m21, double m22, preceded=False):
+        """Apply a matrix multiplication transform before or after (default) the given transform"""
+        self._multiply([[m11,m12],[m21,m22]],preceded)
+        self._set_inv()
+        return self
     def scale(self, double s1, double s2, int preceded=False):
         """Apply a scale transform before or after (default) the given transform"""
         self._multiply([[s1,0],[0,s2]],preceded)
@@ -130,3 +144,9 @@ cdef class CLinear2DTransform:
         self._multiply([[0,1],[1,0]],preceded)
         self._set_inv()
         return self
+    
+    @classmethod
+    def from_matr_shift(cls, matr, shift):
+        """Build a transfrom from a 2x2 transform matrix and a shift vector"""
+        t=cls()
+        return t.multiply(*np.asarray(matr).flatten()).shift(*shift)
