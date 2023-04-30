@@ -13,6 +13,15 @@ pylablib.core.dataproc.callable module
    :undoc-members:
    :show-inheritance:
 
+pylablib.core.dataproc.ctransform module
+----------------------------------------
+
+.. automodule:: pylablib.core.dataproc.ctransform
+   :members:
+   :inherited-members:
+   :undoc-members:
+   :show-inheritance:
+
 pylablib.core.dataproc.feature module
 -------------------------------------
 

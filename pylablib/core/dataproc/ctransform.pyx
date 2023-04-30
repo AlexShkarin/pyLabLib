@@ -147,6 +147,6 @@ cdef class CLinear2DTransform:
     
     @classmethod
     def from_matr_shift(cls, matr, shift):
-        """Build a transfrom from a 2x2 transform matrix and a shift vector"""
+        """Build a transform from a 2x2 transform matrix and a shift vector"""
         t=cls()
         return t.multiply(*np.asarray(matr).flatten()).shift(*shift)

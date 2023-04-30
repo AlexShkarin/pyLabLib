@@ -3840,13 +3840,13 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
  * 
  *     @classmethod
  *     def from_matr_shift(cls, matr, shift):             # <<<<<<<<<<<<<<
- *         """Build a transfrom from a 2x2 transform matrix and a shift vector"""
+ *         """Build a transform from a 2x2 transform matrix and a shift vector"""
  *         t=cls()
  */
 
 /* Python wrapper */
 static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_23from_matr_shift(PyObject *__pyx_v_cls, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
-static char __pyx_doc_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_22from_matr_shift[] = "Build a transfrom from a 2x2 transform matrix and a shift vector";
+static char __pyx_doc_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_22from_matr_shift[] = "Build a transform from a 2x2 transform matrix and a shift vector";
 static PyObject *__pyx_pw_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTransform_23from_matr_shift(PyObject *__pyx_v_cls, PyObject *__pyx_args, PyObject *__pyx_kwds) {
   PyObject *__pyx_v_matr = 0;
   PyObject *__pyx_v_shift = 0;
@@ -3925,7 +3925,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
 
   /* "pylablib/core/dataproc/ctransform.pyx":151
  *     def from_matr_shift(cls, matr, shift):
- *         """Build a transfrom from a 2x2 transform matrix and a shift vector"""
+ *         """Build a transform from a 2x2 transform matrix and a shift vector"""
  *         t=cls()             # <<<<<<<<<<<<<<
  *         return t.multiply(*np.asarray(matr).flatten()).shift(*shift)
  */
@@ -3935,7 +3935,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
   __pyx_t_1 = 0;
 
   /* "pylablib/core/dataproc/ctransform.pyx":152
- *         """Build a transfrom from a 2x2 transform matrix and a shift vector"""
+ *         """Build a transform from a 2x2 transform matrix and a shift vector"""
  *         t=cls()
  *         return t.multiply(*np.asarray(matr).flatten()).shift(*shift)             # <<<<<<<<<<<<<<
  */
@@ -4004,7 +4004,7 @@ static PyObject *__pyx_pf_8pylablib_4core_8dataproc_10ctransform_18CLinear2DTran
  * 
  *     @classmethod
  *     def from_matr_shift(cls, matr, shift):             # <<<<<<<<<<<<<<
- *         """Build a transfrom from a 2x2 transform matrix and a shift vector"""
+ *         """Build a transform from a 2x2 transform matrix and a shift vector"""
  *         t=cls()
  */
 
@@ -4926,7 +4926,7 @@ if (!__Pyx_RefNanny) {
  * 
  *     @classmethod
  *     def from_matr_shift(cls, matr, shift):             # <<<<<<<<<<<<<<
- *         """Build a transfrom from a 2x2 transform matrix and a shift vector"""
+ *         """Build a transform from a 2x2 transform matrix and a shift vector"""
  *         t=cls()
  */
   __Pyx_GetNameInClass(__pyx_t_1, (PyObject *)__pyx_ptype_8pylablib_4core_8dataproc_10ctransform_CLinear2DTransform, __pyx_n_s_from_matr_shift); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 149, __pyx_L1_error)
@@ -4937,7 +4937,7 @@ if (!__Pyx_RefNanny) {
  * 
  *     @classmethod             # <<<<<<<<<<<<<<
  *     def from_matr_shift(cls, matr, shift):
- *         """Build a transfrom from a 2x2 transform matrix and a shift vector"""
+ *         """Build a transform from a 2x2 transform matrix and a shift vector"""
  */
   __pyx_t_2 = __Pyx_Method_ClassMethod(__pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 148, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);

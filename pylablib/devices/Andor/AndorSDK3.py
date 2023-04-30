@@ -1,5 +1,4 @@
 from .base import AndorError, AndorTimeoutError, AndorFrameTransferError, AndorNotSupportedError
-from . import atcore_lib
 from .atcore_lib import wlib as lib, AndorSDK3LibError, feature_types, read_uint12
 
 from ...core.utils import py3, dictionary, general, funcargparse
@@ -13,7 +12,6 @@ import numpy as np
 import collections
 import ctypes
 import threading
-import time
 
 
 

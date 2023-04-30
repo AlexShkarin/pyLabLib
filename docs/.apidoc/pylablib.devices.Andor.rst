@@ -49,6 +49,15 @@ pylablib.devices.Andor.base module
    :undoc-members:
    :show-inheritance:
 
+pylablib.devices.Andor.utils module
+-----------------------------------
+
+.. automodule:: pylablib.devices.Andor.utils
+   :members:
+   :inherited-members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 
