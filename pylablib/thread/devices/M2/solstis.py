@@ -6,7 +6,7 @@ import time
 import numpy as np
 
 
-class M2Thread(device_thread.DeviceThread):
+class M2SolstisThread(device_thread.DeviceThread):
     """
     M2 SolsTiS laser device thread.
 
@@ -148,15 +148,17 @@ class M2Thread(device_thread.DeviceThread):
             except self.DeviceError:  # pylint: disable=catching-non-exception
                 pass
             self.update_operation_status("idle")
-    def tune_element(self, element, value):
+    def tune_element(self, element, value, stop=True):
         """
         Tune internal laser element.
         
         `element` can be ``"etalon"``, ``"resonator"``, ``"resonator_fine"``, ``"cavity"``, or ``"cavity_fine"``.
+        If ``stop==True``, stop the current operation before tuning.
         """
         if self.open():
-            self._stop_all_operations(reason="element_tuning")
-            self.update_operation_status("element_tuning")
+            if stop:
+                self._stop_all_operations(reason="element_tuning")
+                self.update_operation_status("element_tuning")
             if element=="etalon":
                 self.device.tune_etalon(value)
             elif element=="resonator":
@@ -169,14 +171,15 @@ class M2Thread(device_thread.DeviceThread):
                 self.device.tune_reference_cavity(value,fine=True)
             else:
                 raise ValueError("unrecognized elements: {}".format(element))
-            self.update_operation_status("idle")
+            if stop:
+                self.update_operation_status("idle")
 
     def fine_tune_start(self, wavelength, freq_precision=0., freq_timeout=3.):
         """
         Start fine tuning routine.
 
         If ``freq_precision>0`` and wavemeter thread name is supplied on setup, invoke early tuning termination.
-        In this regime, if the laser frequency is within `freq_precision` of the target frequency for `freq_timeout` seconds, abort the tuning (i.e., assume that it is done). 
+        In this regime, if the laser frequency is within `freq_precision` of the target frequency for `freq_timeout` seconds, abort the tuning (i.e., assume that it is done).
         Otherwise, the tuning is done as normal (the laser controller decides when the tuning is done)
         """
         if self.open():
@@ -309,9 +312,10 @@ class M2Thread(device_thread.DeviceThread):
                             failed=True
                             break
                     curr,rng=status["current"],status["range"]
-                    last_frequency=curr
-                    progress=max(min((curr-rng[0])/(rng[1]-rng[0]),1.),0.)*100.
-                    self.update_progress(progress)
+                    if curr is not None:
+                        last_frequency=curr
+                        progress=max(min((curr-rng[0])/(rng[1]-rng[0]),1.),0.)*100.
+                        self.update_progress(progress)
                 else:
                     status=self.device.check_terascan_update()
                     if status["activity"]=="stitching":
@@ -437,3 +441,5 @@ class M2Thread(device_thread.DeviceThread):
             if self.open():
                 self.v["parameters/web_status"]=self.device.get_full_web_status() or {}
                 self.v["parameters/wavemeter_connected"]=self.get_variable("parameters/web_status/wlm_fitted",False)
+
+M2Thread=M2SolstisThread

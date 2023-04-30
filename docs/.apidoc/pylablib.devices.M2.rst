@@ -4,6 +4,24 @@ pylablib.devices.M2 package
 Submodules
 ----------
 
+pylablib.devices.M2.base module
+-------------------------------
+
+.. automodule:: pylablib.devices.M2.base
+   :members:
+   :inherited-members:
+   :undoc-members:
+   :show-inheritance:
+
+pylablib.devices.M2.emm module
+------------------------------
+
+.. automodule:: pylablib.devices.M2.emm
+   :members:
+   :inherited-members:
+   :undoc-members:
+   :show-inheritance:
+
 pylablib.devices.M2.solstis module
 ----------------------------------
 
