@@ -180,16 +180,16 @@ class SirahMatisseTunerThread(SirahMatisseThread):
         if self.device is not None:
             self.stop_tuning()
         super().finalize_task()
+    _scan_status_text={"idle":"Idle","setup":"Setup","running":"In progress"}
     def update_scan_status(self, status):
         """Update scan status (``"status/scan"``)"""
-        status_text={"idle":"Idle","setup":"Setup","running":"In progress"}
-        self.update_status("scan",status,status_text[status])
+        self.update_status("scan",status,self._scan_status_text[status])
+    _operation_status_text={"idle":"Idle","wavemeter_connection":"Changing wavemeter connection",
+            "stitched_scan":"Stitched scan","fine_scan":"Fine scan","fine_tuning":"Fine tuning","frequency_locking":"Frequency locking"}
     def update_operation_status(self, status):
         """Update operation status (``"status/operation"``)"""
-        status_text={"idle":"Idle","wavemeter_connection":"Changing wavemeter connection",
-            "stitched_scan":"Stitched scan","fine_scan":"Fine scan","fine_tuning":"Fine tuning","frequency_locking":"Frequency locking"}
         curr_status=self.get_variable("status/operation")
-        text=status_text[status]
+        text=self._operation_status_text[status]
         self.update_status("operation",status,text=text)
         return curr_status
     def update_measurements(self):

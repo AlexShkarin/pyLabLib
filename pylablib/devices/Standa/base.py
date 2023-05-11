@@ -263,7 +263,8 @@ class Standa8SMC(comm_backend.ICommBackendWrapper,stage.IStage):
         accel=par.accel if accel is None else int(accel)
         decel=par.decel if decel is None else int(decel)
         antiplay=par.antiplay if antiplay is None else int(antiplay)
-        self.pquery("smov",speed,accel,decel,antiplay)
+        par=self._p2pup(speed)+(self._p2pup(accel)[0],self._p2pup(decel)[0])+self._p2pup(antiplay)
+        self.pquery("smov",*par)
         return self.get_move_parameters()
     
     def get_power_parameters(self):

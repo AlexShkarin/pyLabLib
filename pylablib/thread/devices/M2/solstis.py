@@ -92,27 +92,27 @@ class M2SolstisThread(device_thread.DeviceThread):
     def update_progress(self, progress):
         """Update current progress"""
         self.v["progress"]=progress
+    _operation_status_text={"idle":"Idle","stopping":"Stopping","wavemeter_connection":"Changing wavemeter connection",
+        "terascan":"Terascan","fast_scan":"Fast scan","coarse_scan":"Coarse scan",
+        "coarse_tuning":"Coarse tuning","fine_tuning":"Fine tuning","element_tuning":"Element tuning"}
     def update_operation_status(self, status, reason=None):
         """
         Update operation status (``"status/operation"``).
         
         If `reason` is not ``None``, add it to the status text.
         """
-        status_text={"idle":"Idle","stopping":"Stopping","wavemeter_connection":"Changing wavemeter connection",
-            "terascan":"Terascan","fast_scan":"Fast scan","coarse_scan":"Coarse scan",
-            "coarse_tuning":"Coarse tuning","fine_tuning":"Fine tuning","element_tuning":"Element tuning"}
         curr_status=self.get_variable("status/operation")
-        text=status_text[status]
+        text=self._operation_status_text[status]
         if reason is not None:
-            if reason in status_text:
-                reason=status_text[reason].lower()
+            if reason in self._operation_status_text:
+                reason=self._operation_status_text[reason].lower()
             text="{} for {}".format(text,reason)
         self.update_status("operation",status,text=text)
         return curr_status
+    _scan_status_text={"idle":"Idle","setup":"Setup","running":"In progress"}
     def update_scan_status(self, status):
         """Update scan status (``"status/scan"``)"""
-        status_text={"idle":"Idle","setup":"Setup","running":"In progress"}
-        self.update_status("scan",status,status_text[status])
+        self.update_status("scan",status,self._scan_status_text[status])
 
     def _stop_all_operations(self, reason=None):
         if self.open():
