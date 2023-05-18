@@ -642,7 +642,7 @@ class AndorSDK2Lib:
         return TAmpModeFull(ch,bit_depth,oamp,oamp_kind,hssp,hsspeed_hz,pa,preamp_gain)
     def get_all_amp_modes(self):
         """
-        Get all available preamp modes.
+        Get all available preamp modes with their description.
 
         Each preamp mode is characterized by an AD channel index, amplifier index, channel speed (horizontal scan speed) index and preamp gain index.
         Return list of tuples ``(channel, channel_bitdepth, oamp, oamp_kind, hsspeed, hsspeed_MHz, preamp, preamp_gain)``,

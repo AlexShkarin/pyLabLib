@@ -127,6 +127,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         self._add_settings_variable("temperature",self.get_temperature_setpoint,self.set_temperature)
         self._add_status_variable("temperature_monitor",self.get_temperature,ignore_error=AndorSDK2LibError)
         self._add_status_variable("temperature_status",self.get_temperature_status,ignore_error=AndorSDK2LibError)
+        self._add_info_variable("temperature_range",self.get_temperature_range,ignore_error=AndorSDK2LibError,priority=-2)
         self._add_settings_variable("cooler",self.is_cooler_on,self.set_cooler,ignore_error=AndorSDK2LibError)
         self._add_status_variable("amp_mode",self.get_amp_mode,ignore_error=AndorSDK2LibError)
         self._add_settings_variable("channel",self.get_channel,lambda x:self.set_amp_mode(channel=x))
@@ -134,9 +135,9 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         self._add_settings_variable("hsspeed",self.get_hsspeed,lambda x:self.set_amp_mode(hsspeed=x))
         self._add_settings_variable("preamp",self.get_preamp,lambda x:self.set_amp_mode(preamp=x),ignore_error=AndorSDK2LibError)
         self._add_settings_variable("vsspeed",self.get_vsspeed,self.set_vsspeed,ignore_error=AndorSDK2LibError)
-        self._add_settings_variable("EMCCD_gain",self.get_EMCCD_gain,self.set_EMCCD_gain)
-        self._add_settings_variable("shutter",self.get_shutter_parameters,self.setup_shutter)
-        self._add_settings_variable("fan_mode",self.get_fan_mode,self.set_fan_mode)
+        self._add_settings_variable("EMCCD_gain",self.get_EMCCD_gain,self.set_EMCCD_gain,ignore_error=AndorSDK2LibError)
+        self._add_settings_variable("shutter",self.get_shutter_parameters,self.setup_shutter,ignore_error=AndorSDK2LibError)
+        self._add_settings_variable("fan_mode",self.get_fan_mode,self.set_fan_mode,ignore_error=AndorSDK2LibError)
         self._add_settings_variable("trigger_mode",self.get_trigger_mode,self.set_trigger_mode)
         self._add_settings_variable("acq_parameters/accum",self.get_accum_mode_parameters,self.setup_accum_mode)
         self._add_settings_variable("acq_parameters/kinetic",self.get_kinetic_mode_parameters,self.setup_kinetic_mode)
@@ -144,7 +145,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         self._add_settings_variable("acq_parameters/cont",self.get_cont_mode_parameters,self.setup_cont_mode)
         self._add_settings_variable("acq_mode",self.get_acquisition_mode,self.set_acquisition_mode)
         self._add_status_variable("acq_status",self.get_status)
-        self._add_settings_variable("frame_transfer",self.is_frame_transfer_enabled,self.enable_frame_transfer_mode)
+        self._add_settings_variable("frame_transfer",self.is_frame_transfer_enabled,self.enable_frame_transfer_mode,ignore_error=AndorSDK2LibError)
         self._add_status_variable("cycle_timings",self.get_cycle_timings)
         self._add_status_variable("readout_time",self.get_readout_time)
         self._add_settings_variable("read_parameters/single_track",self.get_single_track_mode_parameters,self.setup_single_track_mode)
@@ -233,7 +234,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
     def _check_option(self, kind, option):
         has_option=self._has_option(kind,option)
         if (not has_option) and self._strict_option_check:
-            raise AndorNotSupportedError("option {}.{} is not supported by {}".format(kind,option,self.device_info.head_model))
+            raise AndorNotSupportedError("option {}.{} is not supported by {}".format(kind,getattr(option,"name",option),self.device_info.head_model))
         return has_option
 
     def _get_connection_parameters(self):
@@ -336,11 +337,11 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         return tuple([s*1E-6 for s in lib.GetPixelSize()])
 
     ### Cooler controls ###
-    @_camfunc(option=("set",AC_SETFUNC.AC_SETFUNCTION_TEMPERATURE))
+    @_camfunc(option=("get",AC_SETFUNC.AC_SETFUNCTION_TEMPERATURE))
     def is_cooler_on(self):
         """Check if the cooler is on"""
         return bool(lib.IsCoolerOn())
-    @_camfunc(option=("get",AC_GETFUNC.AC_GETFUNCTION_TEMPERATURE))
+    @_camfunc(option=("set",AC_GETFUNC.AC_GETFUNCTION_TEMPERATURE))
     def set_cooler(self, on=True):
         """Set the cooler on or off"""
         if on:
@@ -417,6 +418,18 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
             return [lib.GetVSSpeed(i) for i in range(nspeeds)]
         except AndorSDK2LibError:
             return []
+    def _truncate_amp_mode(self, amp_mode):
+        all_amp_modes=self.get_all_amp_modes()
+        all_amp_modes=[(mode.channel,mode.oamp,mode.hsspeed,mode.preamp) for mode in all_amp_modes]
+        for i,v in enumerate(amp_mode):
+            if v is None:
+                continue
+            avs={mode[i] for mode in all_amp_modes}
+            if v not in avs:
+                lvs=[vv for vv in avs if vv<v]
+                v=max(lvs) if lvs else min(avs)
+            all_amp_modes=[mode for mode in all_amp_modes if mode[i]==v]
+        return all_amp_modes[0]
     @_camfunc
     def set_amp_mode(self, channel=None, oamp=None, hsspeed=None, preamp=None):
         """
@@ -433,6 +446,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
             preamp=None
         if not self._has_option("set",AC_SETFUNC.AC_SETFUNCTION_HREADOUT):
             hsspeed=None
+        channel,oamp,hsspeed,preamp=self._truncate_amp_mode((channel,oamp,hsspeed,preamp))
         lib.set_amp_mode((channel,oamp,hsspeed,preamp))
         self._cpar["channel"]=channel
         self._cpar["oamp"]=oamp
@@ -528,6 +542,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
                 vsspeed=self.get_max_vsspeed()
             except AndorSDK2LibError:
                 vsspeed=0
+            self._cpar["vsspeed"]=vsspeed
             self.set_vsspeed(vsspeed)
         try:
             self.set_EMCCD_gain(0,advanced=None)
