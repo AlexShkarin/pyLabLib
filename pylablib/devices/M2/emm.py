@@ -113,6 +113,7 @@ class EMM(ICEBlocDevice):
             raise M2Error("could not setup TeraScan: scan out of range")
         elif reply["status"][0]==4:
             raise M2Error("could not setup TeraScan: TeraScan not available")
+    _terascan_update_reps=(5,0.5)
     def start_terascan(self, scan_type, sync=False, sync_done=False):
         """
         Start terascan.
@@ -128,7 +129,9 @@ class EMM(ICEBlocDevice):
             self.enable_terascan_updates()
         _,reply=self.query("scan_stitch_op",{"scan":scan_type,"operation":"start"},report=True)
         if sync:
-            self.enable_terascan_updates()
+            for _ in range(self._terascan_update_reps[0]):
+                self.enable_terascan_updates()
+                time.sleep(self._terascan_update_reps[1])
         if reply["status"][0]==1:
             raise M2Error("could not start TeraScan: operation failed")
         elif reply["status"][0]==2:
