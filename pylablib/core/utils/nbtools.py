@@ -11,10 +11,10 @@ scalar_types={  "u1":nb.u1, "u2":nb.u2, "u4":nb.u4, "u8":nb.u8,
                 "f4":nb.f4, "f8":nb.f8}
 
 @functools.lru_cache(1024)
-def c_array(base="u1", ndim=1, readonly=False):
-    """Generate a numba C-ordered array type with the given element type, number of dimensions, and read-only flag"""
+def c_array(base="u1", ndim=1, readonly=False, contiguous="C"):
+    """Generate a numba C-ordered array type with the given element type, number of dimensions, and read-only and contiguous flags"""
     base=scalar_types.get(base,base)
-    return nb.types.Array(base,ndim,"C",readonly=readonly)
+    return nb.types.Array(base,ndim,contiguous,readonly=readonly)
 
 
 ##### Array access #####
