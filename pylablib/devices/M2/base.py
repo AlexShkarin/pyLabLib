@@ -4,6 +4,7 @@ from ...core.devio.comm_backend import reraise
 
 import json
 import time
+import contextlib
 
 c=299792458.
 
@@ -38,6 +39,8 @@ class ICEBlocDevice(interface.IDevice):
         self.socket=None
         self._operation_cooldown=0.02
         self._start_link_on_open=start_link
+        self._skipped_replies=0
+        self._noreply=False
         self.open()
         self._last_status={}
 
@@ -126,19 +129,45 @@ class ICEBlocDevice(interface.IDevice):
         """Flush read buffer"""
         self.socket.recv_all()
     
-
+    @contextlib.contextmanager
+    def noreply(self, exhaust_when_done=False):
+        """
+        Context manager within which the code switches to the no-reply mode,
+        where it does not wait for a reply to certain commands (usually element setting commands).
+        This allows for faster command issuing, but ignores possible errors returned by the commands.
+        If ``exhaust_when_done==True``, receive all sent replies upon exiting the context;
+        otherwise, receive them the next time a communication with the device is done.
+        """
+        norep=self._noreply
+        self._noreply=True
+        try:
+            yield
+        finally:
+            self._noreply=norep
+            if exhaust_when_done and not norep:
+                self._exhaust_skipped_replies()
     @reraise
-    def query(self, op, params, reply_op="auto", report=False):
+    def query(self, op, params, reply_op="auto", report=False, allow_noreply=False):
         """
         Send a query using the standard device interface.
 
         `reply_op` is the name of the reply operation (by default, its the operation name plus ``"_reply"``).
         If ``report==True``, request completion report (does not apply to all operation).
+        If ``allow_noreply==True``, allow skipping the reply, which allows for faster consecutive command issuing;
+        this only works if the no-reply mode is also activated using :meth:`noreply`.
+        Return tuple ``(command, args)`` with the reply command name and the corresponding arguments
+        (in no-reply mode return ``(None, None)``).
         """
         if report:
             params["report"]="finished"
             self._last_status[op]=None
         msg=self._build_message(op,params)
+        if allow_noreply and self._noreply:
+            self._exhaust_skipped_replies(leave_max=max(self._max_skipped_replies-1,0))
+            self.socket.send(msg)
+            self._skipped_replies+=1
+            return None,None
+        self._exhaust_skipped_replies()
         for t in range(5):
             try:
                 time.sleep(self._operation_cooldown)
@@ -155,16 +184,33 @@ class ICEBlocDevice(interface.IDevice):
             raise M2Error("unexpected reply op: '{}' (expected '{}')".format(preply[0],reply_op))
         return preply
     @reraise
-    def update_reports(self, timeout=0.):
-        """Check for fresh operation reports"""
+    def update_reports(self, timeout=0., ignore_replies=None, max_replies=None):
+        """
+        Check for fresh operation reports.
+        
+        By default, only receive reports and raise an error on replies; if ``ignore_replies`` is supplies, it is a list of replies which do not raise an error.
+        If ``max_replies`` is supplied, it is the maximal number of replies to read before stopping (by default, no limit, i.e., wait a read leads to a timeout).
+        """
         timeout=max(timeout,0.001)
+        recv_reports=[]
         try:
             with self.socket.using_timeout(timeout):
-                preport=self._recv_reply()
-                raise M2Error("received reply while waiting for a report: '{}'".format(preport[0]))
+                while True:
+                    preport=self._recv_reply()
+                    if not (ignore_replies and (ignore_replies=="all" or preport[0] in ignore_replies)):
+                        raise M2Error("received reply while waiting for a report: '{}'".format(preport[0]))
+                    recv_reports.append(preport)
+                    if max_replies is not None and len(recv_reports)>=max_replies:
+                        break
         except M2CommunicationError as err:
             if not isinstance(err.backend_exc,net.SocketTimeout):
                 raise
+        return recv_reports if ignore_replies else None
+    _max_skipped_replies=5
+    def _exhaust_skipped_replies(self, leave_max=0):
+        while self._skipped_replies>leave_max:
+            reps=self.update_reports(timeout=1.,ignore_replies="all",max_replies=self._skipped_replies-leave_max)
+            self._skipped_replies-=len(reps)
     def get_last_report(self, op):
         """Get the latest report for the given operation"""
         rep=self._last_status.get(op,None)

@@ -235,7 +235,9 @@ class Solstis(ICEBlocDevice):
         Only works if the wavemeter is disconnected.
         If ``sync==True``, wait until the operation is complete.
         """
-        _,reply=self.query("move_wave_t",{"wavelength":[wavelength*1E9]},report=True)
+        _,reply=self.query("move_wave_t",{"wavelength":[wavelength*1E9]},report=True,allow_noreply=not sync)
+        if reply is None:
+            return
         if reply["status"][0]==1:
             raise M2Error("could not coarse-tune wavelength: command failed")
         elif reply["status"][0]==2:
@@ -274,7 +276,9 @@ class Solstis(ICEBlocDevice):
         Only works if the wavemeter is disconnected.
         If ``sync==True``, wait until the operation is complete.
         """
-        _,reply=self.query("tune_etalon",{"setting":[value]},report=True)
+        _,reply=self.query("tune_etalon",{"setting":[value]},report=True,allow_noreply=not sync)
+        if reply is None:
+            return
         if reply["status"][0]==1:
             raise M2Error("could not tune etalon: {} is out of range".format(value))
         elif reply["status"][0]==2:
@@ -333,7 +337,9 @@ class Solstis(ICEBlocDevice):
         """
         op_name="fine_tune_resonator" if fine else "tune_resonator"
         op_pfx="fine" if fine else "coarse"
-        _,reply=self.query(op_name,{"setting":[value]},report=True)
+        _,reply=self.query(op_name,{"setting":[value]},report=True,allow_noreply=not sync)
+        if reply is None:
+            return
         if reply["status"][0]==1:
             raise M2Error("could not {}-tune resonator: {} is out of range".format(op_pfx,value))
         elif reply["status"][0]==2:
@@ -356,7 +362,9 @@ class Solstis(ICEBlocDevice):
             return
         op_name="fine_tune_cavity" if fine else "tune_cavity"
         op_pfx="fine" if fine else "coarse"
-        _,reply=self.query(op_name,{"setting":[value]},report=True)
+        _,reply=self.query(op_name,{"setting":[value]},report=True,allow_noreply=not sync)
+        if reply is None:
+            return
         if reply["status"][0]==1:
             raise M2Error("could not {}-tune reference cavity: {} is out of range".format(op_pfx,value))
         elif reply["status"][0]==2:
