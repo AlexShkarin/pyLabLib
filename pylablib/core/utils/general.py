@@ -915,6 +915,7 @@ class StreamFileLogger:
     def __init__(self, path, stream=None, lock=None, autoflush=False):
         self.paths=path if isinstance(path,list) else [path]
         self.stream=stream
+        self.aux_streams=[]
         self.header_done=False
         self.lock=lock or DummyResource()
         self.autoflush=autoflush
@@ -926,6 +927,13 @@ class StreamFileLogger:
         with self.lock:
             if path not in self.paths:
                 self.paths.append(path)
+    def add_stream(self, stream):
+        """Add another output stream to the list"""
+        with self.lock:
+            if stream not in self.aux_streams and stream is not self.stream:
+                self.aux_streams.append(stream)
+    def _get_streams(self):
+        return ([self.stream] if self.stream is not None else [])+self.aux_streams
     def remove_path(self, path):
         """Remove logging path to the list"""
         with self.lock:
@@ -943,20 +951,20 @@ class StreamFileLogger:
                             with open(p,"a") as f:
                                 if not self.header_done:
                                     self.write_header(f)
-                                    self.header_done=True
                                 f.write(s)
                             break
                         time.sleep(0.1)
                 except IOError:
                     pass
-            if self.stream is not None:
-                self.stream.write(s)
+            self.header_done=True
+            for strm in self._get_streams():
+                strm.write(s)
                 if self.autoflush:
-                    self.stream.flush()
+                    strm.flush()
     def flush(self):
         with self.lock:
-            if self.stream is not None:
-                self.stream.flush()
+            for strm in self._get_streams():
+                strm.flush()
 
 
 
