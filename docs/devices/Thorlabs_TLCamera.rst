@@ -41,6 +41,8 @@ Operation
 
 The operation of these cameras is relatively standard. They support all the standard methods for dealing with ROI and exposure, starting and stopping acquisition, and operating the frame reading loop.
 
+For color cameras, several readout modes are available, which can be set up using :meth:`<.ThorlabsTLCamera.set_color_format>` method. By default, the color cameras output the frames in the linear RGB format (each frame is a 3D array with the last axis encoding color channel).
+
 .. warning::
     The library appears to be not entirely stable: every time acquisition start is issued, there is small (0.1-1%) chance that it will not actually start, which results in timeout errors. Furthermore, there are occasional crashes on the SDK unloading (i.e., camera closing), especially when acquisition has been started and stopped multiple times. It is unclear, what is the cause of this behavior, but it seems to originate from the manufacturer's DLL (bare-bones example and the native Python library reproduce this behavior). Hence, it might be different with different DLL versions.
 

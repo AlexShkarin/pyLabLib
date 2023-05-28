@@ -5,7 +5,7 @@ from . import tl_camera_sdk_defs
 from ...core.devio import interface
 from ..interface import camera
 from ...core.utils import py3
-from ..utils import load_lib
+from ..utils import load_lib, color
 
 import numpy as np
 import collections
@@ -46,6 +46,9 @@ def get_cameras_number():
 
 
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["model","name","serial_number","firmware_version"])
+TSensorInfo=collections.namedtuple("TSensorInfo",["sensor_type","bit_depth"])
+TColorInfo=collections.namedtuple("TColorInfo",["filter_array_phase", "correction_matrix", "default_white_balance_matrix"])
+TColorFormat=collections.namedtuple("TColorFormat",["color_format", "color_space"])
 TFrameInfo=collections.namedtuple("TFrameInfo",["frame_index","framestamp","pixelclock","pixeltype","offset"])
 class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
     """
@@ -65,6 +68,8 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
         self._buffer=self.RingBuffer()
         self._new_frame_cb=None
         self._tsclk=None
+        self._sensor_info=None
+        self._color_info=None
         self.open()
         
         self._add_info_variable("device_info",self.get_device_info)
@@ -72,7 +77,10 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
         self._add_settings_variable("ext_trigger",self.get_ext_trigger_parameters,self.setup_ext_trigger,ignore_error=self.Error)
         self._add_settings_variable("hotpixel_correction",self.get_pixel_correction_parameters,self.setup_pixel_correction,ignore_error=(self.Error,OSError))  # sometimes raises OSError; DLL issues?
         self._add_info_variable("timestamp_clock_frequency",self.get_timestamp_clock_frequency)
-        self._add_status_variable("frame_period",self.get_frame_period)
+        self._add_info_variable("sensor_info",self.get_sensor_info)
+        self._add_info_variable("color_info",self.get_color_info)
+        self._add_settings_variable("color_format",self.get_color_format,self.set_color_format)
+        self._add_settings_variable("frame_period",self.get_frame_period,self.set_frame_period,ignore_error=self.Error)
         
     def _get_connection_parameters(self):
         return self.serial
@@ -86,10 +94,12 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
                 elif self.serial not in lst:
                     raise ThorlabsTLCameraError("camera with serial number {} isn't present among available cameras: {}".format(self.serial,lst))
                 self.handle=lib.tl_camera_open_camera(self.serial)
-                lib.tl_camera_set_image_poll_timeout(self.handle,1000)
-                self._register_new_frame_callback()
-                self._tsclk=self.get_timestamp_clock_frequency()
                 self._opid=libctl.open().opid
+                with self._close_on_error():
+                    lib.tl_camera_set_image_poll_timeout(self.handle,1000)
+                    self._register_new_frame_callback()
+                    self._tsclk=self.get_timestamp_clock_frequency()
+                    self.set_color_format()
     def close(self):
         """Close connection to the camera"""
         if self.handle is not None:
@@ -119,6 +129,68 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
         serial_number=py3.as_str(lib.tl_camera_get_serial_number(self.handle))
         firmware_version=py3.as_str(lib.tl_camera_get_firmware_version(self.handle))
         return TDeviceInfo(model,name,serial_number,firmware_version)
+
+    _sensor_types={"mono":tl_camera_sdk_defs.TL_CAMERA_SENSOR_TYPE.TL_CAMERA_SENSOR_TYPE_MONOCHROME,
+                    "bayer":tl_camera_sdk_defs.TL_CAMERA_SENSOR_TYPE.TL_CAMERA_SENSOR_TYPE_BAYER,
+                    "mono_pol":tl_camera_sdk_defs.TL_CAMERA_SENSOR_TYPE.TL_CAMERA_SENSOR_TYPE_MONOCHROME_POLARIZED}
+    _p_sensor_types=interface.EnumParameterClass("sensor_type",_sensor_types)
+    @interface.use_parameters(_returns=("sensor_type",None))
+    def get_sensor_info(self):
+        """
+        Get camera sensor info.
+        
+        Return tuple ``(sensor_type, bit_depth)``, where sensor type is ``"mono"``, ``"bayer"``, or ``"mono_pol"``,
+        and bit depth is an integer.
+        """
+        if self._sensor_info is None:
+            self._sensor_info=TSensorInfo(lib.tl_camera_get_camera_sensor_type(self.handle),lib.tl_camera_get_bit_depth(self.handle))
+        return self._sensor_info
+    _filter_array_phase={"red":tl_camera_sdk_defs.TL_COLOR_FILTER_ARRAY_PHASE.TL_COLOR_FILTER_ARRAY_PHASE_BAYER_RED,
+                    "blue":tl_camera_sdk_defs.TL_COLOR_FILTER_ARRAY_PHASE.TL_COLOR_FILTER_ARRAY_PHASE_BAYER_BLUE,
+                    "green_left_or_red":tl_camera_sdk_defs.TL_COLOR_FILTER_ARRAY_PHASE.TL_COLOR_FILTER_ARRAY_PHASE_BAYER_GREEN_LEFT_OF_RED,
+                    "green_left_or_blue":tl_camera_sdk_defs.TL_COLOR_FILTER_ARRAY_PHASE.TL_COLOR_FILTER_ARRAY_PHASE_BAYER_GREEN_LEFT_OF_BLUE}
+    _p_filter_array_phase=interface.EnumParameterClass("filter_array_phase",_filter_array_phase)
+    @interface.use_parameters(_returns=("filter_array_phase",None,None))
+    def get_color_info(self):
+        """
+        Get camera color info.
+
+        Return tuple ``(filter_array_phase, correction_matrix, default_white_balance_matrix)``, or ``None`` if the sensor type is not ``"bayer"``.
+        """
+        if self.get_sensor_info().sensor_type!="bayer":
+            return None
+        if self._color_info is None:
+            cmat=np.array(lib.tl_camera_get_color_correction_matrix(self.handle)).reshape((3,3))
+            wbmat=np.array(lib.tl_camera_get_default_white_balance_matrix(self.handle)).reshape((3,3))
+            self._color_info=TColorInfo(lib.tl_camera_get_color_filter_array_phase(self.handle),cmat,wbmat)
+        return self._color_info
+
+    _p_color_output=interface.EnumParameterClass("color_output",["raw","rgb","grayscale","auto"])
+    _p_color_space=interface.EnumParameterClass("color_space",["srgb","linear"])
+    @interface.use_parameters
+    def set_color_format(self, color_output="auto", color_space="linear"):
+        """
+        Set camera color format.
+
+        `color_output` determines the output frame format, and can be ``"raw"`` (raw pixel values without debayering),
+        ``"rgb"`` (color images with the color corresponding to the last array axis), ``"grayscale"`` (average of the colored images),
+        or ``"auto"`` (``"rgb"`` for cameras supporting color and ``"raw"`` otherwise). Note that setting ``"rgb"`` for monochrome cameras is not allowed.
+        `color_space` defines the output color space, and can be ``"linear"`` (linear in the pixel values),
+        or ``"srgb"`` (sRGB color space, which is a non-linear transformation of the linear values).
+        """
+        cinfo=self.get_color_info()
+        if color_output=="rgb" and cinfo is None:
+            raise ValueError("'rgb' color mode is only supported on color cameras")
+        if color_output=="auto":
+            color_output="rgb" if self.get_color_info() is not None else "raw"
+        self._color_output=color_output
+        if color_output=="rgb":
+            color.bayer_interpolate(np.zeros((0,0),dtype="float"))
+        self._color_space=color_space
+        return self.get_color_format()
+    def get_color_format(self):
+        """Get camera color format as a tuple ``(color_output, color_space)``"""
+        return TColorFormat(self._color_output,self._color_space)
 
     # ### Acquisition controls ###
     class RingBuffer:
@@ -195,6 +267,25 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
         """Set camera exposure"""
         lib.tl_camera_set_exposure_time(self.handle,int(exposure/1E-6))
         return self.get_exposure()
+    def get_frame_period_range(self):
+        """Get minimal and maximal frame period (s)"""
+        fps_range=lib.tl_camera_get_frame_rate_control_value_range()
+        return (1./fps_range[1],1./max(fps_range[0],1E-6))
+    def set_frame_period(self, frame_period):
+        """
+        Set camera frame period.
+        
+        If it is 0 or ``None``, set to the auto-rate mode, which automatically selects the highest frame rate.
+        """
+        if frame_period is None or frame_period<=0:
+            lib.tl_camera_set_is_frame_rate_control_enabled(self.handle,0)
+            return
+        lib.tl_camera_set_is_frame_rate_control_enabled(self.handle,1)
+        fpsmin,fpsmax=lib.tl_camera_get_frame_rate_control_value_range(self.handle)
+        fps=min(max(fpsmin,1./frame_period),fpsmax)
+        lib.tl_camera_set_frame_rate_control_value(self.handle,fps)
+        return self.get_frame_period()
+
 
     _trigger_modes={"int":tl_camera_sdk_defs.TL_CAMERA_OPERATION_MODE.TL_CAMERA_OPERATION_MODE_SOFTWARE_TRIGGERED,
                     "ext":tl_camera_sdk_defs.TL_CAMERA_OPERATION_MODE.TL_CAMERA_OPERATION_MODE_HARDWARE_TRIGGERED,
@@ -249,7 +340,12 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
 
     def get_timestamp_clock_frequency(self):
         """Return frequency of the frame timestamp clock (in Hz)"""
-        return lib.tl_camera_get_timestamp_clock_frequency(self.handle) or None
+        if lib.tl_camera_get_timestamp_clock_frequency is None:
+            return None
+        try:
+            return lib.tl_camera_get_timestamp_clock_frequency(self.handle) or None
+        except ThorlabsTLCameraError:
+            return None
 
 
     ### Acquisition process controls ###
@@ -374,11 +470,32 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
         return np.zeros((n,)+self._buffer.frame_dim,dtype=self._default_image_dtype)
     def _wait_for_next_frame(self, timeout=20., idx=None):
         self._buffer.wait_for_frame(idx=idx,timeout=timeout)
+    def _debayer(self, img, cinfo=None):
+        cinfo=self.get_color_info() if cinfo is None else cinfo
+        if cinfo is None:
+            return img
+        off={"red":(0,0),"blue":(1,1),"green_left_of_red":(0,1),"green_left_of_blue":(1,0)}.get(cinfo.filter_array_phase,(0,0))
+        cimg=color.bayer_interpolate(img.astype("float"),off=off)
+        cmatrix=np.dot(cinfo.default_white_balance_matrix,cinfo.correction_matrix)
+        cimg=np.tensordot(cimg,cmatrix,axes=(-1,0))
+        cimg[cimg<0]=0
+        return cimg.astype(img.dtype)
+    def _color_convert(self, img, cinfo=None):
+        if self._color_output=="raw" or cinfo is None:
+            return img
+        cimg=self._debayer(img,cinfo=cinfo)
+        if self._color_space=="srgb":
+            bit_depth=self.get_sensor_info().bit_depth
+            cimg=color.linear_to_sRGB(cimg,2**bit_depth-1)
+        if self._color_output=="grayscale":
+            cimg=np.mean(cimg,axis=-1,dtype=cimg.dtype)
+        return cimg
     def _read_frames(self, rng, return_info=False):
         data=[self._buffer.get_frame(n) for n in range(*rng)]
-        frames=[self._convert_indexing(d[0],"rct") for d in data]
+        cinfo=self.get_color_info()
+        frames=[self._convert_indexing(self._color_convert(d[0],cinfo=cinfo),"rct") for d in data]
         infos=[TFrameInfo(n,*self._parse_metadata(d[1])) for n,d in zip(range(*rng),data)] if return_info else None
-        return frames,infos
+        return frames,infos,(1 if self._color_output=="rgb" and cinfo is not None else 0)
 
     def _get_grab_acquisition_parameters(self, nframes, buff_size):
         if buff_size is None:
