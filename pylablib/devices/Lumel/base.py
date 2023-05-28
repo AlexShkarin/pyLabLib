@@ -22,6 +22,7 @@ class LumelRE72Controller(GenericModbusRTUDevice):
         self._add_info_variable("device_info",self.get_device_info)
         self._add_status_variable("measurementf",self.get_measurementf)
         self._add_status_variable("measurementi",self.get_measurementi)
+        self._add_status_variable("outputf",self.get_outputf)
         self._add_status_variable("setpointf",self.get_setpointf)
         self._add_settings_variable("setpointi",self.get_setpointi,self.set_setpointi)
         self._add_settings_variable("all_setpointi",lambda: tuple([self.get_setpointi(i+1) for i in range(4)]),lambda v: [self.set_setpointi(s,i+1) for i,s in enumerate(v)])
@@ -67,6 +68,15 @@ class LumelRE72Controller(GenericModbusRTUDevice):
         `setpoint` specifies the setpoint kind and can be ``None`` (current), 1, or 2.
         """
         return self.get_reg(7004 if setpoint is None else 7008+setpoint*2)
+    _p_output_kind=interface.EnumParameterClass("output_kind",[1,2])
+    @interface.use_parameters(output="output_kind")
+    def get_outputf(self, output=1):
+        """
+        Get output value in percents.
+        
+        `output` specifies the output channel and can be 1 or 2.
+        """
+        return self.get_reg(7006 if output==1 else 7008)
     
     
     def get_measurementi(self):

@@ -33,11 +33,13 @@ class LumelRE72ControllerThread(device_thread.DeviceThread):
         if self.open():
             self.v["measurement/f"]=self.device.get_measurementf()
             self.v["measurement/i"]=self.device.get_measurementi()
+            self.v["output/f"]=self.device.get_outputf()
             self.v["setpoint/f"]=self.device.get_setpointf()
             self.v["setpoint/i"]=self.device.get_setpointi()
         else:
             self.v["measurement/f"]=0
             self.v["measurement/i"]=0
+            self.v["output/f"]=0
             self.v["setpoint/f"]=0
             self.v["setpoint/i"]=0
             self.sleep(1.)

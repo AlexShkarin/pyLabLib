@@ -45,7 +45,7 @@ class VegaPowerMeterThread(device_thread.DeviceThread):
         else:
             self.v["power"]=0
             self.sleep(1.)
-    def configure(self, filter_in=True, rng_idx=0, wavelength=None):
+    def configure(self, filter_in=None, rng_idx=None, wavelength=None):
         """
         Configure filter settings and range index.
 
