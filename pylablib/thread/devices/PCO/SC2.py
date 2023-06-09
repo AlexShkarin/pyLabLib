@@ -10,7 +10,7 @@ class PCOSC2CameraThread(camera.GenericCameraThread):
     See :class:`.camera.GenericCameraThread`.
     """
     parameter_variables=camera.GenericCameraThread.parameter_variables|{
-            "exposure","frame_period","pixel_rate","all_pixel_rates","trigger_mode","detector_size","roi_limits","roi","buffer_size","internal_buffer_status"}
+            "exposure","frame_period","pixel_rate","all_pixel_rates","double_image_mode","trigger_mode","detector_size","roi_limits","roi","buffer_size","internal_buffer_status"}
     _frameinfo_include_fields={"frame_index"}
     def connect_device(self):
         with self.using_devclass("PCO.PCOSC2Camera",host=self.remote) as cls:

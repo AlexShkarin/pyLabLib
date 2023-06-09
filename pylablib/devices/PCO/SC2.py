@@ -124,6 +124,8 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
         self._add_info_variable("capabilities",self.get_capabilities)
         self._add_info_variable("full_data",self.get_full_camera_data,priority=-8)
         self._add_status_variable("temperature_monitor",self.get_temperature)
+        self._add_settings_variable("double_image_mode",self.get_double_image_mode,self.set_double_image_mode)
+        self._update_device_variable_order("roi")
         self._add_settings_variable("trigger_mode",self.get_trigger_mode,self.set_trigger_mode)
         self._add_settings_variable("frame_delay",self.get_frame_delay,self.set_frame_delay)
         self._add_settings_variable("frame_period",self.get_frame_period,self.set_frame_period)
@@ -733,6 +735,19 @@ class PCOSC2Camera(camera.IBinROICamera, camera.IExposureCamera):
             return (mm[1]*2 if mm[0] else 0)
         else:
             return 0
+    def get_double_image_mode(self):
+        """Check if the double image mode is active"""
+        if self.v["sensor/strDescription/wDoubleImageDESC"]:
+            return bool(lib.PCO_GetDoubleImageMode(self.handle))
+        return False
+    def set_double_image_mode(self, enable):
+        """Enable or disable the double image mode"""
+        if self.v["sensor/strDescription/wDoubleImageDESC"]:
+            lib.PCO_SetDoubleImageMode(self.handle,1 if enable else 0)
+            self.set_roi(*self.get_roi())
+        elif enable:
+            raise PCOSC2NotSupportedError("double image mode is not supported by {}".format(self.get_device_info().model))
+        return self.get_double_image_mode()
 
     _support_chunks=True
     def _parse_frames_data(self, ptr, nframes, shape):
