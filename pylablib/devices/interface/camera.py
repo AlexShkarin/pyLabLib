@@ -926,7 +926,7 @@ class ChunkBufferManager:
     Args:
         chunk_size: the minimal size of a single buffer chunk (continuous memory segment potentially containing several frames).
     """
-    def __init__(self, chunk_size=2**20):
+    def __init__(self, chunk_size=2**26):
         self.chunks=None
         self.nframes=None
         self.frame_size=None

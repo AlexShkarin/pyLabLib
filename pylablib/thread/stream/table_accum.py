@@ -78,6 +78,8 @@ class TableAccumulator:
 
         Data can either be a list of columns, or a dictionary ``{name: [data]}`` with named columns.
         """
+        if data is None:
+            return
         if isinstance(data,stream_message.DataBlockMessage):
             data=data.data
         if isinstance(data,dict):

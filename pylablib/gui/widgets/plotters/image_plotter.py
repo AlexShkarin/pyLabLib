@@ -930,15 +930,15 @@ class ImagePlotter(QLayoutManagedWidget):
             if values.v["show_lines"] and values.v["show_linecuts"]:
                 vpos,hpos=self.get_line_positions(coord_system="display")
                 cut_width=values.v["linecut_width"]
-                vmin=int(min(max(0,vpos-cut_width/2),draw_img.shape[0]-1))
-                vmax=int(vpos+cut_width/2)
+                vmin=int(min(max(0,vpos-cut_width/2+0.5),draw_img.shape[0]-1))
+                vmax=int(vpos+cut_width/2+0.5)
                 if vmax==vmin:
                     if vmin==0:
                         vmax+=1
                     else:
                         vmin-=1
-                hmin=int(min(max(0,hpos-cut_width/2),draw_img.shape[1]-1))
-                hmax=int(hpos+cut_width/2)
+                hmin=int(min(max(0,hpos-cut_width/2+0.5),draw_img.shape[1]-1))
+                hmax=int(hpos+cut_width/2+0.5)
                 if hmax==hmin:
                     if hmin==0:
                         hmax+=1
