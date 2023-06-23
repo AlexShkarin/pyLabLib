@@ -199,6 +199,8 @@ class IMAQdxCamera(camera.IROICamera, camera.IAttributeCamera):
         self._cb_manager=self.CallbackManager()
         self.open()
         self._raw_readout_format=False
+        self._raw_readout_format_bypp=None
+        self._raw_readout_format_bypi=None
         self._add_info_variable("device_info",self.get_device_info)
 
 
@@ -434,22 +436,33 @@ class IMAQdxCamera(camera.IROICamera, camera.IAttributeCamera):
             return data.view("<u2").reshape(shape)
         else:
             return data.view("<u4").reshape(shape)
-    def enable_raw_readout(self, enable="rows"):
+    def enable_raw_readout(self, enable="rows", bytes_per_pixel=None, bytes_per_image=None):
         """
         Enable raw frame transfer.
 
         Should be used if the camera uses unsupported pixel format.
         Can be ``"frame"`` (return the whole frame as a 1D ``"u1"`` numpy array),
         ``"rows"`` (return a 2D array, where each row corresponds to a single image row),
-        or ``False`` (convert to image data, or raise an error if the format is not supported; default)
+        or ``False`` (convert to image data, or raise an error if the format is not supported; default).
+        In addition, for cameras which incorrectly implement ``"PayloadSize"`` parameter, one can explicitly specify the number
+        of bytes per pixel (possibly fractional) which will be used to calculate the total byte size of the frame,
+        or the total number of bytes per image (if specified, takes priority over `bytes_per_pixel`).
+        Both `bytes_per_pixel` and `bytes_per_image` only apply if `enable` is set to ``"frame"`` or ``"rows"``.
         """
         funcargparse.check_parameter_range(enable,"enable",{False,"rows","frame"})
         self._raw_readout_format=enable
+        self._raw_readout_format_bypp=bytes_per_pixel if enable else None
+        self._raw_readout_format_bypi=bytes_per_image if enable else None
 
     def _read_frames(self, rng, return_info=False):  # TODO: add parsing and pixel format
         indices=range(*rng)
-        size_bytes=self.cav["PayloadSize"]
         shape=self.cav["Height"],self.cav["Width"]
+        if self._raw_readout_format_bypi is not None:
+            size_bytes=self._raw_readout_format_bypi
+        elif self._raw_readout_format_bypp is not None:
+            size_bytes=int(shape[0]*shape[1]*self._raw_readout_format_bypp)
+        else:
+            size_bytes=self.cav["PayloadSize"]
         pixel_format=self.cav["PixelFormat"]
         frames=[self._read_data_raw(b,size_bytes) for b in indices]
         frames=[self._parse_data(f,shape,pixel_format) for f in frames]
