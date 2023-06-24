@@ -4,7 +4,7 @@ from .fgrab_prototyp_defs import MeCameraLinkFormat
 from .fgrab_define_defs import FG_STATUS, FG_GETSTATUS, FG_ACQ, FG_IMGFMT, FG_PARAM
 from .fgrab_prototyp_lib import wlib as lib, SiliconSoftwareError, SIFgrabLibError
 
-from ...core.utils import py3, dictionary
+from ...core.utils import py3, dictionary, general
 from ...core.devio import interface
 from ..interface import camera
 
@@ -12,6 +12,8 @@ import numpy as np
 import collections
 import ctypes
 import struct
+import re
+import warnings
 
 
 
@@ -22,19 +24,31 @@ class SiliconSoftwareTimeoutError(SiliconSoftwareError):
 # TODO: serial interface
 # TODO: trigger
 
-TBoardInfo=collections.namedtuple("TBoardInfo",["name","full_name"])
-def get_board_info(board):
+TBoardInfo=collections.namedtuple("TBoardInfo",["name","full_name","serial"])
+TFullBoardInfo=collections.namedtuple("TBoardInfo",["name","full_name","serial","system_info"])
+def get_board_info(board, full_desc=False):
     """Get board info for a given index (starting from 0)"""
     bt=lib.Fg_getBoardType(board)
-    return TBoardInfo(*[py3.as_str(lib.Fg_getBoardNameByType(bt,short)) for short in [1,0]])
-def list_boards():
+    system_info={}
+    aids=Fg_Info_Selector if full_desc else [Fg_Info_Selector.INFO_BOARDSERIALNO]
+    for aid in aids:
+        try:
+            attr=FGrabAttribute(None,aid.value,system=True,idx=board)
+            system_info[attr.name]=attr.get_value()
+        except SiliconSoftwareError:
+            pass
+    if full_desc:
+        return TFullBoardInfo(*[py3.as_str(lib.Fg_getBoardNameByType(bt,short)) for short in [1,0]],serial=system_info.get("INFO_BOARDSERIALNO","").upper(),system_info=system_info)
+    return TBoardInfo(*[py3.as_str(lib.Fg_getBoardNameByType(bt,short)) for short in [1,0]],serial=system_info.get("INFO_BOARDSERIALNO","").upper())
+
+def list_boards(full_desc=False):
     """List all boards available through Silicon Software interface"""
     lib.initlib()
     boards=[]
     i=0
     try:
         while True:
-            boards.append(get_board_info(i))
+            boards.append(get_board_info(i,full_desc=full_desc))
             i+=1
     except SIFgrabLibError as err:
         if err.code!=FG_STATUS.FG_INVALID_BOARD_NUMBER:
@@ -77,8 +91,8 @@ def list_applets(board, full_desc=False, valid=True, on_board=False):
     """
     lib.initlib()
     # 0x157 is all valid and compatible flags: FG_AF_IS_AVAILABLE, FG_AF_IS_CORRECT_PLATFORM, FG_AF_IS_VALID_LICENSE, 
-    # FG_AF_IS_LOADABLE, FG_AF_IS_COMPATIBLE, FG_AF_IS_SUPPORTED_BY_RUNTIME
-    flag=0x157 if valid else 0
+    # FG_AF_IS_LOADABLE, FG_AF_IS_SUPPORTED_BY_RUNTIME
+    flag=0x117 if valid else 0
     src=FgAppletIteratorSource.FG_AIS_BOARD if on_board else FgAppletIteratorSource.FG_AIS_FILESYSTEM
     appn,appiter=lib.Fg_getAppletIterator(board,src,flag)
     infos=[]
@@ -113,6 +127,7 @@ class FGrabAttribute:
         aid: attribute ID
         port: camera port within the frame grabber
         system: if ``True``, this is a system attribute; otherwise, it is a camera attribute
+        idx: if ``system==True`` and `fg` is ``None``, it can specify a board index for a not yet opened grabber
 
     Attributes:
         name: attribute name
@@ -136,8 +151,9 @@ class FGrabAttribute:
                     FgParamTypes.FG_PARAM_TYPE_STRUCT_FIELDPARAMINT: "fp_i32",
                     FgParamTypes.FG_PARAM_TYPE_STRUCT_FIELDPARAMINT64:  "fp_i64",
                     FgParamTypes.FG_PARAM_TYPE_STRUCT_FIELDPARAMDOUBLE:  "fp_f64", }
-    def __init__(self, fg, aid, port=0, system=False):
+    def __init__(self, fg, aid, port=0, system=False, idx=None):
         self.fg=fg
+        self.idx=idx
         self.siso_port=port
         self.aid=aid
         self.system=system
@@ -163,7 +179,9 @@ class FGrabAttribute:
     
     def _get_property(self, prop):
         if self.system:
-            return lib.Fg_getSystemInformation(self.fg,self.aid,prop,0)
+            if self.fg is not None:
+                return lib.Fg_getSystemInformation(self.fg,self.aid,prop,0)
+            return lib.Fg_getSystemInformation(None,self.aid,prop,self.idx)
         return lib.Fg_getParameterPropertyEx(self.fg,self.aid,prop,self.siso_port)
     def update_limits(self):
         """Update minimal and maximal attribute limits and return tuple ``(min, max, inc)``"""
@@ -267,7 +285,7 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
         siso_applet: applet name, which can be learned by :func:`list_applets`;
             usually, a simple applet like ``"DualLineGray16"`` or ``"MediumLineGray16`` are most appropriate;
             can be either an applet name, or a direct path to the applet DLL
-        siso_port: port number, if several ports are supported by the camera and the applet
+        siso_port: port number, if several ports are supported by the grabber and the applet
         siso_detector_size: if not ``None``, can specify the maximal detector size;
             by default, use the maximal available for the frame grabber (usually, 16384x16384)
     """
@@ -275,16 +293,13 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
     TimeoutError=SiliconSoftwareTimeoutError
     _TFrameInfo=TFrameInfo
     _adjustable_frameinfo_period=True
-    def __init__(self, siso_board=0, siso_applet="DualAreaGray16", siso_port=0, siso_detector_size=None, do_open=True, **kwargs):
+    def __init__(self, siso_board=0, siso_applet=None, siso_port=0, siso_detector_size=None, do_open=True, **kwargs):
         super().__init__(**kwargs)
         lib.initlib()
         self.siso_board=siso_board
         self.siso_applet=siso_applet
+        self.siso_applet_path=None
         self.siso_port=siso_port
-        try:
-            self.siso_applet_path=get_applet_info(self.siso_board,name=self.siso_applet).path
-        except KeyError:
-            self.siso_applet_path=self.siso_applet
         self.fg=None
         self._buffer_mgr=camera.ChunkBufferManager()
         self._buffer_head=None
@@ -302,6 +317,20 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
             self.open()
 
 
+    def _get_applets(self, applet=None):
+        if applet is None:
+            return list_applets(self.siso_board,full_desc=True,on_board=True)
+        applets=list_applets(self.siso_board,full_desc=True)
+        return [app for app in applets if re.fullmatch(applet,app.name)]
+    def _try_connect_applets(self, paths):
+        for p in paths:
+            if p is None:
+                continue
+            try:
+                self.fg=lib.Fg_Init(p,self.siso_board)
+                return p
+            except SiliconSoftwareError:
+                pass
     def _normalize_grabber_attribute_name(self, name):
         if name.startswith("FG_"):
             return name[3:]
@@ -318,7 +347,17 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
         """Open connection to the camera"""
         super().open()
         if self.fg is None:
-            self.fg=lib.Fg_Init(self.siso_applet_path,self.siso_board)
+            siso_applets=list(self.siso_applet) if isinstance(self.siso_applet,(list,tuple)) else [self.siso_applet]
+            p=self._try_connect_applets(siso_applets)
+            if p is None:
+                siso_applets=[a.path for p in siso_applets for a in self._get_applets(p)]
+                p=self._try_connect_applets(siso_applets)
+            if self.fg is None:
+                raise SiliconSoftwareError("can not find applets {}".format(self.siso_applet))
+            try:
+                self.siso_applet_path=get_applet_info(self.siso_board,name=p).path
+            except KeyError:
+                self.siso_applet_path=p
             self._update_grabber_attributes()
             self._camlink_camtype_attr="CAMERA_LINK_CAMTYP" if "CAMERA_LINK_CAMTYP" in self.grabber_attributes else "CAMERA_LINK_CAMTYPE"
     def close(self):
@@ -463,7 +502,8 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
                     ( 8,2):MeCameraLinkFormat.FG_CL_DUALTAP_8_BIT,
                     (10,2):MeCameraLinkFormat.FG_CL_DUALTAP_10_BIT,
                     (12,2):MeCameraLinkFormat.FG_CL_DUALTAP_12_BIT,}
-    def setup_camlink_pixel_format(self, bits_per_pixel=8, taps=1, output_fmt=None, fmt=None):
+    _camlink_fmts_inv=general.invert_dict(_camlink_fmts)
+    def setup_camlink_pixel_format(self, bits_per_pixel=8, taps=1, output_fmt=None, fmt=None, bit_alignment="right_custom"):
         """
         Set up CameraLink pixel format.
         
@@ -471,6 +511,9 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
         otherwise, `fmt` should be a numerical (e.g., ``210``) or string (e.g., ``"FG_CL_MEDIUM_10_BIT"``) format.
         `output_fmt` specifies the result frame format; if ``None``, use grayscale with the given `bits_per_pixel`
         if `fmt` is ``None``, or 16 bit grayscale otherwise.
+        `bit_alignment` can specify the alignment of the resulting data (applicable when ``bits_per_pixel`` is not divisible by 8);
+        can be ``"left"``, ``"right"``, ``"right_custom"`` (explicitly calculate and set the number of bits to shift by whenever possible;
+        this solves some issues on ME5 cards), or an integer specifying the number of bits to shift.
         """
         if fmt is None:
             try:
@@ -489,6 +532,30 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
                 output_fmt=FG_IMGFMT.FG_GRAY16
         self.gav[self._camlink_camtype_attr]=fmt
         self.gav["FORMAT"]=output_fmt
+        if "FG_BITALIGNMENT" in self.gav:
+            if "FG_CUSTOM_BIT_SHIFT_RIGHT" not in self.gav:
+                if bit_alignment=="right_custom":
+                    bit_alignment="right"
+                elif isinstance(bit_alignment,int):
+                    warnings.warn("frame grabber does not support custom bit alignment; using 'left' instead")
+                    bit_alignment="left"
+            if bit_alignment=="left":
+                self.gav["FG_BITALIGNMENT"]=fgrab_define_defs.FG_LEFT_ALIGNED
+            elif bit_alignment=="right":
+                self.gav["FG_BITALIGNMENT"]=fgrab_define_defs.FG_RIGHT_ALIGNED
+            elif bit_alignment=="right_custom":
+                if fmt in self._camlink_fmts_inv:
+                    bpp=self._camlink_fmts_inv[fmt][0]
+                    out_bpp=self.gav["PIXELDEPTH"]
+                    self.gav["FG_BITALIGNMENT"]=fgrab_define_defs.FG_CUSTOM_BIT_SHIFT_MODE
+                    self.gav["FG_CUSTOM_BIT_SHIFT_RIGHT"]=out_bpp-bpp
+                else:
+                    warnings.warn("can not determine bit depth for the pixel format {}".format(fmt))
+            elif isinstance(bit_alignment,int):
+                self.gav["FG_BITALIGNMENT"]=fgrab_define_defs.FG_CUSTOM_BIT_SHIFT_MODE
+                self.gav["FG_CUSTOM_BIT_SHIFT_RIGHT"]=bit_alignment
+            else:
+                raise ValueError("unrecognized bit alignment: {}".format(bit_alignment))
     def get_camlink_pixel_format(self):
         """Get CamLink pixel format and the output pixel format as a tuple"""
         try:
@@ -628,5 +695,5 @@ class SiliconSoftwareCamera(SiliconSoftwareFrameGrabber):
         detector_size: if not ``None``, can specify the maximal detector size;
             by default, use the maximal available for the frame grabber (usually, 16384x16384)
     """
-    def __init__(self, board, applet, port=0, detector_size=None):
+    def __init__(self, board, applet=None, port=0, detector_size=None):
         super().__init__(siso_board=board,siso_applet=applet,siso_port=port,siso_detector_size=detector_size)

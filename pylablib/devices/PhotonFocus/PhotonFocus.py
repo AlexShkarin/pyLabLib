@@ -576,7 +576,7 @@ class PhotonFocusSiSoCamera(IPhotonFocusCamera,SiliconSoftwareFrameGrabber):
     """
     Error=DeviceError
     GrabberClass=SiliconSoftwareFrameGrabber
-    def __init__(self, siso_board, siso_applet, siso_port=0, pfcam_port=0):
+    def __init__(self, siso_board, siso_applet=None, siso_port=0, pfcam_port=0):
         super().__init__(pfcam_port=pfcam_port,siso_board=siso_board,siso_applet=siso_applet,siso_port=siso_port)
 
     def open(self):

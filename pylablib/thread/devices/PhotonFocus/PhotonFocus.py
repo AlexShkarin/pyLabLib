@@ -69,7 +69,7 @@ class SiliconSoftwarePhotonFocusCameraThread(GenericPhotonFocusCameraThread):
         with self.using_devclass("PhotonFocus.PhotonFocusSiSoCamera",host=self.remote) as cls:
             self.device=cls(siso_board=self.siso_board,siso_applet=self.siso_applet,siso_port=self.siso_port,pfcam_port=self.pfcam_port)  # pylint: disable=not-callable
         
-    def setup_task(self, siso_board, siso_applet, siso_port=0, pfcam_port=0, remote=None, misc=None):  # pylint: disable=arguments-differ
+    def setup_task(self, siso_board, siso_applet=None, siso_port=0, pfcam_port=0, remote=None, misc=None):  # pylint: disable=arguments-differ
         self.siso_board=siso_board
         self.siso_applet=siso_applet
         self.siso_port=siso_port
