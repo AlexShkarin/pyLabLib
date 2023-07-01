@@ -1,7 +1,7 @@
 # pylint: disable=wrong-spelling-in-comment
 
 from .fgrab_define_defs import FG_STATUS, drFG_STATUS, FG_PARAM
-from .fgrab_prototyp_defs import FgParamTypes, FgProperty
+from .fgrab_prototyp_defs import FgParamTypes, FgProperty, CFgApcControl, frameindex_t
 from .fgrab_prototyp_defs import define_functions
 
 from ...core.utils import ctypes_wrap, functions as func_utils
@@ -247,6 +247,10 @@ class SIFgrabLib:
         self.Fg_readUserDataArea=wrapper_rz(lib.Fg_readUserDataArea)
         #  ctypes.c_int Fg_writeUserDataArea(ctypes.c_void_p Fg, ctypes.c_int boardId, ctypes.c_uint offs, ctypes.c_uint size, ctypes.c_void_p buffer)
         self.Fg_writeUserDataArea=wrapper_rz(lib.Fg_writeUserDataArea)
+
+        #  ctypes.c_int Fg_registerApcHandler(ctypes.c_void_p Fg, ctypes.c_uint DmaIndex, ctypes.c_void_p control, ctypes.c_int flags)
+        self.Fg_registerApcHandler_lib=wrapper(lib.Fg_registerApcHandler)
+        self.Fg_ApcFunc_t=ctypes.WINFUNCTYPE(ctypes.c_int,frameindex_t,ctypes.c_void_p)
         
 
         self._initialized=True
@@ -285,8 +289,6 @@ class SIFgrabLib:
         # self.Fg_unregisterAsyncNotifyCallback=wrapper(lib.Fg_unregisterAsyncNotifyCallback)
         # #  ctypes.c_int Fg_resetAsyncNotify(ctypes.c_void_p Fg, ctypes.c_ulong notification, ctypes.c_ulong pl, ctypes.c_ulong ph)
         # self.Fg_resetAsyncNotify=wrapper(lib.Fg_resetAsyncNotify)
-        # #  ctypes.c_int Fg_registerApcHandler(ctypes.c_void_p Fg, ctypes.c_uint DmaIndex, ctypes.c_void_p control, ctypes.c_int flags)
-        # self.Fg_registerApcHandler=wrapper(lib.Fg_registerApcHandler)
         
         ## Shading ##
         # #  ctypes.c_void_p Fg_AllocShading(ctypes.c_void_p Fg, ctypes.c_int set, ctypes.c_uint CamPort)
@@ -379,6 +381,26 @@ class SIFgrabLib:
         v=ptypes[Parameter]()
         self.Fg_getParameterEx(Fg,Parameter,ctypes.byref(v),DmaIndex,pMem,ImgNr)
         return v.value
+    
+    def Fg_registerApcHandler(self, Fg, DmaIndex, version, func, data, timeout, flags, wrap=True):
+        if not hasattr(func,"__call__"):
+            cb=func
+        elif wrap:
+            def wrapped_func(*args):
+                try:
+                    func(*args)
+                    return 0
+                except: # pylint: disable=bare-except
+                    return -1
+            cb=self.Fg_ApcFunc_t(wrapped_func)
+        else:
+            cb=self.Fg_ApcFunc_t(func)
+        ctl=CFgApcControl.prep_struct_args(version,func,data,timeout,flags)
+        self.Fg_registerApcHandler_lib(Fg,DmaIndex,ctypes.byref(ctl),0)
+        return cb
+    
+    def Fg_unregisterApcHandler(self, Fg, DmaIndex):
+        self.Fg_registerApcHandler_lib(Fg,DmaIndex,None,0)
 
 
 wlib=SIFgrabLib()

@@ -1,12 +1,14 @@
-from . import fgrab_prototyp_lib
-from .fgrab_prototyp_defs import FgAppletIntProperty, FgAppletStringProperty, FgAppletIteratorSource, FgParamTypes, FgProperty, Fg_Info_Selector, drFg_Info_Selector
+from . import fgrab_prototyp_lib, fgrab_define_defs
+from .fgrab_prototyp_defs import FgAppletIntProperty, FgAppletStringProperty, FgAppletIteratorSource, FgParamTypes, FgProperty, Fg_Info_Selector, drFg_Info_Selector, Fg_Apc_Flag
 from .fgrab_prototyp_defs import MeCameraLinkFormat
-from .fgrab_define_defs import FG_STATUS, FG_GETSTATUS, FG_ACQ, FG_IMGFMT, FG_PARAM
+from .fgrab_define_defs import FG_STATUS, FG_ACQ, FG_IMGFMT, FG_PARAM
 from .fgrab_prototyp_lib import wlib as lib, SiliconSoftwareError, SIFgrabLibError
 
 from ...core.utils import py3, dictionary, general
+from ...core.utils.ctypes_tools import funcaddressof
 from ...core.devio import interface
 from ..interface import camera
+from .utils import looper, get_callback  # pylint: disable=no-name-in-module
 
 import numpy as np
 import collections
@@ -14,6 +16,7 @@ import ctypes
 import struct
 import re
 import warnings
+import threading
 
 
 
@@ -301,8 +304,8 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
         self.siso_applet_path=None
         self.siso_port=siso_port
         self.fg=None
-        self._buffer_mgr=camera.ChunkBufferManager()
-        self._buffer_head=None
+        self._buffer_mgr=None
+        self._last_nacq_t=0
         self._frame_merge=1
         self._acq_in_progress=False
         self._system_info=None
@@ -360,10 +363,12 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
                 self.siso_applet_path=p
             self._update_grabber_attributes()
             self._camlink_camtype_attr="CAMERA_LINK_CAMTYP" if "CAMERA_LINK_CAMTYP" in self.grabber_attributes else "CAMERA_LINK_CAMTYPE"
+            self._buffer_mgr=self.BufferManager(self.fg,self.siso_port)
     def close(self):
         """Close connection to the camera"""
         if self.fg is not None:
             self.clear_acquisition()
+            self._buffer_mgr=None
             try:
                 self.fg=lib.Fg_FreeGrabber(self.fg)
             finally:
@@ -466,27 +471,115 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
     get_grabber_roi_limits=get_roi_limits
 
 
+    class BufferManager:
+        """Frame buffer manager which controls and schedules the buffer and the buffer copying loop"""
+        _fg_nframes_max=2**10
+        def __init__(self, fg, siso_port):
+            self.fg=fg
+            self.siso_port=siso_port
+            self.head=None
+            self.use_tmp_buffer=False
+            self.deallocate()
+            self.looping=ctypes.c_uint(0)
+            self.nread=ctypes.c_int64(0)
+            self.new_nacq=ctypes.c_int64(0)
+            self.oldest_valid=ctypes.c_int64(0)
+            self.debug_info=(ctypes.c_int64*3)()
+            self._buffer_loop_thread=None
+        def allocate(self, nframes, frame_size):
+            """Allocate and schedule buffers with the given number and size"""
+            self.deallocate()
+            self.use_tmp_buffer=nframes>self._fg_nframes_max
+            if self.use_tmp_buffer:
+                self.fg_nframes=self._fg_nframes_max
+                self.fg_buffer=ctypes.create_string_buffer(self._fg_nframes_max*frame_size)
+                self.tmp_nframes=nframes
+                self.tmp_buffer=ctypes.create_string_buffer(nframes*frame_size)
+            else:
+                self.fg_nframes=nframes
+                self.fg_buffer=ctypes.create_string_buffer(nframes*frame_size)
+            self.nframes=nframes
+            self.frame_size=frame_size
+            self.head=lib.Fg_AllocMemHead(self.fg,self.fg_nframes*frame_size,self.fg_nframes)
+            for i in range(self.fg_nframes):
+                lib.Fg_AddMem(self.fg,ctypes.addressof(self.fg_buffer)+i*frame_size,frame_size,i,self.head)
+        def deallocate(self):
+            """Deallocate and remove the buffers"""
+            if self.use_tmp_buffer:
+                self.stop_loop()
+            if self.head is not None:
+                for i in range(self.fg_nframes):
+                    lib.Fg_DelMem(self.fg,self.head,i)
+                lib.Fg_FreeMemHead(self.fg,self.head)
+                self.head=None
+            self.fg_buffer=None
+            self.tmp_buffer=None
+            self.fg_nframes=None
+            self.tmp_nframes=None
+            self.nframes=None
+            self.frame_size=None
+            self.run_nframes=0
+        def start_loop(self, run_nframes):
+            """Start the copying loop and, optionally, run the acquisition loop with the given number of frames"""
+            self.stop_loop()
+            self.new_nacq.value=0
+            timeout=3600*24*365
+            lib.Fg_registerApcHandler(self.fg,self.siso_port,0,get_callback(),ctypes.addressof(self.new_nacq),timeout,Fg_Apc_Flag.FG_APC_BATCH_FRAMES)
+            if not self.use_tmp_buffer:
+                return False
+            self._buffer_loop_thread=threading.Thread(target=self._run_schedule_looper,daemon=True)
+            self.looping.value=1
+            self.nread.value=0
+            self.oldest_valid.value=0
+            self.run_nframes=run_nframes
+            self._buffer_loop_thread.start()
+            return True
+        def _run_schedule_looper(self):
+            code=looper(self.fg,self.siso_port,self.head,
+                            ctypes.addressof(self.fg_buffer),ctypes.addressof(self.tmp_buffer),self.frame_size,self.fg_nframes,self.tmp_nframes,self.run_nframes,
+                            ctypes.addressof(self.looping),ctypes.addressof(self.new_nacq),ctypes.addressof(self.nread),ctypes.addressof(self.oldest_valid),ctypes.addressof(self.debug_info),
+                            funcaddressof(lib.lib.Fg_getStatusEx),funcaddressof(lib.lib.Fg_AcquireEx))
+            if code:
+                raise SIFgrabLibError("Fg_getStatusEx",code)
+        def stop_loop(self):
+            """Stop the copying loop"""
+            if self._buffer_loop_thread is not None:
+                self.looping.value=0
+                self._buffer_loop_thread.join()
+                self._buffer_loop_thread=None
+            lib.Fg_unregisterApcHandler(self.fg,self.siso_port)
+        def get_status(self):
+            """
+            Get acquisition status.
+
+            Return tuple ``(nread, oldest_valid_buffer, nacq, debug_info)``
+            """
+            if self.head is None:
+                return 0,0,0,[0]*3
+            if self.use_tmp_buffer:
+                return self.nread.value,self.oldest_valid.value,self.new_nacq.value,self.debug_info[:]
+            return self.new_nacq.value,0,self.new_nacq.value,[0]*3
+        def get_frames_data(self, idx, nframes=1):
+            """Get buffer chunk addresses for the given number of frames starting from the given index"""
+            idx%=self.nframes
+            buff=self.tmp_buffer if self.use_tmp_buffer else self.fg_buffer
+            if idx+nframes<=self.nframes:
+                return [(nframes,ctypes.c_char_p(ctypes.addressof(buff)+self.frame_size*idx))]
+            return [(self.nframes-idx,ctypes.c_char_p(ctypes.addressof(buff)+self.frame_size*idx)),(idx+nframes-self.nframes,buff),]
     def _get_acquired_frames(self):
         if not self.acquisition_in_progress():
             return None
-        return lib.Fg_getStatusEx(self.fg,FG_GETSTATUS.NUMBER_OF_GRABBED_IMAGES,0,self.siso_port,self._buffer_head)*self._frame_merge
+        nacq,oldest_valid=self._buffer_mgr.get_status()[:2]
+        self._frame_counter.set_first_valid_frame(oldest_valid)
+        return nacq*self._frame_merge
         
     def _setup_buffers(self, nframes):
         self._clear_buffers()
         nbuff=(nframes-1)//self._frame_merge+1
         buffer_size=self._get_buffer_size()
         self._buffer_mgr.allocate(nbuff,buffer_size)
-        self._buffer_head=lib.Fg_AllocMemHead(self.fg,nbuff*buffer_size,nbuff)
-        cbuffs=self._buffer_mgr.get_ctypes_frames_list(ctype=ctypes.c_void_p)
-        for i,b in enumerate(cbuffs):
-            lib.Fg_AddMem(self.fg,b,buffer_size,i,self._buffer_head)
     def _clear_buffers(self):
-        if self._buffer_mgr:
-            cbuffs=self._buffer_mgr.get_ctypes_frames_list(ctype=ctypes.c_void_p)
-            for i,_ in enumerate(cbuffs):
-                lib.Fg_DelMem(self.fg,self._buffer_head,i)
-            lib.Fg_FreeMemHead(self.fg,self._buffer_head)
-            self._buffer_head=None
+        if self._buffer_mgr is not None:
             self._buffer_mgr.deallocate()
     def _ensure_buffers(self):
         nbuff=self._buffer_mgr.nframes
@@ -600,31 +693,17 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
         mode=self._acq_params["mode"]
         nframes=self._acq_params["nframes"] if mode=="snap" else -1
         self._frame_counter.reset(self._buffer_mgr.nframes*self._frame_merge)
-        lib.Fg_AcquireEx(self.fg,self.siso_port,nframes,FG_ACQ.ACQ_STANDARD,self._buffer_head)
+        if not self._buffer_mgr.start_loop(run_nframes=nframes):
+            lib.Fg_AcquireEx(self.fg,self.siso_port,nframes,FG_ACQ.ACQ_STANDARD,self._buffer_mgr.head)
         self._acq_in_progress=True
     def stop_acquisition(self):
         if self.acquisition_in_progress():
+            self._buffer_mgr.stop_loop()
             self._frame_counter.update_acquired_frames(self._get_acquired_frames())
-            lib.Fg_stopAcquireEx(self.fg,self.siso_port,self._buffer_head,FG_ACQ.ACQ_STANDARD)
+            lib.Fg_stopAcquireEx(self.fg,self.siso_port,self._buffer_mgr.head,FG_ACQ.ACQ_STANDARD)
             self._acq_in_progress=False
     def acquisition_in_progress(self):
         return self._acq_in_progress
-
-
-    
-    def _wait_for_next_frame(self, timeout=20., idx=None):
-        if timeout is None or timeout>0.1:
-            timeout=0.1
-        try:
-            if idx is None:
-                idx=self._frame_counter.last_acquired_frame+1
-            lib.Fg_getLastPicNumberBlockingEx(self.fg,idx,self.siso_port,int(timeout*1000),self._buffer_head)
-        except SIFgrabLibError as err:
-            if err.code==FG_STATUS.FG_TIMEOUT_ERR:
-                pass
-            elif err.code in [FG_STATUS.FG_INVALID_MEMORY,FG_STATUS.FG_TRANSFER_NOT_ACTIVE] and not self.acquisition_in_progress():
-                raise
-
     
     def _get_buffer_bpp(self):
         bpp=self.gav["PIXELDEPTH"]
@@ -666,7 +745,7 @@ class SiliconSoftwareFrameGrabber(camera.IGrabberAttributeCamera,camera.IROICame
             frame_info=[np.array(frng)*self._frame_merge]
             for p in params:
                 try:
-                    frame_info.append([lib.Fg_getParameterEx_auto(self.fg,p,self.siso_port,self._buffer_head,i+1) if i%self._frameinfo_period==0 else 0 for i in frng])
+                    frame_info.append([lib.Fg_getParameterEx_auto(self.fg,p,self.siso_port,self._buffer_mgr.head,i+1) if i%self._frameinfo_period==0 else 0 for i in frng])
                 except SIFgrabLibError:
                     frame_info.append([0]*len(frng))
             frame_info=np.array(frame_info)

@@ -13,6 +13,15 @@ pylablib.devices.SiliconSoftware.fgrab module
    :undoc-members:
    :show-inheritance:
 
+pylablib.devices.SiliconSoftware.utils module
+---------------------------------------------
+
+.. automodule:: pylablib.devices.SiliconSoftware.utils
+   :members:
+   :inherited-members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 
