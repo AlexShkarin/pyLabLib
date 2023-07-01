@@ -9,7 +9,7 @@ class ThorlabsTLCameraThread(camera.GenericCameraThread):
     See :class:`.camera.GenericCameraThread`.
     """
     parameter_variables=camera.GenericCameraThread.parameter_variables|{
-            "exposure","frame_period","detector_size","buffer_size","acq_status","roi_limits","roi","trigger_mode"}
+            "exposure","frame_period","detector_size","buffer_size","acq_status","roi_limits","roi","trigger_mode","gain","gain_range","black_level","black_level_range","cooling","led"}
     parameter_freeze_running={"exposure","detector_size","roi_limits","roi","trigger_mode"}
     _frameinfo_include_fields={"frame_index","framestamp","pixelclock"}
     def connect_device(self):

@@ -47,8 +47,8 @@ def get_cameras_number():
 
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["model","name","serial_number","firmware_version"])
 TSensorInfo=collections.namedtuple("TSensorInfo",["sensor_type","bit_depth"])
-TColorInfo=collections.namedtuple("TColorInfo",["filter_array_phase", "correction_matrix", "default_white_balance_matrix"])
-TColorFormat=collections.namedtuple("TColorFormat",["color_format", "color_space"])
+TColorInfo=collections.namedtuple("TColorInfo",["filter_array_phase","correction_matrix","default_white_balance_matrix"])
+TColorFormat=collections.namedtuple("TColorFormat",["color_format","color_space"])
 TFrameInfo=collections.namedtuple("TFrameInfo",["frame_index","framestamp","pixelclock","pixeltype","offset"])
 class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
     """
@@ -70,12 +70,20 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
         self._tsclk=None
         self._sensor_info=None
         self._color_info=None
+        self._white_balance_matrix=np.eye(3)
         self.open()
         
         self._add_info_variable("device_info",self.get_device_info)
         self._add_settings_variable("trigger_mode",self.get_trigger_mode,self.set_trigger_mode)
         self._add_settings_variable("ext_trigger",self.get_ext_trigger_parameters,self.setup_ext_trigger,ignore_error=self.Error)
         self._add_settings_variable("hotpixel_correction",self.get_pixel_correction_parameters,self.setup_pixel_correction,ignore_error=(self.Error,OSError))  # sometimes raises OSError; DLL issues?
+        self._add_info_variable("gain_range",self.get_gain_range,ignore_error=self.Error)
+        self._add_settings_variable("gain",self.get_gain,self.set_gain,ignore_error=self.Error)
+        self._add_info_variable("black_level_range",self.get_black_level_range,ignore_error=self.Error)
+        self._add_settings_variable("black_level",self.get_black_level,self.set_black_level,ignore_error=self.Error)
+        self._add_settings_variable("nir_boost",self.is_nir_boost_enabled,self.enable_nir_boost,ignore_error=self.Error)
+        self._add_settings_variable("cooling",self.is_cooling_enabled,self.enable_cooling,ignore_error=self.Error)
+        self._add_settings_variable("led",self.is_led_enabled,self.enable_led,ignore_error=self.Error)
         self._add_info_variable("timestamp_clock_frequency",self.get_timestamp_clock_frequency)
         self._add_info_variable("sensor_info",self.get_sensor_info)
         self._add_info_variable("color_info",self.get_color_info)
@@ -100,6 +108,7 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
                     self._register_new_frame_callback()
                     self._tsclk=self.get_timestamp_clock_frequency()
                     self.set_color_format()
+                    self.set_white_balance_matrix()
     def close(self):
         """Close connection to the camera"""
         if self.handle is not None:
@@ -164,6 +173,21 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
             wbmat=np.array(lib.tl_camera_get_default_white_balance_matrix(self.handle)).reshape((3,3))
             self._color_info=TColorInfo(lib.tl_camera_get_color_filter_array_phase(self.handle),cmat,wbmat)
         return self._color_info
+
+    def get_white_balance_matrix(self):
+        """Get the white balance matrix"""
+        return self._white_balance_matrix
+    def set_white_balance_matrix(self, matrix=None):
+        """
+        Set the white balance matrix.
+
+        Can be ``None`` (the default matrix), a 3-number 1D array (multipliers for RGB), or a full 3x3 matrix.
+        """
+        if matrix is None:
+            matrix=self.get_color_info().default_white_balance_matrix
+        elif np.ndim(matrix)==1:
+            matrix=np.diag(matrix)
+        self._white_balance_matrix=matrix
 
     _p_color_output=interface.EnumParameterClass("color_output",["raw","rgb","grayscale","auto"])
     _p_color_space=interface.EnumParameterClass("color_space",["srgb","linear"])
@@ -338,6 +362,79 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
             lib.tl_camera_set_hot_pixel_correction_threshold(self.handle,threshold)
         return self.get_pixel_correction_parameters()
 
+    def get_gain_range(self):
+        """Return the available gain range (in dB)"""
+        return tuple(lib.tl_camera_convert_gain_to_decibels(self.handle,g) for g in lib.tl_camera_get_gain_range(self.handle))
+    def get_gain(self):
+        """Return the current gain (in dB)"""
+        return lib.tl_camera_convert_gain_to_decibels(self.handle,lib.tl_camera_get_gain(self.handle))
+    def set_gain(self, gain, truncate=True):
+        """
+        Set the current gain (in dB).
+        
+        If ``truncate==True``, truncate the value to lie within the allowed range; otherwise, out-of-range values cause an error.
+        """
+        gain=lib.tl_camera_convert_decibels_to_gain(self.handle,gain)
+        if truncate:
+            min_gain,max_gain=lib.tl_camera_get_gain_range(self.handle)
+            gain=max(min_gain,min(gain,max_gain))
+        lib.tl_camera_set_gain(self.handle,gain)
+        return self.get_gain()
+    
+    def get_black_level_range(self):
+        """Return the available black level range"""
+        return lib.tl_camera_get_black_level_range(self.handle)
+    def get_black_level(self):
+        """Return the current black level"""
+        return lib.tl_camera_get_black_level(self.handle)
+    def set_black_level(self, level, truncate=True):
+        """
+        Set the current black level.
+        
+        If ``truncate==True``, truncate the value to lie within the allowed range; otherwise, out-of-range values cause an error.
+        """
+        if truncate:
+            min_level,max_level=lib.tl_camera_get_black_level_range(self.handle)
+            level=max(min_level,min(level,max_level))
+        lib.tl_camera_set_black_level(self.handle,level)
+        return self.get_black_level()
+    
+    def is_nir_boost_enabled(self):
+        """Check if NIR boost is enabled"""
+        if lib.tl_camera_get_nir_boost_enable is None:
+            raise self.Error("NIR boost access is not supported by this version of the API")
+        return lib.tl_camera_get_nir_boost_enable(self.handle)
+    def enable_nir_boost(self, enable=True):
+        """Enable or disable NIR boost"""
+        if lib.tl_camera_get_nir_boost_enable is None:
+            raise self.Error("NIR boost access access is not supported by this version of the API")
+        lib.tl_camera_set_nir_boost_enable(self.handle,enable)
+        return self.is_nir_boost_enabled()
+    
+    def is_cooling_enabled(self):
+        """Check if cooling is enabled"""
+        if lib.tl_camera_get_cooling_enable is None:
+            raise self.Error("cooling access is not supported by this version of the API")
+        return lib.tl_camera_get_cooling_enable(self.handle)
+    def enable_cooling(self, enable=True):
+        """Enable or disable cooling"""
+        if lib.tl_camera_get_cooling_enable is None:
+            raise self.Error("cooling access is not supported by this version of the API")
+        lib.tl_camera_set_cooling_enable(self.handle,enable)
+        return self.is_cooling_enabled()
+    
+    def is_led_enabled(self):
+        """Check if led is enabled"""
+        if lib.tl_camera_get_is_led_on is None:
+            raise self.Error("LED access is not supported by this version of the API")
+        return lib.tl_camera_get_is_led_on(self.handle)
+    def enable_led(self, enable=True):
+        """Enable or disable led"""
+        if lib.tl_camera_get_is_led_on is None:
+            raise self.Error("LED access is not supported by this version of the API")
+        lib.tl_camera_set_is_led_on(self.handle,enable)
+        return self.is_led_enabled()
+
     def get_timestamp_clock_frequency(self):
         """Return frequency of the frame timestamp clock (in Hz)"""
         if lib.tl_camera_get_timestamp_clock_frequency is None:
@@ -476,8 +573,8 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
             return img
         off={"red":(0,0),"blue":(1,1),"green_left_of_red":(0,1),"green_left_of_blue":(1,0)}.get(cinfo.filter_array_phase,(0,0))
         cimg=color.bayer_interpolate(img.astype("float"),off=off)
-        cmatrix=np.dot(cinfo.default_white_balance_matrix,cinfo.correction_matrix)
-        cimg=np.tensordot(cimg,cmatrix,axes=(-1,0))
+        cmatrix=np.dot(self._white_balance_matrix,cinfo.correction_matrix)
+        cimg=np.tensordot(cimg,cmatrix,axes=(-1,1))
         cimg[cimg<0]=0
         return cimg.astype(img.dtype)
     def _color_convert(self, img, cinfo=None):
