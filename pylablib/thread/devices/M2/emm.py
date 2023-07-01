@@ -60,7 +60,7 @@ class M2EMMThread(device_thread.DeviceThread):
         self.update_scan_status("idle")
         self.update_status("terascan/result","success","Success")
 
-    def _apply_calibration_frequency(self, freq, kind=None):
+    def _apply_calibration_frequency(self, freq, kind=None):  # pylint: disable=unused-argument
         return freq
     def _apply_calibration_wavelength(self, wl, kind=None):
         return M2.c/self._apply_calibration_frequency(M2.c/wl,kind=kind)

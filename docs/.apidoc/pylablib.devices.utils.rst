@@ -4,6 +4,15 @@ pylablib.devices.utils package
 Submodules
 ----------
 
+pylablib.devices.utils.color module
+-----------------------------------
+
+.. automodule:: pylablib.devices.utils.color
+   :members:
+   :inherited-members:
+   :undoc-members:
+   :show-inheritance:
+
 pylablib.devices.utils.load\_lib module
 ---------------------------------------
 

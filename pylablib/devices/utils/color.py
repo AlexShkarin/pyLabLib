@@ -20,7 +20,7 @@ def _bayer_interpolate_nb(tsrc="u2", tdst=None, par=False, nogil=True):
     def interpolate(src, dst, ioff=0, joff=0, mode=0, roff=0): # mode=0 is 1 pixel per square (RB), mode=1 is 2 pixels per square (G)
         n,r,c=src.shape
         if mode==0:
-            for f in nb.prange(n):
+            for f in nb.prange(n):  # pylint: disable=not-an-iterable
                 for i in range(r):
                     for j in range(c):
                         if i%2==ioff and j%2==joff:
@@ -62,7 +62,7 @@ def _bayer_interpolate_nb(tsrc="u2", tdst=None, par=False, nogil=True):
                                 else:
                                     dst[f,i,j]=(src[f,i-1,j+1]+src[f,i+1,j+1]+src[f,i-1,j-1]+src[f,i+1,j-1]+roff*2)/4
         if mode==1:
-            for f in nb.prange(n):
+            for f in nb.prange(n):  # pylint: disable=not-an-iterable
                 for i in range(r):
                     for j in range(c):
                         if (i%2==ioff and j%2==joff) or ((i+1)%2==ioff and (j+1)%2==joff):

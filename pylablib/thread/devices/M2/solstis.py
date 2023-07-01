@@ -57,7 +57,6 @@ class M2SolstisThread(device_thread.DeviceThread):
         self.use_cavity=use_cavity
         self.remote=remote
         self.open()
-        self.update_progress(0.)
         self.add_command("set_wavemeter_connection",self.set_wavemeter_connection,limit_queue=1,on_full_queue="skip_oldest")
         self.add_command("stop_tuning",limit_queue=1,priority=10)
         self.add_command("tune_element",limit_queue=1,on_full_queue="skip_oldest")
