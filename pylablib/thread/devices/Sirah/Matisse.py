@@ -16,8 +16,11 @@ class SirahMatisseThread(device_thread.DeviceThread):
         - ``thinet_power``: current thin etalon reflection power
         - ``bifi_position``: position of the BiFi (in steps)
         - ``thinet_position``: position of the thin etalon (in steps)
+        - ``thinet_locked``: indicates whether thin etalon lock is active
         - ``piezoet_position``: position of the piezo etalon (normalized)
+        - ``piezoet_locked``: indicates whether piezo etalon lock is active
         - ``slowpiezo_position``: position of the slow piezo (normalized)
+        - ``slowpiezo_locked``: indicates whether slow piezo lock is active
         - ``fastpiezo_position``: position of the fast piezo (normalized)
         - ``refcell_position``: position of the reference cell (normalized)
         - ``fastpiezo_locked``: indicates whether fast piezo lock to the reference cell is active and successful
@@ -94,20 +97,26 @@ class SirahMatisseThread(device_thread.DeviceThread):
             self.update_parameters()
 
     def update_measurements(self):
-        params=["diode_power","thinet_power","bifi_position","thinet_position","piezoet_position",
-                    "slowpiezo_position","fastpiezo_position","fastpiezo_locked","scan_position","refcell_position"]
-        param_defaults={p:(False if p=="fastpiezo_locked" else 0) for p in params}
+        power_params=["diode_power","thinet_power"]
+        position_params=["bifi_position","thinet_position","piezoet_position",
+                    "slowpiezo_position","fastpiezo_position","scan_position","refcell_position"]
+        locked_params=["fastpiezo_locked"]
+        status_params={"thinet_locked":"thinet_ctl_status","piezoet_locked":"piezoet_ctl_status","slowpiezo_locked":"slowpiezo_ctl_status","scanning":"scan_status"}
+        param_defaults={p:0 for p in power_params+position_params}
+        param_defaults.update({p:False for p in locked_params})
+        param_defaults.update({p:False for p in status_params})
         if self.open():
             for n,v in param_defaults.items():
                 try:
-                    self.v[n]=self.device.dv[n]
+                    if n in status_params:
+                        self.v[n]=self.device.dv[status_params[n]]=="run"
+                    else:
+                        self.v[n]=self.device.dv[n]
                 except self.DeviceError:  # pylint: disable=catching-non-exception
                     self.v[n]=v
-            self.v["scanning"]=self.device.get_scan_status()=="run"
         else:
             for n,v in param_defaults.items():
                 self.v[n]=v
-            self.v["scanning"]=False
 
 
 
@@ -159,6 +168,7 @@ class SirahMatisseTunerThread(SirahMatisseThread):
         self.v["stitched_scan/stitching"]=0
         self.v["tuning/locking"]=False
         self.v["fine_tune_device"]=self._fine_device
+        self.update_progress(0)
         self.add_command("set_fine_tune_device")
         self.add_batch_job("tune_to",self.tune_to_loop,self.tune_to_finalize)
         self.add_command("tune_to_start")
@@ -180,6 +190,9 @@ class SirahMatisseTunerThread(SirahMatisseThread):
         if self.device is not None:
             self.stop_tuning()
         super().finalize_task()
+    def update_progress(self, progress):
+        """Update current progress"""
+        self.v["progress"]=progress
     _scan_status_text={"idle":"Idle","setup":"Setup","running":"In progress"}
     def update_scan_status(self, status):
         """Update scan status (``"status/scan"``)"""
@@ -256,7 +269,7 @@ class SirahMatisseTunerThread(SirahMatisseThread):
             return False
         self._lock_frequency=frequency
         return True
-    def lock_frequency_loop(self, frequency, fine_threshold=3E9, final_tolerance=None):
+    def lock_frequency_loop(self, frequency, fine_threshold=10E9, final_tolerance=None):
         """
         Continuously lock the laser frequency to the given value.
 
@@ -276,7 +289,7 @@ class SirahMatisseTunerThread(SirahMatisseThread):
         self.v["tuning/locking"]=False
         self._lock_frequency=None
         self.update_operation_status("idle")
-    def lock_frequency_start(self, frequency, fine_threshold=3E9, final_tolerance=None):
+    def lock_frequency_start(self, frequency, fine_threshold=10E9, final_tolerance=None):
         """Start frequency locking job"""
         self.stop_tuning()
         self.update_operation_status("frequency_locking")
@@ -315,6 +328,11 @@ class SirahMatisseTunerThread(SirahMatisseThread):
             try:
                 for sweeping in self.tuner.stitched_scan_gen(scan_range,single_span,rate,device=self._fine_device):
                     self.v["stitched_scan/stitching"]=0 if sweeping else 1
+                    if sweeping:
+                        f0,f1=scan_range[:2]
+                        fc=self.tuner.get_last_read_frequency()
+                        if f1!=f0:
+                            self.update_progress(max(0,min((fc-f0)/(f1-f0),1))*100)
                     yield
             except FrequencyReadSirahError:
                 pass
@@ -322,12 +340,14 @@ class SirahMatisseTunerThread(SirahMatisseThread):
         self.v["stitched_scan/stitching"]=0
         self.update_scan_status("idle")
         self.update_operation_status("idle")
+        self.update_progress(0)
         self.update_parameters()
     def stitched_scan_start(self, scan_range, rate, single_span=15E9):
         """Start stitched scan within the given range ``(start, stop)`` at a given rate"""
         self.stop_tuning()
         self.update_operation_status("stitched_scan")
         self.update_scan_status("setup")
+        self.update_progress(0)
         self.start_batch_job("stitched_scan",0.05,scan_range=scan_range,rate=rate,single_span=single_span)
     def stitched_scan_stop(self):
         """Stop stitched scan"""

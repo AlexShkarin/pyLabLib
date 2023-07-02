@@ -298,13 +298,15 @@ class MatisseTuner:
         return cal
     _bifi_cal_rng=(100000,400000,400)
     _te_cal_rng=(2000,22000)
-    def calibrate(self, motors=True, slow_piezo=True, ref_cell=True, verbose=True, bifi_range=None, thinet_range=None, return_scans=True):
+    def calibrate(self, motors=True, slow_piezo=True, slow_piezo_speeds=None, ref_cell=True, ref_cell_speeds=None, verbose=True, bifi_range=None, thinet_range=None, return_scans=True):
         """
         Calibrate the laser and return the calibration results.
 
-        If ``motors==True``, perform motors calibration (bifi range and wavelengths, thin etalon range);
-        if ``slow_piezo==True``, perform slow piezo calibration (ratio between internal tuning units and frequency shift).
-        if ``ref_cell==True``, perform ref cell calibration (ratio between internal tuning units and frequency shift).
+        If ``motors==True``, perform motors calibration (bifi range and wavelengths, thin etalon range).
+        If ``slow_piezo==True``, perform slow piezo calibration (ratio between internal tuning units and frequency shift).
+        If ``slow_piezo_speeds`` is not ``None``, it defines a list of slow piezo tuning speeds to use for the calibration (in case it depends on the speed).
+        If ``ref_cell==True``, perform ref cell calibration (ratio between internal tuning units and frequency shift).
+        If ``ref_cell_speeds`` is not ``None``, it defines a list of ref cell tuning speeds to use for the calibration (in case it depends on the speed).
         If `bifi_range` is specified, it is a tuple ``(start, stop, step)`` defining the tested bifi positions (default is between 100000 and 400000 with a step of 400).
         If `thinet_range` is specified, it is a tuple ``(start, stop)`` defining the tested thin etalon position range.
         IF ``verbose==True``, print the progress updates during scan.
@@ -330,15 +332,22 @@ class MatisseTuner:
             slow_piezo_cal_freqs=np.linspace(self._bifi_freqs[:,1].min(),self._bifi_freqs[:,1].max(),12)[1:-1]
             slow_piezo_scan=[]
             t0=time.time()
+            if slow_piezo_speeds is None:
+                slow_piezo_speeds=[self._slow_piezo_max_speed]
+            slow_piezo_speeds=sorted(slow_piezo_speeds)
             for i,f in enumerate(slow_piezo_cal_freqs):
                 self.tune_to(f,level="thinet")
-                slow_piezo_scan.append((f,self._estimate_slow_piezo_slope()))
+                for s in slow_piezo_speeds:
+                    slope,_=self._estimate_slow_piezo_slope(speed=s)
+                    slow_piezo_scan.append((f,s,slope))
                 if verbose:
                     dt=time.time()-t0
                     tleft=(dt)/(i+1)*(len(slow_piezo_cal_freqs)-i-1)
                     print("{:3d} / {:3d}   {:5.1f}mins left".format(i+1,len(slow_piezo_cal_freqs),tleft/60))
-            slow_piezo_scan=pd.DataFrame(slow_piezo_scan,columns=["Freq","Slope"])
-            self._slow_piezo_cal=cal["slow_piezo_cal"]=np.median(slow_piezo_scan.Slope)
+            slow_piezo_scan=pd.DataFrame(slow_piezo_scan,columns=["Freq","Speed","Slope"])
+            split_slow_piezo_scans={s:t for s,t in slow_piezo_scan.groupby("Speed")}
+            self._slow_piezo_cal=cal["slow_piezo_cal"]=np.median(split_slow_piezo_scans[min(slow_piezo_speeds)].Slope)
+            cal["slow_piezo_cal_all"]=split_slow_piezo_scans
         ref_cell_scan=None
         if ref_cell and len(self._bifi_freqs):
             self._check_device("ref_cell")
@@ -348,16 +357,23 @@ class MatisseTuner:
                 ref_cell_cal_freqs=np.linspace(self._bifi_freqs[:,1].min(),self._bifi_freqs[:,1].max(),12)[1:-1]
                 ref_cell_scan=[]
                 t0=time.time()
-                for i,f in enumerate(ref_cell_cal_freqs):
-                    self.tune_to(f,level="thinet")
-                    self._lock_ref_cell()
-                    ref_cell_scan.append((f,self._estimate_ref_cell_slope()))
+                if ref_cell_speeds is None:
+                    ref_cell_speeds=[self._ref_cell_max_speed]
+                ref_cell_speeds=sorted(ref_cell_speeds)
+                for i,f in enumerate(ref_cell_speeds):
+                    for s in slow_piezo_speeds:
+                        self.tune_to(f,level="thinet")
+                        self._lock_ref_cell()
+                        slope,_=self._estimate_ref_cell_slope(speed=s)
+                        ref_cell_scan.append((f,s,slope))
                     if verbose:
                         dt=time.time()-t0
                         tleft=(dt)/(i+1)*(len(ref_cell_cal_freqs)-i-1)
                         print("{:3d} / {:3d}   {:5.1f}mins left".format(i+1,len(ref_cell_cal_freqs),tleft/60))
-                ref_cell_scan=pd.DataFrame(ref_cell_scan,columns=["Freq","Slope"])
-                self._ref_cell_cal=cal["ref_cell_cal"]=np.median(ref_cell_scan.Slope)
+                ref_cell_scan=pd.DataFrame(ref_cell_scan,columns=["Freq","Speed","Slope"])
+                split_ref_cell_scans={s:t for s,t in ref_cell_scan.groupby("Speed")}
+                self._ref_cell_cal=cal["ref_cell_cal"]=np.median(split_ref_cell_scans[min(ref_cell_speeds)].Slope)
+                cal["ref_cell_cal_all"]=split_ref_cell_scans
             except self.laser.Error:
                 pass
         if return_scans:
@@ -566,33 +582,39 @@ class MatisseTuner:
     _slow_piezo_rng=(0,0.7)  # total accessible slow piezo range
     _slow_piezo_max_speed=0.05  # maximal speed speed of slow piezo fine tuning (slow enough to avoid mode hopping, fast enough to be quick)
     _slow_piezo_cal=None  # slow piezo sensitivity (Hz/tuning value)
-    _slow_piezo_cal_est=(0.2,7,0.2)  # parameters for slow piezo sensitivity estimation ``(span, segments, delay)``;
+    _slow_piezo_cal_est=(0.2,7,0.2,10.)  # parameters for slow piezo sensitivity estimation ``(span, segments, delay, tseg_max)``;
     # to estimate the sensitivity, range of ``span`` size around tuning center is split into ``segments`` chunks, slow is estimated over each of them, and then median is returned
-    def _estimate_slow_piezo_slope(self):
+    def _estimate_slow_piezo_slope(self, speed=None):
+        if speed is None:
+            speed=self._slow_piezo_max_speed
         center=np.mean(self._slow_piezo_rng)
-        poss=center+np.linspace(-self._slow_piezo_cal_est[0]/2,self._slow_piezo_cal_est[0]/2,self._slow_piezo_cal_est[1]+1)
+        span=min(self._slow_piezo_cal_est[0],speed*self._slow_piezo_cal_est[3])
+        poss=center+np.linspace(-span/2,span/2,self._slow_piezo_cal_est[1]+1)
         freqs=[]
+        self._move_cont("slow_piezo",poss[0],max(self._slow_piezo_max_speed,speed,0.2))
         for p in poss:
-            self._move_cont("slow_piezo",p,self._slow_piezo_max_speed)
+            self._move_cont("slow_piezo",p,speed)
             time.sleep(self._slow_piezo_cal_est[2])
             freqs.append(self.get_frequency())
         df=np.median(np.diff(freqs))
-        return (df*self._slow_piezo_cal_est[1])/self._slow_piezo_cal_est[0]
+        return (df*self._slow_piezo_cal_est[1])/span,np.column_stack((poss,freqs))
     _ref_cell_rng=(0,0.7)  # total accessible reference cell range
     _ref_cell_max_speed=0.05  # maximal speed speed of ref cell fine tuning (slow enough to avoid mode hopping, fast enough to be quick)
     _ref_cell_cal=None  # reference cell sensitivity (Hz/tuning value)
     _ref_cell_cal_est=(0.2,7,0.2)  # parameters for reference cell sensitivity estimation ``(span, segments, delay)``;
     # to estimate the sensitivity, range of ``span`` size around tuning center is split into ``segments`` chunks, slow is estimated over each of them, and then median is returned
-    def _estimate_ref_cell_slope(self):
+    def _estimate_ref_cell_slope(self, speed=None):
+        if speed is None:
+            speed=self._ref_cell_max_speed
         center=np.mean(self._ref_cell_rng)
         poss=center+np.linspace(-self._ref_cell_cal_est[0]/2,self._ref_cell_cal_est[0]/2,self._ref_cell_cal_est[1]+1)
         freqs=[]
         for p in poss:
-            self._move_cont("ref_cell",p,self._ref_cell_max_speed)
+            self._move_cont("ref_cell",p,speed)
             time.sleep(self._ref_cell_cal_est[2])
             freqs.append(self.get_frequency())
         df=np.median(np.diff(freqs))
-        return (df*self._ref_cell_cal_est[1])/self._ref_cell_cal_est[0]
+        return (df*self._ref_cell_cal_est[1])/self._ref_cell_cal_est[0],freqs
 
     def unlock_all(self):
         """Unlock all relevant locks (slow piezo, fast piezo, piezo etalon, thin etalon)"""
@@ -690,7 +712,10 @@ class MatisseTuner:
         for _ in self.fine_tune_to_gen(target,device=device,method=method,tolerance=tolerance):
             time.sleep(1E-3)
     
-    def tune_to_gen(self, target, level="full", fine_device="slow_piezo", tolerance=None):
+    _tune_local_thinet_range=100E9
+    _tune_local_fine_range=25E9
+    _tune_local_final_tolerance=1E9
+    def tune_to_gen(self, target, level="full", fine_device="slow_piezo", tolerance=None, local_level="none"):
         """
         Same as :meth:`tune_to`, but made as a generator which yields occasionally.
         
@@ -698,29 +723,42 @@ class MatisseTuner:
         """
         funcargparse.check_parameter_range(level,"level",["bifi","thinet","slow_piezo","ref_cell","full"])
         funcargparse.check_parameter_range(fine_device,"fine_device",["slow_piezo","ref_cell"])
+        funcargparse.check_parameter_range(local_level,"local_level",["none","thinet","fine"])
         if level=="full":
             level=fine_device
-        self.unlock_all()
-        self._move_motor("thinet",np.mean(self._te_search_rng))
-        yield
-        self._align_bifi(target)
-        yield
-        te_prescan=self._refine_bifi(target)
-        yield
-        if level=="bifi":
-            self._move_motor("thinet",np.mean(self._te_search_rng))
-            return
-        self._align_te(target,prescan=te_prescan)
-        yield
-        self.laser.set_thinet_ctl_status("run")
-        self.laser.set_piezoet_ctl_status("run")
-        if level=="thinet":
-            return
-        if level=="ref_cell":
-            self._lock_ref_cell()
-        for _ in self.fine_tune_to_gen(target,device=level,tolerance=tolerance):
-            yield 
-    def tune_to(self, target, level="full", fine_device="slow_piezo", tolerance=None):
+        while True:
+            self.unlock_all()
+            te_prescan=None
+            if local_level=="none" or abs(self.get_frequency()-target)>self._tune_local_thinet_range:
+                local_level="none"
+                self._move_motor("thinet",np.mean(self._te_search_rng))
+                yield
+                self._align_bifi(target)
+                yield
+                te_prescan=self._refine_bifi(target)
+                yield
+            if level=="bifi":
+                self._move_motor("thinet",np.mean(self._te_search_rng))
+                return
+            if local_level in ["none","thinet"] or abs(self.get_frequency()-target)>self._tune_local_fine_range:
+                local_level="thinet"
+                self._align_te(target,prescan=te_prescan)
+                yield
+            self.laser.set_thinet_ctl_status("run")
+            self.laser.set_piezoet_ctl_status("run")
+            oversamp=self.laser.get_piezoet_drive_params().oversamp
+            self.laser.set_piezoet_drive_params(oversamp=oversamp+1 if oversamp<32 else oversamp-1)
+            self.laser.set_piezoet_drive_params(oversamp=oversamp)  # cycling oversampling to prevent a certain rare bug where the piezo etalon lock turns off
+            if level=="thinet":
+                return
+            if level=="ref_cell":
+                self._lock_ref_cell()
+            for _ in self.fine_tune_to_gen(target,device=level,tolerance=tolerance):
+                yield
+            if abs(self.get_frequency()-target)<max(self._tune_local_final_tolerance,tolerance*2 if tolerance is not None else 0):
+                return
+            local_level={"none":"none","thinet":"none","fine":"thinet"}[local_level]
+    def tune_to(self, target, level="full", fine_device="slow_piezo", tolerance=None, local_level="none"):
         """
         Tune the laser to the given frequency (in Hz) using multiple elements (bifi, thin etalon, piezo etalon, slow piezo / ref cell).
         
@@ -728,8 +766,10 @@ class MatisseTuner:
         or ``"full"`` (full tuning using all elements).
         `fine_device` specifies the device used for fine tuning: either ``"slow_piezo"``, or ``"ref_cell"``.
         `tolerance` gives the final fine tuning frequency tolerance; if ``None``, use the standard value (50MHz by default).
+        `local_level` defines the level on which to start adjustment; can be ``"fine"`` (start with the slow piezo or the ref cell, if the laser is within their tuning range),
+        ``"thinet"`` (start with the thin etalon), or ``"none"`` (start with the bifi; default). If using just the finer control does not work, progressively move to the coarser ones.
         """
-        for _ in self.tune_to_gen(target,level=level,fine_device=fine_device,tolerance=tolerance):
+        for _ in self.tune_to_gen(target,level=level,fine_device=fine_device,tolerance=tolerance,local_level=local_level):
             time.sleep(1E-3)
 
     def fine_sweep_start(self, span, up_speed, down_speed=None, device="slow_piezo", kind="cont_up", current_pos=0.5):
@@ -775,6 +815,7 @@ class MatisseTuner:
         self._fine_scan_start=None
     
     _default_stitch_tune_precision=5E9
+    _default_stitch_tune_maxreps=2
     def stitched_scan_gen(self, full_rng, single_span, speed, device="slow_piezo", overlap=0.1, freq_step=None):
         """
         Same as :meth:`stitched_scan`, but made as a generator which yields occasionally.
@@ -791,20 +832,40 @@ class MatisseTuner:
         expected_span=single_span if self._tune_units=="freq" else None
         single_span=self._to_int_units(single_span,device)
         speed=self._to_int_units(speed,device)
+        local_level="none"
+        rep=0
         while (full_rng[1]-f)*scandir>0:
-            for _ in self.tune_to_gen(f,fine_device=device):
+            for _ in self.tune_to_gen(f,fine_device=device,local_level=local_level):
                 yield False
             f0=self.get_frequency()
+            scan_freqs=[]
             if abs(f0-f)<stitch_tune_precision:
                 p=self._get_fine_position(device)
                 yield False
                 for _ in self._move_cont_gen(device,p+single_span*scandir,speed):
+                    scan_freqs.append(self.get_frequency())
                     yield True
                 yield False
                 f1=self.get_frequency()
             else:
                 f1=None
-            span_success=f1 is not None and (expected_span is None or ((f1-f0)*scandir>expected_span/4 and (f1-f0)*scandir<expected_span*2))
+            span_success=f1 is not None and (f1-f0)*scandir>0 and (expected_span is None or ((f1-f0)*scandir>expected_span/4 and (f1-f0)*scandir<expected_span*2))
+            local_level="fine"
+            if span_success and len(scan_freqs)>5:
+                df=np.diff(scan_freqs[:-1])
+                med_step=np.abs(np.median(df))
+                valid_step=np.abs(df)<max(np.abs(med_step)*3,1E9)
+                if not valid_step.all():
+                    f1=scan_freqs[valid_step.argmin()]
+                    if abs(f1-f0)<fail_step/4:
+                        span_success=False
+                    if valid_step.argmin()<len(valid_step)/2:
+                        local_level="none"
+            if not span_success:
+                local_level="none"
+                if rep+1<self._default_stitch_tune_maxreps:
+                    rep+=1
+                    continue
             if freq_step is None:
                 if span_success:
                     f=f1-(f1-f0)*overlap
@@ -812,6 +873,7 @@ class MatisseTuner:
                     f=f+fail_step*scandir
             else:
                 f+=(freq_step if span_success else fail_step)*scandir
+            rep=0
     def stitched_scan(self, full_rng, single_span, speed, device="slow_piezo", overlap=0.1, freq_step=None):
         """
         Perform a stitched laser scan.
