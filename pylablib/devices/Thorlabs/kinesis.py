@@ -1128,7 +1128,7 @@ class KinesisMotor(KinesisDevice):
             return (ssc,ssc*time_conv*2**16,ssc*time_conv**2*2**16),units
         if model in ["TST001","MST601"] or model.startswith("BSC00") or model.startswith("BSC10"):
             return (ssc,ssc,ssc),units
-        if model in ["TST101","KST101","MST602","K10CR1"] or model.startswith("BSC20"):
+        if model in ["TST101","KST101","MST602","K10CR1"] or model.startswith("BSC20") or model.startswith("SCC20"):
             vpr=53.68
             avr=204.94E-6
             return (ssc,ssc*vpr,ssc*vpr*avr),units
