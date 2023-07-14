@@ -1,14 +1,15 @@
-- :ref:`Andor SDK2 <cameras_andor_sdk2>` and :ref:`Andor SDK3 <cameras_andor_sdk3>`: variety of Andor (currently part of Oxford Instruments) cameras. Tested with Andor iXon, Luca, Zyla, Neo and Marana.
+- :ref:`Andor SDK2 <cameras_andor_sdk2>` and :ref:`Andor SDK3 <cameras_andor_sdk3>`: variety of Andor (currently part of Oxford Instruments) cameras. Tested with Andor iXon, Luca, Newton, Zyla, Neo and Marana.
 - :ref:`Allied Vision Bonito <cameras_allvis>` cameras: CameraLink-interfaced cameras. Tested with Bonito CL-400B/C and NI IMAQ frame grabber.
 - :ref:`Basler <cameras_basler>`: Basler pylon-compatible cameras. Tested with an emulated Basler camera.
-- :ref:`BitFlow <cameras_bitflow>`: BitFlow Axion familty frame grabbers. Tested with BitFlow Axion 1xB frame grabber together with PhotonFocus MV-D1024E camera.
+- :ref:`BitFlow <cameras_bitflow>`: BitFlow Axion family frame grabbers. Tested with BitFlow Axion 1xB frame grabber together with PhotonFocus MV-D1024E camera.
 - :ref:`DCAM <cameras_dcam>`: Hamamatsu cameras. Tested with Hamamatsu Orca Flash 4.0 and ImagEM.
 - :ref:`NI IMAQ <cameras_imaq>`: National Instruments frame grabbers. Tested with NI PCI-1430 and PCI-1433 frame grabbers together with PhotonFocus MV-D1024E camera.
 - :ref:`NI IMAQdx <cameras_imaqdx>`: National Instruments universal camera interface. Tested with Ethernet-connected PhotonFocus HD1-D1312 camera.
 - :ref:`Photon Focus <cameras_photonfocus>`: Photon Focus pfcam interface. Tested with PhotonFocus MV-D1024E camera connected through either NI frame grabbers (PCI-1430 and PCI-1433) or Silicon Software frame grabbers (microEnable IV AD4-CL).
-- :ref:`PCO SC2 <cameras_pco_sc2>`: PCO cameras. Tested with pco.edge cameras with CLHS and regular CameraLink interfaces.
+- :ref:`PCO SC2 <cameras_pco_sc2>`: PCO cameras. Tested with pco.edge cameras with CLHS and regular CameraLink interfaces, and with pco.pixelfly usb cameras.
 - :ref:`Picam <cameras_picam>`: Princeton Instruments cameras. Tested with a PIXIS 400 camera.
 - :ref:`PVCAM <cameras_pvcam>`: Photometrics cameras. Tested with a Prime 95B camera.
 - :ref:`Silicon Software <cameras_siso>`: Silicon Software frame grabbers. Tested with microEnable IV AD4-CL frame grabbers together with PhotonFocus MV-D1024E camera.
 - :ref:`Thorlabs Scientific Cameras <cameras_thorlabs_tlcamera>`: Thorlabs sCMOS cameras. Tested with Thorlabs Kiralux camera.
 - :ref:`Uc480/uEye <cameras_uc480>`: multiple cameras, including simple Thorlabs and IDS cameras. Tested with IDS SC2592R12M and Thorlabs DCC1545M.
+- :ref:`Mightex <cameras_mightex>`: several different USB camera types with different APIs. Implemented and tested only for S-series cameras.

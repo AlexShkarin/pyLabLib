@@ -384,7 +384,7 @@ def load_generic(path=None, file_format=None, loc="file", encoding=None, return_
         - ``'txt'``: Generic text file. Attempt to autodetect, raise :exc:`IOError` if unsuccessful
         - ``'csv'``: CSV file, corresponds to :class:`CSVTableInputFileFormat`;
         - ``'dict'``: Dictionary file, corresponds to :class:`DictionaryInputFileFormat`;
-        - ``'bin'``: Binary  file, corresponds to :class:`BinaryTableInputFileFormatter`
+        - ``'bin'``: Binary file, corresponds to :class:`BinaryTableInputFileFormatter`
     """
     location_file=location.LocationFile(location.get_location(path,loc,encoding=encoding))
     file_format=build_file_format(location_file,file_format=file_format,**kwargs)

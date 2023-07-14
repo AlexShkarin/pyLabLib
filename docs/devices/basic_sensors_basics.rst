@@ -54,7 +54,7 @@ In some cases the readout method would return a non-numerical values. This usual
 Units
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Unless absolutely necessary and obvious, all the redout values are specified in SI units (even, e.g., laser frequency in Hz, or pressure in Pa). In rare cases when the devices allows for selection of readout units (e.g., Pfeiffer TPG260 gauges), it only affects the displayed value, but not the results returned by the corresponding methods::
+Unless absolutely necessary and obvious, all the readout values are specified in SI units (even, e.g., laser frequency in Hz, or pressure in Pa). In rare cases when the devices allows for selection of readout units (e.g., Pfeiffer TPG260 gauges), it only affects the displayed value, but not the results returned by the corresponding methods::
 
     >> gauge = Pfeiffer.TPG260("COM1")
     >> gauge.set_units("pa")

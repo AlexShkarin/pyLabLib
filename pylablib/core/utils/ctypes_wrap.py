@@ -7,9 +7,6 @@ import numpy as np
 import ctypes
 import collections
 
-def _default_argnames(argtypes):
-    return ["arg{}".format(i+1) for i in range(len(argtypes))]
-
 def get_value(rval):
     """Get value of a ctypes variable"""
     if isinstance(rval,(ctypes.c_voidp)):
@@ -131,7 +128,7 @@ class CFunctionWrapper:
                 by default, use the value supplied on the wrapper creation (``"rest"`` by default)
             argprep: dictionary ``{name: prep}`` of ways to prepare of C function arguments;
                 each ``prep`` can be a value (which is assumed to be default argument value), or a callable, which is given values of Python function arguments
-            rconv:  dictionary ``{name: conv}`` of converters of the return values;
+            rconv: dictionary ``{name: conv}`` of converters of the return values;
                 each ``conv`` is a function which takes 3 arguments: unconverted ctypes value, dictionary of all C function arguments, and dictionary of all Python function arguments
                 if ``conv`` takes less than 3 argument, then the arguments list is trimmed (e.g., if it takes only one argument, it will be an unconverted value)
                 ``conv`` can also be ``"ctypes"`` (return raw ctypes value), or ``"raw"`` (return raw value for buffers).
@@ -201,14 +198,14 @@ class CFunctionWrapper:
             args: names of Python function arguments; can also be ``"all"`` (all C function arguments in that order), or ``"nonrval"`` (same, but with return value arguments excluded);
                 by default, use ``"nonrval"``
             rvals: names of return value arguments; can include either a C function argument name, or ``None`` (which means the function return value);
-                can also be ``"rest"`` (listsall the arguments not included into ``args``; if ``args=="nonrval"``, assume that there are no rvals),
+                can also be ``"rest"`` (lists all the arguments not included into ``args``; if ``args=="nonrval"``, assume that there are no rvals),
                 ``"pointer"`` (assume that all pointer arguments are rvals; this does not include ``c_void_p``, ``c_char_p``, or ``c_wchar_p``);
                 by default, use the value supplied on the wrapper creation (``"rest"`` by default)
             alias: either a list of argument names which replace ``.argnames``, or a dictionary ``{argname: alias}`` which transforms names;
                 all names in all other parameters (``rvals``, ``argprep``, ``rconv``, and ``byref``) take aliased names
             argprep: dictionary ``{name: prep}`` of ways to prepare of C function arguments;
                 each ``prep`` can be a value (which is assumed to be default argument value), or a callable, which is given values of Python function arguments
-            rconv:  dictionary ``{name: conv}`` of converters of the return values;
+            rconv: dictionary ``{name: conv}`` of converters of the return values;
                 each ``conv`` is a function which takes 3 arguments: unconverted ctypes value, dictionary of all C function arguments, and dictionary of all Python function arguments
                 if ``conv`` takes less than 3 argument, then the arguments list is trimmed (e.g., if it takes only one argument, it will be an unconverted value)
             byref: list of all argument names which should by passed by reference; by default, it includes all arguments listed in ``rvals``
@@ -311,6 +308,21 @@ def strprep(l, ctype=None, unicode=False):
         def prep(*args, **kwargs):  # pylint: disable=unused-argument
             return ctypes.cast(ctypes.create_string_buffer(l),ctype)
     return prep
+def strconv(l=None, unicode=False):
+    """
+    Make a string conversion function.
+    
+    Return a function which converts a pointer a string.
+    If ``unicode==True``, use regular single-byte string conversion; otherwise, use unicode (``wchar``) string conversion;
+    if specified, `l` determines the string length (otherwise use the standard null-terminated string convention).
+    """
+    if unicode:
+        def parse(v, *args, **kwargs):  # pylint: disable=unused-argument
+            return ctypes.wstring_at(v,l) if l is not None else ctypes.wstring_at(v)
+    else:
+        def parse(v, *args, **kwargs):  # pylint: disable=unused-argument
+            return ctypes.string_at(v,l) if l is not None else ctypes.string_at(v)
+    return parse
 
 def buffprep(size_arg_pos, dtype):
     """

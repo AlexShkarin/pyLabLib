@@ -1,17 +1,17 @@
 from .base import AndorError, AndorTimeoutError, AndorFrameTransferError, AndorNotSupportedError
-from . import atcore_lib
 from .atcore_lib import wlib as lib, AndorSDK3LibError, feature_types, read_uint12
 
 from ...core.utils import py3, dictionary, general, funcargparse
 from ...core.devio import interface
+from ...core.utils.ctypes_tools import funcaddressof, as_ctypes_array
 from ..interface import camera
 from ..utils import load_lib
+from .utils import looper, copyframes  # pylint: disable=no-name-in-module
 
 import numpy as np
 import collections
 import ctypes
 import threading
-import struct
 
 
 
@@ -478,17 +478,23 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
     
     ### Frame management ###
     class BufferManager:
-        """Buffer manager: stores, constantly reads and re-schedules buffers, keeps track of acquired frames and buffer overflow events"""
+        """
+        Cython-based schedule loop manager.
+        
+        Runs the loop function and provides callback storage.
+        """
         def __init__(self, cam):
             self.buffers=None
+            self.hbuffers=None
             self.queued_buffers=0
             self.size=0
             self.overflow_detected=False
-            self.stop_requested=False
             self.cam=cam
             self._cnt_lock=threading.RLock()
-            self._frame_notifier=camera.FrameNotifier()
             self._buffer_loop_thread=None
+            self.evt=threading.Event()
+            self.looping=ctypes.c_ulong(0)
+            self.nread=ctypes.c_ulong(0)
         def allocate_buffers(self, nbuff, size, queued_buffers=None):
             """
             Allocate and queue buffers.
@@ -498,60 +504,53 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
             with self._cnt_lock:
                 self.deallocate_buffers()
                 self.buffers=[ctypes.create_string_buffer(size) for _ in range(nbuff)]
+                self.hbuffers=as_ctypes_array([ctypes.addressof(b) for b in self.buffers],ctypes.c_void_p)
                 self.queued_buffers=queued_buffers if queued_buffers is not None else len(self.buffers)
                 self.size=size
                 for b in self.buffers[:self.queued_buffers]:
                     lib.AT_QueueBuffer(self.cam.handle,ctypes.cast(b,ctypes.POINTER(ctypes.c_uint8)),self.size)
-        def queue_buffer(self, queued_buffers):
-            """Queue extra buffers (only before any buffers are read)"""
-            with self._cnt_lock:
-                for b in self.buffers[self.queued_buffers:self.queued_buffers+queued_buffers]:
-                    lib.AT_QueueBuffer(self.cam.handle,ctypes.cast(b,ctypes.POINTER(ctypes.c_uint8)),self.size)
-                self.queued_buffers+=queued_buffers
         def deallocate_buffers(self):
             """Deallocated buffers (flushing should be done manually)"""
             with self._cnt_lock:
                 if self.buffers:
                     self.stop_loop()
                     self.buffers=None
+                    self.hbuffers=None
                     self.size=0
+        def readn(self, idx, n, size=None, off=0):
+            """Return `n` buffers starting from `idx`, taking `size` bytes from each"""
+            if size is None:
+                size=self.size
+            data=np.empty((n,size),dtype="u1")
+            copyframes(len(self.hbuffers),ctypes.addressof(self.hbuffers),int(size),idx%len(self.hbuffers),n,off,data.ctypes.data)
+            return data
         def reset(self):
             """Reset counter (on frame acquisition)"""
-            self._frame_notifier.reset()
+            self.nread.value=0
             self.overflow_detected=False
-        def _acq_loop(self):
-            while not self.stop_requested:
-                try:
-                    _,size=lib.AT_WaitBuffer(self.cam.handle,300)
-                    if size!=self.size:
-                        raise AndorError("unexpected buffer size: expected {}, got {}".format(self.size,size))
-                except AndorSDK3LibError as e:
-                    if e.code not in {atcore_lib.AT_ERR.AT_ERR_TIMEDOUT,atcore_lib.AT_ERR.AT_ERR_NODATA}:
-                        raise
-                    continue
-                next_buff=self.buffers[(self._frame_notifier.counter+self.queued_buffers)%len(self.buffers)]
-                lib.AT_QueueBuffer(self.cam.handle,ctypes.cast(next_buff,ctypes.POINTER(ctypes.c_uint8)),self.size)
-                self._frame_notifier.inc()
-        def read(self, idx):
-            """Return the oldest available acquired but not read buffer, and mark it as read"""
-            buff_idx=idx%len(self.buffers)
-            return np.ctypeslib.as_array(ctypes.cast(self.buffers[buff_idx],ctypes.POINTER(ctypes.c_ubyte)),shape=(self.size,))
         def start_loop(self):
-            """Start buffer scheduling loop"""
+            """Start loop serving the given buffer manager"""
             self.stop_loop()
-            self.reset()
-            self.stop_requested=False
-            self._buffer_loop_thread=threading.Thread(target=self._acq_loop,daemon=True)
+            self.evt.clear()
+            self.looping.value=1
+            self.nread.value=0
+            self._buffer_loop_thread=threading.Thread(target=self._loop,daemon=True)
             self._buffer_loop_thread.start()
+            self.evt.wait()
         def stop_loop(self):
-            """Stop buffer scheduling loop"""
+            """Stop the loop thread"""
             if self._buffer_loop_thread is not None:
-                self.stop_requested=True
+                self.looping.value=0
                 self._buffer_loop_thread.join()
                 self._buffer_loop_thread=None
-        def wait_for_frame(self, idx=None, timeout=None):
-            """Wait for a new frame acquisition"""
-            self._frame_notifier.wait(idx=idx,timeout=timeout)
+        def _loop(self):
+            self.evt.set()
+            looper(self.cam.handle,len(self.hbuffers),ctypes.addressof(self.hbuffers),self.size,self.queued_buffers,
+                    ctypes.addressof(self.looping),ctypes.addressof(self.nread),
+                    funcaddressof(lib.lib.AT_WaitBuffer),funcaddressof(lib.lib.AT_QueueBuffer))
+        def get_status(self):
+            """Get the current loop status, which is the tuple ``(acquired,)``"""
+            return (self.nread.value,)
         def on_overflow(self):
             """Process buffer overflow event"""
             with self._cnt_lock:
@@ -559,10 +558,6 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         def new_overflow(self):
             with self._cnt_lock:
                 return self.overflow_detected
-        def get_status(self):
-            """Get counter status: tuple ``(acquired, total_length)``"""
-            with self._cnt_lock:
-                return self._frame_notifier.counter,len(self.buffers or [])
     def _register_events(self):
         self._unregister_events()
         if self.get_attribute_value("EventEnable",error_on_missing=False) is not None:
@@ -659,61 +654,6 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         """
         self._overflow_behavior=behavior
 
-
-    def _parse_metadata_section(self, cid, data):
-        if cid==1:
-            return struct.unpack("<Q",data)[0]
-        if cid==7:
-            data=struct.unpack("<HBBHH",data)
-            return (data[0],data[1],data[3],data[4])
-        return data
-    def _parse_metadata(self, metadata):
-        c1=metadata.get(1,None)
-        c7=metadata.get(7,(None,)*4)
-        return (c1,camera.TFrameSize(c7[2],c7[3]),c7[1],c7[0])
-    def _parse_image(self, img, bpp=None, stride=None, dim=None, metadata_enabled=False):
-        if img is None:
-            return None
-        height,width=dim or self._get_data_dimensions_rc()
-        imlen=len(img)
-        if metadata_enabled:
-            chunks={}
-            read_len=0
-            while read_len<imlen:
-                cid,clen=struct.unpack("<II",img[imlen-read_len-8:imlen-read_len].tobytes())
-                chunks[cid]=img[imlen-read_len-clen-4:imlen-read_len-8]
-                read_len+=clen+4
-            if 0 not in chunks:
-                raise AndorError("missing image data")
-            img=chunks.pop(0)
-            metadata=chunks
-        else:
-            metadata={}
-        metadata={cid:self._parse_metadata_section(cid,data.tobytes()) for (cid,data) in metadata.items()}
-        metadata=self._parse_metadata(metadata)
-        bpp=bpp or self.cav["BytesPerPixel"]
-        if bpp not in [1,1.5,2,4]:
-            raise ValueError("unexpected pixel byte size: {}".format(bpp))
-        stride=stride or self.cav["AOIStride"]
-        if stride<int(np.ceil(bpp*width)):
-            raise AndorError("unexpected stride: expected at least {}x{}={}, got {}".format(width,bpp,int(np.ceil(width*bpp)),stride))
-        exp_len=int(stride*height)
-        if len(img)!=exp_len:
-            if len(img)<exp_len or len(img)>exp_len+8+stride: # sometimes image size gets rounded to nearest 4/8/stride (CL) bytes
-                raise AndorError("unexpected image byte size: expected {}x{}={}, got {}".format(stride,height,exp_len,len(img)))
-        img=img[:exp_len]
-        if bpp==1.5:
-            img=read_uint12(img.reshape(-1,stride),width=width)
-        else:
-            bpp=int(bpp)
-            dtype="<u{}".format(bpp)
-            if stride%bpp==0:
-                img=img.view(dtype).reshape(height,-1)[:,:width].copy()
-            else: # only possible with bpp==2 or 4 and non-divisible stride
-                img=img.reshape(height,stride)[:,:width*bpp].copy().view(dtype)
-        img=self._convert_indexing(img,"rct")
-        return img,metadata
-
     def _get_data_dimensions_rc(self):
         return self.cav["AOIHeight"],self.cav["AOIWidth"]
     def get_detector_size(self):
@@ -804,18 +744,69 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
     def _wait_for_next_frame(self, timeout=20., idx=None):
         if self._check_buffer_overflow():
             raise AndorTimeoutError("buffer overflow while waiting for a new frame")
-        self._buffer_mgr.wait_for_frame(idx=idx,timeout=timeout)
+        super()._wait_for_next_frame(timeout=timeout,idx=idx)
     def _frame_info_to_namedtuple(self, info):
         return self._TFrameInfo(info[0],info[1],camera.TFrameSize(*info[2:4]),*info[4:])
+    
+    _support_chunks=True
+    def _arrange_metadata(self, chunks, nframes):
+        metadata=np.zeros((nframes,6),dtype="i8")-1
+        if 1 in chunks:
+            metadata[:,1]=chunks[1].view("i8")[:,0]
+        if 7 in chunks:
+            metadata[:,2]=chunks[7].view("<u2")[:,2]
+            metadata[:,3]=chunks[7].view("<u2")[:,3]
+            metadata[:,4]=chunks[7][:,2]
+            metadata[:,5]=chunks[7].view("<u2")[:,0]
+        return metadata
+    def _read_frames_metadata(self, start, nframes):
+        size=self._buffer_mgr.size
+        chunks={}
+        read_len=0
+        cid=None
+        while read_len<size:
+            if size<read_len+8:
+                raise AndorError("unexpected size of the last section: {}, larger than the required 8 header bytes".format(size-read_len))
+            cid,clen=self._buffer_mgr.readn(start,1,8,off=size-read_len-8).view("<u4")[0]
+            if read_len+clen+4>size:
+                raise AndorError("unexpected section {} size: {}, larger than the remaining block size {}".format(cid,clen+4,size-read_len))
+            chunks[cid]=self._buffer_mgr.readn(start,nframes,clen-4,off=size-read_len-4-clen).reshape((nframes,clen-4))
+            read_len+=clen+4
+        if 0 not in chunks:
+            raise AndorError("missing image data")
+        img=chunks.pop(0)
+        return img,self._arrange_metadata(chunks,nframes)
     def _read_frames(self, rng, return_info=False):
-        metadata_enabled=self.is_metadata_enabled()
+        height,width=self._get_data_dimensions_rc()
         bpp=self.cav["BytesPerPixel"]
         stride=self.cav["AOIStride"]
-        dim=self._get_data_dimensions_rc()
-        data=[self._parse_image(self._buffer_mgr.read(i),bpp=bpp,stride=stride,dim=dim,metadata_enabled=metadata_enabled) for i in range(*rng)]
-        frames=[d[0] for d in data]
-        info=[TFrameInfo(n,*d[1]) for (n,d) in zip(range(*rng),data)] if metadata_enabled else None
-        return frames,info
+        if bpp not in [1,1.5,2,4]:
+            raise ValueError("unexpected pixel byte size: {}".format(bpp))
+        if stride<int(np.ceil(bpp*width)):
+            raise AndorError("unexpected stride: expected at least {}x{}={}, got {}".format(width,bpp,int(np.ceil(width*bpp)),stride))
+        nframes=rng[1]-rng[0]
+        if self.is_metadata_enabled() and return_info:
+            img,metadata=self._read_frames_metadata(rng[0],nframes)
+            exp_len=height*stride
+            if img.shape[1]!=exp_len:
+                if img.shaoe[1]<exp_len or img.shaoe[1]>exp_len+8+stride: # sometimes image size gets rounded to nearest 4/8/stride (CL) bytes
+                    raise AndorError("unexpected image byte size: expected {}x{}={}, got {}".format(stride,height,exp_len,img.shaoe[1]))
+                img=img[:,:exp_len]
+            metadata[:,0]=np.arange(rng[0],rng[0]+nframes)
+        else:
+            img=self._buffer_mgr.readn(rng[0],nframes,size=height*stride)
+            metadata=None
+        if bpp==1.5:
+            img=read_uint12(img.reshape(-1,stride),width=width).reshape((nframes,height,width))
+        else:
+            bpp=int(bpp)
+            dtype="<u{}".format(bpp)
+            if stride%bpp==0:
+                img=img.view(dtype).reshape(nframes,height,-1)[:,:width]
+            else: # only possible with bpp==2 or 4 and non-divisible stride
+                img=img.reshape((nframes,height,stride))[:,:,:width*bpp].view(dtype)
+        img=self._convert_indexing(img,"rct")
+        return [img],([metadata] if metadata is not None else None)
     def _zero_frame(self, n):
         dim=self.get_data_dimensions()
         bpp=self.cav["BytesPerPixel"]

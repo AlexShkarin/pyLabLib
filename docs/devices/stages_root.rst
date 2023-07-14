@@ -23,3 +23,4 @@ Currently supported stages:
     Trinamic
     SmarAct
     PhysikInstrumente
+    Standa

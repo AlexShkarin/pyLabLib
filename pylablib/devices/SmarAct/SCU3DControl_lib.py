@@ -1,28 +1,26 @@
 # pylint: disable=wrong-spelling-in-comment
 
+from .base import SmarActError
 from ...core.utils import ctypes_wrap
 from .SCU3DControl_defs import Error, drError
 from .SCU3DControl_defs import EConfiguration  # pylint: disable=unused-import
 from .SCU3DControl_defs import define_functions
 
-from ...core.devio.comm_backend import DeviceError
 from ..utils import load_lib
 
 import ctypes
 
 
 
-class SmarActError(DeviceError):
-    """Generic SmarAct error"""
 class SCU3DControlLibError(SmarActError):
-    """Generic Arcus Performax library error"""
+    """Generic SCU3D library error"""
     def __init__(self, func, arguments, code):
         self.func=func
         self.arguments=arguments
         self.code=code
         self.name=drError.get(code,"UNKNOWN")
-        self.msg="function '{}' return an error {}({})".format(func,self.code,self.name)
-        SmarActError.__init__(self,self.msg)
+        self.msg="function '{}' returned an error {}({})".format(func,self.code,self.name)
+        super().__init__(self.msg)
 def errchecker(result, func, arguments):
     if result!=Error.SA_OK:
         raise SCU3DControlLibError(func.__name__,arguments,result)

@@ -1,1 +1,1 @@
-from .base import PIE516, PhysikInstrumenteError
+from .base import PIE516, PIE515, PhysikInstrumenteError

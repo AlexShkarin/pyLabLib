@@ -18,7 +18,7 @@ The required DLLs are distributed with `Andor Solis <https://andor.oxinst.com/pr
 Andor SDK 2
 -----------------------
 
-This is an older SDK, which mainly involves older cameras. It has been tested with Andor iXon and Andor Luca.
+This is an older SDK, which mainly involves older cameras. It has been tested with Andor iXon, Luca, and Newton.
 
 The code is located in :mod:`pylablib.devices.Andor`, and the main camera class is :class:`pylablib.devices.Andor.AndorSDK2Camera<.AndorSDK2.AndorSDK2Camera>`.
 
@@ -128,4 +128,4 @@ The operation of these cameras is also relatively standard. They support all the
     
     - USB cameras can, in principle, generate data at higher rate than about 320Mb/s that the USB3 bus supports. For example, Andor Zyla with 16 bit readout has a single full frame size of 8Mb, which puts the maximal USB throughput at about 40FPS. At the same time, the camera itself is capable of reading up to 100FPS at the full frame. Hence, it is possible to overflow the camera internal buffer (size on the order of 1Gb) regardless of the PC performance. If this happens, the acquisition process halts and needs to be restarted. You can check the number of buffer overflows using :meth:`.AndorSDK3Camera.get_missed_frames_status`, and reset this counter using :meth:`.AndorSDK3Camera.reset_overflows_counter`; the counter is also automatically resets on acquisition clearing, but not stopping.
 
-      Furthermore, the class implements different strategies when encountering overflow while waiting for a new frame. The specific strategy is selected using :meth:`.AndorSDK3Camera.set_overflow_behavior`, and it can be ``"error"`` (raise :exc:`.AndorFrameTransferError`, which is the default behavior), ``"restart"`` (restart the acquisition and immediately raise timeout error), or ``"ignore"`` (ignore the overflow, which will eventually lead to a timeout error, as the new frames are no longer generated).    
+      Furthermore, the class implements different strategies when encountering overflow while waiting for a new frame. The specific strategy is selected using :meth:`.AndorSDK3Camera.set_overflow_behavior`, and it can be ``"error"`` (raise :exc:`.AndorFrameTransferError`, which is the default behavior), ``"restart"`` (restart the acquisition and immediately raise timeout error), or ``"ignore"`` (ignore the overflow, which will eventually lead to a timeout error, as the new frames are no longer generated).

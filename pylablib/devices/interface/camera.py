@@ -323,8 +323,8 @@ class ICamera(interface.IDevice):
         if fmt=="try_chunks":
             fmt="chunks" if self._support_chunks else "list"
         self._frame_format=fmt
-        if fmt in ["array","chunks"]:
-            self.set_frame_info_format("array")
+        if fmt in ["array","chunks"] and self.get_frame_info_format()!="array":
+            self.set_frame_info_format("array",include_fields=self._frameinfo_include_fields)
         return self._frame_format
     def _convert_frame_format(self, frames, info=None, chdim=0):
         """
@@ -344,6 +344,8 @@ class ICamera(interface.IDevice):
                         info=[self._convert_frame_info(i)[None,:] for i in info]
                     elif info[0].ndim==1:
                         info=[i[None,:] for i in info]
+                    else:
+                        info=[self._convert_frame_info(i) for i in info]
                 if len(info)!=len(frames) or not all(len(i)==len(f) for i,f in zip(info,frames)):
                     fullinfo=np.concatenate(info,axis=0) if len(info)>1 else info[0]
                     info=_split_chunks_array(fullinfo,frames)
@@ -441,7 +443,7 @@ class ICamera(interface.IDevice):
         fields=self._frameinfo_fields if self._frameinfo_include_fields is None else self._frameinfo_include_fields
         if isinstance(info,np.ndarray):
             if self._frameinfo_format=="array":
-                return info if self._frameinfo_include_fields is None else info[self._frameinfo_fields_mask]
+                return info if self._frameinfo_include_fields is None else info[...,self._frameinfo_fields_mask]
             if info[0]<0:
                 return None
             if len(info)>1 and info[1]<0:

@@ -3,10 +3,14 @@
 ..\pylablib\misc/**
 ..\pylablib\legacy/**
 ..\pylablib\aux_libs.py
+..\pylablib\core\utils\ctypes_tools.py
+..\pylablib\core\devio\hid_lib.py
 ..\pylablib\devices\Andor\atcore_defs.py
 ..\pylablib\devices\Andor\atcore_lib.py
 ..\pylablib\devices\Andor\atmcd32d_defs.py
 ..\pylablib\devices\Andor\atmcd32d_lib.py
+..\pylablib\devices\Andor\ShamrockCIF_defs.py
+..\pylablib\devices\Andor\ShamrockCIF_lib.py
 ..\pylablib\devices\Arcus\ArcusPerformaxDriver_defs.py
 ..\pylablib\devices\Arcus\ArcusPerformaxDriver_lib.py
 ..\pylablib\devices\Basler\pylonC_defs.py
@@ -21,6 +25,8 @@
 ..\pylablib\devices\IMAQdx\NIIMAQdx_defs.py
 ..\pylablib\devices\IMAQdx\NIIMAQdx_lib.py
 ..\pylablib\devices\IMAQdx\nivision_defs.py
+..\pylablib\devices\Mightex\NewClassic_USBCamera_SDK_defs.py
+..\pylablib\devices\Mightex\NewClassic_USBCamera_SDK_lib.py
 ..\pylablib\devices\PCO\PCO_err_defs.py
 ..\pylablib\devices\PCO\sc2_camexport_defs.py
 ..\pylablib\devices\PCO\sc2_camexport_lib.py
@@ -37,6 +43,8 @@
 ..\pylablib\devices\SiliconSoftware\fgrab_prototyp_lib.py
 ..\pylablib\devices\SmarAct\SCU3DControl_defs.py
 ..\pylablib\devices\SmarAct\SCU3DControl_lib.py
+..\pylablib\devices\SmarAct\SmarActControl_defs.py
+..\pylablib\devices\SmarAct\SmarActControl_lib.py
 ..\pylablib\devices\Thorlabs\tl_camera_sdk_defs.py
 ..\pylablib\devices\Thorlabs\tl_camera_sdk_lib.py
 ..\pylablib\devices\uc480\uc480_defs.py

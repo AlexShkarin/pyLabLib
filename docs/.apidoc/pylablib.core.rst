@@ -5,19 +5,20 @@ Subpackages
 -----------
 
 .. toctree::
+   :maxdepth: 4
 
-    pylablib.core.dataproc
-    pylablib.core.devio
-    pylablib.core.fileio
-    pylablib.core.gui
-    pylablib.core.thread
-    pylablib.core.utils
+   pylablib.core.dataproc
+   pylablib.core.devio
+   pylablib.core.fileio
+   pylablib.core.gui
+   pylablib.core.thread
+   pylablib.core.utils
 
 Module contents
 ---------------
 
 .. automodule:: pylablib.core
-    :members:
-    :inherited-members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :inherited-members:
+   :undoc-members:
+   :show-inheritance:

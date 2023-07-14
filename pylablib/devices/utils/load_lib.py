@@ -45,6 +45,32 @@ def get_program_files_folder(subfolder="", arch=None):
     else:
         return os.environ.get("PROGRAMFILES",r"C:\Program Files")
 program_files_folder=get_program_files_folder()
+def get_appdata_folder(subfolder="", kind="roaming"):
+    """
+    Get user AppData folder (used to install software only for specific users).
+
+    `kind` can be ``"roaming"`` (return ``Roaming`` AppData folder) or ``"local"`` (return ``Local`` AppData folder).
+    """
+    if subfolder:
+        folder=get_appdata_folder(kind=kind)
+        return os.path.join(folder,subfolder) if folder is not None else None
+    if kind=="roaming":
+        return os.environ.get("APPDATA")
+    if kind=="local":
+        return os.environ.get("LOCALAPPDATA")
+    raise ValueError("unrecognized appdata folder kind: {}".format(kind))
+def get_environ_folder(var, subfolder="", error_missing=False):
+    """
+    Get subfolder of a folder based on the environment variable.
+
+    If the environment variable is missing and ``error_missing==True``, raise an error; otherwise, return ``None``.
+    """
+    folder=os.environ.get(var,None)
+    if folder is None:
+        if error_missing:
+            raise ValueError("could not find environment variable {}".format(var))
+        return None
+    return os.path.join(folder,subfolder)
 
 
 _load_lock=threading.RLock()
@@ -268,3 +294,7 @@ class LibraryController:
         """Close all opened connections and shutdown the library"""
         for opid in list(self.opened):
             self.close(opid)
+    def get_opened_num(self):
+        """Get number of opened devices"""
+        with self.lock:
+            return self.open_devices

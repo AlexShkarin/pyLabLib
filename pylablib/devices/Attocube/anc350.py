@@ -33,14 +33,12 @@ class ANC350(comm_backend.ICommBackendWrapper,stage.IMultiaxisStage):
         self._tell_telegrams={}
         super().__init__(instr)
         self.open()
-        self.instr.flush_read()
-        try:
+        with self._close_on_error():
+            self.instr.flush_read()
+            self.instr.read(512)
+            self.set_value(0x000A,0,0) # sync request
             self.get_hardware_id()
-        except instr.Error:
-            self.close()
-            raise AttocubeError("error connecting to the ANC350 controller")
-        self.set_value(0x000A,0,0) # sync request
-        self.enable_updates(False)
+            self.enable_updates(False)
         self._add_info_variable("hardware_id",self.get_hardware_id)
         self._add_settings_variable("voltages",self.get_voltage,lambda v: self.set_voltage("all",v))
         self._add_settings_variable("offsets",self.get_offset,lambda v: self.set_offset("all",v))
@@ -337,7 +335,7 @@ class ANC350(comm_backend.ICommBackendWrapper,stage.IMultiaxisStage):
         """Move along a given axis by a given distance (in m)"""
         self.move_to(axis,self.get_position(axis)+dist)
     @interface.use_parameters
-    def move_by_steps(self, axis, steps=1):
+    def move_by_steps(self, axis, steps=1, delay=0):
         """Move along a given axis by a given number of steps"""
         steps=int(steps)
         if steps>=0:
@@ -347,6 +345,8 @@ class ANC350(comm_backend.ICommBackendWrapper,stage.IMultiaxisStage):
             steps=-steps
         for _ in range(steps):
             self.instr.write(tg)
+            if delay:
+                time.sleep(delay)
 
     def wait_move(self, axis, precision=1E-6, timeout=10., period=0.01):
         """

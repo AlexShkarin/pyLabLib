@@ -20,9 +20,17 @@ Currently supported devices:
     M2
     Toptica
     Sirah
+    NKT
     Tektronix
+    Keithley
+    Rigol
     nidaq
     generic_awgs
+    AndorShamrock
     Thorlabs_misc
     OZOptics
+    ElektroAutomatik
+    Voltcraft
+    Lumel
     misc_devices
+    protocols

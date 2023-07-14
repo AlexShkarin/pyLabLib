@@ -6,7 +6,7 @@
 Thorlabs APT/Kinesis devices
 ==============================
 
-Thorlabs has a variety of APT/Kinesis devices for various motion-related functionality (mostly motor controllers and piezo drivers), which share the same API. The library uses an older and more low-level APT protocol to communicate with these devices. So far it has been only implemented for motor controllers and some :ref:`specialized devices <misc_thorlabs>` and tested with KDC101, K10CR1, and BSC201 motor controllers, KIM101 piezo motor controller, and TPA101 quadrature sensor controller.
+Thorlabs has a variety of APT/Kinesis devices for various motion-related functionality (mostly motor controllers and piezo drivers), which share the same API. The library uses an older and more low-level APT protocol to communicate with these devices. So far it has been only implemented for motor controllers and some :ref:`specialized devices <misc_thorlabs>` and tested with KDC101, KST101, K10CR1, and BSC201 motor controllers, KIM101 piezo motor controller, and TPA101 quadrature sensor controller.
 
 The main device classes are :class:`pylablib.devices.Thorlabs.BasicKinesisDevice<.kinesis.BasicKinesisDevice>` for a generic Kinesis/APT devices :class:`pylablib.devices.Thorlabs.KinesisMotor<.kinesis.KinesisMotor>` aimed at motor controllers such as K10CR1 or KDC101, and :class:`pylablib.devices.Thorlabs.KinesisPiezoMotor<.kinesis.KinesisPiezoMotor>` for piezo drivers such as KIM and TIM.
 
@@ -22,7 +22,7 @@ In some cases ``pyft232`` library can not find the required ``ftd2xx.dll`` libra
 Connection
 -----------------------
 
-The devices are identified by their address, which correspond to their serial numbers. To get the list of all the connected devices, you can use :func:`Thorlabs.list_kinesis_devices<.kinesis.list_kinesis_devices>`::
+On Windows devices are identified by their address, which correspond to their serial numbers. To get the list of all the connected devices, you can use :func:`Thorlabs.list_kinesis_devices<.kinesis.list_kinesis_devices>`::
 
     >> from pylablib.devices import Thorlabs
     >> Thorlabs.list_kinesis_devices()
@@ -30,6 +30,13 @@ The devices are identified by their address, which correspond to their serial nu
     >> stage = Thorlabs.KinesisMotor("27500001")
     >> stage.close()
 
+On Linux they directly appear as virtual serial ports, e.g., ``/dev/ttyUSB0``. Hence, there you need to identify which device file corresponds your device (e.g., by unplugging and plugging it back in to see which device shows up). After that, you can use this name as the device address::
+
+    >> from pylablib.devices import Thorlabs
+    >> stage = Thorlabs.KinesisMotor("/dev/ttyUSB0")
+    >> stage.close()
+
+Note that on Linux :func:`Thorlabs.list_kinesis_devices<.kinesis.list_kinesis_devices>` will not produce a correct list, since it uses a different API. In the worst case, it can crash the process.
 
 Operation
 -----------------------

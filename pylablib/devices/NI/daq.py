@@ -5,6 +5,7 @@ from ...core.utils import general, funcargparse
 import time
 import numpy as np
 import collections
+import re
 
 class NIError(comm_backend.DeviceError):
     """Generic NI error"""
@@ -81,6 +82,7 @@ class NIDAQ(interface.IDevice):
         self.ao_array=None
         self.ao_array_single=None
         self.ao_autoloop=True
+        self.co_tasks={}
         self._ao_written=0
         self.cpi_counter=0
         self.clk_channel_base=20E6
@@ -96,6 +98,7 @@ class NIDAQ(interface.IDevice):
         self._add_status_variable("digital_output_values",self.get_digital_outputs)
         self._add_status_variable("voltage_output_parameters",self.get_voltage_output_parameters)
         self._add_status_variable("voltage_output_values",self.get_voltage_outputs)
+        self._add_status_variable("pulse_output_parameters",self.get_pulse_output_parameters)
         self._add_settings_variable("clock_cfg",self.get_clock_parameters,self.setup_clock)
         self._add_settings_variable("clock_export",self.get_export_clock_terminal,self.export_clock)
         self._add_settings_variable("voltage_output_clock_cfg",self.get_voltage_output_clock_parameters,self.setup_voltage_output_clock)
@@ -138,6 +141,9 @@ class NIDAQ(interface.IDevice):
         self.ao_array_single=None
         self.ao_autoloop=True
         self._ao_written=0
+        for t in self.co_tasks.values():
+            t[0].close()
+        self.co_tasks={}
         if self.cpi_task is not None:
             self.cpi_task.close()
         self.cpi_task=None
@@ -179,6 +185,8 @@ class NIDAQ(interface.IDevice):
         self.do_names.sort(key=lambda n: self.do_channels[n][1])
         self.ao_names=list(self.ao_channels.keys())
         self.ao_names.sort(key=lambda n: self.ao_channels[n][1])
+        self.co_names=list(self.co_tasks.keys())
+        self.co_names.sort(key=lambda n: self.co_tasks[n][1])
 
     @reraise
     def _cfg_clock(self, finite=None):
@@ -446,6 +454,8 @@ class NIDAQ(interface.IDevice):
         try:
             if n is None or n<=0:
                 n=self.available_samples()
+            else:
+                n=int(n)
             ais=self.ai_task.read(n,timeout=timeout)
             if len(self.ai_task.ai_channels)==1:
                 ais=[ais]
@@ -747,3 +757,142 @@ class NIDAQ(interface.IDevice):
         samps_per_chan=self.ao_task.timing.samp_quant_samp_per_chan
         continuous=self.ao_task.timing.samp_quant_samp_mode!=nidaqmx.constants.AcquisitionType.FINITE
         return TVoltageOutputClockParameters(rate,sync_with_ai,continuous,samps_per_chan,self.ao_autoloop)
+    
+
+    def _find_co_timebase(self):
+        tbterms=[t for t in self.dev.terminals if t.lower().endswith("Timebase")]
+        maxtb=self.dev.co_max_timebase
+        for t in tbterms:
+            m=re.match(r"(\d+)(khz|mhz)timebase",t,flags=re.IGNORECASE)
+            if m:
+                tr=float(m[1])*(1E3 if m[2].lower()=="khz" else 1E6)
+                if abs(tr/t-1)<1E-3:
+                    return t
+        raise NIDAQmxError("could not find the maximal rate timebase with rate {} Hz among terminals {}".format(maxtb,tbterms))
+    def _disconnect_co_channel(self, ch):
+        term,ch.co_pulse_term=ch.co_pulse_term,None
+        nidaqmx.system.System().tristate_output_term(term)
+    _p_counter_output_kind=interface.EnumParameterClass("counter_output_kind",["time","ticks"])
+    @reraise
+    @interface.use_parameters(kind="counter_output_kind")
+    def add_pulse_output(self, name, counter, terminal, kind="time", on=1E-3, off=1E-3, clk_src=None, continuous=True, samps=1000):
+        """
+        Add counter pulse input.
+        
+        Args:
+            name(str): channel name.
+            counter(str): on-board counter name (e.g., ``"ctr0"``).
+            terminal(str): output terminal name (e.g., ``"pfi0"``).
+            kind(str): pulse output kind; can be either ``"time"`` (use internal timebase; specify the pulse on and off times in seconds)
+                or ``"ticks"`` (use internal or external timebase; specify the pulse on and off times in number of ticks of the clock)
+            on: on time or number of ticks for the pulse
+            off: off time or number of ticks for the pulse
+            clk_src(str): source of the counter sampling clock. By default it is the device timebase (usually 100MHz);
+                can be a name of an external terminal (e.g., ``"pfi1"``), or ``"ai"`` to use the analog input sampling clock
+            continuous(bool): if ``True``, the pulses are generated as long as the output is running;
+                otherwise, output the number of samples specified in `samps` and then stop
+            samps: number of samples to output if ``continuous==False``
+        """
+        if name in self.co_tasks:
+            self._disconnect_co_channel(self.co_tasks[name][0].co_channels[0])
+            self.co_tasks[name][0].close()
+        task=nidaqmx.Task()
+        counter=self._build_channel_name(counter)
+        terminal=self._build_channel_name(terminal)
+        if kind=="time":
+            ch=task.co_channels.add_co_pulse_chan_time(counter,low_time=off,high_time=on)
+        else:
+            if clk_src is None:
+                clk=self._find_co_timebase()
+            elif clk_src=="ai":
+                clk="ai/SampleClock"
+            else:
+                clk=clk_src
+            ch=task.co_channels.add_co_pulse_chan_ticks(counter,source_terminal=clk,low_ticks=off,high_ticks=on)
+        ch.co_pulse_term=terminal
+        sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS if continuous else nidaqmx.constants.AcquisitionType.FINITE
+        task.timing.cfg_implicit_timing(sample_mode,samps_per_chan=samps)
+        self.co_tasks[name]=(task,kind,clk_src)
+        self._update_channel_names()
+    def get_pulse_output_channels(self):
+        """Get names of all pulse output channels"""
+        return self.co_names
+    def _get_co_parameters(self, name):
+        task,kind,clk_src=self.co_tasks[name]
+        ch=task.co_channels[0]
+        counter=self._strip_channel_name(ch.physical_channel.name)
+        term=self._strip_channel_name(ch.co_pulse_term)
+        if kind=="time":
+            on,off=ch.co_pulse_high_time,ch.co_pulse_low_time
+        else:
+            on,off=ch.co_pulse_high_ticks,ch.co_pulse_low_ticks
+        cont=task.timing.samp_quant_samp_mode==nidaqmx.constants.AcquisitionType.CONTINUOUS
+        samps=task.timing.samp_quant_samp_per_chan
+        return counter,term,kind,on,off,clk_src,cont,samps
+    def get_pulse_output_parameters(self):
+        """Get parameters (names, counters, terminals, kinds, on times, off times, clock sources, continuous, number of samples) of all pulse output channels"""
+        params=[]
+        for n in self.co_names:
+            par=self._get_co_parameters(n)
+            params.append((n,)+par)
+        return params
+    def set_pulse_output(self, name, on=None, off=None, continuous=None, samps=None, terminal=None, restart=True):
+        """
+        Change pulse output parameters.
+        
+        Parameter meanings are the same as in :meth:`add_pulse_output`. Parameters with values if ``None`` are left unchanged.
+        If any parameters are not ``None``, the output pulse task is stopped before parameter changing.
+        If the task is currently running and ``restart==True``, restart the task after changing the parameters.
+        """
+        if not any(v is not None for v in [on,off,continuous,samps,terminal]):
+            return
+        task,kind=self.co_tasks[name][:2]
+        ch=task.co_channels[0]
+        running=not task.is_task_done()
+        task.stop()
+        if kind=="time":
+            if on is not None:
+                ch.co_pulse_high_time=on
+            if off is not None:
+                ch.co_pulse_low_time=off
+        else:
+            if on is not None:
+                ch.co_pulse_high_ticks=on
+            if off is not None:
+                ch.co_pulse_low_ticks=off
+        if continuous is not None:
+            task.timing.samp_quant_samp_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS if continuous else nidaqmx.constants.AcquisitionType.FINITE
+        if samps is not None:
+            task.timing.samp_quant_samp_per_chan=samps
+        if terminal is not None:
+            self._disconnect_co_channel(ch)
+            terminal=self._build_channel_name(terminal)
+            ch.co_pulse_term=terminal
+        if running and restart:
+            task.start()
+    def start_pulse_output(self, names=None, autostop=True):
+        """Start specified pulse output or a set of outputs (by default, all of them)"""
+        if names is None:
+            names=self.co_names
+        elif not funcargparse.is_sequence(names,"array"):
+            names=[names]
+        if autostop:
+            for n in names:
+                self.co_tasks[n][0].stop()
+        for n in names:
+            self.co_tasks[n][0].start()
+    def stop_pulse_output(self, names=None):
+        """Stop specified pulse output or a set of outputs (by default, all of them)"""
+        if names is None:
+            names=self.co_names
+        elif not funcargparse.is_sequence(names,"array"):
+            names=[names]
+        for n in names:
+            self.co_tasks[n][0].stop()
+    def is_pulse_output_running(self, names=None):
+        """Check if pulse outputs with the given name or set of names are running"""
+        if names is None:
+            names=self.co_names
+        if funcargparse.is_sequence(names,"array"):
+            return {n:not self.co_tasks[n][0].is_task_done() for n in names}
+        return not self.co_tasks[names][0].is_task_done()

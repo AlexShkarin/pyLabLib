@@ -16,6 +16,7 @@ Currently supported sensors:
     basic_sensors_basics
     HighFinesse
     Ophir
+    Thorlabs_pm
     Lakeshore
     Cryocon
     Cryomagnetics

@@ -85,11 +85,11 @@ class ANC350Thread(device_thread.DeviceThread):
             self._stop_wait(axis=axis)
             self.device.move_to(axis,position)
             self.update_measurements()
-    def move_by_steps(self, axis, steps):
+    def move_by_steps(self, axis, steps, delay=0):
         """Move along a given axis by a given number of steps"""
         if self.open():
             self._stop_wait(axis=axis)
-            self.device.move_by_steps(axis,steps)
+            self.device.move_by_steps(axis,steps,delay=delay)
             self.update_measurements()
     def jog(self, axis, direction):
         """Start moving in a given direction (``"+"`` or ``"-"``)"""

@@ -57,9 +57,10 @@ class IMAQFrameGrabber(camera.IROICamera):
         self.imaq_name=imaq_name
         self.ifid=None
         self.sid=None
-        self._buffer_mgr=camera.ChunkBufferManager()
+        self._buffer_mgr=camera.ChunkBufferManager(chunk_size=2**24)
         self._max_nbuff=None
         self._start_acq_count=None
+        self._last_acq_count=0
         self._triggers_in={}
         self._triggers_out={}
         self._serial_term_write=""
@@ -269,8 +270,8 @@ class IMAQFrameGrabber(camera.IROICamera):
                 if ``True``, perform it automatically
         """
         funcargparse.check_parameter_range(self._parameters["trig_type"].i(trig_type),"trig_type",{"ext","rtsi","iso_in","software"})
-        timeout=int(timeout*1E3) if timeout is not None else niimaq_lib.IMAQ_INF_TIMEOUT
-        lib.imgSessionTriggerConfigure2(self.sid,trig_type,trig_line,trig_pol,timeout,trig_action)
+        ni_timeout=int(timeout*1E3) if timeout is not None else niimaq_lib.IMAQ_INF_TIMEOUT
+        lib.imgSessionTriggerConfigure2(self.sid,trig_type,trig_line,trig_pol,ni_timeout,trig_action)
         self._triggers_in[(self._parameters["trig_type"].i(trig_type),trig_line)]=(
                 self._parameters["trig_pol"].i(trig_pol),self._parameters["trig_action"].i(trig_action),timeout)
         if reset_acquisition:
@@ -407,10 +408,17 @@ class IMAQFrameGrabber(camera.IROICamera):
         lib.imgSessionSerialFlush(self.sid)
 
 
+    _acq_overflow_period=2**24
     def _get_acquired_frames(self):
         if self._start_acq_count is None:
             return None
-        return max(self.get_grabber_attribute_value("FRAME_COUNT",0)-self._start_acq_count,-1)
+        fidx=self.get_grabber_attribute_value("FRAME_COUNT",0)
+        didx=(fidx-self._last_acq_count)%self._acq_overflow_period
+        if didx>self._acq_overflow_period*.9:  # most likely, frame counter moved backwards
+            didx-=self._acq_overflow_period
+        fidx=self._last_acq_count+didx
+        self._last_acq_count=fidx
+        return max(fidx-self._start_acq_count,-1)
     def _find_max_nbuff(self):
         frame_size=self._get_buffer_size()
         buff=ctypes.create_string_buffer(frame_size)
@@ -459,7 +467,7 @@ class IMAQFrameGrabber(camera.IROICamera):
             self._max_nbuff=self._find_max_nbuff()
         nframes=min(nframes,self._max_nbuff)
         self._buffer_mgr.allocate(nframes,self._get_buffer_size())
-        cbuffs=self._buffer_mgr.get_ctypes_frames_list(ctype=ctypes.c_char_p)
+        cbuffs=self._buffer_mgr.get_ctypes_frames_list(ctype=ctypes.c_void_p)
         self._set_triggers_in_cfg(self._get_triggers_in_cfg()) # reapply trigger settings
         if mode=="sequence":
             lib.imgRingSetup(self.sid,len(cbuffs),cbuffs,0,0)
@@ -467,6 +475,7 @@ class IMAQFrameGrabber(camera.IROICamera):
             skips=(ctypes.c_uint32*len(cbuffs))(0)
             lib.imgSequenceSetup(self.sid,len(cbuffs),cbuffs,skips,0,0)
         self._start_acq_count=0
+        self._last_acq_count=self._start_acq_count
     def clear_acquisition(self):
         """Clear all acquisition details and free all buffers"""
         if self._acq_params:
@@ -484,7 +493,8 @@ class IMAQFrameGrabber(camera.IROICamera):
     def start_acquisition(self, *args, **kwargs):
         self.stop_acquisition()
         super().start_acquisition(*args,**kwargs)
-        self._start_acq_count=self.get_grabber_attribute_value("FRAME_COUNT",0)
+        self._start_acq_count=self.get_grabber_attribute_value("FRAME_COUNT",0)%self._acq_overflow_period
+        self._last_acq_count=self._start_acq_count
         self._frame_counter.reset(self._buffer_mgr.nframes)
         lib.imgSessionStartAcquisition(self.sid)
     def stop_acquisition(self):

@@ -225,7 +225,7 @@ class PvcamLib:
         if typ==PARAM_TYPE.TYPE_CHAR_PTR:
             l=self.get_param(hcam,param_id,PL_PARAM_ATTRIBUTES.ATTR_COUNT,PARAM_TYPE.TYPE_UNS32)
             s=ctypes.create_string_buffer(l)
-            self.pl_get_param(hcam,param_id,param_attribute,s)    
+            self.pl_get_param(hcam,param_id,param_attribute,s)
             return py3.as_str(s.value)
         value=self.build_arg(typ)
         self.pl_get_param(hcam,param_id,param_attribute,ctypes.pointer(value))

@@ -12,15 +12,15 @@ import ctypes
 
 
 class uc480TimeoutError(uc480Error):
-    """uc480/ueye frame timeout error"""
+    """uc480/uEye frame timeout error"""
 class uc480FrameTransferError(uc480Error):
-    """uc480/ueye frame transfer error"""
+    """uc480/uEye frame transfer error"""
 
 
 TCameraInfo=collections.namedtuple("TCameraInfo",["cam_id","dev_id","sens_id","model","serial_number","in_use","status"])
 def list_cameras(backend="uc480"):
     """
-    List all uc480/ueye camera connections (interface kind and camera index).
+    List all uc480/uEye camera connections (interface kind and camera index).
     
     `backend` is the camera DLL backend; can be either ``"uc480"`` for Thorlabs-associated cameras, or ``"ueye"`` for IDS uEye-associated cameras
     """
@@ -29,7 +29,7 @@ def list_cameras(backend="uc480"):
          for ci in lib.is_GetCameraList()]
 def get_cameras_number(backend="uc480"):
     """
-    Get the total number of connected uc480/ueye cameras.
+    Get the total number of connected uc480/uEye cameras.
     
     `backend` is the camera DLL backend; can be either ``"uc480"`` for Thorlabs-associated cameras, or ``"ueye"`` for IDS uEye-associated cameras
     """

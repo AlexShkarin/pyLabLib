@@ -34,17 +34,19 @@ class ElliptecMotor(comm_backend.ICommBackendWrapper):
             can be ``"stage"`` (use stage units such as mm or deg based on its internal calibration),
             ``"step"`` (directly use step units), or a number which multiplies user-supplied units to produce steps
         timeout: default communication timeout
+        valid_status: status which are considered valid and do not raise an error on status check
     """
     Error=ThorlabsError
-    def __init__(self, conn, addrs="all", default_addr=None, scale="stage", timeout=3.):
+    def __init__(self, conn, addrs="all", default_addr=None, scale="stage", timeout=3., valid_status=("ok","mech_timeout")):
         defaults={"serial":{"baudrate":9600}}
         instr=comm_backend.new_backend(conn,backend=("auto","serial"),term_write=b"",term_read=b"\r\n",timeout=timeout,
             defaults=defaults,reraise_error=ThorlabsBackendError)
-        instr.setup_cooldown(write=0.003)
+        instr.setup_cooldown(write=0.01)
         super().__init__(instr)
         self._bg_msg_counters={}
         self.add_background_comm("BO")
         self.add_background_comm("BS")
+        self._valid_status=valid_status
         with self._close_on_error():
             self._model_no={}
             self._stage_scale={}
@@ -67,6 +69,7 @@ class ElliptecMotor(comm_backend.ICommBackendWrapper):
         self._add_status_variable("velocity",lambda: self.get_velocity(addr="all"))
         self._add_status_variable("motor_info",lambda: self._get_all_motor_info(addr="all"))
     
+    _pre_move_delay=0.1
     def _detect_devices(self, addrs="all", timeout=0.5, delay=0.1):
         if addrs=="all":
             addrs=list(range(16))
@@ -212,7 +215,7 @@ class ElliptecMotor(comm_backend.ICommBackendWrapper):
         5:"isolated",6:"out_of_isolation",7:"init_error",8:"therm_error",9:"busy",10:"sens_error",11:"motor_error",12:"out_of_range",13:"overcurrent"}
     def _parse_status(self, status, check=True, clear_status=True):
         status=self._status_codes.get(status,"reserved")
-        if check and status!="ok":
+        if check and status not in self._valid_status:
             if clear_status:
                 self.query("gs")  # clear the fault status (otherwise it is returned as the next status result)
             raise ThorlabsError("faulty status: {}".format(status))
@@ -381,6 +384,7 @@ class ElliptecMotor(comm_backend.ICommBackendWrapper):
         The operation is synchronous, i.e., it will not finish until the motion is stopped.
         Return ``True`` if the position was reached successfully or ``False`` otherwise.
         """
+        time.sleep(self._pre_move_delay)  # if the move command is issued to soon after a previous one, it can move to 0 instead
         reply=self.query("ma",data=self._to_steps_data(position,addr),addr=addr,reply_comm=["GS","PO"],timeout=timeout)
         self._check_status_reply(reply)
         return reply.comm=="PO"
@@ -392,6 +396,7 @@ class ElliptecMotor(comm_backend.ICommBackendWrapper):
         The operation is synchronous, i.e., it will not finish until the motion is stopped.
         Return ``True`` if the position was reached successfully or ``False`` otherwise.
         """
+        time.sleep(self._pre_move_delay)  # if the move command is issued to soon after a previous one, it can move to 0 instead
         reply=self.query("mr",data=self._to_steps_data(distance,addr),addr=addr,reply_comm=["GS","PO"],timeout=timeout)
         self._check_status_reply(reply)
         return reply.comm=="PO"

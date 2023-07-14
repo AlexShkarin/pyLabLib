@@ -289,9 +289,9 @@ class IMAQdxLib:
         if wrap:
             def wrapped_callback(*args):
                 try:
-                    callback(*args)
+                    return callback(*args) or 0
                 except: # pylint: disable=bare-except
-                    pass
+                    return 0
             return callback_type(wrapped_callback)
         else:
             return callback_type(callback)

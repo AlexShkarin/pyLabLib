@@ -159,12 +159,6 @@ class IDictionaryEntry:
 
     Args:
         data: data to be wrapped
-
-    Methods:
-        is_data_valid (class method): check if a data object can be wrapped by the current entry class
-        is_branch_valid (class method): check if a branch can be parsed by the current entry class
-        from_dict (class method): create a dictionary entry of a given class from the dictionary branch
-        to_dict: convert the entry to a dictionary branch
     """
     _data_type=None # data type marker (a string marker of the entry class which is saved in the dictionary under ``__data_type__```)
     _obj_type=None
@@ -186,7 +180,7 @@ class IDictionaryEntry:
         Convert a dictionary branch to a specific :class:`IDictionaryEntry` object.
         
         Args:
-            dict_ptr (.dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
+            dict_ptr (dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
             loc: Location for the data to be loaded.
         """
         return cls(None) if cls.is_branch_valid(dict_ptr) else None
@@ -195,7 +189,7 @@ class IDictionaryEntry:
         Convert data to a dictionary branch on saving.
         
         Args:
-            dict_ptr (.dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
+            dict_ptr (dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
             loc: File location for the data to be saved.
         """
         return dictionary.Dictionary({"__data_type__":self._data_type})
@@ -216,7 +210,7 @@ def parse_stored_table_data(desc=None, data=None, out_type="pandas"):
         data: separately loaded data; can be ``None``, if no data is given (in this case assume that it is stored in the description dictionary);
             can be a tuple ``(column_data, column_names)`` (such as the one returned by :func:`.parse_csv.read_table`),
             or a an :class:`.InlineTable` object containing such tuple.
-        out_type (str): Output format of the data (``'array'`` for numpy arrays or  ``'pandas'`` for pandas DataFrame objects).
+        out_type (str): Output format of the data (``'array'`` for numpy arrays or ``'pandas'`` for pandas DataFrame objects).
     
     Return:
         tuple ``(data, columns)``, where ``data`` is the data table in the specified format, and ``columns`` is the list of columns
@@ -301,7 +295,7 @@ class ITableDictionaryEntry(IDictionaryEntry):
         Convert a dictionary branch to a specific DictionaryEntry object.
         
         Args:
-            dict_ptr (.dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
+            dict_ptr (dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
             loc: Location for the data to be loaded.
             out_type (str): Output format of the data (``'array'`` for numpy arrays or ``'pandas'`` for pandas DataFrame objects),
                 used only if the dictionary doesn't provide the format.
@@ -345,7 +339,7 @@ class InlineTableDictionaryEntry(ITableDictionaryEntry):
         Build an :class:`InlineTableDictionaryEntry` object from the dictionary and read the inlined data.
         
         Args:
-            dict_ptr (.dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
+            dict_ptr (dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
             loc: Location for the data to be loaded.
             out_type (str): Output format of the data (``'array'`` for numpy arrays or ``'pandas'`` for pandas DataFrame objects).
         """
@@ -370,7 +364,7 @@ class IExternalTableDictionaryEntry(ITableDictionaryEntry):
     @classmethod
     def from_dict(cls, dict_ptr, loc, out_type="pandas"):
         file_type=dict_ptr.get("file_type",None)
-        if not (file_type in {"bin","csv"}): # TODO:  add autodetect
+        if not (file_type in {"bin","csv"}): # TODO: add autodetect
             raise ValueError("can't load {0} with format {1}".format(dict_ptr,"external"))
         if file_type=="csv":
             return ExternalTextTableDictionaryEntry.from_dict(dict_ptr,loc,out_type=out_type)
@@ -409,7 +403,7 @@ class ExternalTextTableDictionaryEntry(IExternalTableDictionaryEntry):
         Build an :class:`ExternalTextTableDictionaryEntry` object from the dictionary and load the external data.
         
         Args:
-            dict_ptr (.dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
+            dict_ptr (dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
             loc: Location for the data to be loaded.
             out_type (str): Output format of the data (``'array'`` for numpy arrays or ``'pandas'`` for pandas DataFrame objects).
         """
@@ -456,9 +450,9 @@ class ExternalBinTableDictionaryEntry(IExternalTableDictionaryEntry):
         Build an :class:`ExternalBinTableDictionaryEntry` object from the dictionary and load the external data.
         
         Args:
-            dict_ptr (.dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
+            dict_ptr (dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
             loc: Location for the data to be loaded.
-            out_type (str): Output format of the data (``'array'`` for numpy arrays or  ``'pandas'`` for pandas DataFrame objects).
+            out_type (str): Output format of the data (``'array'`` for numpy arrays or ``'pandas'`` for pandas DataFrame objects).
         """
         from . import loadfile
         file_path=dict_ptr["file_path"]
@@ -548,7 +542,7 @@ class IExternalFileDictionaryEntry(IDictionaryEntry):
         Build an :class:`IExternalFileDictionaryEntry` object from the dictionary and load the external data.
         
         Args:
-            dict_ptr (.dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
+            dict_ptr (dictionary.DictionaryPointer): Pointer to the dictionary location for the entry.
             loc: Location for the data to be loaded.
         """
         file_path=dict_ptr["file_path"]

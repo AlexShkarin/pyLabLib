@@ -454,7 +454,7 @@ def get_location(path, loc, *args, **kwargs):
     """
     Build a location.
     
-    If `path`  or `loc` are instances of :class:`IDataLocation`, return them unchanged.
+    If `path` or `loc` are instances of :class:`IDataLocation`, return them unchanged.
     If `loc` is a string, it describes location kind:
     
         - ``'single_file'``: :class:`SingleFileSystemDataLocation` with the given `path`.

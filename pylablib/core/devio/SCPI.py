@@ -102,7 +102,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
         Args:
             name: parameter name
             comm: SCPI access command (e.g., ``":TRIG:SOURCE"``)
-            kind: parameter kind; can be  ``"string"``, ``"int"``, ``"float"``, ``"bool"``, or ``"param"`` (for parameter values)
+            kind: parameter kind; can be ``"string"``, ``"int"``, ``"float"``, ``"bool"``, or ``"param"`` (for parameter values)
             parameter: for ``"param"`` kind it is a device parameter class used to convert this device parameter
             set_delay: delay between setting and getting commands on parameter setting
             add_variable: if ``True``, automatically add a settings variable with the corresponding name
@@ -138,7 +138,11 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
             value=self.ask(comm+"?","string")
             return parameter.i(value)
     def _set_scpi_parameter(self, name, value, result=False):
-        """Set SCPI parameter with a given name"""
+        """
+        Set SCPI parameter with a given name.
+        
+        If ``result==True``, query the parameter afterwards and return its value.
+        """
         comm,kind,parameter,set_delay,set_echo=self._scpi_parameters[name]
         if kind in ["string","int","float","bool"]:
             self.write(comm,value,kind)
@@ -397,6 +401,12 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
             if unit is not None:
                 msg=msg+" "+unit
         return msg
+    def _read_echo(self, delay=0.):
+        try:
+            self.sleep(delay)
+            self._read_one_try()
+        except self.Error:
+            pass
     def write(self, msg, arg=None, arg_type=None, unit=None, bool_selector=None, wait_sync=None, read_echo=False, read_echo_delay=0.):
         """
         Send a command.
@@ -426,11 +436,7 @@ class SCPIDevice(comm_backend.ICommBackendWrapper):
             msg=msg+";"+self._wait_sync_comm
         self._write_retry(msg)
         if read_echo:
-            try:
-                self.sleep(read_echo_delay)
-                self._read_one_try()
-            except self.Error:
-                pass
+            self._read_echo(read_echo_delay)
         if wait_sync:
             sync_msg=self.read()
             if sync_msg!="1":

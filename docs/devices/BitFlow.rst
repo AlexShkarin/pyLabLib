@@ -15,7 +15,7 @@ Software requirements
 
 This interfaces requires two pieces of software, both freely available on the `BitFlow website <https://www.bitflow.com/current-downloads/>`__. First, you need `BitFlow SDK 6.5 <https://www.bitflow.com/downloads/bfsdk65.zip>`__, which also includes all the necessary drivers. The free version does not provide any headers and documentation to the DLLs, so yo use it you also need to install the manufacturer-provided Python packages, either for `Python 3.6.6 <https://www.bitflow.com/downloads/BFPython36_Release.zip>`__, or for `Python 3.8.10 <https://www.bitflow.com/downloads/BFPython38_Release.zip>`__. Note that only these two Python versions are officially supported.
 
-After installation, the DLL locations are automatically added to the ``PATH`` environment variable. To facilitate prober package import and DLL loading on Python 3.8, it is recommended to install BitFlow SDK into its default library, or at least leave ``BitFlow`` in the folder name.
+After installation, the DLL locations are automatically added to the ``PATH`` environment variable. To facilitate proper package import and DLL loading on Python 3.8, it is recommended to install BitFlow SDK into its default library, or at least leave ``BitFlow`` in the folder name.
 
 Connection
 -----------------------
@@ -23,9 +23,7 @@ Connection
 The cameras are identified by their index, starting from 0. To get the list of all cameras, you can use :func:`.BitFlow.list_cameras`::
 
     >> from pylablib.devices import BitFlow
-    >> BitFlow.list_cameras()
-    ['img0', 'img1']
-    >> cam = BitFlow.BitFlowCamera('img0')
+    >> cam = BitFlow.BitFlowCamera(bitflow_idx=0)
     >> cam.close()
 
 
@@ -44,7 +42,7 @@ At high frame rates (above ~10kFPS) dealing with each frame individually becomes
 
 This option can be accessed by calling using :meth:`.BitFlowCamera.set_frame_format` method to set frames format to ``"chunks"``. In this case, instead of a list of individual frames (which is the standard behavior), the method returns list of chunks of varying size, which contain several consecutive frames.
 
-On top of that, due to unavoidable Python loop required by the BitFlow Python interface, the frame rate is usullay limited to about 2-4kFPS. However, there is a way to overcome this by merging ``n`` consecutive frames to a single "super-frame" with ``n`` times larger height. This merging can be specified by ``frame_merge`` parameter in the :meth:`.BitFlowCamera.setup_acquisition` or :meth:`.BitFlowCamera.start_acquisition` methods (by default it is 1, meaning no merging). Adjusting the frame grabber ROI and splitting the resulting files is done transparently for the user; the only difference is that frames always arrive in batches, e.g., with ``frame_merge=10`` and 10FPS rate the frames will arrive once a second in batches of 10. Therefore, it makes sense to adjust the merging to keep the "mergerd" frame rate high enough for real-time operations but lower than the 2kFPS limit (e.g., around 100FPS).
+On top of that, due to unavoidable Python loop required by the BitFlow Python interface, the frame rate is usually limited to about 2-4kFPS. However, there is a way to overcome this by merging ``n`` consecutive frames to a single "super-frame" with ``n`` times larger height. This merging can be specified by ``frame_merge`` parameter in the :meth:`.BitFlowCamera.setup_acquisition` or :meth:`.BitFlowCamera.start_acquisition` methods (by default it is 1, meaning no merging). Adjusting the frame grabber ROI and splitting the resulting files is done transparently for the user; the only difference is that frames always arrive in batches, e.g., with ``frame_merge=10`` and 10FPS rate the frames will arrive once a second in batches of 10. Therefore, it makes sense to adjust the merging to keep the "merged" frame rate high enough for real-time operations but lower than the 2kFPS limit (e.g., around 100FPS).
 
 
 Communication with the camera and camera files
@@ -52,7 +50,7 @@ Communication with the camera and camera files
 
 The frame grabber needs some basic information about the camera: sensor size, bit depth, data transfer format, timeouts, aux lines mapping, etc. This information is contained in the so-called camera files, which for Axion cameras have ``.bfml`` extension. These files can be assigned to cameras using ``SysReg`` utility located in the ``Bin64`` folder of your BitFlow installation (by default, ``C:\BitFlow SDK 6.5\Bin64``).
 
-In addition, due to limitations of the provided Python interfaces, some operations such as changing ROI and bitness can only be done by altering the camera file. Hence, there is an option to create a temporary camera file and alter it to control these parameters. However, it needs the original camera file to serve as a template (this original file is only used as source and not modified). Since there is no possiblity to get a path to this file within the Python interface, it should be provided using ``camfile`` parameter upon creation.
+In addition, due to limitations of the provided Python interfaces, some operations such as changing ROI and bitness can only be done by altering the camera file. Hence, there is an option to create a temporary camera file and alter it to control these parameters. However, it needs the original camera file to serve as a template (this original file is only used as source and not modified). Since there is no possibility to get a path to this file within the Python interface, it should be provided using ``camfile`` parameter upon creation.
 
 
 Known issues

@@ -6,7 +6,7 @@
 NI IMAQdx cameras interface
 ===========================
 
-NI IMAQdx is the interface provided by  National Instruments and which supports a wide variety of cameras. It is completely separate from IMAQ, and it supports different communication interfaces: USB, Ethernet and FireWire. It has been tested with Ethernet-connected PhotonFocus HD1-D1312 camera.
+NI IMAQdx is the interface provided by National Instruments and which supports a wide variety of cameras. It is completely separate from IMAQ, and it supports different communication interfaces: USB, Ethernet and FireWire. It has been tested with Ethernet-connected PhotonFocus HD1-D1312 camera.
 
 The code is located in :mod:`pylablib.devices.IMAQdx`, and the main camera class is :class:`pylablib.devices.IMAQdx.IMAQdxCamera<.IMAQdx.IMAQdxCamera>`.
 

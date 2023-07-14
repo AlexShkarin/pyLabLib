@@ -13,7 +13,7 @@ The main laser class is :class:`pylablib.devices.M2.Solstis<.solstis.Solstis>`.
 Software requirements
 -----------------------
 
-The device provides a bare network interface, so no additional software is required. However, the device and the local network need to be appropriately configured, such that the PC is and the laser are in the same local network and have static IPs.
+The device provides a bare network interface, so no additional software is required. However, the device and the local network need to be appropriately configured, such that the PC and the laser are in the same local network and have static IPs.
 
 In order to access some advanced features, you will need a ``websocket-client`` package, which is not installed with pylablib by default. You can obtain it from PyPi either separately as
 
@@ -49,3 +49,34 @@ The method names are pretty self-explanatory, and mostly correspond directly to 
 One should note, that the device operation is not very stable, and occasionally some errors and crashes arise. These can range from failed wavelength tuning and terascan, to terascans failing in exotic ways (e.g., the remote interface suggests that the scan is in progress while the web interface reports a crash), to complete device failure requiring Ice Bloc power cycling.
 
 The device class attempts to somewhat mitigate it by providing relatively a robust stopping method :meth:`.Solstis.stop_all_operation`, which tries to set the devices to the default idle state. It uses web interface to get a better information about the laser crashing and send additional stopping commands. It also performs additional steps to stop scans and put the laser in an operation state after a failure, such as starting quick small fine and terascans, and tuning to a nearby frequency.
+
+
+
+M2 external mixing module (EMM)
+===============================
+
+M2 EMM allows for mixing Solstis lasers with an additional IR laser to produce higher frequency radiation. Its control principles are fairly similar to Solstis, and it is accessed through the same kind of Ice Bloc controller.
+
+The main device class is :class:`pylablib.devices.M2.EMM<.emm.EMM>`.
+
+Software requirements
+-----------------------
+
+Same as Solstis, the device provides a bare network interface, so no additional software is required. However, the device and the local network need to be appropriately configured, such that the PC, the EMM, and the corresponding Solstis laser are in the same local network and have static IPs.
+
+
+Connection
+-----------------------
+
+The EMM is identified by its IP address (typically starting with ``192.168.1``, if it is on the local network) and the port::
+
+    >> from pylablib.devices import M2
+    >> emm = M2.EMM("192.168.1.2", 34567)
+    >> emm.close()
+
+The port is set up in the ``Remote interface`` row of the ``Network Settings`` menu of the controller web interface. There you also need to provide the correct IP address of the controlling PC and enable the remote interface; otherwise the connection will be rejected by the controller.
+
+Operation
+------------------------
+
+The methods are organized in the same way as for the Solstis laser. Overall, the remote interface implements fewer commands, so the class provides fewer methods. Most of the commonly used methods are related to fine frequency tuning, terascan control, and status checking.

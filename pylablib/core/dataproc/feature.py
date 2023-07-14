@@ -249,7 +249,7 @@ def latching_trigger(wf, threshold_on, threshold_off, init_state="undef", result
     Determine indices of rise and fall trigger events with hysteresis (latching) thresholds.
     
     Return either two arrays ``(rise_trig, fall_trig)`` containing trigger indices (if ``result_kind=="separate"``),
-    or a single array of tuples ``[(dir,pos)]``, where `dir` is the trigger direction (``+1`` or ``-1``) and `pos` is its index  (if ``result_kind=="joined"``).
+    or a single array of tuples ``[(dir,pos)]``, where `dir` is the trigger direction (``+1`` or ``-1``) and `pos` is its index (if ``result_kind=="joined"``).
     Triggers happen when a state switch from 'high' to 'low' (rising) or vice versa (falling).
     The state switches from 'low' to 'high' when the trace value goes above `threshold_on`, and from 'high' to 'low' when the trace value goes below `threshold_off`.
     For a stable hysteresis effect, `threshold_on` should be larger than `threshold_off`, which means that the trace values between these two thresholds can not change the state.

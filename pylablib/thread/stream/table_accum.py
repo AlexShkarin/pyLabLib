@@ -43,7 +43,7 @@ class TableAccumulator:
                 self.data.extend([0]*(len(data)+self.chunk_size))
             self.data[self.end:self.end+l]=data
             self.end+=l
-            self.start=max(0,self.end-self.memsize)
+            self.start=max(self.start,self.end-self.memsize)
             if self.start>self.chunk_size:
                 del self.data[:self.start]
                 self.end-=self.start
@@ -53,6 +53,17 @@ class TableAccumulator:
             self.start=0
             self.end=0
             self.data=[]
+        def cut_data(self, from_start=0, from_end=0):
+            """Cut the given number of points from the start and from the end"""
+            if from_start+from_end>=self.end-self.start:
+                self.reset_data()
+                return
+            self.start+=from_start
+            self.end-=from_end
+            if self.start>self.chunk_size:
+                del self.data[:self.start]
+                self.end-=self.start
+                self.start=0
         def get_data(self, l=None):
             """Get last at most `l` samples from the buffer (if `l` is ``None``, get all samples)"""
             start=max(0,(self.end-self.start)-l) if l is not None else 0
@@ -92,6 +103,10 @@ class TableAccumulator:
         """Clear all data in the table"""
         for col in self.data:
             col.reset_data()
+    def cut_data(self, from_start=0, from_end=0):
+        """Cut the given number of points from the start and from the end"""
+        for col in self.data:
+            col.cut_data(from_start=from_start,from_end=from_end)
     
     def get_data_columns(self, channels=None, maxlen=None):
         """

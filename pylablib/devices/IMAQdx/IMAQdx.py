@@ -8,6 +8,8 @@ from ...core.devio import interface
 from ..interface import camera
 
 import numpy as np
+from .utils import get_callback  # pylint: disable=no-name-in-module
+import ctypes
 import collections
 import time
 
@@ -194,6 +196,7 @@ class IMAQdxCamera(camera.IROICamera, camera.IAttributeCamera):
         self.mode=mode
         self.visibility=visibility
         self.sid=None
+        self._cb_manager=self.CallbackManager()
         self.open()
         self._raw_readout_format=False
         self._add_info_variable("device_info",self.get_device_info)
@@ -342,6 +345,24 @@ class IMAQdxCamera(camera.IROICamera, camera.IAttributeCamera):
         vlim=camera.TAxisROILimit(minp[1] or maxp[1],maxp[1],incp[3] or maxp[1],incp[1] or maxp[1],1)
         return hlim,vlim
     
+    class CallbackManager:
+        def __init__(self):
+            self.commdata=(ctypes.c_uint32*2)()
+            self.callback=get_callback()
+        def get_callback_ptr(self):
+            return self.callback.address
+        def register(self, sid):
+            self.reset()
+            self.start()
+            lib.IMAQdxRegisterFrameDoneEvent(sid,1,self.callback,ctypes.addressof(self.commdata),wrap=False)
+        def reset(self):
+            self.commdata[1]=0
+        def start(self):
+            self.commdata[0]=1
+        def stop(self):
+            self.commdata[0]=0
+        def get_nbuff(self):
+            return int(self.commdata[1])
 
     @interface.use_parameters(mode="acq_mode")
     def setup_acquisition(self, mode="sequence", nframes=100):  # pylint: disable=arguments-differ
@@ -354,20 +375,22 @@ class IMAQdxCamera(camera.IROICamera, camera.IAttributeCamera):
         """
         self.clear_acquisition()
         super().setup_acquisition(mode=mode,nframes=nframes)
-        lib.IMAQdxConfigureAcquisition(self.sid,mode=="sequence",nframes)
     def clear_acquisition(self):
         self.stop_acquisition()
-        lib.IMAQdxUnconfigureAcquisition(self.sid)
         super().clear_acquisition()
     def start_acquisition(self, *args, **kwargs):
         self.stop_acquisition()
         super().start_acquisition(*args,**kwargs)
         self._frame_counter.reset(self._acq_params["nframes"])
+        lib.IMAQdxConfigureAcquisition(self.sid,self._acq_params["mode"]=="sequence",self._acq_params["nframes"])
+        self._cb_manager.register(self.sid)
         lib.IMAQdxStartAcquisition(self.sid)
     def stop_acquisition(self):
         if self.acquisition_in_progress():
             self._frame_counter.update_acquired_frames(self._get_acquired_frames())
             lib.IMAQdxStopAcquisition(self.sid)
+            self._cb_manager.stop()
+            lib.IMAQdxUnconfigureAcquisition(self.sid)
         super().stop_acquisition()
     def acquisition_in_progress(self):
         """Check if acquisition is in progress"""
@@ -382,16 +405,11 @@ class IMAQdxCamera(camera.IROICamera, camera.IAttributeCamera):
         self.stop_acquisition()
         self.clear_acquisition()
     def _get_acquired_frames(self):
-        last_buffer=self.cav["StatusInformation/LastBufferNumber"]
-        if last_buffer>=2**31:
-            last_buffer=-1
-        # newest_buffer=-1
-        # try:
-        #     newest_buffer=lib.IMAQdxGetImageData(self.sid,None,0,IMAQdxBufferNumberMode.IMAQdxBufferNumberModeLast,0)
-        # except IMAQdxLibError as e:
-        #     if e.code!=NIIMAQdx_lib.IMAQdxErrorCode.IMAQdxErrorCameraNotRunning:
-        #         raise
-        return last_buffer+1
+        # last_buffer=self.cav["StatusInformation/LastBufferNumber"]
+        # if last_buffer>=2**31:
+        #     last_buffer=-1
+        # return last_buffer+1
+        return self._cb_manager.get_nbuff()
 
     def _read_data_raw(self, buffer_num, size_bytes, dtype="<u1", mode=IMAQdxBufferNumberMode.IMAQdxBufferNumberModeBufferNumber):
         """Return raw bytes string from the given buffer number"""

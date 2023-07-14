@@ -164,6 +164,8 @@ class TracePlotter(QLayoutManagedWidget):
         ``"color"`` - channel plot color; ``"end_marker"`` - overrides global ``end_marker`` property of the plotter;
         ``"factor"`` - rescaling factor applied before plotting.
         """
+        if isinstance(channels,(list,tuple)):
+            channels={ch:{} for ch in channels}
         self.channels=channels.copy()
         self.channel_indices=channel_indices or list(channels)
         colors=all_colors*len(channels)
@@ -316,7 +318,7 @@ class TracePlotter(QLayoutManagedWidget):
         return enabled
     
     def get_required_channels(self):
-        """Get list of channels required for plotting: all enabled channels plus 'X axis' and  'Order by' channels """
+        """Get list of channels required for plotting: all enabled channels plus 'X axis' and 'Order by' channels """
         if self.ctl is None or self.full_data:
             return self.channel_indices
         xaxis=self.ctl.channels_table.v["xaxis"]

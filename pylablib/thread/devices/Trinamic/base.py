@@ -36,6 +36,7 @@ class TMCM1110Thread(device_thread.DeviceThread):
         self.add_command("move_to")
         self.add_command("set_position_reference")
         self.add_command("jog")
+        self.add_command("home")
         self.add_command("stop_motion")
         self.add_command("set_velocity")
     def update_measurements(self):
@@ -67,6 +68,12 @@ class TMCM1110Thread(device_thread.DeviceThread):
         if self.open():
             self._stop_wait()
             self.device.jog(direction)
+            self.update_measurements()
+    def home(self):
+        """Home the motor"""
+        if self.open():
+            self._stop_wait()
+            self.device.home()
             self.update_measurements()
     def stop_motion(self):
         """Stop motion"""

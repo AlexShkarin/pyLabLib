@@ -1435,10 +1435,11 @@ class ItemAccessor:
         missing_error: if not ``None``, specifies the error raised on the missing value;
             used in ``__contains__``, :meth:`get` and :meth:`setdefault` to determine if the value is missing
     """
-    def __init__(self, getter=None, setter=None, deleter=None, contains_checker="auto", normalize_names=True, path_separator=None, missing_error=None):
+    def __init__(self, getter=None, setter=None, deleter=None, iterator=None, contains_checker="auto", normalize_names=True, path_separator=None, missing_error=None):
         self.getter=getter
         self.setter=setter
         self.deleter=deleter
+        self.iterator=iterator
         self.contains_checker=contains_checker
         self.normalize_names=normalize_names
         self.path_separator=path_separator
@@ -1447,6 +1448,10 @@ class ItemAccessor:
         if self.normalize_names:
             return "/".join(normalize_path(name,sep=self.path_separator))
         return name
+    def __iter__(self):
+        if self.iterator is not None:
+            return self.iterator().__iter__()
+        raise TypeError("'{}' object is not iterable".format(type(self).__name__))
     def __getitem__(self, name):
         name=self._norm_name(name)
         if self.getter is not None:
