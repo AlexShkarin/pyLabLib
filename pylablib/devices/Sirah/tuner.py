@@ -801,7 +801,8 @@ class MatisseTuner:
         self._move_cont(device,start,max_speed)
         self.laser.set_scan_params(device=device,mode=mode,lower_limit=scan_rng[0],upper_limit=scan_rng[1],rise_speed=up_speed,fall_speed=down_speed)
         self.laser.set_scan_status("run")
-    def fine_sweep_stop(self, return_to_start=True):
+        return scan_rng
+    def fine_sweep_stop(self, return_to_start=True, start_point=None):
         """
         Stop currently running fast sweep.
 
@@ -809,9 +810,11 @@ class MatisseTuner:
         otherwise, stay at the current position.
         """
         self.laser.set_scan_status("stop")
-        if return_to_start and self._fine_scan_start is not None:
+        if start_point is None:
+            start_point=self._fine_scan_start
+        if return_to_start and start_point is not None:
             device=self.laser.get_scan_params()[0]
-            self._move_cont(device,self._fine_scan_start,self._get_fine_tune_params(device)[0])
+            self._move_cont(device,start_point,self._get_fine_tune_params(device)[0])
         self._fine_scan_start=None
     
     _default_stitch_tune_precision=5E9

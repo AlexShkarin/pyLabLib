@@ -141,6 +141,7 @@ class SirahMatisseTunerThread(SirahMatisseThread):
         - ``tune_to_stop``: stop fine tuning to the given frequency
         - ``fine_scan_start``: start fine scan with the given parameters
         - ``fine_scan_stop``: stop fine scan with the given parameters
+        - ``fine_scan_adjust``: adjust fine scan parameters (center and range) during the scan
         - ``stitched_scan_start``: start stitched scan with the given frequency range
         - ``stitched_scan_stop``: stop stitched scan with the given frequency range
         - ``stop_tuning``: stop all tuning operations
@@ -168,6 +169,7 @@ class SirahMatisseTunerThread(SirahMatisseThread):
         self.v["stitched_scan/stitching"]=0
         self.v["tuning/locking"]=False
         self.v["fine_tune_device"]=self._fine_device
+        self.v["fine_scan/device_range_curr"]=self.v["fine_scan/device_range_start"]=None
         self.update_progress(0)
         self.add_command("set_fine_tune_device")
         self.add_batch_job("tune_to",self.tune_to_loop,self.tune_to_finalize)
@@ -179,6 +181,7 @@ class SirahMatisseTunerThread(SirahMatisseThread):
         self.add_command("change_lock_frequency")
         self.add_command("fine_scan_start")
         self.add_command("fine_scan_stop")
+        self.add_command("fine_scan_adjust",limit_queue=3,on_full_queue="skip_oldest")
         self.add_batch_job("stitched_scan",self.stitched_scan_loop,self.stitched_scan_finalize)
         self.add_command("stitched_scan_start")
         self.add_command("stitched_scan_stop")
@@ -251,7 +254,7 @@ class SirahMatisseTunerThread(SirahMatisseThread):
                 yield
     def tune_to_finalize(self, *args, **kwargs):  # pylint: disable=unused-argument
         if self.open():
-            self.tuner.fine_sweep_stop()
+            self.tuner.fine_sweep_stop(return_to_start=False)
         self.update_operation_status("idle")
         self.update_parameters()
     def tune_to_start(self, frequency, level="full", fine_threshold=3E9):
@@ -298,6 +301,11 @@ class SirahMatisseTunerThread(SirahMatisseThread):
         """Stop frequency locking job"""
         self.stop_batch_job("lock_frequency")
 
+    def _stop_fine_sweep(self):
+        crng=self.v["fine_scan/device_range_curr"]
+        start_point=None if crng is None else (crng[0]+crng[1])/2
+        self.tuner.fine_sweep_stop(start_point=start_point)
+        self.v["fine_scan/device_range_curr"]=self.v["fine_scan/device_range_start"]=None
     def fine_scan_start(self, span, rate, kind="continuous"):
         """
         Start fine scan with the given span and at a given rate around the current frequency.
@@ -308,22 +316,50 @@ class SirahMatisseTunerThread(SirahMatisseThread):
             # funcargparse.check_parameter_range(kind,"kind",["continuous","single"])
             funcargparse.check_parameter_range(kind,"kind",["continuous"])
             self.stop_tuning()
-            self.tuner.fine_sweep_stop()
             self.update_operation_status("fine_scan")
             self.update_scan_status("setup")
-            self._fine_start_pos=self.device.get_slowpiezo_position()
-            self.tuner.fine_sweep_start(span,up_speed=rate,down_speed=rate,kind="cont_up" if kind=="continuous" else "single_up",device=self._fine_device)
+            rng=self.tuner.fine_sweep_start(span,up_speed=rate,down_speed=rate,kind="cont_up" if kind=="continuous" else "single_up",device=self._fine_device)
+            self.v["fine_scan/device_range_curr"]=self.v["fine_scan/device_range_start"]=rng
             self.update_scan_status("running")
+    def _sanitize_rng(self, rng, lim, minw):
+        rmin,rmax=lim
+        r0,r1=max(rmin,min(rng[0],rmax)),max(rmin,min(rng[1],rmax))
+        r0,r1=min(r0,r1),max(r0,r1)
+        if r1-r0>minw:
+            if r1>rmax-minw:
+                r1=r0+minw
+            else:
+                r0-r1-minw
+        return r0,r1
+    def fine_scan_adjust(self, rng=None, shift=None, span=None):
+        """Change the range, shift or change the span of the currently executing fine scan (shift or span change is always relative to the original span)"""
+        orng=self.v["fine_scan/device_range_start"]
+        if orng is None:
+            return
+        if rng is None:
+            if span is not None:
+                center=(orng[0]+orng[1])/2+(shift or 0)
+                rng=(center-span,center+span/2)
+            elif shift is not None:
+                rng=(orng[0]+shift,orng[1]+shift)
+            else:
+                return
+        if self.open():
+            rng=self._sanitize_rng(rng,(0,1),min(orng[1]-orng[0],1E-2))
+            self.device.set_scan_status("stop")
+            self.device.set_scan_params(lower_limit=rng[0],upper_limit=rng[1])
+            self.device.set_scan_status("run")
+            self.v["fine_scan/device_range_curr"]=tuple(rng)
     def fine_scan_stop(self):
         """Stop currently going fine scan"""
         if self.open():
-            self.tuner.fine_sweep_stop()
+            self._stop_fine_sweep()
         self.update_scan_status("idle")
         self.update_operation_status("idle")
     
     def stitched_scan_loop(self, scan_range, rate, single_span=15E9):
         if self.open():
-            self.tuner.fine_sweep_stop()
+            self.tuner.fine_sweep_stop(return_to_start=False)
             self.update_scan_status("running")
             try:
                 for sweeping in self.tuner.stitched_scan_gen(scan_range,single_span,rate,device=self._fine_device):
