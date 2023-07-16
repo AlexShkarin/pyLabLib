@@ -232,12 +232,11 @@ class IPhotonFocusCamera(camera.IAttributeCamera): # pylint: disable=abstract-me
     
     def setup_max_baudrate(self):
         """Setup the maximal available baudrate"""
-        brs=[921600,460800,230400,115200,57600,38400,19200,9600,4800,2400,1200]
+        brs=[921600,460800,230400,115200,57600,38400,19200,9600,4800,2400,1200][::-1]  # high to low would be faster, but leads to random freezes on some hardware
         try:
             for br in brs:
                 if lib.pfIsBaudRateSupported(self.pfcam_port,br):
                     lib.pfSetBaudRate(self.pfcam_port,br)
-                    return
         except PFCamLibError: # pfSetBaudRate sometimes raises unknown error
             pass
     def get_baudrate(self):

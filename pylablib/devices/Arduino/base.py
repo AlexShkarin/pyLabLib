@@ -20,10 +20,12 @@ class IArduinoDevice(comm_backend.ICommBackendWrapper):
         term_write: default write terminating character (automatically appended on every sent message)
         term_read: default read terminating character (used to determine when the incoming message is received completely)
         flush_before_op: if ``True`` (default), automatically flush input buffer on comm/query
+        dtrrts: determines whether to use DTR/RTS signals for communication; generally, should be set to ``True`` on newer boards (e.g., Leonardo) and to ``False`` on older boards (e.g., Uno);
+          settings ``dtrrts=True`` on older boards leads to the board reset upon connection, and settings ``dtrrts=False`` on newer boards leads to the communications getting frozen
     """
     Error=ArduinoError
-    def __init__(self, port, rate=9600, timeout=10., term_write="\n", term_read="\n", flush_before_op=True):
-        self._get_new_instr=lambda: comm_backend.new_backend((port,rate),"serial",term_write=term_write,term_read=term_read,timeout=timeout,no_dtrrts=True,reraise_error=ArduinoBackendError)
+    def __init__(self, port, rate=9600, timeout=10., term_write="\n", term_read="\n", flush_before_op=True, dtrrts=True):
+        self._get_new_instr=lambda: comm_backend.new_backend((port,rate),"serial",term_write=term_write,term_read=term_read,timeout=timeout,no_dtrrts=not dtrrts,reraise_error=ArduinoBackendError)
         self._flush_before_op=flush_before_op
         super().__init__(self._get_new_instr())
     
