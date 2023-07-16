@@ -289,8 +289,11 @@ def power_spectral_density(trace, dt=None, truncate=False, normalization="densit
     wrapped=wrap(trace)
     if dt is None:
         dt=1. if wrapped.ndim()==1 or wrapped.shape()[1]==1 else wrapped[1,0]-wrapped[0,0]
-    df=1./(dt*len(ft))
-    frequencies=(np.arange(len(ft))-len(ft)//2)*df
+    df=1./(dt*wrapped.shape()[0])
+    if single_sided:
+        frequencies=np.arange(len(ft))*df
+    else:
+        frequencies=(np.arange(len(ft))-len(ft)//2)*df
     if wrapped.ndim()==1:
         return np.column_stack((frequencies,abs(ft)**2))
     else:
