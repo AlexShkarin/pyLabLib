@@ -411,6 +411,8 @@ class InterbusSystem(GenericInterbusDevice):
     
     def __getitem__(self, key):
         return self.m[key]
+    def __contains__(self, key):
+        return key in self.m
     def _find_modules(self, modules):
         names=modules if isinstance(modules,dict) else {}
         modules=self.ib_scan_devices(dests="all" if modules=="auto" else modules)

@@ -181,6 +181,8 @@ class TableAccumulatorThread(controller.QTaskThread):
                 self.table_accum.reset_data()
             value=self.preprocess_data(value)
             self.table_accum.add_data(value)
+            if value is not None:
+                self.table_accum.add_data(value)
 
     def get_data(self, channels=None, maxlen=None, fmt="rows"):
         """
