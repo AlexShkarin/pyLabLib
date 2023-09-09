@@ -817,6 +817,29 @@ class MatisseTuner:
             self._move_cont(device,start_point,self._get_fine_tune_params(device)[0])
         self._fine_scan_start=None
     
+    def scan_coarse_gen(self, bifi_rng, te_rng):
+        """
+        Perform a 2D grid scan changing positions of both birefringent filter and thin etalon motors.
+
+        `bifi_rng` and `te_rng` are both 3-tuples ``(start, stop, step)`` specifying the scan ranges.
+        
+        Yields a tuple ``((bifi_idx, bifi_npos), (te_idx, te_npos))``,
+        where ``bifi_idx`` and ``te_idx`` are the indices of the current birefringent filter and thin etalon motor positions,
+        and ``bifi_npos`` and ``te_npos`` are the corresponding total numbers of positions.
+        """
+        self.unlock_all()
+        if (bifi_rng[1]-bifi_rng[0])*bifi_rng[2]<0:
+            bifi_rng=bifi_rng[0],bifi_rng[1],-bifi_rng[2]
+        if (te_rng[1]-te_rng[0])*te_rng[2]<0:
+            te_rng=te_rng[0],te_rng[1],-te_rng[2]
+        bifi_position=np.arange(*bifi_rng)
+        te_position=np.arange(*te_rng)
+        for i,bfp in enumerate(bifi_position):
+            self._move_motor("bifi",bfp)
+            for j,tep in enumerate(te_position):
+                self._move_motor("thinet",tep)
+                yield (i,len(bifi_position)),(j,len(te_position))
+    
     _default_stitch_tune_precision=5E9
     _default_stitch_tune_maxreps=2
     def stitched_scan_gen(self, full_rng, single_span, speed, device="slow_piezo", overlap=0.1, freq_step=None):

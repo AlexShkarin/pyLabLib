@@ -128,6 +128,31 @@ class SirahMatisse(SCPI.SCPIDevice):
                 raise GenericSirahError("device replied with an error: {}".format(py3.as_str(res[6:]).strip()))
         return res
     
+    _ask_err_ntries=3
+    _ask_err_delay=1.
+    _ask_err_verbose=False
+    def ask(self, *args, **kwargs):
+        for i in range(self._ask_err_ntries):
+            try:
+                return super().ask(*args,**kwargs)
+            except GenericSirahError as err:
+                if self._ask_err_verbose:
+                    print("Sirah Matisse error: {}".format(err))
+                if not err.args:
+                    raise
+                msg=err.args[0]
+                hdr="device replied with an error:"
+                if not msg.startswith(hdr):
+                    raise
+                emsg=msg[len(hdr):].strip()
+                if not emsg.startswith("12,"):
+                    raise
+                if i==self._ask_err_ntries-1:
+                    raise
+                time.sleep(self._ask_err_delay)
+                self.reconnect()
+                time.sleep(self._ask_err_delay)
+
     def _parse_status(self, status_n, code_length, bits, codes, errs):
         bits=[v for b,v in bits.items() if status_n&b]
         code_mask=(1<<code_length)-1

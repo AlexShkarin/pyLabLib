@@ -138,12 +138,14 @@ class SirahMatisseTunerThread(SirahMatisseThread):
 
     Commands:
         - ``tune_to_start``: start fine tuning to the given frequency
-        - ``tune_to_stop``: stop fine tuning to the given frequency
+        - ``tune_to_stop``: stop fine tuning
         - ``fine_scan_start``: start fine scan with the given parameters
-        - ``fine_scan_stop``: stop fine scan with the given parameters
+        - ``fine_scan_stop``: stop fine scan
         - ``fine_scan_adjust``: adjust fine scan parameters (center and range) during the scan
+        - ``coarse_scan_start``: start coarse scan with the given ranges for the birefringent filter and the thin etalon motor positions
+        - ``coarse_scan_stop``: stop coarse scan
         - ``stitched_scan_start``: start stitched scan with the given frequency range
-        - ``stitched_scan_stop``: stop stitched scan with the given frequency range
+        - ``stitched_scan_stop``: stop stitched scan
         - ``stop_tuning``: stop all tuning operations
     """
     _device_class=""
@@ -183,6 +185,9 @@ class SirahMatisseTunerThread(SirahMatisseThread):
         self.add_command("fine_scan_stop")
         self.add_command("fine_scan_adjust",limit_queue=3,on_full_queue="skip_oldest")
         self.add_batch_job("stitched_scan",self.stitched_scan_loop,self.stitched_scan_finalize)
+        self.add_command("coarse_scan_start")
+        self.add_command("coarse_scan_stop")
+        self.add_batch_job("coarse_scan",self.coarse_scan_loop,self.coarse_scan_finalize)
         self.add_command("stitched_scan_start")
         self.add_command("stitched_scan_stop")
         self.add_command("stop_tuning")
@@ -201,7 +206,7 @@ class SirahMatisseTunerThread(SirahMatisseThread):
         """Update scan status (``"status/scan"``)"""
         self.update_status("scan",status,self._scan_status_text[status])
     _operation_status_text={"idle":"Idle","wavemeter_connection":"Changing wavemeter connection",
-            "stitched_scan":"Stitched scan","fine_scan":"Fine scan","fine_tuning":"Fine tuning","frequency_locking":"Frequency locking"}
+            "stitched_scan":"Stitched scan","fine_scan":"Fine scan","coarse_scan":"Coarse scan","fine_tuning":"Fine tuning","frequency_locking":"Frequency locking"}
     def update_operation_status(self, status):
         """Update operation status (``"status/operation"``)"""
         curr_status=self.get_variable("status/operation")
@@ -329,7 +334,7 @@ class SirahMatisseTunerThread(SirahMatisseThread):
             if r1>rmax-minw:
                 r1=r0+minw
             else:
-                r0-r1-minw
+                r0=r1-minw
         return r0,r1
     def fine_scan_adjust(self, rng=None, shift=None, span=None):
         """Change the range, shift or change the span of the currently executing fine scan (shift or span change is always relative to the original span)"""
@@ -356,6 +361,29 @@ class SirahMatisseTunerThread(SirahMatisseThread):
             self._stop_fine_sweep()
         self.update_scan_status("idle")
         self.update_operation_status("idle")
+
+    def coarse_scan_loop(self, bifi_rng, te_rng):
+        if self.open():
+            self.update_scan_status("running")
+            for prog in self.tuner.scan_coarse_gen(bifi_rng,te_rng):
+                (i,ni),(j,nj)=prog
+                self.update_progress((i*nj+j)/(ni*nj)*100)
+                yield
+    def coarse_scan_finalize(self, *args, **kwargs):  # pylint: disable=unused-argument
+        self.update_scan_status("idle")
+        self.update_operation_status("idle")
+        self.update_progress(0)
+        self.update_parameters()
+    def coarse_scan_start(self, bifi_rng, te_rng, wait_time):
+        """Start coarse scan within the given range ``(start, stop)`` at a given rate"""
+        self.stop_tuning()
+        self.update_operation_status("coarse_scan")
+        self.update_scan_status("setup")
+        self.update_progress(0)
+        self.start_batch_job("coarse_scan",wait_time,bifi_rng=bifi_rng,te_rng=te_rng)
+    def coarse_scan_stop(self):
+        """Stop coarse scan"""
+        self.stop_batch_job("coarse_scan")
     
     def stitched_scan_loop(self, scan_range, rate, single_span=15E9):
         if self.open():
@@ -394,4 +422,5 @@ class SirahMatisseTunerThread(SirahMatisseThread):
         self.lock_frequency_stop()
         self.tune_to_stop()
         self.stitched_scan_stop()
+        self.coarse_scan_stop()
         self.fine_scan_stop()
