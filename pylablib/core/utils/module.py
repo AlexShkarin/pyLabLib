@@ -7,7 +7,14 @@ try:
 except ImportError:
     from imp import reload  # pylint: disable=deprecated-module
 
-import pkg_resources
+try:
+    from importlib import metadata
+except ImportError:
+    metadata=None
+try:
+    import pkg_resources
+except ImportError:
+    pkg_resources=None
 import sys
 import subprocess
 import os
@@ -23,6 +30,11 @@ def get_package_version(pkg):
     
     If the package version is unavailable, return ``None``.
     """
+    if metadata is not None:
+        try:
+            return metadata.metadata(pkg)["version"]
+        except metadata.PackageNotFoundError:
+            return None
     try:
         return pkg_resources.get_distribution(pkg).version
     except (pkg_resources.DistributionNotFound,pkg_resources.VersionConflict):
