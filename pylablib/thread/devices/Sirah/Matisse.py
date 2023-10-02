@@ -52,7 +52,7 @@ class SirahMatisseThread(device_thread.DeviceThread):
     def setup_task(self, conn, remote=None):  # pylint: disable=arguments-differ
         self.conn=conn
         self.remote=remote
-        self.add_job("update_measurements",self.update_measurements,.2)
+        self.add_job("update_measurements",self.update_measurements,1.)
         self.add_device_command("bifi_move_to")
         self.add_device_command("bifi_stop")
         self.add_device_command("thinet_move_to")

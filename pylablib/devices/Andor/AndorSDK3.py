@@ -805,7 +805,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
                 img=img.view(dtype).reshape(nframes,height,-1)[:,:width]
             else: # only possible with bpp==2 or 4 and non-divisible stride
                 img=img.reshape((nframes,height,stride))[:,:,:width*bpp].view(dtype)
-        img=self._convert_indexing(img,"rct")
+        img=self._convert_indexing(img,"rct",axes=(-2,-1))
         return [img],([metadata] if metadata is not None else None)
     def _zero_frame(self, n):
         dim=self.get_data_dimensions()

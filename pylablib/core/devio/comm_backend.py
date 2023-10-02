@@ -391,7 +391,8 @@ try:
                 term_write=b"\r\n"
             if term_read is None:
                 term_read=b"\n"
-            IDeviceCommBackend.__init__(self,conn,term_write=term_write,term_read=term_read,datatype=datatype,reraise_error=reraise_error)
+            super().__init__(conn,term_write=term_write,term_read=term_read,datatype=datatype,reraise_error=reraise_error)
+            self.instr=None
             try:
                 self.instr=self._open_resource(self.conn)
                 self.opened=True
@@ -557,8 +558,9 @@ try:
                 term_read=b"\n"
             if isinstance(term_read,py3.anystring):
                 term_read=[term_read]
-            IDeviceCommBackend.__init__(self,conn_dict.copy(),term_write=term_write,term_read=term_read,datatype=datatype,reraise_error=reraise_error)
+            super().__init__(conn_dict.copy(),term_write=term_write,term_read=term_read,datatype=datatype,reraise_error=reraise_error)
             port=conn_dict.pop("port")
+            self.instr=None
             try:
                 self.instr=serial.serial_for_url(port,do_not_open=True,**conn_dict)
                 self.opened=True
@@ -799,9 +801,10 @@ try:
                 term_read=[term_read]
             conn_dict=conn_dict.copy()
             conn_dict["port"]=str(conn_dict["port"])
-            IDeviceCommBackend.__init__(self,conn_dict.copy(),term_write=term_write,term_read=term_read,datatype=datatype,reraise_error=reraise_error)
+            super().__init__(conn_dict.copy(),term_write=term_write,term_read=term_read,datatype=datatype,reraise_error=reraise_error)
             port=conn_dict.pop("port")
             self.opened=False
+            self.instr=None
             try:
                 self.instr=self._open_instr(port,conn_dict)
                 self.opened=True
@@ -1032,7 +1035,7 @@ class NetworkDeviceBackend(IDeviceCommBackend):
             term_read=[term_read]
         conn=self._conn_to_dict(conn)
         self._split_addr(conn)
-        IDeviceCommBackend.__init__(self,conn,term_write=term_write,term_read=term_read,datatype=datatype,reraise_error=reraise_error)
+        super().__init__(conn,term_write=term_write,term_read=term_read,datatype=datatype,reraise_error=reraise_error)
         try:
             self.socket=None
             self.open()
@@ -1206,7 +1209,7 @@ try:
             funcargparse.check_parameter_range(conn_dict["backend"],"usb_backend",self._usb_backends)
             if isinstance(term_read,py3.anystring):
                 term_read=[term_read]
-            IDeviceCommBackend.__init__(self,conn_dict.copy(),term_write=term_write,term_read=term_read,datatype=datatype,reraise_error=reraise_error)
+            super().__init__(conn_dict.copy(),term_write=term_write,term_read=term_read,datatype=datatype,reraise_error=reraise_error)
             self.timeout=timeout
             self.check_read_size=check_read_size
             try:
@@ -1423,6 +1426,7 @@ try:
             if isinstance(term_read,py3.anystring):
                 term_read=[term_read]
             super().__init__(conn_dict.copy(),term_write=term_write,term_read=term_read,datatype=datatype,reraise_error=reraise_error)
+            self.instr=None
             try:
                 self.instr=hid.HIDevice(path=self.conn["path"],timeout=timeout,rep_fmt=self.conn["rep_fmt"])
                 self.open()
@@ -1602,7 +1606,7 @@ class RecordedDeviceBackend(IDeviceCommBackend):
 
     def __init__(self, conn, datatype="auto", reraise_error=None):
         conn_dict=self.combine_conn(conn,self._default_conn)
-        IDeviceCommBackend.__init__(self,conn_dict.copy(),datatype=datatype,reraise_error=reraise_error)
+        super().__init__(conn_dict.copy(),datatype=datatype,reraise_error=reraise_error)
         self.log=None
         self.log_section=None
         self.log_pos=0

@@ -4,6 +4,7 @@ from .base import GenericSirahError, GenericSirahBackendError
 
 import time
 import collections
+import warnings
 
 
 TThinetCtlParameters=collections.namedtuple("TThinetCtlParameters",["setpoint","P","I","avg"])
@@ -137,7 +138,7 @@ class SirahMatisse(SCPI.SCPIDevice):
                 return super().ask(*args,**kwargs)
             except GenericSirahError as err:
                 if self._ask_err_verbose:
-                    print("Sirah Matisse error: {}".format(err))
+                    warnings.warn("Sirah Matisse error: {}".format(err))
                 if not err.args:
                     raise
                 msg=err.args[0]

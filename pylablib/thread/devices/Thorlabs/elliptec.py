@@ -2,6 +2,8 @@ from ... import device_thread
 import contextlib
 import warnings
 
+import time
+
 
 class ElliptecMotorThread(device_thread.DeviceThread):
     """
@@ -81,11 +83,17 @@ class ElliptecMotorThread(device_thread.DeviceThread):
         if self.open():
             with self._moving(addr):
                 for i in range(3):
-                    self.device.move_to(position,addr=addr)
-                    if self._is_at_dest(position,addr=addr):
-                        break
-                    warnings.warn("warning: elliptec motor address {} failed {} times to move to {}, got position {} instead".format(addr,i+1,position,self.device.get_position(addr=addr)))
-                    self._move_half_point(position,addr)
+                    try:
+                        self.device.move_to(position,addr=addr)
+                        if self._is_at_dest(position,addr=addr):
+                            break
+                        warnings.warn("warning: elliptec motor address {} failed {} times to move to {}, got position {} instead".format(addr,i+1,position,self.device.get_position(addr=addr)))
+                        self._move_half_point(position,addr)
+                    except self.device.Error as err:
+                        warnings.warn("warning: movement caused an error {}; reconnecting".format(err))
+                        self.device.close()
+                        time.sleep(1.)
+                        self.device.open()
             self.update_measurements()
     def move_by(self, distance, addr=None):
         """Move by `distance` (positive or negative)"""

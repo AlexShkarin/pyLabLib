@@ -690,7 +690,7 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
 
     _p_kcube_trigio_mode=interface.EnumParameterClass("kcube_trigio_mode",{"off":0x00,
         "in_gpio":0x01,"in_relmove":0x02,"in_absmove":0x03,"in_home":0x04,
-        "out_gpio":0x0A,"out_maxvel":0x0B,"out_pulse_fw":0x0D,"out_pulse_bk":0x0E,"out_pulse_move":0x0F,
+        "out_gpio":0x0A,"out_in_motion":0x0B,"out_maxvel":0x0C,"out_pulse_fw":0x0D,"out_pulse_bk":0x0E,"out_pulse_move":0x0F,
         "out_lim_fw":0x10,"out_lim_bk":0x11,"out_lim_both":0x12})
     @interface.use_parameters(_returns=["kcube_trigio_mode",None,"kcube_trigio_mode",None])
     def _get_kcube_trigio_parameters(self):
