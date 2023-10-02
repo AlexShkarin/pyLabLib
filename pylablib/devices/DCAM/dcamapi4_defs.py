@@ -154,7 +154,7 @@ class DCAMBUF_FRAME_OPTION(enum.IntEnum):
     DCAMBUF_FRAME_OPTION__VIEW__STEP       =_int32(0x00100000)
     DCAMBUF_FRAME_OPTION__VIEW__MASK       =_int32(0x00F00000)
     DCAMBUF_FRAME_OPTION__PROC__MASK       =_int32(0x00000FF0)
-    end_of_dcambuf_frame_option            =enum.auto()
+    end_of_dcambuf_frame_option            =_int32(0x00000FF1)
 dDCAMBUF_FRAME_OPTION={a.name:a.value for a in DCAMBUF_FRAME_OPTION}
 drDCAMBUF_FRAME_OPTION={a.value:a.name for a in DCAMBUF_FRAME_OPTION}
 
@@ -169,7 +169,7 @@ class DCAMREC_FRAME_OPTION(enum.IntEnum):
     DCAMREC_FRAME_OPTION__VIEW__STEP       =_int32(0x00100000)
     DCAMREC_FRAME_OPTION__VIEW__MASK       =_int32(0x00F00000)
     DCAMREC_FRAME_OPTION__PROC__MASK       =_int32(0x00000FF0)
-    endof_dcamrec_frame_option             =enum.auto()
+    endof_dcamrec_frame_option             =_int32(0x00000FF1)
 dDCAMREC_FRAME_OPTION={a.name:a.value for a in DCAMREC_FRAME_OPTION}
 drDCAMREC_FRAME_OPTION={a.value:a.name for a in DCAMREC_FRAME_OPTION}
 
@@ -230,7 +230,7 @@ class DCAMCAP_STATUS(enum.IntEnum):
     DCAMCAP_STATUS_READY   =_int32(0x0002)
     DCAMCAP_STATUS_STABLE  =_int32(0x0003)
     DCAMCAP_STATUS_UNSTABLE=_int32(0x0004)
-    end_of_dcamcap_status  =enum.auto()
+    end_of_dcamcap_status  =_int32(0x0005)
 dDCAMCAP_STATUS={a.name:a.value for a in DCAMCAP_STATUS}
 drDCAMCAP_STATUS={a.value:a.name for a in DCAMCAP_STATUS}
 
@@ -247,7 +247,7 @@ class DCAMWAIT_EVENT(enum.IntEnum):
     DCAMWAIT_RECEVENT_DISKFULL   =_int32(0x1000)
     DCAMWAIT_RECEVENT_WRITEFAULT =_int32(0x2000)
     DCAMWAIT_RECEVENT_SKIPPED    =_int32(0x4000)
-    end_of_dcamwait_event        =enum.auto()
+    end_of_dcamwait_event        =_int32(0x4001)
 dDCAMWAIT_EVENT={a.name:a.value for a in DCAMWAIT_EVENT}
 drDCAMWAIT_EVENT={a.value:a.name for a in DCAMWAIT_EVENT}
 
@@ -280,7 +280,7 @@ drDCAM_IDSTR={a.value:a.name for a in DCAM_IDSTR}
 
 class DCAMWAIT_TIMEOUT(enum.IntEnum):
     DCAMWAIT_TIMEOUT_INFINITE=_int32(0x80000000)
-    end_of_dcamwait_timeout  =enum.auto()
+    end_of_dcamwait_timeout  =_int32(0x80000001)
 dDCAMWAIT_TIMEOUT={a.name:a.value for a in DCAMWAIT_TIMEOUT}
 drDCAMWAIT_TIMEOUT={a.value:a.name for a in DCAMWAIT_TIMEOUT}
 
@@ -297,7 +297,7 @@ drDCAMAPI_INITOPTION={a.value:a.name for a in DCAMAPI_INITOPTION}
 class DCAMBUF_METADATAKIND(enum.IntEnum):
     DCAMBUF_METADATAKIND_TIMESTAMPS =_int32(0x00010000)
     DCAMBUF_METADATAKIND_FRAMESTAMPS=_int32(0x00020000)
-    end_of_dcambuf_metadatakind     =enum.auto()
+    end_of_dcambuf_metadatakind     =_int32(0x00020001)
 dDCAMBUF_METADATAKIND={a.name:a.value for a in DCAMBUF_METADATAKIND}
 drDCAMBUF_METADATAKIND={a.value:a.name for a in DCAMBUF_METADATAKIND}
 
@@ -307,7 +307,7 @@ class DCAMREC_METADATAKIND(enum.IntEnum):
     DCAMREC_METADATAKIND_USERDATABIN =_int32(0x00000002)
     DCAMREC_METADATAKIND_TIMESTAMPS  =_int32(0x00010000)
     DCAMREC_METADATAKIND_FRAMESTAMPS =_int32(0x00020000)
-    end_of_dcamrec_metadatakind      =enum.auto()
+    end_of_dcamrec_metadatakind      =_int32(0x00020001)
 dDCAMREC_METADATAKIND={a.name:a.value for a in DCAMREC_METADATAKIND}
 drDCAMREC_METADATAKIND={a.value:a.name for a in DCAMREC_METADATAKIND}
 
@@ -404,7 +404,7 @@ drDCAMDEV_CAPFLAG={a.value:a.name for a in DCAMDEV_CAPFLAG}
 class DCAMREC_STATUSFLAG(enum.IntEnum):
     DCAMREC_STATUSFLAG_NONE     =_int32(0x00000000)
     DCAMREC_STATUSFLAG_RECORDING=_int32(0x00000001)
-    end_of_dcamrec_statusflag   =enum.auto()
+    end_of_dcamrec_statusflag   =_int32(0x00000002)
 dDCAMREC_STATUSFLAG={a.name:a.value for a in DCAMREC_STATUSFLAG}
 drDCAMREC_STATUSFLAG={a.value:a.name for a in DCAMREC_STATUSFLAG}
 
