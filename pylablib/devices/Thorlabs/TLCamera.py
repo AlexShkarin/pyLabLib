@@ -29,7 +29,6 @@ class LibraryController(load_lib.LibraryController):
 libctl=LibraryController(lib)
 
 
-
 def list_cameras():
     """List connected TLCamera cameras"""
     with libctl.temp_open():
@@ -38,15 +37,18 @@ def list_cameras():
         except ThorlabsTLCameraError:
             return []
 
+
 def get_cameras_number():
     """Get number of connected TLCamera cameras"""
     return len(list_cameras())
 
 
+TDeviceInfo = collections.namedtuple("TDeviceInfo",
+                                     ["model", "name", "serial_number", "firmware_version", "sensor_type"])
+
+TFrameInfo = collections.namedtuple("TFrameInfo", ["frame_index", "framestamp", "pixelclock", "pixeltype", "offset"])
 
 
-TDeviceInfo=collections.namedtuple("TDeviceInfo",["model","name","serial_number","firmware_version"])
-TFrameInfo=collections.namedtuple("TFrameInfo",["frame_index","framestamp","pixelclock","pixeltype","offset"])
 class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
     """
     Thorlabs TSI camera.
