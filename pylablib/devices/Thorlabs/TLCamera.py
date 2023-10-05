@@ -114,11 +114,13 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
 
         Return tuple ``(model, name, serial_number, firmware_version)``.
         """
-        model=py3.as_str(lib.tl_camera_get_model(self.handle))
-        name=py3.as_str(lib.tl_camera_get_name(self.handle))
-        serial_number=py3.as_str(lib.tl_camera_get_serial_number(self.handle))
-        firmware_version=py3.as_str(lib.tl_camera_get_firmware_version(self.handle))
-        return TDeviceInfo(model,name,serial_number,firmware_version)
+        model = py3.as_str(lib.tl_camera_get_model(self.handle))
+        name = py3.as_str(lib.tl_camera_get_name(self.handle))
+        serial_number = py3.as_str(lib.tl_camera_get_serial_number(self.handle))
+        firmware_version = py3.as_str(lib.tl_camera_get_firmware_version(self.handle))
+        sensor_type = tl_camera_sdk_defs.TL_CAMERA_SENSOR_TYPE(
+            lib.tl_camera_get_camera_sensor_type(self.handle)).name.lstrip('TL_CAMERA_SENSOR_TYPE')
+        return TDeviceInfo(model, name, serial_number, firmware_version, sensor_type)
 
     # ### Acquisition controls ###
     class RingBuffer:
