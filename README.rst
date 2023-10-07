@@ -1,6 +1,9 @@
 Overview
 -------------------------
 
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.7324875.svg
+   :target: https://doi.org/10.5281/zenodo.7324875
+
 PyLabLib aims to provide support for device control and experiment automation. It interfaces with lots of different of `devices <https://pylablib.readthedocs.io/en/latest/devices/devices_root.html>`__, including several different `camera interfaces <https://pylablib.readthedocs.io/en/latest/devices/cameras_root.html>`__, `translational stages <https://pylablib.readthedocs.io/en/latest/devices/stages_root.html>`__, `oscilloscopes <https://pylablib.readthedocs.io/en/latest/devices/Tektronix.html>`__, `AWGs <https://pylablib.readthedocs.io/en/latest/devices/generic_awgs.html>`__, `sensors <https://pylablib.readthedocs.io/en/latest/devices/basic_sensors_root.html>`__, and more. The interface is implemented in a natural way through Python objects, and is easy to understand. For example, here is a complete script which steps Thorlabs KDC101 stage by 10000 steps ten times, and each time grabs a frame with Andor iXon camera:
 
 .. code-block:: python
