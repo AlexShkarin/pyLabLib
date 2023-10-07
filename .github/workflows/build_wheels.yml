@@ -23,6 +23,7 @@ jobs:
         run: python -m cibuildwheel --output-dir wheelhouse
         env:
           CIBW_BEFORE_BUILD: python -m pip install numpy cython==3.0.2
+          CIBW_SKIP: pp*
 
       - uses: actions/upload-artifact@v3
         with:
