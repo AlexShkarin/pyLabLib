@@ -13,6 +13,15 @@ pylablib.core.utils.array\_utils module
    :undoc-members:
    :show-inheritance:
 
+pylablib.core.utils.cext\_tools module
+--------------------------------------
+
+.. automodule:: pylablib.core.utils.cext_tools
+   :members:
+   :inherited-members:
+   :undoc-members:
+   :show-inheritance:
+
 pylablib.core.utils.crc module
 ------------------------------
 

@@ -8,7 +8,9 @@ from ...core.devio import interface
 from ..interface import camera
 
 import numpy as np
-from .utils import get_callback  # pylint: disable=no-name-in-module
+from ...core.utils.cext_tools import try_import_cext
+with try_import_cext():
+    from .utils import get_callback  # pylint: disable=no-name-in-module
 import ctypes
 import collections
 import time

@@ -25,7 +25,7 @@ def list_cython_extensions(folder="pylablib"):
     exts=[]
     for f in pathlib.Path(folder).glob("**/*.c"):
         name=".".join(list(f.parts[:-1])+[path.splitext(f.parts[-1])[0]])
-        exts.append(Extension(name=name,sources=[str(f)]))
+        exts.append(Extension(name=name,sources=[str(f)],optional=True))
     return exts
 
 dep_base=['numpy','scipy','pandas']

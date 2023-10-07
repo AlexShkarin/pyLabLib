@@ -22,6 +22,15 @@ pylablib.core.dataproc.ctransform module
    :undoc-members:
    :show-inheritance:
 
+pylablib.core.dataproc.ctransform\_fallback module
+--------------------------------------------------
+
+.. automodule:: pylablib.core.dataproc.ctransform_fallback
+   :members:
+   :inherited-members:
+   :undoc-members:
+   :show-inheritance:
+
 pylablib.core.dataproc.feature module
 -------------------------------------
 

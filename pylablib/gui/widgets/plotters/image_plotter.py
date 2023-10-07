@@ -15,7 +15,7 @@ from ....core.gui.widgets.layout_manager import QLayoutManagedWidget
 from ....core.gui.value_handling import virtual_gui_values
 from ....core.thread import controller
 from ....core.utils import funcargparse, module, dictionary
-from ....core.dataproc import filters, ctransform, transform
+from ....core.dataproc import filters, transform
 
 import pyqtgraph
 
@@ -400,7 +400,7 @@ class ImagePlotter(QLayoutManagedWidget):
             cache_transform: if ``True``, cache the full transform until :meth:`invalidate` method is called
         """
         def __init__(self, trans=None, src=None, label="", cache_transform=True):
-            self.trans=self._as_c_transform(trans) or ctransform.CLinear2DTransform()
+            self.trans=self._as_c_transform(trans) or transform.CLinear2DTransform()
             self.src=src
             self.label=label
             self.cache_transform=cache_transform
@@ -409,7 +409,7 @@ class ImagePlotter(QLayoutManagedWidget):
             if trans is None:
                 return None
             if isinstance(trans,transform.Indexed2DTransform):
-                return ctransform.CLinear2DTransform.from_matr_shift(trans.tmatr,trans.shift)
+                return transform.CLinear2DTransform.from_matr_shift(trans.tmatr,trans.shift)
             return trans.copy() if copy else trans
         def invalidate(self):
             """Invalidate transform cache"""
@@ -649,7 +649,7 @@ class ImagePlotter(QLayoutManagedWidget):
         self._coord_systems_par=coord_systems_par
         transpose,flip_x,flip_y=coord_systems_par[1:]
         dimshape=imshape
-        im2disp=ctransform.CLinear2DTransform()
+        im2disp=transform.CLinear2DTransform()
         if (self.xbin,self.ybin)!=(1,1):
             im2disp.scale(1/self.xbin,1/self.ybin)
         if transpose:
@@ -660,7 +660,7 @@ class ImagePlotter(QLayoutManagedWidget):
         if flip_y:
             im2disp.scale(1,-1).shift(0,dimshape[1])
         self.coord_systems["image"].update(im2disp.invert())
-        im2norm=ctransform.CLinear2DTransform().scale(1/imshape[0],1/imshape[1])
+        im2norm=transform.CLinear2DTransform().scale(1/imshape[0],1/imshape[1])
         self.coord_systems["image_normalized"].update(im2norm)
         for cs in self.coord_systems.values():
             cs.invalidate()

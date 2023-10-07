@@ -8,7 +8,9 @@ from ...core.utils import py3, dictionary, general
 from ...core.utils.ctypes_tools import funcaddressof
 from ...core.devio import interface
 from ..interface import camera
-from .utils import looper, get_callback  # pylint: disable=no-name-in-module
+from ...core.utils.cext_tools import try_import_cext
+with try_import_cext():
+    from .utils import looper, get_callback  # pylint: disable=no-name-in-module
 
 import numpy as np
 import collections

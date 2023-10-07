@@ -1,5 +1,12 @@
 import numpy as np
+import warnings
 
+from ...core.utils.cext_tools import pyd_load_warn_msg
+try:
+    from .ctransform import CLinear2DTransform  # pylint: disable=no-name-in-module,unused-import
+except ImportError as err:
+    warnings.warn(pyd_load_warn_msg.format(err))
+    from .ctransform_fallback import CLinear2DTransform  # pylint: disable=unused-import
 
 
 class LinearTransform:
