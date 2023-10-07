@@ -23,7 +23,7 @@ with open(path.join(here,'README.rst')) as f:
 
 def list_cython_extensions(folder="pylablib"):
     exts=[]
-    for f in pathlib.Path(folder).glob("**/*.c"):
+    for f in pathlib.Path(folder).glob(path.join("**","*.pyx")):
         name=".".join(list(f.parts[:-1])+[path.splitext(f.parts[-1])[0]])
         exts.append(Extension(name=name,sources=[str(f)],optional=True))
     return exts
