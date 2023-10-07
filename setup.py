@@ -8,13 +8,7 @@ https://github.com/pypa/sampleproject
 from setuptools import Extension, setup, find_packages
 from codecs import open
 from os import path
-import sys
 import pathlib
-try:
-    import numpy as np
-    np_include=np.get_include()
-except ImportError:
-    np_include=path.join(path.split(sys.executable)[0],"lib","site-packages","numpy","core","include")
 
 here = path.abspath(path.dirname(__file__))
 
@@ -34,8 +28,6 @@ dep_devio=['pyft232','pyvisa>=1.6','pyserial','pyusb']
 dep_devio_extra=['nidaqmx','websocket-client']
 dep_pyqt5=['pyqt5>=5.9','pyqtgraph']
 dep_pyside2=['pyside2','shiboken2','pyqtgraph>0.10']
-include_dirs=[np_include]
-include_dirs=[d for d in include_dirs if path.exists(d)]
 setup(
     name='pylablib',
     # name='pylablib-lightweight',
@@ -81,5 +73,4 @@ setup(
     #     'gui-pyqt5':dep_pyqt5,
     #     'gui-pyside2':dep_pyside2,
     # }
-    include_dirs=[np_include],
 )
