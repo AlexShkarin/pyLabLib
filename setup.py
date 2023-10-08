@@ -29,8 +29,8 @@ dep_devio_extra=['nidaqmx','websocket-client']
 dep_pyqt5=['pyqt5>=5.9','pyqtgraph']
 dep_pyside2=['pyside2','shiboken2','pyqtgraph>0.10']
 setup(
-    name='pylablib',
-    # name='pylablib-lightweight',
+    # name='pylablib',
+    name='pylablib-lightweight',
     version='1.4.2',
     description='Code for use in lab environment: experiment automation, data acquisition, device communication',
     long_description=long_description,
@@ -61,16 +61,16 @@ setup(
     },
     packages=find_packages(include=['pylablib*']),
     ext_modules=list_cython_extensions(),
-    install_requires=dep_base+dep_extra+dep_devio+dep_pyqt5,
-    extras_require={
-        'devio-full':dep_devio_extra,
-    },
-    # install_requires=dep_base,
+    # install_requires=dep_base+dep_extra+dep_devio+dep_pyqt5,
     # extras_require={
-    #     'extra':dep_extra,
-    #     'devio':dep_devio,
-    #     'devio-full':dep_devio+dep_devio_extra,
-    #     'gui-pyqt5':dep_pyqt5,
-    #     'gui-pyside2':dep_pyside2,
-    # }
+    #     'devio-full':dep_devio_extra,
+    # },
+    install_requires=dep_base,
+    extras_require={
+        'extra':dep_extra,
+        'devio':dep_devio,
+        'devio-full':dep_devio+dep_devio_extra,
+        'gui-pyqt5':dep_pyqt5,
+        'gui-pyside2':dep_pyside2,
+    }
 )
