@@ -16,14 +16,17 @@ def is_autogen(path):
     name=os.path.split(path)[1]
     return name.endswith("_defs.py") or (name.endswith("_lib.py") and name!="load_lib.py")
 def get_autogen_files():
-    dev_files=glob.glob(os.path.join(src,"devices","**\\*.py"))
+    dev_files=glob.glob(os.path.join(src,"devices","**","*.py"))
     return [f for f in dev_files if is_autogen(f)]
+def get_c_files():
+    return glob.glob(os.path.join(src,"**","*.c"),recursive=True)
 
 if __name__=="__main__":
     autogen_files=get_autogen_files()
-    print("\n".join(["Skipping {}".format(f) for f in autogen_files]))
+    c_files=get_c_files()
+    print("\n".join(["Skipping {}".format(f) for f in autogen_files+c_files]))
     skip_files=[f+"/**" for f in exclude_folders]+exclude_files
-    skip_files=[os.path.join(src,f) for f in skip_files]+autogen_files
+    skip_files=[os.path.join(src,f) for f in skip_files]+autogen_files+c_files
     with open(".skipped_apidoc","w") as f:
         for ln in skip_files:
             f.write(ln+"\n")

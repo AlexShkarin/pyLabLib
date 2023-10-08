@@ -70,14 +70,19 @@ sys.modules['numba']=mock.MagicMock(njit=nodec,jit=nodec)
 if os.path.exists(".skipped_apidoc"):
     with open(".skipped_apidoc","r") as f:
         for ln in f.readlines():
+            module=None
             m=re.match(r".*pylablib\\devices\\(.*_(?:lib|def))\.py$",ln.strip().replace("/","\\"))
             if m:
                 module="pylablib.devices."+m[1].replace("\\",".")
+            m=re.match(r".*pylablib\\(.*)\.(?:pyx|c)$",ln.strip().replace("/","\\"))
+            if m:
+                module="pylablib."+m[1].replace("\\",".")
+            if module:
                 sys.modules[module]=mock.Mock()
                 print("Mocking {}".format(module))
 autodoc_member_order='bysource'
 
-nitpicky=True
+nitpicky=False
 nitpick_ignore=[("py:class","callable"),
                 ("py:class","socket.socket"),
                 ("py:class","builtins.OSError"), ("py:class","builtins.RuntimeError"),
