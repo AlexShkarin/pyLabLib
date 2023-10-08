@@ -9,3 +9,4 @@ pyusb>=1.1.1
 PyVISA>=1.11.3
 rpyc>=5.0.1
 scipy>=1.7.0
+sphinxcontrib-spelling>=7.7.0
