@@ -10,3 +10,4 @@ PyVISA>=1.11.3
 rpyc>=5.0.1
 scipy>=1.7.0
 sphinxcontrib-spelling>=7.7.0
+sphinx-rtd-theme>=1.0.0
