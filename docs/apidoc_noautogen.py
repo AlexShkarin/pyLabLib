@@ -31,5 +31,6 @@ if __name__=="__main__":
         for ln in skip_files:
             f.write(ln+"\n")
 
+    skip_files_pattern=[(f[:-1]+"*" if f.endswith(".c") else f) for f in skip_files]
     os.environ["SPHINX_APIDOC_OPTIONS"]="members,inherited-members,undoc-members,show-inheritance"  # include inherited members into the docstring
-    subprocess.call(["sphinx-apidoc","-o",".apidoc",src]+skip_files)
+    subprocess.call(["sphinx-apidoc","-o",".apidoc",src]+skip_files_pattern)
