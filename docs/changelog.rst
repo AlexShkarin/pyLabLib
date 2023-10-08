@@ -23,6 +23,47 @@ you can write
     import pylablib.legacy as pll
     from pylablib.legacy.aux_libs.devices import Lakeshore
 
+1.4.2
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Devices
+
+    * Added multiple devices:
+    
+        + Andor Shamrock spectrographs
+        + ElektorAutomatick PS2000B power supply
+        + Keithley 2110 multimeter
+        + Lumel RE72 temperature controller (via Modbus RTU protocol)
+        + M2 Solstis EMM (external mixing module)
+        + Mightex S-Series cameras
+        + Generic NKT lasers Interbus protocol support (tested with NKT SuperK with Select spectral filter)
+        + Generic Modbus RTU protocol
+        + PhysikInstrumente E-515 piezo controller
+        + Rigol DP1116A power supply
+        + SmarAct MCS2 stage controller
+        + Standa 8SMC5 motion controller
+        + Thorlabs PM160 power meter
+        + Voltcraft VC-7055BT multimeter
+
+    * Extended device support:
+
+        + Thorlabs Scientific Cameras (Zelux, Kiralux) color mode
+        + Thorlabs APT/Kinesis motor controllers
+        + Trinamic TMCM1110 homing
+
+    * Added HID device communication backend
+    * Switched some camera code to Cython to support higher frame rates.
+    * Multiple bug fixes and improved support of specific models:
+    
+        + Selection of RTS cycling for Arduino boards (better support for newer boards such as Leonardo)
+        + Support for SiliconSoftware microEnable 5 (Basler microEnable 5 marathon)
+        + Improved Sirah Matisse tuning support for frequency tuning and stitched scans based on HighFinesse wavemeters feedback.
+
+- Switched to Cython code in several places for minor plotting speedups.
+- Minor additional functions
+    * Added time tracker class for simple profiling
+    * Added CRC calculation methods
+
 1.4.1
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
