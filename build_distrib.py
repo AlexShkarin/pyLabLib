@@ -10,25 +10,28 @@ def clear_build():
     shutil.rmtree("dist",ignore_errors=True)
     shutil.rmtree("pylablib.egg-info",ignore_errors=True)
     shutil.rmtree("pylablib_lightweight.egg-info",ignore_errors=True)
-def make():
-    subprocess.call(["python","setup.py","sdist","bdist_wheel"])
+def make(wheel):
+    subprocess.call(["python","setup.py","sdist"]+(["bdist_wheel"] if wheel else []))
 def upload(production=False):
     if production:
-        subprocess.call(["python","-m","twine","upload","dist/*"])
+        subprocess.call(["python","-m","twine","upload","--skip-existing","dist/*"])
     else:
-        subprocess.call(["python","-m","twine","upload","--repository","testpypi","dist/*"])
+        subprocess.call(["python","-m","twine","upload","--repository","testpypi","--skip-existing","dist/*"])
         # pip install -U --no-cache-dir --extra-index-url https://testpypi.python.org/pypi pylablib
 
 
 parser=argparse.ArgumentParser()
 parser.add_argument("--update",action="store_true")
+parser.add_argument("-b","--build",action="store_true")
+parser.add_argument("-w","--wheel",action="store_true")
 parser.add_argument("-u","--upload",action="store_true")
 parser.add_argument("-p","--production",action="store_true")
 args=parser.parse_args()
 
 if args.update:
     update()
-clear_build()
-make()
+if args.build:
+    clear_build()
+    make(args.wheel)
 if args.upload:
     upload(production=args.production)
