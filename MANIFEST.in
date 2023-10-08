@@ -1,2 +1,4 @@
 # Include the license file
 include LICENSE
+# Manually include Cython C files
+recursive-include pylablib *.c
