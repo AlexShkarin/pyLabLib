@@ -31,12 +31,13 @@ class ElliptecMotorThread(device_thread.DeviceThread):
             self.device=cls(conn=self.conn,addrs=self.addrs,**self.dev_kwargs)  # pylint: disable=not-callable
             self.addrs=self.device.get_connected_addrs()
             self.v["moving"]={a:False for a in self.addrs}
-    def setup_task(self, conn, addrs="all", remote=None, **kwargs):  # pylint: disable=arguments-differ
+    def setup_task(self, conn, addrs="all", dest_tolerance=0.1, remote=None, **kwargs):  # pylint: disable=arguments-differ
         self.device_reconnect_tries=5
         self.conn=conn
         self.addrs=addrs
         self.remote=remote
         self.dev_kwargs=kwargs
+        self.dest_tolerance=dest_tolerance
         self.add_job("update_measurements",self.update_measurements,.5)
         self.add_command("move_to",limit_queue=("addr",1),on_full_queue="skip_oldest")
         self.add_command("move_by",limit_queue=("addr",1),on_full_queue="skip_oldest")
@@ -63,17 +64,21 @@ class ElliptecMotorThread(device_thread.DeviceThread):
         finally:
             for a in addr:
                 self.v["moving",a]=False
-    _dest_tolerance=0.1
+    _default_dest_tolerance=0.1
+    def _get_dest_tolerance(self, addr):
+        if isinstance(self.dest_tolerance,dict):
+            return self.dest_tolerance.get(addr,self.dest_tolerance.get(None,self._default_dest_tolerance))
+        return self.dest_tolerance
     def _is_at_dest(self, dest, addr):
         pos=self.device.get_position(addr=addr)
         pos=pos.values() if isinstance(pos,dict) else [pos]
-        return all(abs(p-dest)<self._dest_tolerance for p in pos)
+        return all(abs(p-dest)<self._get_dest_tolerance(addr) for p in pos)
     def _move_half_point(self, dest, addr):
         self.sleep(0.2)
         pos=self.device.get_position(addr=addr)
         if isinstance(pos,dict):
             for a,p in pos.items():
-                if abs(p-dest)>self._dest_tolerance:
+                if abs(p-dest)>self._get_dest_tolerance(addr):
                     self.device.move_to((p+dest)/2,addr=a)
         else:
             self.device.move_to((pos+dest)/2,addr=addr)

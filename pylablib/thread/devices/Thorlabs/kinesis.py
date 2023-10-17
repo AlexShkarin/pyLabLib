@@ -141,6 +141,8 @@ class KinesisPiezoMotorThread(device_thread.DeviceThread):
         self.default_channels=default_channels
         self.add_job("update_measurements",self.update_measurements,.5)
         self.add_job("update_parameters",self.update_parameters,2)
+        self.add_device_command("enable_channels")
+        self.add_device_command("get_enabled_channels")
         self.add_command("move_to")
         self.add_command("set_position_reference")
         self.add_command("move_by")
@@ -193,7 +195,7 @@ class KinesisPiezoMotorThread(device_thread.DeviceThread):
     def setup_drive(self, velocity=None, voltage=None, acceleration=None, channel=None):
         """Set maximal motion velocity, maximal voltage, and acceleration on a given channel"""
         if self.open():
-            self.device.setup_velocity(max_voltage=voltage,velocity=velocity,acceleration=acceleration,channel=channel)
+            self.device.setup_drive(max_voltage=voltage,velocity=velocity,acceleration=acceleration,channel=channel)
             self.update_parameters()
 
 
@@ -300,7 +302,7 @@ class MFFThread(device_thread.DeviceThread):
 
 
 
-class ThorlabsKinesisQuadDetectorThread(device_thread.DeviceThread):
+class KinesisQuadDetectorThread(device_thread.DeviceThread):
     """
     Thorlabs Kinesis quadrature detector thread.
 
