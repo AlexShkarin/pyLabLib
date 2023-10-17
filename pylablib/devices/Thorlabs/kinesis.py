@@ -981,7 +981,95 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
     def _pzmot_wait_for_status(self, status, enabled, timeout=None, period=0.05, channel=None):
         return self._wait_for_status(status,enabled,channel=channel,timeout=timeout,period=period)
 
+    @muxchannel
+    def _pzctl_get_status_n(self, channel=None):
+        """
+        Get numerical status of the piezo controller.
 
+        For details, see APT communications protocol.
+        """
+        data=self.query(0x0660,channel).data
+        return struct.unpack("<I",data[6:10])[0]
+    _pzctl_status_bits=[(1<<0,"stage_connected"),(1<<4,"zeroed"),(1<<5,"zeroing"),(1<<8,"gauge_connected"),(1<<10,"closed_loop"),(1<<29,"active"),(1<<31,"enabled")]
+    @muxchannel
+    def _pzctl_get_status(self, channel=None):
+        """
+        Get piezo motor status.
+
+        Return list of status strings, which can include ``"stage_connected"`` (actuator is connected),
+        ``"zeroed"`` (position readout actuator is zeroed), ``"zeroing"`` (position readout actuator is zeroing),
+        ``"gauge_connected"`` (strain gauge is connected), ``"closed_loop"`` (operating in the closed loop mode)
+        ``"active"`` (unit is active), ``"enabled"`` (output is enabled).
+        """
+        status_n=self._pzctl_get_status_n(channel=channel)
+        return [s for (m,s) in self._pzctl_status_bits if status_n&m]
+    @muxchannel
+    @interface.use_parameters(channel="channel_id")
+    def _pzctl_is_channel_enabled(self, channel=None):
+        """Check if the given channel is enabled"""
+        return "enabled" in self._pzctl_get_status(channel=channel)
+    @muxchannel(mux_argnames="enabled")
+    @interface.use_parameters(channel="channel_id")
+    def _pzctl_enable_channel(self, enabled=True, channel=None):  # seems to not work for most devices when tested
+        """Enable or disable the given channel"""
+        self.send_comm(0x0210,self._make_channel(channel),0x01 if enabled else 0x02,dest=("channel",channel))
+        return self._wip._pzctl_is_channel_enabled(channel)
+    _p_pzctl_voltage_range=interface.EnumParameterClass("pzctl_voltage_range",{75:0x01,100:0x02,150:0x03})
+    @muxchannel
+    @interface.use_parameters(_returns="pzctl_voltage_range")
+    def _pzctl_get_voltage_range(self, channel=None):
+        """Get piezo controller output voltage range (in V)"""
+        data=self.query(0x07D5,channel).data
+        return struct.unpack("<H",data[2:4])[0]
+    @muxchannel
+    @interface.use_parameters(rng="pzctl_voltage_range")
+    def _pzctl_set_voltage_range(self, rng, channel=None):
+        """Set piezo controller output voltage range (in V)"""
+        data=self.query(0x07D5,channel).data
+        data=data[:2]+struct.pack("<H",rng)+data[4:]
+        self.send_comm_data(0x07D4,data)
+        return self._pzctl_get_voltage_range(channel)
+    
+    _p_pzctl_voltage_units=interface.EnumParameterClass("pzctl_voltage_units",["V","perc"])
+    def _pzctl_voltage_u2d(self, v, units, channel):
+        span=100. if units=="perc" else self._pzctl_get_voltage_range(channel)
+        return max(-2**15,min(int(v/span*(2**15-1)),2**15-1))
+    def _pzctl_voltage_d2u(self, v, units, channel):
+        span=100. if units=="perc" else self._pzctl_get_voltage_range(channel)
+        return v/(2**15-1)*span
+    @muxchannel
+    @interface.use_parameters(units="pzctl_voltage_units")
+    def _pzctl_get_output_voltage(self, units="V", channel=None):
+        """Get piezo controller output voltage"""
+        data=self.query(0x0644,channel).data
+        return self._pzctl_voltage_d2u(struct.unpack("<Hh",data)[1],units,channel)
+    @muxchannel
+    @interface.use_parameters(units="pzctl_voltage_units")
+    def _pzctl_set_output_voltage(self, voltage, units="V", channel=None):
+        """Set piezo controller output voltage"""
+        voltage=self._pzctl_voltage_u2d(voltage,units,channel)
+        self.send_comm_data(0x0643,struct.pack("<Hh",channel,voltage))
+        return self._pzctl_get_output_voltage(units,channel)
+
+    _pzctl_voltage_src_bits={"software":0x00,"ext_in":0x01,"pot":0x02}
+    @muxchannel
+    @interface.use_parameters
+    def _pzctl_get_voltage_source(self, channel=None):
+        """Get piezo controller input voltage source"""
+        data=self.query(0x0653,channel).data
+        src=struct.unpack("<HH",data)[1]
+        return [s for (s,m) in self._pzctl_voltage_src_bits.items() if src&m==m]
+    @muxchannel
+    @interface.use_parameters
+    def _pzctl_set_voltage_source(self, src="software", channel=None):
+        """Set piezo controller input voltage source"""
+        if not isinstance(src,(tuple,list)):
+            src=[src]
+        for s in src:
+            funcargparse.check_parameter_range(s,"src",self._pzctl_voltage_src_bits)
+        src=sum([self._pzctl_voltage_src_bits[s] for s in src])
+        self.send_comm_data(0x0652,struct.pack("<HH",channel,src))
+        return self._pzctl_get_voltage_source(channel)
 
 
 
@@ -1351,6 +1439,43 @@ class KinesisPiezoMotor(KinesisDevice):
     setup_drive=KinesisDevice._pzmot_setup_drive
     get_jog_parameters=KinesisDevice._pzmot_get_jog_parameters
     setup_jog=KinesisDevice._pzmot_setup_jog
+
+
+
+
+
+
+class KinesisPiezoController(KinesisDevice):
+    """
+    Thorlabs piezo controller (TPZ/KPZ series).
+
+    Implements FTDI chip connectivity via pyft232 (virtual serial interface).
+
+    Args:
+        conn(str): serial connection parameters (usually an 8-digit device serial number).
+    """
+    def __init__(self, conn):
+        super().__init__(conn)
+        self.add_background_comm(0x0654) # randomly returned occasionally on enabling/disabling channels
+        self._add_status_variable("enabled",self.is_channel_enabled,self.enable_channel)
+        self._add_settings_variable("output",self.get_output_voltage,self.set_output_voltage)
+        self._add_settings_variable("output_range",self.get_voltage_range,self.set_voltage_range)
+        self._add_settings_variable("output_source",self.get_voltage_source,self.set_voltage_source)
+        self._add_status_variable("status",lambda: self.get_status(channel="all"))
+    _default_get_status=KinesisDevice._pzctl_get_status
+
+    is_channel_enabled=KinesisDevice._pzctl_is_channel_enabled
+    enable_channel=KinesisDevice._pzctl_enable_channel
+
+    get_status_n=KinesisDevice._pzctl_get_status_n
+    get_status=KinesisDevice._pzctl_get_status
+    
+    get_output_voltage=KinesisDevice._pzctl_get_output_voltage
+    set_output_voltage=KinesisDevice._pzctl_set_output_voltage
+    get_voltage_range=KinesisDevice._pzctl_get_voltage_range
+    set_voltage_range=KinesisDevice._pzctl_set_voltage_range
+    get_voltage_source=KinesisDevice._pzctl_get_voltage_source
+    set_voltage_source=KinesisDevice._pzctl_set_voltage_source
 
 
 
