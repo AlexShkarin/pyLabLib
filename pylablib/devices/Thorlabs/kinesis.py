@@ -441,6 +441,18 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         data=self.query(0x0490 if self._status_comm==0x0490 else 0x0411,self._make_channel(channel),dest=("channel",channel)).data
         pos=struct.unpack("<i",data[2:6])[0]
         return self._d2p(pos,"p",scale=scale)
+
+    @muxchannel
+    def _get_velocity(self, channel=None, scale=True):
+        """
+        Get current velocity.
+
+        If ``scale==True``, return value in the physical units (see class description); otherwise, return it in the device internal units (steps).
+        """
+        data=self.query(0x0490 if self._status_comm==0x0490 else 0x0411,self._make_channel(channel),dest=("channel",channel)).data
+        vel = struct.unpack("<H", data[6:8])[0]
+        return self._d2p(vel, "v", scale=scale)
+
     @muxchannel(mux_argnames="position")
     def _set_position_reference(self, position=0, channel=None, scale=True):
         """
@@ -1108,6 +1120,7 @@ class KinesisMotor(KinesisDevice):
         self._add_info_variable("scale",self.get_scale)
         self._add_info_variable("stage",self.get_stage)
         self._add_status_variable("position",self.get_position)
+        self._add_status_variable("velocity",self.get_velocity)
         self._add_status_variable("status",self.get_status)
         if not self._model.startswith("MPC"):
             self._add_settings_variable("velocity_parameters",self.get_velocity_parameters,self.setup_velocity)
@@ -1276,6 +1289,7 @@ class KinesisMotor(KinesisDevice):
     is_homed=KinesisDevice._is_homed
     wait_for_home=KinesisDevice._wait_for_home
 
+    get_velocity = KinesisDevice._get_velocity
     get_position=KinesisDevice._get_position
     set_position_reference=KinesisDevice._set_position_reference
     move_by=KinesisDevice._move_by
