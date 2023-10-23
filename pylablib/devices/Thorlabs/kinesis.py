@@ -1258,6 +1258,13 @@ class KinesisMotor(KinesisDevice):
         """
         return self._stage
 
+    @muxchannel(mux_argnames="enabled")
+    @interface.use_parameters(channel="channel_id")
+    def _enable_channel(self, enabled=True, channel=None):
+        """Enable or disable the given channel"""
+        self.send_comm(0x0210,self._make_channel(channel),0x01 if enabled else 0x02,dest=("channel",channel))
+        return self._wip._is_channel_enabled(channel)
+
     set_supported_channels=KinesisDevice._set_supported_channels
 
     get_status_n=KinesisDevice._get_status_n
