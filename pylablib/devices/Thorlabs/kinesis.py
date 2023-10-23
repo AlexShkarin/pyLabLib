@@ -449,7 +449,7 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
 
         If ``scale==True``, return value in the physical units (see class description); otherwise, return it in the device internal units (steps).
         """
-        data=self.query(0x0490 if self._status_comm==0x0490 else 0x0411,self._make_channel(channel),dest=("channel",channel)).data
+        data=self.query(0x0490,self._make_channel(channel),dest=("channel",channel)).data
         vel = struct.unpack("<H", data[6:8])[0]
         return self._d2p(vel, "v", scale=scale)
 
