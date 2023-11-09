@@ -588,8 +588,9 @@ class FramesAccumulator:
         return data,chunks
     def get_slice(self, start, end=None, step=1, copy=False, flatten=False):
         """
-        Get a list of at most `n` frames from the message (if ``None``, return all frames).
+        Get at most `n` frames from the message (if ``None``, return all frames).
 
+        Return a tuple ``(frames, indices, frame_info)`` with lists of chunks (if ``flatten==True``) or individual items (if ``flatten==False``).
         If ``reverse==True``, return last `n` frames (in the reversed order); otherwise, return first `n` frames.
         If ``copy==True``, copy frames (otherwise changing the returned frames can affect the stored frames).
         """

@@ -448,19 +448,23 @@ class BaslerPylonCamera(camera.IROICamera, camera.IAttributeCamera, camera.IExpo
         vlim=camera.TAxisROILimit(minp[1] or maxp[1],maxp[1],incp[3] or maxp[1],incp[1] or maxp[1],1)
         return hlim,vlim
 
+    _exposure_time_properties=["ExposureTimeAbs","ExposureTime"]
     def get_exposure(self):
-        exp=self.get_attribute_value("ExposureTimeAbs",error_on_missing=False)
-        if exp is not None:
-            return exp/1E6  # in us by default
+        for p in self._exposure_time_properties:
+            exp=self.get_attribute_value(p,error_on_missing=False)
+            if exp is not None:
+                return exp/1E6  # in us by default
         bexp=self.get_attribute_value("ExposureTimeBaseAbs",error_on_missing=False)
         rexp=self.get_attribute_value("ExposureTimeRaw",error_on_missing=False)
         if bexp is not None and rexp is not None:
             return bexp*rexp/1E6
         raise BaslerError("camera does not support exposure")
     def set_exposure(self, exposure):
-        if "ExposureTimeAbs" in self.attributes:
-            self.cav["ExposureTimeAbs"]=exposure*1E6
-        elif "ExposureTimeBaseAbs" in self.attributes and "ExposureTimeRaw" in self.attributes:
+        for p in self._exposure_time_properties:
+            if p in self.attributes:
+                self.cav[p]=exposure*1E6
+                return self.get_exposure()
+        if "ExposureTimeBaseAbs" in self.attributes and "ExposureTimeRaw" in self.attributes:
             self.cav["ExposureTimeRaw"]=(exposure/self.cav["ExposureTimeBaseAbs"])*1E6
         else:
             raise BaslerError("camera does not support exposure")
