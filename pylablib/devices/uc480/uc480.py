@@ -100,6 +100,7 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
         self._roi_binning_mode=roi_binning_mode
 
         self._add_info_variable("device_info",self.get_device_info)
+        self._add_settings_variable("trigger_mode",self.get_trigger_mode,self.set_trigger_mode)
         self._add_settings_variable("subsampling",self.get_subsampling,self.set_subsampling)
         self._add_info_variable("subsampling_modes",self.get_supported_subsampling_modes)
         self._add_settings_variable("binning",self.get_binning,self.set_binning)
@@ -158,6 +159,27 @@ class UC480Camera(camera.IBinROICamera,camera.IExposureCamera):
     def _get_sensor_info(self):
         return self.lib.is_GetSensorInfo(self.hcam)
 
+    _p_trigger_mode=interface.EnumParameterClass("trigger_mode",
+        {"int":uc480_defs.TRIGGER.IS_SET_TRIGGER_OFF,"software":uc480_defs.TRIGGER.IS_SET_TRIGGER_SOFTWARE,
+         "ext_rise":uc480_defs.TRIGGER.IS_SET_TRIGGER_LO_HI,"ext_fall":uc480_defs.TRIGGER.IS_SET_TRIGGER_HI_LO,"ext":uc480_defs.TRIGGER.IS_SET_TRIGGER_LO_HI})
+    @camera.acqstopped
+    @interface.use_parameters(mode="trigger_mode")
+    def set_trigger_mode(self, mode):
+        """
+        Set trigger mode.
+
+        Can be ``"int"`` (internal), ``"ext_rise"`` (external, rising edge), ``"ext_fall"`` (external, falling edge), or ``"software"`` (software trigger).
+        """
+        self.lib.is_SetExternalTrigger(self.hcam,mode)
+        return self.get_trigger_mode()
+    @interface.use_parameters(_returns="trigger_mode")
+    def get_trigger_mode(self):
+        """
+        Get trigger mode.
+
+        Can be ``"int"`` (internal), ``"ext_rise"`` (external, rising edge), ``"ext_fall"`` (external, falling edge), or ``"software"`` (software trigger).
+        """
+        return self.lib.is_SetExternalTrigger(self.hcam,uc480_defs.TRIGGER.IS_GET_EXTERNALTRIGGER)
     ### Buffer controls ###
     def _allocate_buffers(self, n):
         self._deallocate_buffers()
