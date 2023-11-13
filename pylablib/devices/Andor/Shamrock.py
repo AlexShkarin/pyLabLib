@@ -62,6 +62,11 @@ class ShamrockSpectrograph(interface.IDevice):
         self._add_status_variable("zero_order",self.is_at_zero_order,ignore_error=(AndorError,))
         self._add_info_variable("slits_present",lambda: [self.is_slit_present(s) for s in range(1,5)])
         self._add_settings_variable("slit_widths",self._get_all_slit_widths,self._set_all_slit_widths)
+        self._add_info_variable("irises_present",lambda: [self.is_iris_present(s) for s in range(2)])
+        self._add_settings_variable("iris_widths",self._get_all_iris_widths,self._set_all_iris_widths)
+        self._add_settings_variable("focus_mirror_present",self.is_focus_mirror_present)
+        self._add_settings_variable("focus_mirror",self.get_focus_mirror_position,self.set_focus_mirror_position,ignore_error=(AndorError,))
+        self._add_info_variable("focus_mirror_max",self.get_focus_mirror_position_max,ignore_error=(AndorError,))
         self._add_info_variable("shutter_present",self.is_shutter_present)
         self._add_settings_variable("shutter_mode",self.get_shutter,self.set_shutter,ignore_error=(AndorError,))
         self._add_info_variable("filter_present",self.is_filter_present)
@@ -375,6 +380,60 @@ class ShamrockSpectrograph(interface.IDevice):
         self._check_flipper(flipper)
         lib.ShamrockFlipperMirrorReset(self.idx,flipper)
         return self._wip.get_flipper_port(flipper)
+        
+
+    ### Iris control ###
+    _p_iris_port=interface.EnumParameterClass("iris_port",{"direct":0,"side":1})
+    @interface.use_parameters(iris="iris_port")
+    def is_iris_present(self, iris):
+        """Check if the iris is present"""
+        return bool(lib.ShamrockIrisIsPresent is not None and lib.ShamrockIrisIsPresent(self.idx,iris))
+    def _check_iris(self, iris):
+        if lib.ShamrockIrisIsPresent is None or not lib.ShamrockIrisIsPresent(self.idx,iris):
+            raise AndorNotSupportedError("iris is not present")
+    @interface.use_parameters(iris="iris_port")
+    def get_iris_width(self, iris):
+        """Get current iris width (0 to 100)"""
+        self._check_iris(iris)
+        return lib.ShamrockGetIris(self.idx,iris)
+    @interface.use_parameters(iris="iris_port")
+    def set_iris_width(self, iris, width):
+        """Set current iris width (0 to 100)"""
+        self._check_iris(iris)
+        lib.ShamrockSetIris(self.idx,iris,int(width))
+        return lib.ShamrockGetIris(self.idx,iris)
+    def _get_all_iris_widths(self):
+        return [self.get_iris_width(s) if self.is_iris_present(s) else None for s in range(2)]
+    def _set_all_iris_widths(self, widths):
+        for s,w in enumerate(widths):
+            if w is not None:
+                self.set_iris_width(s,w)
+        
+
+    ### Focus mirror control ###
+    def is_focus_mirror_present(self):
+        """Check if the focus mirror is present"""
+        return bool(lib.ShamrockFocusMirrorIsPresent is not None and lib.ShamrockFocusMirrorIsPresent(self.idx))
+    def _check_focus_mirror(self):
+        if lib.ShamrockFocusMirrorIsPresent is None or not lib.ShamrockFocusMirrorIsPresent(self.idx):
+            raise AndorNotSupportedError("focus mirror is not present")
+    def get_focus_mirror_position(self):
+        """Get current focus mirror position"""
+        self._check_focus_mirror()
+        return lib.ShamrockGetFocusMirror(self.idx)
+    def set_focus_mirror_position(self, position):
+        """Set current focus mirror position"""
+        self._check_focus_mirror()
+        lib.ShamrockSetFocusMirror(self.idx,int(position))
+        return lib.ShamrockGetFocusMirror(self.idx)
+    def get_focus_mirror_position_max(self):
+        """Get maximal focus mirror position"""
+        self._check_focus_mirror()
+        return lib.ShamrockGetFocusMirrorMaxSteps(self.idx)
+    def reset_focus_mirror(self):
+        """Reset focus mirror position"""
+        self._check_focus_mirror()
+        return lib.ShamrockFocusMirrorReset(self.idx)
         
 
     ### Accessory control ###

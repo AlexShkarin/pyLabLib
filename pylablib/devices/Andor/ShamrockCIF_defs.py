@@ -25,6 +25,7 @@ class SHAMROCK_ERR(enum.IntEnum):
     SHAMROCK_P2INVALID           = _int32(20267)
     SHAMROCK_P3INVALID           = _int32(20268)
     SHAMROCK_P4INVALID           = _int32(20269)
+    SHAMROCK_P5INVALID           = _int32(20270)
     SHAMROCK_NOT_INITIALIZED     = _int32(20275)
     SHAMROCK_NOT_AVAILABLE       = _int32(20292)
 dSHAMROCK_ERR={a.name:a.value for a in SHAMROCK_ERR}
@@ -32,8 +33,8 @@ drSHAMROCK_ERR={a.value:a.name for a in SHAMROCK_ERR}
 
 
 class SHAMROCK_CONST(enum.IntEnum):
-    SHAMROCK_ACCESSORYMIN       = _int32(1)
-    SHAMROCK_ACCESSORYMAX       = _int32(2)
+    SHAMROCK_ACCESSORYMIN       = _int32(0)
+    SHAMROCK_ACCESSORYMAX       = _int32(1)
     SHAMROCK_FILTERMIN          = _int32(1)
     SHAMROCK_FILTERMAX          = _int32(6)
     SHAMROCK_TURRETMIN          = _int32(1)
@@ -43,7 +44,7 @@ class SHAMROCK_CONST(enum.IntEnum):
     SHAMROCK_SLITWIDTHMAX       = _int32(2500)
     SHAMROCK_I24SLITWIDTHMAX    = _int32(24000)
     SHAMROCK_SHUTTERMODEMIN     = _int32(0)
-    SHAMROCK_SHUTTERMODEMAX     = _int32(1)
+    SHAMROCK_SHUTTERMODEMAX     = _int32(2)
     SHAMROCK_DET_OFFSET_MIN     = _int32(-240000)
     SHAMROCK_DET_OFFSET_MAX     = _int32(240000)
     SHAMROCK_GRAT_OFFSET_MIN    = _int32(-20000)
@@ -165,6 +166,10 @@ def define_functions(lib):
     addfunc(lib, "ShamrockGetSerialNumber", restype = ctypes.c_uint,
             argtypes = [ctypes.c_int, ctypes.c_char_p],
             argnames = ["device", "serial"] )
+    #  ctypes.c_uint ShamrockEepromSetOpticalParams(ctypes.c_int device, ctypes.c_float FocalLength, ctypes.c_float AngularDeviation, ctypes.c_float FocalTilt)
+    addfunc(lib, "ShamrockEepromSetOpticalParams", restype = ctypes.c_uint,
+            argtypes = [ctypes.c_int, ctypes.c_float, ctypes.c_float, ctypes.c_float],
+            argnames = ["device", "FocalLength", "AngularDeviation", "FocalTilt"] )
     #  ctypes.c_uint ShamrockEepromGetOpticalParams(ctypes.c_int device, ctypes.POINTER(ctypes.c_float) FocalLength, ctypes.POINTER(ctypes.c_float) AngularDeviation, ctypes.POINTER(ctypes.c_float) FocalTilt)
     addfunc(lib, "ShamrockEepromGetOpticalParams", restype = ctypes.c_uint,
             argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_float), ctypes.POINTER(ctypes.c_float), ctypes.POINTER(ctypes.c_float)],
@@ -205,6 +210,14 @@ def define_functions(lib):
     addfunc(lib, "ShamrockGetDetectorOffsetPort2", restype = ctypes.c_uint,
             argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_int)],
             argnames = ["device", "offset"] )
+    #  ctypes.c_uint ShamrockSetDetectorOffsetEx(ctypes.c_int device, ctypes.c_int entrancePort, ctypes.c_int exitPort, ctypes.c_int offset)
+    addfunc(lib, "ShamrockSetDetectorOffsetEx", restype = ctypes.c_uint,
+            argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int],
+            argnames = ["device", "entrancePort", "exitPort", "offset"] )
+    #  ctypes.c_uint ShamrockGetDetectorOffsetEx(ctypes.c_int device, ctypes.c_int entrancePort, ctypes.c_int exitPort, ctypes.POINTER(ctypes.c_int) offset)
+    addfunc(lib, "ShamrockGetDetectorOffsetEx", restype = ctypes.c_uint,
+            argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.POINTER(ctypes.c_int)],
+            argnames = ["device", "entrancePort", "exitPort", "offset"] )
     #  ctypes.c_uint ShamrockSetGratingOffset(ctypes.c_int device, ctypes.c_int Grating, ctypes.c_int offset)
     addfunc(lib, "ShamrockSetGratingOffset", restype = ctypes.c_uint,
             argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int],
@@ -273,6 +286,14 @@ def define_functions(lib):
     addfunc(lib, "ShamrockGetAutoSlitCoefficients", restype = ctypes.c_uint,
             argtypes = [ctypes.c_int, ctypes.c_int, ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int)],
             argnames = ["device", "index", "x1", "y1", "x2", "y2"] )
+    #  ctypes.c_uint ShamrockSetSlitZeroPosition(ctypes.c_int device, ctypes.c_int index, ctypes.c_int offset)
+    addfunc(lib, "ShamrockSetSlitZeroPosition", restype = ctypes.c_uint,
+            argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int],
+            argnames = ["device", "index", "offset"] )
+    #  ctypes.c_uint ShamrockGetSlitZeroPosition(ctypes.c_int device, ctypes.c_int index, ctypes.POINTER(ctypes.c_int) offset)
+    addfunc(lib, "ShamrockGetSlitZeroPosition", restype = ctypes.c_uint,
+            argtypes = [ctypes.c_int, ctypes.c_int, ctypes.POINTER(ctypes.c_int)],
+            argnames = ["device", "index", "offset"] )
     #  ctypes.c_uint ShamrockSetSlit(ctypes.c_int device, ctypes.c_float width)
     addfunc(lib, "ShamrockSetSlit", restype = ctypes.c_uint,
             argtypes = [ctypes.c_int, ctypes.c_float],
@@ -373,6 +394,18 @@ def define_functions(lib):
     addfunc(lib, "ShamrockGetCCDLimits", restype = ctypes.c_uint,
             argtypes = [ctypes.c_int, ctypes.c_int, ctypes.POINTER(ctypes.c_float), ctypes.POINTER(ctypes.c_float)],
             argnames = ["device", "port", "Low", "High"] )
+    #  ctypes.c_uint ShamrockSetFlipperMirrorPosition(ctypes.c_int device, ctypes.c_int flipper, ctypes.c_int position)
+    addfunc(lib, "ShamrockSetFlipperMirrorPosition", restype = ctypes.c_uint,
+            argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int],
+            argnames = ["device", "flipper", "position"] )
+    #  ctypes.c_uint ShamrockGetFlipperMirrorPosition(ctypes.c_int device, ctypes.c_int flipper, ctypes.POINTER(ctypes.c_int) position)
+    addfunc(lib, "ShamrockGetFlipperMirrorPosition", restype = ctypes.c_uint,
+            argtypes = [ctypes.c_int, ctypes.c_int, ctypes.POINTER(ctypes.c_int)],
+            argnames = ["device", "flipper", "position"] )
+    #  ctypes.c_uint ShamrockGetFlipperMirrorMaxPosition(ctypes.c_int device, ctypes.c_int flipper, ctypes.POINTER(ctypes.c_int) max)
+    addfunc(lib, "ShamrockGetFlipperMirrorMaxPosition", restype = ctypes.c_uint,
+            argtypes = [ctypes.c_int, ctypes.c_int, ctypes.POINTER(ctypes.c_int)],
+            argnames = ["device", "flipper", "max"] )
     #  ctypes.c_uint ShamrockSetPort(ctypes.c_int device, ctypes.c_int port)
     addfunc(lib, "ShamrockSetPort", restype = ctypes.c_uint,
             argtypes = [ctypes.c_int, ctypes.c_int],
@@ -401,6 +434,26 @@ def define_functions(lib):
     addfunc(lib, "ShamrockAccessoryIsPresent", restype = ctypes.c_uint,
             argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_int)],
             argnames = ["device", "present"] )
+    #  ctypes.c_uint ShamrockSetFocusMirror(ctypes.c_int device, ctypes.c_int focus)
+    addfunc(lib, "ShamrockSetFocusMirror", restype = ctypes.c_uint,
+            argtypes = [ctypes.c_int, ctypes.c_int],
+            argnames = ["device", "focus"] )
+    #  ctypes.c_uint ShamrockGetFocusMirror(ctypes.c_int device, ctypes.POINTER(ctypes.c_int) focus)
+    addfunc(lib, "ShamrockGetFocusMirror", restype = ctypes.c_uint,
+            argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_int)],
+            argnames = ["device", "focus"] )
+    #  ctypes.c_uint ShamrockGetFocusMirrorMaxSteps(ctypes.c_int device, ctypes.POINTER(ctypes.c_int) steps)
+    addfunc(lib, "ShamrockGetFocusMirrorMaxSteps", restype = ctypes.c_uint,
+            argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_int)],
+            argnames = ["device", "steps"] )
+    #  ctypes.c_uint ShamrockFocusMirrorReset(ctypes.c_int device)
+    addfunc(lib, "ShamrockFocusMirrorReset", restype = ctypes.c_uint,
+            argtypes = [ctypes.c_int],
+            argnames = ["device"] )
+    #  ctypes.c_uint ShamrockFocusMirrorIsPresent(ctypes.c_int device, ctypes.POINTER(ctypes.c_int) present)
+    addfunc(lib, "ShamrockFocusMirrorIsPresent", restype = ctypes.c_uint,
+            argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_int)],
+            argnames = ["device", "present"] )
     #  ctypes.c_uint ShamrockSetPixelWidth(ctypes.c_int device, ctypes.c_float Width)
     addfunc(lib, "ShamrockSetPixelWidth", restype = ctypes.c_uint,
             argtypes = [ctypes.c_int, ctypes.c_float],
@@ -421,5 +474,45 @@ def define_functions(lib):
     addfunc(lib, "ShamrockGetCalibration", restype = ctypes.c_uint,
             argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_float), ctypes.c_int],
             argnames = ["device", "CalibrationValues", "NumberPixels"] )
+    #  ctypes.c_uint ShamrockGetPixelCalibrationCoefficients(ctypes.c_int device, ctypes.POINTER(ctypes.c_float) A, ctypes.POINTER(ctypes.c_float) B, ctypes.POINTER(ctypes.c_float) C, ctypes.POINTER(ctypes.c_float) D)
+    addfunc(lib, "ShamrockGetPixelCalibrationCoefficients", restype = ctypes.c_uint,
+            argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_float), ctypes.POINTER(ctypes.c_float), ctypes.POINTER(ctypes.c_float), ctypes.POINTER(ctypes.c_float)],
+            argnames = ["device", "A", "B", "C", "D"] )
+    #  ctypes.c_uint ShamrockIrisIsPresent(ctypes.c_int device, ctypes.c_int iris, ctypes.POINTER(ctypes.c_int) present)
+    addfunc(lib, "ShamrockIrisIsPresent", restype = ctypes.c_uint,
+            argtypes = [ctypes.c_int, ctypes.c_int, ctypes.POINTER(ctypes.c_int)],
+            argnames = ["device", "iris", "present"] )
+    #  ctypes.c_uint ShamrockSetIris(ctypes.c_int device, ctypes.c_int iris, ctypes.c_int value)
+    addfunc(lib, "ShamrockSetIris", restype = ctypes.c_uint,
+            argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int],
+            argnames = ["device", "iris", "value"] )
+    #  ctypes.c_uint ShamrockGetIris(ctypes.c_int device, ctypes.c_int iris, ctypes.POINTER(ctypes.c_int) value)
+    addfunc(lib, "ShamrockGetIris", restype = ctypes.c_uint,
+            argtypes = [ctypes.c_int, ctypes.c_int, ctypes.POINTER(ctypes.c_int)],
+            argnames = ["device", "iris", "value"] )
+    #  ctypes.c_uint ShamrockFocusMirrorTiltIsPresent(ctypes.c_int device, ctypes.POINTER(ctypes.c_int) present)
+    addfunc(lib, "ShamrockFocusMirrorTiltIsPresent", restype = ctypes.c_uint,
+            argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_int)],
+            argnames = ["device", "present"] )
+    #  ctypes.c_uint ShamrockSetFocusMirrorTilt(ctypes.c_int device, ctypes.c_int tilt)
+    addfunc(lib, "ShamrockSetFocusMirrorTilt", restype = ctypes.c_uint,
+            argtypes = [ctypes.c_int, ctypes.c_int],
+            argnames = ["device", "tilt"] )
+    #  ctypes.c_uint ShamrockGetFocusMirrorTilt(ctypes.c_int device, ctypes.POINTER(ctypes.c_int) tilt)
+    addfunc(lib, "ShamrockGetFocusMirrorTilt", restype = ctypes.c_uint,
+            argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_int)],
+            argnames = ["device", "tilt"] )
+    #  ctypes.c_uint ShamrockSetFocusMirrorTiltOffset(ctypes.c_int device, ctypes.c_int entrancePort, ctypes.c_int exitPort, ctypes.c_int offset)
+    addfunc(lib, "ShamrockSetFocusMirrorTiltOffset", restype = ctypes.c_uint,
+            argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int],
+            argnames = ["device", "entrancePort", "exitPort", "offset"] )
+    #  ctypes.c_uint ShamrockGetFocusMirrorTiltOffset(ctypes.c_int device, ctypes.c_int entrancePort, ctypes.c_int exitPort, ctypes.POINTER(ctypes.c_int) offset)
+    addfunc(lib, "ShamrockGetFocusMirrorTiltOffset", restype = ctypes.c_uint,
+            argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.POINTER(ctypes.c_int)],
+            argnames = ["device", "entrancePort", "exitPort", "offset"] )
+    #  ctypes.c_uint ShamrockMoveTurretToSafeChangePosition(ctypes.c_int device)
+    addfunc(lib, "ShamrockMoveTurretToSafeChangePosition", restype = ctypes.c_uint,
+            argtypes = [ctypes.c_int],
+            argnames = ["device"] )
 
 
