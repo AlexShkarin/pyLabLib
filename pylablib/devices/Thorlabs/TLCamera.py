@@ -159,7 +159,6 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
                     "green_left_or_red":tl_camera_sdk_defs.TL_COLOR_FILTER_ARRAY_PHASE.TL_COLOR_FILTER_ARRAY_PHASE_BAYER_GREEN_LEFT_OF_RED,
                     "green_left_or_blue":tl_camera_sdk_defs.TL_COLOR_FILTER_ARRAY_PHASE.TL_COLOR_FILTER_ARRAY_PHASE_BAYER_GREEN_LEFT_OF_BLUE}
     _p_filter_array_phase=interface.EnumParameterClass("filter_array_phase",_filter_array_phase)
-    @interface.use_parameters(_returns=("filter_array_phase",None,None))
     def get_color_info(self):
         """
         Get camera color info.
@@ -171,7 +170,8 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
         if self._color_info is None:
             cmat=np.array(lib.tl_camera_get_color_correction_matrix(self.handle)).reshape((3,3))
             wbmat=np.array(lib.tl_camera_get_default_white_balance_matrix(self.handle)).reshape((3,3))
-            self._color_info=TColorInfo(lib.tl_camera_get_color_filter_array_phase(self.handle),cmat,wbmat)
+            filter_array_phase=self._parameters["filter_array_phase"].i(lib.tl_camera_get_color_filter_array_phase(self.handle))
+            self._color_info=TColorInfo(filter_array_phase,cmat,wbmat)
         return self._color_info
 
     def get_white_balance_matrix(self):
@@ -183,6 +183,9 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
 
         Can be ``None`` (the default matrix), a 3-number 1D array (multipliers for RGB), or a full 3x3 matrix.
         """
+        if self.get_sensor_info().sensor_type!="bayer":
+            self._white_balance_matrix=np.eye(3) if matrix is None else matrix
+            return
         if matrix is None:
             matrix=self.get_color_info().default_white_balance_matrix
         elif np.ndim(matrix)==1:
@@ -206,7 +209,7 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
         if color_output=="rgb" and cinfo is None:
             raise ValueError("'rgb' color mode is only supported on color cameras")
         if color_output=="auto":
-            color_output="rgb" if self.get_color_info() is not None else "raw"
+            color_output="rgb" if cinfo is not None else "raw"
         self._color_output=color_output
         if color_output=="rgb":
             color.bayer_interpolate(np.zeros((0,0),dtype="float"))
