@@ -28,7 +28,7 @@ class ShamrockLibError(AndorError):
         except ShamrockLibError:
             pass
         msg="function '{}' raised error {}({}): {}".format(func,code,self.name,self.desc)
-        AndorError.__init__(self,msg)
+        super().__init__(msg)
 def errcheck(passing=None, lib=None):
     """
     Build an error checking function.

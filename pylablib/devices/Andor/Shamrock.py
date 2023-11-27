@@ -1,5 +1,6 @@
 from .base import AndorError, AndorNotSupportedError
 from .ShamrockCIF_lib import wlib as lib, ShamrockLibError, SHAMROCK_ERR, SHAMROCK_CONST
+from .AndorSDK2 import _camsel_lock
 
 from ...core.devio import interface
 from ...core.utils import py3
@@ -7,6 +8,7 @@ from ..utils import load_lib
 
 import numpy as np
 import collections
+import functools
 
 
 _detector_ini_path=""
@@ -36,6 +38,15 @@ def get_spectrographs_number():
 TDeviceInfo=collections.namedtuple("TDeviceInfo",["serial_number"])
 TOpticalParameters=collections.namedtuple("TOpticalParameters",["focal_length","angular_deviation","focal_tilt"])
 TGratingInfo=collections.namedtuple("TGratingInfo",["lines","blaze_wavelength","home","offset"])
+
+def _specfunc(func):
+    @functools.wraps(func)
+    def wrapped(self, *args, **kwargs):
+        if getattr(self,"_sync_with_SDK2",False):
+            with _camsel_lock:
+                return func(self,*args,**kwargs)
+        return func(self,*args,**kwargs)
+    return wrapped
 class ShamrockSpectrograph(interface.IDevice):
     """
     Shamrock spectrograph.
@@ -43,12 +54,14 @@ class ShamrockSpectrograph(interface.IDevice):
     Args:
         idx(int): spectrograph index (starting from 0; use :func:`list_spectrographs` to get the list of all connected spectrographs)
     """
+    Error=AndorError
     def __init__(self, idx=0):
         super().__init__()
         self.idx=idx
         self._opid=None
         self.open()
         
+        self._sync_with_SDK2=False
         self._add_info_variable("device_info",self.get_device_info)
         self._add_info_variable("optical_parameters",self.get_optical_parameters)
         self._add_info_variable("gratings_number",self.get_gratings_number)
@@ -97,6 +110,7 @@ class ShamrockSpectrograph(interface.IDevice):
     def _get_connection_parameters(self):
         return (self.idx,)
 
+    @_specfunc
     def get_device_info(self):
         """
         Get spectrograph device info.
@@ -105,6 +119,7 @@ class ShamrockSpectrograph(interface.IDevice):
         """
         serial_number=py3.as_str(lib.ShamrockGetSerialNumber(self.idx))
         return TDeviceInfo(serial_number)
+    @_specfunc
     def get_optical_parameters(self):
         """
         Get device optical parameters.
@@ -116,6 +131,7 @@ class ShamrockSpectrograph(interface.IDevice):
         
     
     ### Grating control ###
+    @_specfunc
     def get_gratings_number(self):
         """Get number of gratings"""
         return lib.ShamrockGetNumberGratings(self.idx)
@@ -125,9 +141,11 @@ class ShamrockSpectrograph(interface.IDevice):
         if grating<1 or grating>self.get_gratings_number():
             raise ValueError("incorrect grating index: {}; should be between 1 and {}".format(grating,self.get_gratings_number()))
         return grating
+    @_specfunc
     def get_grating(self):
         """Get current grating index (counting from 1)"""
         return lib.ShamrockGetGrating(self.idx)
+    @_specfunc
     def set_grating(self, grating, force=False):
         """
         Set current grating (counting from 1)
@@ -140,6 +158,7 @@ class ShamrockSpectrograph(interface.IDevice):
         if force or self.get_grating()!=grating:
             lib.ShamrockSetGrating(self.idx,grating)
         return self.get_grating()
+    @_specfunc
     def get_grating_info(self, grating=None):
         """
         Get info of a given grating (by default, current grating).
@@ -147,11 +166,14 @@ class ShamrockSpectrograph(interface.IDevice):
         Return tuple ``(lines, blaze_wavelength, home, offset)`` (blazing wavelength is in nm).
         """
         grating=self._check_grating(grating)
-        return TGratingInfo(*lib.ShamrockGetGratingInfo(self.idx,grating))
+        lines,blaze_wavelength,home,offset=lib.ShamrockGetGratingInfo(self.idx,grating)
+        return TGratingInfo(lines,py3.as_str(blaze_wavelength),home,offset)
+    @_specfunc
     def get_grating_offset(self, grating=None):
         """Get grating offset (in steps) for a given grating (by default, current grating)"""
         grating=self._check_grating(grating)
         return lib.ShamrockGetGratingOffset(self.idx,grating)
+    @_specfunc
     def set_grating_offset(self, offset, grating=None):
         """Set grating offset (in steps) for a given grating (by default, current grating)"""
         grating=self._check_grating(grating)
@@ -163,16 +185,20 @@ class ShamrockSpectrograph(interface.IDevice):
         for g,o in enumerate(offsets,start=1):
             if o is not None:
                 self.set_grating_offset(g,o)
+    @_specfunc
     def get_detector_offset(self):
         """Get detector offset (in steps)"""
         return lib.ShamrockGetDetectorOffset(self.idx)
+    @_specfunc
     def set_detector_offset(self, offset):
         """Set detector offset (in steps)"""
         lib.ShamrockSetDetectorOffset(self.idx,offset)
         return self.get_detector_offset()
+    @_specfunc
     def get_turret(self):
         """Get turret"""
         return lib.ShamrockGetTurret(self.idx)
+    @_specfunc
     def set_turret(self, turret):
         """Set turret"""
         lib.ShamrockSetTurret(self.idx,turret)
@@ -180,36 +206,43 @@ class ShamrockSpectrograph(interface.IDevice):
         
     
     ### Wavelength control ###
+    @_specfunc
     def is_wavelength_control_present(self):
         """Check if wavelength control is present"""
         return bool(lib.ShamrockWavelengthIsPresent(self.idx))
     def _check_wavelength(self):
         if not self.is_wavelength_control_present():
             raise AndorNotSupportedError("wavelength control is not present")
+    @_specfunc
     def get_wavelength(self):
         """Get current central wavelength (in m)"""
         self._check_wavelength()
         return lib.ShamrockGetWavelength(self.idx)*1E-9
+    @_specfunc
     def set_wavelength(self, wavelength):
         """Get current central wavelength (in m)"""
         self._check_wavelength()
         lib.ShamrockSetWavelength(self.idx,wavelength/1E-9)
         return self.get_wavelength()
+    @_specfunc
     def get_wavelength_limits(self, grating=None):
         """Get wavelength limits (in m) for a given grating (by default, current grating)"""
         self._check_wavelength()
         grating=self._check_grating(grating)
         lim=lib.ShamrockGetWavelengthLimits(self.idx,grating)
         return lim[0]*1E-9,lim[1]*1E-9
+    @_specfunc
     def reset_wavelength(self):
         """Reset current wavelength to 0 nm"""
         self._check_wavelength()
         lib.ShamrockWavelengthReset(self.idx)
         return self.get_wavelength()
+    @_specfunc
     def is_at_zero_order(self):
         """Check if current grating is at zero order"""
         self._check_wavelength()
         return bool(lib.ShamrockAtZeroOrder(self.idx))
+    @_specfunc
     def goto_zero_order(self):
         """Set current grating to zero order"""
         self._check_wavelength()
@@ -222,6 +255,7 @@ class ShamrockSpectrograph(interface.IDevice):
         {"input_side":SHAMROCK_CONST.SHAMROCK_INPUT_SLIT_SIDE,"input_direct":SHAMROCK_CONST.SHAMROCK_INPUT_SLIT_DIRECT,
         "output_side":SHAMROCK_CONST.SHAMROCK_OUTPUT_SLIT_SIDE,"output_direct":SHAMROCK_CONST.SHAMROCK_OUTPUT_SLIT_DIRECT})
     @interface.use_parameters(slit="slit_index")
+    @_specfunc
     def is_slit_present(self, slit):
         """
         Check if the slit is present.
@@ -233,6 +267,7 @@ class ShamrockSpectrograph(interface.IDevice):
         if not self.is_slit_present(slit):
             raise AndorNotSupportedError("slit '{}' is not present".format(self._p_slit_index.i(slit)))
     @interface.use_parameters(slit="slit_index")
+    @_specfunc
     def get_slit_width(self, slit):
         """
         Get slit width (in m).
@@ -242,6 +277,7 @@ class ShamrockSpectrograph(interface.IDevice):
         self._check_slit(slit)
         return lib.ShamrockGetAutoSlitWidth(self.idx,slit)*1E-6
     @interface.use_parameters(slit="slit_index")
+    @_specfunc
     def set_slit_width(self, slit, width):
         """
         Set slit width (in m).
@@ -258,6 +294,7 @@ class ShamrockSpectrograph(interface.IDevice):
             if w is not None:
                 self.set_slit_width(s,w)
     @interface.use_parameters(slit="slit_index")
+    @_specfunc
     def reset_slit(self, slit):
         """
         Reset slit to the default width (10 um).
@@ -270,6 +307,7 @@ class ShamrockSpectrograph(interface.IDevice):
         
 
     ### Shutter control ###
+    @_specfunc
     def is_shutter_present(self):
         """Check if the shutter is present"""
         return bool(lib.ShamrockShutterIsPresent(self.idx))
@@ -278,6 +316,7 @@ class ShamrockSpectrograph(interface.IDevice):
             raise AndorNotSupportedError("shutter is not present")
     _p_shutter_mode=interface.EnumParameterClass("shutter_mode",{"closed":0,"opened":1,"bnc":2,"not_set":-1})
     @interface.use_parameters(_returns="shutter_mode")
+    @_specfunc
     def get_shutter(self):
         """
         Get shutter mode.
@@ -287,11 +326,13 @@ class ShamrockSpectrograph(interface.IDevice):
         self._check_shutter()
         return lib.ShamrockGetShutter(self.idx)
     @interface.use_parameters(mode="shutter_mode")
+    @_specfunc
     def is_shutter_mode_possible(self, mode):
         """Check if the shutter mode (``"closed"``, ``"opened"``, or ``"bnc"``) is supported"""
         self._check_shutter()
         return mode>=0 and lib.ShamrockIsModePossible(self.idx,mode)
     @interface.use_parameters(mode="shutter_mode")
+    @_specfunc
     def set_shutter(self, mode):
         """Set shutter mode (``"closed"`` or ``"opened"``)"""
         self._check_shutter()
@@ -303,25 +344,30 @@ class ShamrockSpectrograph(interface.IDevice):
         
 
     ### Filter control ###
+    @_specfunc
     def is_filter_present(self):
         """Check if the filter is present"""
         return bool(lib.ShamrockFilterIsPresent(self.idx))
     def _check_filter(self):
         if not self.is_filter_present():
             raise AndorNotSupportedError("filter is not present")
+    @_specfunc
     def get_filter(self):
         """Get current filter"""
         self._check_filter()
         return lib.ShamrockGetFilter(self.idx)
+    @_specfunc
     def set_filter(self, flt):
         """Set current filter"""
         self._check_filter()
         lib.ShamrockSetFilter(self.idx,flt)
         return self.get_filter()
+    @_specfunc
     def get_filter_info(self, flt):
         """Get info of the given filter"""
         self._check_filter()
         return lib.ShamrockGetFilterInfo(self.idx,flt)
+    @_specfunc
     def reset_filter(self):
         """Reset filter to default position"""
         self._check_filter()
@@ -332,6 +378,7 @@ class ShamrockSpectrograph(interface.IDevice):
     ### Flipper control ###
     _p_flipper_index=interface.EnumParameterClass("flipper_index",{"input":1,"output":2})
     @interface.use_parameters(flipper="flipper_index")
+    @_specfunc
     def is_flipper_present(self, flipper):
         """
         Check if the flipper is present.
@@ -344,6 +391,7 @@ class ShamrockSpectrograph(interface.IDevice):
             raise AndorNotSupportedError("flipper {} is not present".format(flipper))
     _p_flipper_port=interface.EnumParameterClass("flipper_port",{"direct":0,"side":1})
     @interface.use_parameters(flipper="flipper_index",_returns="flipper_port")
+    @_specfunc
     def get_flipper_port(self, flipper):
         """
         Get flipper port.
@@ -354,6 +402,7 @@ class ShamrockSpectrograph(interface.IDevice):
         self._check_flipper(flipper)
         return lib.ShamrockGetFlipperMirror(self.idx,flipper)
     @interface.use_parameters(flipper="flipper_index",port="flipper_port")
+    @_specfunc
     def set_flipper_port(self, flipper, port):
         """
         Set flipper port.
@@ -371,6 +420,7 @@ class ShamrockSpectrograph(interface.IDevice):
             if p is not None:
                 self.set_flipper_port(f,p)
     @interface.use_parameters(flipper="flipper_index")
+    @_specfunc
     def reset_flipper(self, flipper):
         """
         Reset flipper to the default state.
@@ -385,6 +435,7 @@ class ShamrockSpectrograph(interface.IDevice):
     ### Iris control ###
     _p_iris_port=interface.EnumParameterClass("iris_port",{"direct":0,"side":1})
     @interface.use_parameters(iris="iris_port")
+    @_specfunc
     def is_iris_present(self, iris):
         """Check if the iris is present"""
         return bool(lib.ShamrockIrisIsPresent is not None and lib.ShamrockIrisIsPresent(self.idx,iris))
@@ -392,11 +443,13 @@ class ShamrockSpectrograph(interface.IDevice):
         if lib.ShamrockIrisIsPresent is None or not lib.ShamrockIrisIsPresent(self.idx,iris):
             raise AndorNotSupportedError("iris is not present")
     @interface.use_parameters(iris="iris_port")
+    @_specfunc
     def get_iris_width(self, iris):
         """Get current iris width (0 to 100)"""
         self._check_iris(iris)
         return lib.ShamrockGetIris(self.idx,iris)
     @interface.use_parameters(iris="iris_port")
+    @_specfunc
     def set_iris_width(self, iris, width):
         """Set current iris width (0 to 100)"""
         self._check_iris(iris)
@@ -411,25 +464,30 @@ class ShamrockSpectrograph(interface.IDevice):
         
 
     ### Focus mirror control ###
+    @_specfunc
     def is_focus_mirror_present(self):
         """Check if the focus mirror is present"""
         return bool(lib.ShamrockFocusMirrorIsPresent is not None and lib.ShamrockFocusMirrorIsPresent(self.idx))
     def _check_focus_mirror(self):
         if lib.ShamrockFocusMirrorIsPresent is None or not lib.ShamrockFocusMirrorIsPresent(self.idx):
             raise AndorNotSupportedError("focus mirror is not present")
+    @_specfunc
     def get_focus_mirror_position(self):
         """Get current focus mirror position"""
         self._check_focus_mirror()
         return lib.ShamrockGetFocusMirror(self.idx)
+    @_specfunc
     def set_focus_mirror_position(self, position):
         """Set current focus mirror position"""
         self._check_focus_mirror()
         lib.ShamrockSetFocusMirror(self.idx,int(position))
         return lib.ShamrockGetFocusMirror(self.idx)
+    @_specfunc
     def get_focus_mirror_position_max(self):
         """Get maximal focus mirror position"""
         self._check_focus_mirror()
         return lib.ShamrockGetFocusMirrorMaxSteps(self.idx)
+    @_specfunc
     def reset_focus_mirror(self):
         """Reset focus mirror position"""
         self._check_focus_mirror()
@@ -437,16 +495,19 @@ class ShamrockSpectrograph(interface.IDevice):
         
 
     ### Accessory control ###
+    @_specfunc
     def is_accessory_present(self):
         """Check if the accessory is present"""
         return bool(lib.ShamrockAccessoryIsPresent(self.idx))
     def _check_accessory(self):
         if not self.is_accessory_present():
             raise AndorNotSupportedError("accessory is not present")
+    @_specfunc
     def get_accessory_state(self, line):
         """Get current accessory state on a given line (1 or 2)"""
         self._check_accessory()
         return lib.ShamrockGetAccessoryState(self.idx,line)
+    @_specfunc
     def set_accessory_state(self, line, state):
         """Set current accessory state (0 or 1) on a given line (1 or 2)"""
         self._check_accessory()
@@ -461,16 +522,20 @@ class ShamrockSpectrograph(interface.IDevice):
 
 
     ### Calibration ###
+    @_specfunc
     def get_pixel_width(self):
         """Get current set detector pixel width (in m)"""
         return lib.ShamrockGetPixelWidth(self.idx)*1E-6
+    @_specfunc
     def set_pixel_width(self, width):
         """Set current detector pixel width (in m)"""
         lib.ShamrockSetPixelWidth(self.idx,width/1E-6)
         return self.get_pixel_width()
+    @_specfunc
     def get_number_pixels(self):
         """Get current set detector number of pixels"""
         return lib.ShamrockGetNumberPixels(self.idx)
+    @_specfunc
     def set_number_pixels(self, number):
         """Set current detector number of pixels"""
         lib.ShamrockSetNumberPixels(self.idx,number)
@@ -482,6 +547,7 @@ class ShamrockSpectrograph(interface.IDevice):
         self.set_pixel_width(pixel_size[0])
         self.set_number_pixels(det_size[0])
         return self.get_pixel_width(),self.get_number_pixels()
+    @_specfunc
     def get_calibration(self):
         """
         Get wavelength calibration.
