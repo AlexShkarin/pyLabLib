@@ -390,7 +390,7 @@ class SirahMatisseTunerThread(SirahMatisseThread):
             self.tuner.fine_sweep_stop(return_to_start=False)
             self.update_scan_status("running")
             try:
-                for sweeping in self.tuner.stitched_scan_gen(scan_range,single_span,rate,device=self._fine_device):
+                for sweeping in self.tuner.stitched_scan_gen(scan_range,single_span,rate,device=self._fine_device,segment_end_timeout=5.):
                     self.v["stitched_scan/stitching"]=0 if sweeping else 1
                     if sweeping:
                         f0,f1=scan_range[:2]

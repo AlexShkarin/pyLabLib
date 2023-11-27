@@ -842,7 +842,7 @@ class MatisseTuner:
     
     _default_stitch_tune_precision=5E9
     _default_stitch_tune_maxreps=2
-    def stitched_scan_gen(self, full_rng, single_span, speed, device="slow_piezo", overlap=0.1, freq_step=None):
+    def stitched_scan_gen(self, full_rng, single_span, speed, device="slow_piezo", overlap=0.1, freq_step=None, segment_end_timeout=None):
         """
         Same as :meth:`stitched_scan`, but made as a generator which yields occasionally.
         
@@ -860,6 +860,8 @@ class MatisseTuner:
         speed=self._to_int_units(speed,device)
         local_level="none"
         rep=0
+        ctd=general.Countdown(segment_end_timeout)
+        furtherst_freq=None
         while (full_rng[1]-f)*scandir>0:
             for _ in self.tune_to_gen(f,fine_device=device,local_level=local_level):
                 yield False
@@ -868,14 +870,23 @@ class MatisseTuner:
             if abs(f0-f)<stitch_tune_precision:
                 p=self._get_fine_position(device)
                 yield False
+                ctd.stop()
                 for _ in self._move_cont_gen(device,p+single_span*scandir,speed):
-                    scan_freqs.append(self.get_frequency())
+                    f=self.get_frequency()
+                    scan_freqs.append(f)
+                    if (f-full_rng[1])*scandir>0:
+                        if not ctd.running():
+                            ctd.reset()
+                        elif ctd.passed():
+                            break
+                    else:
+                        ctd.stop()
                     yield True
                 yield False
                 f1=self.get_frequency()
             else:
                 f1=None
-            span_success=f1 is not None and (f1-f0)*scandir>0 and (expected_span is None or ((f1-f0)*scandir>expected_span/4 and (f1-f0)*scandir<expected_span*2))
+            span_success=f1 is not None and (f1-f0)*scandir>0 and (expected_span is None or ((f1-f0)*scandir>expected_span/4 and (f1-f0)*scandir<expected_span*2) or ctd.passed())
             local_level="fine"
             if span_success and len(scan_freqs)>5:
                 df=np.diff(scan_freqs[:-1])
@@ -897,10 +908,16 @@ class MatisseTuner:
                     f=f1-(f1-f0)*overlap
                 else:
                     f=f+fail_step*scandir
+                if furtherst_freq is not None:
+                    f=max(furtherst_freq,f) if scandir>0 else min(furtherst_freq,f)
             else:
                 f+=(freq_step if span_success else fail_step)*scandir
+            if furtherst_freq is None:
+                furtherst_freq=f
+            else:
+                furtherst_freq=max(furtherst_freq,f-fail_step/4) if scandir>0 else min(furtherst_freq,f+fail_step/4)
             rep=0
-    def stitched_scan(self, full_rng, single_span, speed, device="slow_piezo", overlap=0.1, freq_step=None):
+    def stitched_scan(self, full_rng, single_span, speed, device="slow_piezo", overlap=0.1, freq_step=None, segment_end_timeout=None):
         """
         Perform a stitched laser scan.
 
@@ -913,5 +930,5 @@ class MatisseTuner:
             freq_step: if ``None``, the start of the next segment is calculated based on the end of the previous segment and `overlap`;
                 otherwise, it specifies a fixed frequency step between segments.
         """
-        for _ in self.stitched_scan_gen(full_rng,single_span,speed,device=device,overlap=overlap,freq_step=freq_step):
+        for _ in self.stitched_scan_gen(full_rng,single_span,speed,device=device,overlap=overlap,freq_step=freq_step,segment_end_timeout=segment_end_timeout):
             time.sleep(1E-3)
