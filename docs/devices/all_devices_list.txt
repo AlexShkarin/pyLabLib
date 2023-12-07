@@ -19,6 +19,7 @@
 
     - :ref:`M2 Solstis laser and external mixing module <lasers_m2>`
     - :ref:`Toptica iBeam Smart laser <lasers_toptica>`
+    - :ref:`Hubner Cobolot <lasers_hubner>`
     - :ref:`Sirah Matisse laser <lasers_sirah>`
     - :ref:`NKT Photonics lasers <lasers_NKT>`
 

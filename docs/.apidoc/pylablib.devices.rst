@@ -21,6 +21,7 @@ Subpackages
    pylablib.devices.DCAM
    pylablib.devices.ElektroAutomatik
    pylablib.devices.HighFinesse
+   pylablib.devices.Hubner
    pylablib.devices.IMAQ
    pylablib.devices.IMAQdx
    pylablib.devices.KJL

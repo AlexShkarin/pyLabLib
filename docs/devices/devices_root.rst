@@ -21,6 +21,7 @@ Currently supported devices:
     Toptica
     Sirah
     NKT
+    Hubner
     Tektronix
     Keithley
     Rigol
