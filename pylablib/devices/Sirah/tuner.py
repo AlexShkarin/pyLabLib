@@ -801,7 +801,7 @@ class MatisseTuner:
         self._move_cont(device,start,max_speed)
         self.laser.set_scan_params(device=device,mode=mode,lower_limit=scan_rng[0],upper_limit=scan_rng[1],rise_speed=up_speed,fall_speed=down_speed)
         self.laser.set_scan_status("run")
-        return scan_rng
+        return scan_rng,(up_speed,down_speed)
     def fine_sweep_stop(self, return_to_start=True, start_point=None):
         """
         Stop currently running fast sweep.
