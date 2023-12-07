@@ -87,7 +87,7 @@ class ShamrockSpectrographThread(device_thread.DeviceThread):
             det_size=cam.dcsi.get_detector_size()
             if pixel_size and det_size:
                 self.setup_calibration(number_pixels=det_size[0],pixel_width=pixel_size[0])
-    def _on_new_frames(self, src, tag, msg):
+    def _on_new_frames(self, src, tag, msg):  # pylint: disable=unused-argument
         self.msg_src.receive_message(msg)
         cal=self.v["parameters/calibration"]
         frames,indices,_=msg.get_slice(flatten=True)
@@ -114,7 +114,7 @@ class ShamrockSpectrographThread(device_thread.DeviceThread):
         self.v["full_info"]=default_info
         if self.open():
             self.set_variable("full_info",self.device.get_full_info(default_info),update=True)
-    def update_parameters(self, set_default=False):
+    def update_parameters(self, set_default=False):  # pylint: disable=arguments-differ
         default_parameters={"zero_order":0,"slit_widths":[None]*4,"iris_widths":[None]*2,
                             "focus_mirror":0,"shutter_mode":None,"filter":0,"flipper_ports":[None]*2}
         if set_default:
