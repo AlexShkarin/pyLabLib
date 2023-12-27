@@ -9,6 +9,7 @@ import contextlib
 import collections
 
 
+library_parameters.library_parameters.update({"devices/only_windows_dlls":True},overwrite=False)
 _store_loaded_dlls=False
 _loaded_dlls=[]
 
@@ -119,7 +120,7 @@ def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, depe
             (in the latter case, `name` and `location` arguments are ignored, except for generating error message).
         return_location(bool): if ``True``, return a tuple ``(dll, location, folder)`` instead of a single dll.
     """
-    if platform.system()!="Windows":
+    if platform.system()!="Windows" and not library_parameters.library_parameters["devices/only_windows_dlls"]:
         raise OSError("DLLs are not available on non-Windows platform")
     if not isinstance(name,(list,tuple)):
         name=[name]
