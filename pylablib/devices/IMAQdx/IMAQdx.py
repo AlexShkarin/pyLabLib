@@ -428,13 +428,14 @@ class IMAQdxCamera(camera.IROICamera, camera.IAttributeCamera):
             return data
         if self._raw_readout_format=="rows":
             return data.reshape((shape[0],-1))
-        supported_formats=["Mono8","Mono10","Mono12","Mono16","Mono32"]
-        if pixel_format not in supported_formats:
+        supported_formats=["mono8","mono10","mono12","mono16","mono32"]
+        norm_pixel_format=pixel_format.strip().replace(" ","").lower()
+        if norm_pixel_format not in supported_formats:
             sf_string=", ".join(supported_formats)
-            raise IMAQdxError("pixel format {} is not supported, only [{}] are supported; raw data readout can be enabled via enable_raw_readout method".format(pixel_format,sf_string))
-        if pixel_format=="Mono8":
+            raise IMAQdxError("pixel format {} ('{}') is not supported, only [{}] are supported; raw data readout can be enabled via 'enable_raw_readout' method".format(pixel_format,norm_pixel_format,sf_string))
+        if norm_pixel_format=="mono8":
             return data.reshape(shape)
-        elif pixel_format in ["Mono10","Mono12","Mono16"]:
+        elif norm_pixel_format in ["mono10","mono12","mono16"]:
             return data.view("<u2").reshape(shape)
         else:
             return data.view("<u4").reshape(shape)
