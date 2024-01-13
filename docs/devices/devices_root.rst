@@ -33,5 +33,6 @@ Currently supported devices:
     ElektroAutomatik
     Voltcraft
     Lumel
+    Omron
     misc_devices
     protocols

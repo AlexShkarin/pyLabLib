@@ -38,6 +38,7 @@ Subpackages
    pylablib.devices.NKT
    pylablib.devices.Newport
    pylablib.devices.OZOptics
+   pylablib.devices.Omron
    pylablib.devices.Ophir
    pylablib.devices.PCO
    pylablib.devices.Pfeiffer
