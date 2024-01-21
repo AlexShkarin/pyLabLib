@@ -1,1 +1,1 @@
-from .base import OmranE5xCControllerThread
+from .base import OmronE5xCControllerThread

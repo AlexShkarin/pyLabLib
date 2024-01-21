@@ -1112,7 +1112,7 @@ class MFF(KinesisDevice):
         raise ThorlabsError("error getting MFF position: status {:08x}".format(status))
 
     _p_io_oper_mode=interface.EnumParameterClass("io_oper_mode",{"in_toggle":1,"in_position":2,"out_position":3,"out_motion":4})
-    _p_io_sig_mode=interface.EnumParameterClass("io_sig_mode",{"in_button":0x01,"in_voltage":0x02,"in_button_inf":0x05,"in_voltage_inv":0x06,
+    _p_io_sig_mode=interface.EnumParameterClass("io_sig_mode",{"in_button":0x01,"in_voltage":0x02,"in_button_inv":0x05,"in_voltage_inv":0x06,
                                                                 "out_edge":0x10,"out_pulse":0x20,"out_edge_inv":0x50,"out_pulse_inv":0x60})
     @muxchannel
     @interface.use_parameters(_returns=[None,"io_oper_mode","io_sig_mode",None,"io_oper_mode","io_sig_mode",None])

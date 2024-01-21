@@ -73,6 +73,6 @@ class OmronE5xCController(GenericModbusRTUDevice):
         """
         Get setpoint value as an integer point number.
         
-        The value is speceified and the result is returned in the current display units.
+        The value is specified and the result is returned in the current display units.
         """
         return self.set_reg(0x2103,value)
