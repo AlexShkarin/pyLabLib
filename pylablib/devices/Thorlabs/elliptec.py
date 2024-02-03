@@ -56,7 +56,7 @@ class ElliptecMotor(comm_backend.ICommBackendWrapper):
             for a in self._addrs:
                 dev_info=self.get_device_info(addr=a)
                 self._model_no[a]=dev_info.model_no
-                self._stage_scale[a]=dev_info.pulse/dev_info.travel
+                self._stage_scale[a]=dev_info.pulse/dev_info.travel if dev_info.pulse>0 else 1
         self._default_addr=self._addrs[0] if default_addr is None else default_addr
         if not (scale in ["stage","step"] or isinstance(scale,(int,float))):
             raise ValueError("scale can be 'stage', 'step', or a number converting step units into the desired user units; suppleid value is {}".format(scale))
