@@ -39,10 +39,7 @@ def has_methods(widget, methods_sets):
 
     `methods_sets` is a list of method sets. The function returns ``True`` if the widget has at least one method from each of the sets.
     """
-    for ms in methods_sets:
-        if not any([_hasattr(widget,m) for m in ms]):
-            return False
-    return True
+    return all(any(_hasattr(widget,m) for m in ms) for ms in methods_sets)
 
 def get_method_kind(method, add_args=0):
     """
