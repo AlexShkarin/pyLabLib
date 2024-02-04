@@ -449,12 +449,18 @@ class ThorlabsTLCamera(camera.IBinROICamera, camera.IExposureCamera):
 
 
     ### Acquisition process controls ###
+    _max_frame_bytes=2000*2**20  # max RAM allowed by the API; seems to be exactly 2*2**30 (2GB), but adding ~2% margin of error
+    _added_frame_size=2**15  # added internal RAM per frames; seems to be 2**14, but adding factor of 2 margin of error
     def setup_acquisition(self, nframes=100):  # pylint: disable=arguments-differ
         """
         Setup acquisition.
 
         `nframes` determines number of size of the ring buffer (by default, 100).
         """
+        r,c=self._get_data_dimensions_rc()
+        frame_nbytes=r*c*2+self._added_frame_size
+        if self._max_frame_bytes is not None:
+            nframes=min(int(self._max_frame_bytes/frame_nbytes),nframes)
         super().setup_acquisition(nframes=nframes)
         self._buffer.setup(nframes+10,self._get_data_dimensions_rc())
     def clear_acquisition(self):
