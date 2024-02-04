@@ -23,6 +23,7 @@ class IQLayoutManagedWidget:
         super().__init__(*args,**kwargs)
         self.main_layout=None
         self._default_layout="main"
+        self._current_layout_tags=None
     
     def _make_new_layout(self, kind, *args, **kwargs):
         """Make a layout of the given kind"""
@@ -61,6 +62,37 @@ class IQLayoutManagedWidget:
             yield
         finally:
             self._default_layout=current_layout
+    def _as_tags_set(self, tags):
+        return set(tags) if isinstance(tags,(set,list,tuple)) else {tags}
+    def change_layout_tags(self, add=None, remove=None, replace=None):
+        """
+        Specify the current tags which are applied to every added layout elements.
+
+        `add`, `remove` specify, respectively, tags to be added, removed.
+        replace` is specified, it completely replaces the set of current tags (before `add` and `remove` are applied).
+        """
+        if replace is not None:
+            self._current_layout_tags=self._as_tags_set(replace)
+        if add is not None:
+            self._current_layout_tags=(self._current_layout_tags or set())|self._as_tags_set(add)
+        if remove is not None:
+            self._current_layout_tags=(self._current_layout_tags or set())-self._as_tags_set(remove)
+    def get_layout_tags(self):
+        """Get the set of currently applied layout tags"""
+        return set(self._current_layout_tags or set())
+    @contextlib.contextmanager
+    def using_layout_tags(self, add=None, remove=None, replace=None):
+        """
+        Context manager for temporarily using different layout tags.BytesWarning
+        
+        See :meth:`change_layout_tags` for details.
+        """
+        tags=self._current_layout_tags
+        try:
+            self.change_layout_tags(add=add,remove=remove,replace=replace)
+            yield
+        finally:
+            self._current_layout_tags=tags
     def _normalize_location(self, location, default_location=None, default_layout=None):
         if location=="skip":
             return None,"skip"
@@ -132,6 +164,8 @@ class IQLayoutManagedWidget:
                 layout.insertLayout(idx,element)
             else:
                 raise ValueError("unrecognized element kind: {}".format(kind))
+        if self._current_layout_tags:
+            element._layout_tags=set(self._current_layout_tags)
     def add_to_layout(self, element, location=None, kind="widget"):
         """
         Add an existing `element` to the layout at the given `location`.
@@ -200,30 +234,62 @@ class IQLayoutManagedWidget:
     def _iter_layout_items(self, layout, include, nested=False):
         for idx in range(layout.count()):
             item=layout.itemAt(idx)
-            if item.widget() is not None and "widget" in include:
-                yield "widget",item.widget()
+            if item.spacerItem() is not None and "spacer" in include:
+                yield "spacer",item.spacerItem(),layout,idx
+            widget=item.widget()
+            if widget is not None:
+                if "widget" in include:
+                    yield "widget",item.widget(),layout,idx
+                if nested and hasattr(widget,"_iter_layout_items"):
+                    for itm in widget._iter_layout_items(widget.layout(),include,nested=True):
+                        yield itm
             if item.layout() is not None:
                 if "layout" in include:
-                    yield "layout",item.layout()
+                    yield "layout",item.layout(),layout,idx
                 if nested:
                     for itm in self._iter_layout_items(item.layout(),include,nested=True):
                         yield itm
-    def iter_sublayout_items(self, name=None, include=("widget",), nested=False):
+    def iter_sublayout_items(self, name=None, include=("widget",), nested=False, tag=None, yield_layout_info=False):
         """
         Iterate over items contained in a given sublayout.
 
-        `include` is a tuple which contains items to iterate over; can include ``"widget"`` or ``"layout"``.
-        If ``nested==True``, iterate over items in contained layouts as well.
+        `include` is a tuple which contains items to iterate over; can include ``"widget"``, ``"layout"``, or ``"spacer"``.
+        If ``nested==True``, iterate over items in contained layouts and widgets as well.
+        If `tag` is set, it specifies the tag to select the elements.
+        If ``yield_layout_info==False``, yield a 2-tuple ``(kind, element)``, where ``kind`` can be ``"widget"``, ``"layout"``, or ``"spacer"``;
+        if ``yield_layout_info==True``, yield a 4-tuple ``(kind, element, layout, index)``, which includes the element's containing layout and its index within.
         """
         if include=="all":
-            include=("widget","layout")
+            include=("widget","layout","spacer")
         elif not isinstance(include,(tuple,list)):
             include=(include,)
         include=set(include)
-        if include-{"widget","layout"}:
-            raise ValueError("unrecognized include kinds: {}".format(include-{"widgets","layout"}))
-        for itm in self._iter_layout_items(self.get_sublayout(name=name),include,nested=nested):
-            yield itm
+        if include-{"widget","layout","spacer"}:
+            raise ValueError("unrecognized include kinds: {}".format(include-{"widget","layout","spacer"}))
+        for knd,itm,lyt,idx in self._iter_layout_items(self.get_sublayout(name=name),include,nested=nested):
+            if tag is not None and tag not in getattr(itm,"_layout_tags",()):
+                continue
+            yield (knd,itm,lyt,idx) if yield_layout_info else (knd,itm)
+    def remove_sublayout_items(self, name=None, include="all", nested=True, tag=None, widget_action="remove"):
+        """
+        Remove items within the sublayout with the given name (current by default).
+        
+        `include` specifies which elements to include (can be a tuple containing ``"widget"``, ``"layout"``, or ``"spacer"``, or ``"all"``),
+        `nested` specifies if nested layouts and widgets are also checked, `tag` specifies a possible tag to select the elements on.
+        `widget_action` can be ``"remove"`` (remove widgets and layouts), or ``"hide"`` (hide widgets without removing); spacers are always removed.
+        """
+        funcargparse.check_parameter_range(widget_action,"widget_action",{"remove","hide"})
+        for k,w,l,i in list(self.iter_sublayout_items(name=name,include=include,nested=nested,tag=tag,yield_layout_info=True))[::-1]:
+            if k=="spacer":
+                l.removeItem(w)
+            elif k=="widget":
+                if widget_action=="remove":
+                    utils.delete_layout_item(l,i)
+                else:
+                    w.setVisible(False)
+            else:
+                if widget_action=="remove":
+                    utils.delete_layout_item(l,i)
     def get_sublayout_kind(self, name=None):
         """Get the kind of the previously added sublayout"""
         return self._sublayouts[name or self._default_layout][1]
