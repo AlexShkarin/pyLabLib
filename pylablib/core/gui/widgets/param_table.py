@@ -375,26 +375,48 @@ class ParamTable(container.QWidgetContainer):
         widget=widget_label.TextLabel(self,value=value)
         widget.setObjectName(self.name+"_"+name)
         return self.add_simple_widget(name,widget,label=label,add_indicator=False,location=location,tooltip=tooltip,add_change_event=add_change_event)
-    def add_enum_label(self, name, options, value=None, out_of_range="error", prep=None, label=None, location=None, tooltip=None, add_change_event=False, virtual=False):
+    def add_enum_label(self, name, options, value=None, out_of_range="error", prep=None, styles=None, label=None, location=None, tooltip=None, add_change_event=False, virtual=False):
         """
         Add a text label to the table.
 
         Args:
             name (str): widget name (used to reference its value in the values table)
-            options (list): dictionary ``{index_value: text}`` which converts values into text
+            options (dict): dictionary ``{index_value: text}`` which converts values into text
             out_of_range (str): behavior when out-of-range value is applied;
                 can be ``"error"`` (raise error), ``"text"`` (convert value into text), or ``"ignore"`` (keep current value).
             prep: a function which takes a single value argument and converts into an option; useful for "fuzzy" options (e.g., when 0 and ``False`` mean the same thing)
+            styles: a dictionary ``{value: style}`` which defines stylesheet styles based on the value (if some values are not in the dictionary, use default no-style value)
             virtual (bool): if ``True``, the widget is not added, and a virtual handler is added instead
             
         Rest of the arguments and the return value are the same as :meth:`add_simple_widget`.
         """
         if virtual:
             return self.add_virtual_element(name,value=value)
-        widget=widget_label.EnumLabel(self,options=options,value=value,prep=prep)
+        widget=widget_label.EnumLabel(self,options=options,value=value,prep=prep,styles=styles)
         widget.set_out_of_range(out_of_range)
         widget.setObjectName(self.name+"_"+name)
         return self.add_simple_widget(name,widget,label=label,add_indicator=False,location=location,tooltip=tooltip,add_change_event=add_change_event)
+    def add_style_indicator_label(self, name, caption, options=(True,False), value=False, out_of_range="error", prep=bool, styles=None, label=None, location=None, tooltip=None, add_change_event=False, virtual=False):
+        """
+        Add a label to the table with a fixed caption but whose style indicates the value.
+
+        Args:
+            name (str): widget name (used to reference its value in the values table)
+            caption: text on the label
+            options (list): list with the possible values
+            out_of_range (str): behavior when out-of-range value is applied;
+                can be ``"error"`` (raise error), ``"text"`` (convert value into text), or ``"ignore"`` (keep current value).
+            prep: a function which takes a single value argument and converts into an option; useful for "fuzzy" options (e.g., when 0 and ``False`` mean the same thing)
+            styles: a dictionary ``{value: style}`` which defines stylesheet styles based on the value (if some values are not in the dictionary, use default no-style value);
+                can be a single string value, which gets assigned to ``True`` value
+            virtual (bool): if ``True``, the widget is not added, and a virtual handler is added instead
+            
+        Rest of the arguments and the return value are the same as :meth:`add_simple_widget`.
+        """
+        if not isinstance(styles,dict):
+            styles={True:styles}
+        return self.add_enum_label(name,options={k:caption for k in options},value=value,out_of_range=out_of_range,prep=prep,styles=styles,
+            label=label,location=location,tooltip=tooltip,add_change_event=add_change_event,virtual=virtual)
     def add_num_label(self, name, value=0, limiter=None, formatter=None, label=None, tooltip=None, location=None, add_change_event=False, virtual=False):
         """
         Add a numerical label to the table.

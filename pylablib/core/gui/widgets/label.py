@@ -43,12 +43,14 @@ class EnumLabel(QtWidgets.QLabel):
     Can also specify a function which takes a single value argument and converts into a enum value before checking `options`;
     useful for "fuzzy" options (e.g., when 0 and ``False`` mean the same thing)
     """
-    def __init__(self, parent, options, value=None, prep=None):
+    def __init__(self, parent, options, value=None, prep=None, styles=None, default_style=""):
         super().__init__(parent)
         self._value=None
         self._options=options if isinstance(options,dict) else dict(zip(range(len(options)),options))
         self._out_of_range_action="error"
         self._prep=prep
+        self._styles=styles
+        self._default_style=default_style
         if value is not None:
             self.set_value(value)
     clicked=Signal()
@@ -80,6 +82,15 @@ class EnumLabel(QtWidgets.QLabel):
             self.set_value(list(self._options)[index])
         else:
             self.set_value(self._value)
+    def _set_current_style(self, value, force=False):
+        if not self._styles and not force:
+            return
+        self.setStyleSheet(self._styles.get(value,self._default_style))
+    def set_styles(self, styles=None, default_style=""):
+        """Set the dictionary of styles ``{value: style}`` and the default style"""
+        self._styles=styles
+        self._default_style=default_style
+        self._set_current_style(self._value,force=True)
     value_changed=Signal(object)
     """Signal emitted when value is changed"""
     def get_value(self):
@@ -98,14 +109,15 @@ class EnumLabel(QtWidgets.QLabel):
         return value
     def set_value(self, value):
         """Set and display current text value"""
-        if value is not None:
-            value=self._prepare_value(value)
-            if value is None:
-                return
-            self.setText(self._options.get(value,value))
-            if self._value!=value:
-                self._value=value
-                self.value_changed.emit(self._value)
+        if value is None:
+            return
+        value=self._prepare_value(value)
+        if value is None or value==self._value:
+            return
+        self._value=value
+        self.setText(self._options.get(value,value))
+        self._set_current_style(self._value)
+        self.value_changed.emit(self._value)
     def repr_value(self, value):
         """Return representation of `value` as a combo box text"""
         if value is not None:
