@@ -193,6 +193,30 @@ class WLM(interface.IDevice):
                     return self._get_error_codes[err.code]
                 raise
 
+    @muxchannel
+    def get_linewidth(self, channel=None, error_on_invalid=True, wait=True, timeout=5.):
+        """
+        Get the wavemeter readings (in m, and in vacuum).
+        `channel` is the measurement channel (starting from 1); if ``None``, use the default channel.
+        If ``error_on_invalid==True``, raise an error if the measurement is invalid (e.g., over- or underexposure);
+        otherwise, the method can return ``"under"`` if the meter is underexposed or ``"over"`` is it is overexposed,
+        ``"badsig"`` if there is no calculable signal, ``"noval"`` if there are no values acquired yet, ``"nosig"`` if there is no signal,
+        or ``"nowlm"`` if there is no connection to the wavemeter.
+        If ``wait==True`` and the result is ``"noval"`` (e.g., if the read mode is ``"single"`` and no new value has been acquired since the last call),
+        wait for at most ``timeout`` until a new value appears; if the ``timeout`` has passed, use the default behavior (error or ``"noval"`` result).
+        """
+        ctd = general.Countdown(timeout)
+        while True:
+            try:
+                return self.lib.GetLinewidthNum(self._get_channel(channel), 0.) * 1E-9
+            except WlmDataLibError as err:
+                if err.code == EGetError.ErrNoValue and wait and not ctd.passed():
+                    time.sleep(1E-3)
+                    continue
+                if (not error_on_invalid) and err.code in self._get_error_codes:
+                    return self._get_error_codes[err.code]
+                raise
+
     _p_exposure_mode=interface.EnumParameterClass("exposure_mode",{"manual":0,"auto":1})
     @muxchannel
     @interface.use_parameters(_returns="exposure_mode")
@@ -342,6 +366,19 @@ class WLM(interface.IDevice):
         self.lib.SetWideMode(mode)
         return self.get_precision_mode()
     
+    _p_linewidth_mode = interface.EnumParameterClass("linewidth_mode", {"off": 0, "on": 1})
+
+    @interface.use_parameters(_returns="linewidth_mode")
+    def get_linewidth_mode(self):
+        """Get the current linewidth mode (``"off"``, or ``"on"``)"""
+        return self.lib.GetLinewidthMode(0)
+
+    @interface.use_parameters(mode="linewidth_mode")
+    def set_linewidth_mode(self, mode):
+        """Set the current precision mode (``"off"``, or ``"on"``)"""
+        self.lib.SetLinewidthMode(mode)
+        return self.get_linewidth_mode()
+
     def get_measurement_interval(self):
         """Set measurement interval (per channel), or ``None`` if the interval mode is off"""
         if self.lib.GetIntervalMode(0)==0:
