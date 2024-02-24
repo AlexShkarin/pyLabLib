@@ -47,20 +47,14 @@ class ElliptecMotor(comm_backend.ICommBackendWrapper):
         self.add_background_comm("BO")
         self.add_background_comm("BS")
         self._valid_status=valid_status
-        with self._close_on_error():
-            self._model_no={}
-            self._stage_scale={}
-            self._addrs=self._detect_devices(addrs)
-            if not self._addrs:
-                raise self.Error("could not detect any connected devices among the ones specified ({})".format(addrs))
-            for a in self._addrs:
-                dev_info=self.get_device_info(addr=a)
-                self._model_no[a]=dev_info.model_no
-                self._stage_scale[a]=dev_info.pulse/dev_info.travel if dev_info.pulse>0 else 1
-        self._default_addr=self._addrs[0] if default_addr is None else default_addr
+        self._requested_addrs=addrs
+        self._default_addr=None
+        self._default_scale=scale
         if not (scale in ["stage","step"] or isinstance(scale,(int,float))):
-            raise ValueError("scale can be 'stage', 'step', or a number converting step units into the desired user units; suppleid value is {}".format(scale))
-        self._scale={a:scale for a in self._addrs}
+            raise ValueError("scale can be 'stage', 'step', or a number converting step units into the desired user units; supplied value is {}".format(scale))
+        with self._close_on_error():
+            self.update_connected_addrs()
+        self._default_addr=(self._addrs[0] if self._addrs else 0) if default_addr is None else default_addr
         self._add_info_variable("device_info",lambda: self.get_device_info(addr="all"))
         self._add_info_variable("addrs",lambda: self._addrs)
         self._add_info_variable("scale",lambda: self.get_scale(addr="all"))
@@ -88,6 +82,22 @@ class ElliptecMotor(comm_backend.ICommBackendWrapper):
     def get_connected_addrs(self):
         """Get a list of all connected device addresses"""
         return list(self._addrs)
+    def update_connected_addrs(self, addrs=None):
+        """Update the list of connected device addresses"""
+        if addrs is not None:
+            self._requested_addrs=addrs
+        self._model_no={}
+        self._stage_scale={}
+        self._addrs=self._detect_devices(self._requested_addrs)
+        if self._requested_addrs and not self._addrs:
+            raise self.Error("could not detect any connected devices among the ones specified ({})".format(addrs))
+        for a in self._addrs:
+            dev_info=self.get_device_info(addr=a)
+            self._model_no[a]=dev_info.model_no
+            self._stage_scale[a]=dev_info.pulse/dev_info.travel if dev_info.pulse>0 else 1
+        self._scale={a:self._default_scale for a in self._addrs}
+        if self._default_addr is not None and self._default_addr not in self._addrs:
+            self._default_addr=self._addrs[0] if self._addrs else 0
     def _change_addr(self, addr, newaddr):
         if addr in self._addrs:
             self._addrs[self._addrs.index(addr)]=newaddr

@@ -97,7 +97,7 @@ class BasicKinesisDevice(comm_backend.ICommBackendWrapper):
         Otherwise, show all devices (some of them might not be Thorlabs-related).
         """
         def _is_thorlabs_id(did):
-            return re.match(r"^\d{8}$",did[0]) is not None
+            return re.match(r"^\d{8,}$",did[0]) is not None
         ids=comm_backend.FT232DeviceBackend.list_resources(desc=True)
         if filter_ids:
             ids=[did for did in ids if _is_thorlabs_id(did)]
@@ -694,7 +694,7 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         "out_lim_fw":0x10,"out_lim_bk":0x11,"out_lim_both":0x12})
     @interface.use_parameters(_returns=["kcube_trigio_mode",None,"kcube_trigio_mode",None])
     def _get_kcube_trigio_parameters(self):
-        """Get KCube trigger IO parameters ``(trig1_pol, trig1_pol, trig2_mode, trig2_pol)``"""
+        """Get KCube trigger IO parameters ``(trig1_mode, trig1_pol, trig2_mode, trig2_pol)``"""
         data=self.query(0x0524,0x01).data
         trig1_mode,trig1_pol,trig2_mode,trig2_pol=struct.unpack("<HHHH",data[2:10])
         return TKCubeTrigIOParams(trig1_mode,bool(trig1_pol),trig2_mode,bool(trig2_pol))

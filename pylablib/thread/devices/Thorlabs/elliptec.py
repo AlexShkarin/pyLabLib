@@ -12,6 +12,11 @@ class ElliptecMotorThread(device_thread.DeviceThread):
     Device args:
         - ``conn``: serial connection parameters (usually port or a tuple containing port and baudrate)
         - ``addrs``: list of device addresses (between 0 and 15) connected to this serial port; if ``"all"``, automatically detect all connected devices
+        - ``dest_tolerance``: destination position tolerance (either a single value, or a dictionary ``{addr: value}``); if after moving the stage position
+            is more than ``dest_tolerance`` away from the target, re-issue the movement command
+        - ``ensure_addrs``: list of device addresses which are ensured to be in the description; if a stage at a given address is empty,
+            still specify is parameters but set them into "default" values (e.g., position of 0); in contrast if an address in ``addrs`` is not connected,
+            the corresponding parameter values are not set up at all.
         - ``**kwargs``: additional arguments supplied on the device creation (e.g., ``scale``)
         - ``remote``: address of the remote host where the device is connected; ``None`` (default) for local device, or ``"disconnect"`` to not connect
 
@@ -30,11 +35,14 @@ class ElliptecMotorThread(device_thread.DeviceThread):
         with self.using_devclass("Thorlabs.ElliptecMotor",host=self.remote) as cls:
             self.device=cls(conn=self.conn,addrs=self.addrs,**self.dev_kwargs)  # pylint: disable=not-callable
             self.addrs=self.device.get_connected_addrs()
-            self.v["moving"]={a:False for a in self.addrs}
-    def setup_task(self, conn, addrs="all", dest_tolerance=0.1, remote=None, **kwargs):  # pylint: disable=arguments-differ
+            self.ensure_addrs=[a for a in self.ensure_addrs if a not in self.addrs]
+            self.v["moving"]={a:False for a in self.addrs+self.ensure_addrs}
+            self.v["axis_connected"]={a:(a in self.addrs) for a in self.addrs+self.ensure_addrs}
+    def setup_task(self, conn, addrs="all", dest_tolerance=0.1, ensure_addrs=None, remote=None, **kwargs):  # pylint: disable=arguments-differ
         self.device_reconnect_tries=5
         self.conn=conn
         self.addrs=addrs
+        self.ensure_addrs=([] if addrs=="all" else addrs) if ensure_addrs is None else ensure_addrs
         self.remote=remote
         self.dev_kwargs=kwargs
         self.dest_tolerance=dest_tolerance
@@ -43,15 +51,23 @@ class ElliptecMotorThread(device_thread.DeviceThread):
         self.add_command("move_by",limit_queue=("addr",1),on_full_queue="skip_oldest")
         self.add_command("home")
         self.add_command("set_velocity")
+    def _open_addr(self, addr=None):
+        if not self.open():
+            return False
+        return addr is None or addr in self.addrs
     def update_measurements(self):
         if self.open():
-            self.v["position"]=self.device.get_position(addr="all")
-            self.v["axis_status"]=self.device.get_status(addr="all")
+            position=self.device.get_position(addr="all")
+            axis_status=self.device.get_status(addr="all")
+            for a in self.addrs+self.ensure_addrs:
+                self.v["position",a]=position.get(a,0)
+                self.v["axis_status",a]=axis_status.get(a,"ok")
         else:
-            addrs=self.addrs or []
+            addrs=self.ensure_addrs if self.addrs=="all" else self.addrs+self.ensure_addrs
             self.v["position"]={a:0 for a in addrs}
             self.v["axis_status"]={a:"ok" for a in addrs}
             self.v["moving"]={a:False for a in addrs}
+            self.v["axis_connected"]={a:False for a in addrs}
     
     @contextlib.contextmanager
     def _moving(self, addr):
@@ -85,7 +101,7 @@ class ElliptecMotorThread(device_thread.DeviceThread):
         self.sleep(0.2)
     def move_to(self, position, addr=None):
         """Move to `position` (positive or negative)"""
-        if self.open():
+        if self._open_addr(addr):
             with self._moving(addr):
                 for i in range(3):
                     try:
@@ -102,18 +118,18 @@ class ElliptecMotorThread(device_thread.DeviceThread):
             self.update_measurements()
     def move_by(self, distance, addr=None):
         """Move by `distance` (positive or negative)"""
-        if self.open():
+        if self._open_addr(addr):
             with self._moving(addr):
                 self.device.move_by(distance,addr=addr)
             self.update_measurements()
     def home(self, home_dir="cw", addr=None):
         """Home the device"""
-        if self.open():
+        if self._open_addr(addr):
             with self._moving(addr):
                 self.device.home(home_dir=home_dir,addr=addr)
             self.update_measurements()
     def set_velocity(self, velocity=100, addr=None):
         """Set velocity as a percentage from the maximal velocity (0 to 100)"""
-        if self.open():
+        if self._open_addr(addr):
             self.device.set_velocity(velocity,addr=addr)
             self.update_measurements()

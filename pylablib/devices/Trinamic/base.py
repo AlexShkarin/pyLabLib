@@ -96,7 +96,7 @@ class TMCM1110(comm_backend.ICommBackendWrapper,stage.IStage):
         """Store a given axis parameter in EEPROM (by default, value is the current value)"""
         if value is not None:
             self.set_axis_parameter(parameter,value,addr=addr)
-        self.query(7,parameter,value,addr=addr)
+        self.query(7,parameter,0,addr=addr)
     def get_global_parameter(self, parameter, result_format="i", bank=0, addr=0):
         """Get a given global parameter"""
         return self.query(10,parameter,0,result_format=result_format,bank=bank,addr=addr).value
@@ -158,29 +158,29 @@ class TMCM1110(comm_backend.ICommBackendWrapper,stage.IStage):
         self.set_axis_parameter(140,lresolution,addr=addr)
         return self.get_microstep_resolution(addr=addr)
     
-    def get_current_parameters(self, addr=0):
+    def get_current_parameters(self, max_current=1, addr=0):
         """
         Return diving current parameter ``(drive_current, standby_current)``.
 
-        ``drive_current`` is the maximal drive current, which is given as a fraction of the maximal generated current current
+        ``drive_current`` is the maximal drive current, which is given as a fraction of the `max_current`
         (which is either 1A or 2.8A depending on the hardware jumper).
         ``standby_current`` is given as a fraction of ``drive_current``.
         """
-        return self.get_axis_parameter(6,addr=addr)/255., self.get_axis_parameter(7,addr=addr)/255.
-    def setup_current(self, drive_current=None, standby_current=None, addr=0):
+        return self.get_axis_parameter(6,addr=addr)/255.*max_current, self.get_axis_parameter(7,addr=addr)/255.*max_current
+    def setup_current(self, drive_current=None, standby_current=None, max_current=1., addr=0):
         """
         Set drive and standby currents.
 
         WARNING: too high of a setting might damage the motor.
-        ``drive_current`` is the maximal drive current, which is given as a fraction of the maximal generated current current
-        (which is either 1A or 2.8A depending on the hardware jumper).
+        ``drive_current`` is the maximal drive current, which is given as a fraction of the `max_current`
+        (which is either 1A or 2.8A depending on the hardware jumper, as described in the hardware manual).
         ``standby_current`` is given as a fraction of ``drive_current``.
         Any ``None`` parameters are left unchanged.
         """
         if drive_current is not None:
-            drive_current=int(min(max(0,drive_current),1)*255)
+            drive_current=int(min(max(0,drive_current/max_current),1)*255)
         if standby_current is not None:
-            standby_current=int(min(max(0,standby_current),1)*255)
+            standby_current=int(min(max(0,standby_current/max_current),1)*255)
         curr_standby_current=self.get_axis_parameter(7,addr=addr)
         if standby_current is not None and standby_current<curr_standby_current:
             self.set_axis_parameter(7,standby_current,addr=addr)
@@ -188,7 +188,7 @@ class TMCM1110(comm_backend.ICommBackendWrapper,stage.IStage):
             self.set_axis_parameter(6,drive_current,addr=addr)
         if standby_current is not None and standby_current>curr_standby_current:
             self.set_axis_parameter(7,standby_current,addr=addr)
-        return self.get_current_parameters()
+        return self.get_current_parameters(max_current=max_current)
 
     def get_limit_switches_parameters(self, addr=0):
         """Return limit switch parameters ``(left_enable, right_enable)``"""
@@ -238,7 +238,7 @@ class TMCM1110(comm_backend.ICommBackendWrapper,stage.IStage):
             self.set_axis_parameter(194,search_speed,addr=addr)
         if switch_speed is not None:
             self.set_axis_parameter(195,switch_speed,addr=addr)
-        return self.get_velocity_parameters()
+        return self.get_home_parameters()
     
     def home(self, wait=True, timeout=30., addr=0):
         """
