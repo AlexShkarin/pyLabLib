@@ -83,7 +83,7 @@ class IQLayoutManagedWidget:
     @contextlib.contextmanager
     def using_layout_tags(self, add=None, remove=None, replace=None):
         """
-        Context manager for temporarily using different layout tags.BytesWarning
+        Context manager for temporarily using different layout tags.
         
         See :meth:`change_layout_tags` for details.
         """

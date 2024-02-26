@@ -650,8 +650,8 @@ class QThreadController(QtCore.QObject):
         If the stop request has been made within this block, raise the exception on exit.
         Note that :meth:`stop` method and, correspondingly, :func:`stop_controller` still work, when called from the controlled thread.
         """
+        suspend_stop_request=self._suspend_stop_request
         try:
-            suspend_stop_request=self._suspend_stop_request
             self._suspend_stop_request=True
             yield
         finally:

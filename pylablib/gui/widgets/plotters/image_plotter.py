@@ -467,7 +467,7 @@ class ImagePlotter(QLayoutManagedWidget):
         self.hline=pyqtgraph.InfiniteLine(angle=0,movable=True,bounds=[0,None])
         self.image_window.getView().addItem(self.vline)
         self.image_window.getView().addItem(self.hline)
-        self.linecut_boundary_pen=pyqtgraph.mkPen("#008000",style=pyqtgraph.QtCore.Qt.DashLine)
+        self.linecut_boundary_pen=pyqtgraph.mkPen("#008000",style=pyqtgraph.QtCore.Qt.DashLine)  # pylint: disable=no-member
         self.hblines=[pyqtgraph.InfiniteLine(angle=0,movable=False,bounds=[0,None],pen=self.linecut_boundary_pen) for _ in range(2)]
         self.vblines=[pyqtgraph.InfiniteLine(angle=90,movable=False,bounds=[0,None],pen=self.linecut_boundary_pen) for _ in range(2)]
         self.image_window.getView().addItem(self.hblines[0])

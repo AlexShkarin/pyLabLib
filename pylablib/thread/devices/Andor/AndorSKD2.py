@@ -7,7 +7,7 @@ class AndorSDK2CameraThread(camera.GenericCameraThread):
 
     See :class:`.camera.GenericCameraThread`.
     """
-    parameter_variables=camera.GenericCameraThread.parameter_variables|{"shutter","exposure",
+    parameter_variables=camera.GenericCameraThread.parameter_variables|{"exposure",
         "frame_period","trigger_mode","detector_size","read_mode","roi_limits","roi","buffer_size",
         "EMCCD_gain","fan_mode","cooler","shutter","temperature","temperature_status","temperature_monitor",
         "channel","oamp","hsspeed","vsspeed","preamp","frame_transfer"}

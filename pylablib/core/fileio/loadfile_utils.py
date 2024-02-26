@@ -187,7 +187,7 @@ def read_dict_and_comments(f, case_normalization=None, inline_dtype="generic", a
                                 key="/".join(root_keys)+"/"+key
                             prev_key=(key,) # single-key line possibly means that an inline table follows
                         else:
-                            key,value=parsed
+                            key,value=parsed  # pylint: disable=unbalanced-tuple-unpacking
                             if root_keys:
                                 key="/".join(root_keys)+"/"+key
                             if not allow_duplicate_keys and key in data:
