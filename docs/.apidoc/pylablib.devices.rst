@@ -8,6 +8,7 @@ Subpackages
    :maxdepth: 4
 
    pylablib.devices.AWG
+   pylablib.devices.Agilent
    pylablib.devices.AlliedVision
    pylablib.devices.Andor
    pylablib.devices.Arcus
