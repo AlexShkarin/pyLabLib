@@ -247,7 +247,7 @@ class ParamTable(container.QWidgetContainer):
             self.remove_layout_element(par.label)
         if par.indicator is not None:
             self.remove_layout_element(par.indicator)
-    def add_virtual_element(self, name, value=None, multivalued=False, add_indicator=None):
+    def add_virtual_element(self, name, value=None, multivalued=False, on_set_value="store", signal_kind="none", add_indicator=None):
         """
         Add a virtual table element.
 
@@ -255,9 +255,14 @@ class ParamTable(container.QWidgetContainer):
         (its value can be set or read, it has on-change events, it can have indicator).
         The element value is simply stored on set and retrieved on get.
         If ``multivalued==True``, the internal value is assumed to be complex, so it is forced to be a :class:`.Dictionary` every time it is set.
+        `on_set_value` specifies the behavior when value is set; can be ``"store"`` (store as the current value and return on ``get_value`` later)
+        or ``"ignore"`` (keep the original value)
+        `signal_kind` specifies value changed signal kind; can be ``"none"`` (no signal),
+        ``"direct"`` (emulation of direct-connection signal, which is called whenever the value changes),
+        or ``"dummy"`` (emulation of direct-connection signal, which is never called).
         If ``add_indicator==True``, add default indicator handler as well.
         """
-        value_handler=value_handling.VirtualValueHandler(value,multivalued=multivalued)
+        value_handler=value_handling.VirtualValueHandler(value,multivalued=multivalued,on_set_value=on_set_value,signal_kind=signal_kind)
         if add_indicator is None:
             add_indicator=self.add_indicator
         indicator_handler=value_handling.VirtualIndicatorHandler(multivalued=multivalued) if add_indicator else None
