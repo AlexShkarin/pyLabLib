@@ -13,6 +13,15 @@ pylablib.core.gui.widgets.button module
    :undoc-members:
    :show-inheritance:
 
+pylablib.core.gui.widgets.button\_selector module
+-------------------------------------------------
+
+.. automodule:: pylablib.core.gui.widgets.button_selector
+   :members:
+   :inherited-members:
+   :undoc-members:
+   :show-inheritance:
+
 pylablib.core.gui.widgets.combo\_box module
 -------------------------------------------
 
