@@ -182,19 +182,22 @@ class ParamTable(container.QWidgetContainer):
             wlabel=QtWidgets.QLabel(self)
             wlabel.setObjectName("{}__label".format(name))
             llname,llocation=self._normalize_location(llocation,default_location=(row,col,rowspan,1),default_layout=lname)
-            self._insert_layout_element(llname,wlabel,llocation)
+            with self.using_layout_tags(add={"parameter."+name}):
+                self._insert_layout_element(llname,wlabel,llocation)
             wlabel.setText(label)
         else:
             wlabel=None
         if location!="skip":
-            self._insert_layout_element(lname,widget,(row,col+labelspan,rowspan,colspan-labelspan-indspan))
+            with self.using_layout_tags(add={"parameter."+name}):
+                self._insert_layout_element(lname,widget,(row,col+labelspan,rowspan,colspan-labelspan-indspan))
         value_handler=value_handler or value_handling.create_value_handler(widget)
         if add_indicator:
             windicator=QtWidgets.QLabel(self)
             windicator.setObjectName("{}__indicator".format(name))
             if ilocation=="next_line":
                 ilname,ilocation=self._normalize_location((row+1,col+labelspan,1,colspan-labelspan),default_location=(row,col+colspan-1,rowspan,1),default_layout=lname)
-            self._insert_layout_element(ilname,windicator,ilocation)
+            with self.using_layout_tags(add={"parameter."+name}):
+                self._insert_layout_element(ilname,windicator,ilocation)
             indicator_handler=value_handling.LabelIndicatorHandler(windicator,formatter=value_handler if add_indicator==True else add_indicator)
         else:
             windicator=None

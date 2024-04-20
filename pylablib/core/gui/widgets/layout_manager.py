@@ -203,6 +203,17 @@ class IQLayoutManagedWidget:
                     location=(idx,0,1,1)
                 return name,location 
         return None
+    def move_layout_element(self, element, location):
+        """Move the given layout element to a new location"""
+        for layout,_ in self._sublayouts.values():
+            idx=utils.find_layout_element(layout,element)
+            if idx is not None:
+                lname,location=self._normalize_location(location)
+                item=layout.takeAt(idx)
+                if location!="skip":
+                    self._insert_layout_element(lname,item,location,kind="item")
+                return True
+        return False
     def add_sublayout(self, name, kind="grid", location=None):
         """
         Add a sublayout to the given location.
@@ -303,7 +314,7 @@ class IQLayoutManagedWidget:
         else:
             return layout.count(),1
     
-    def add_spacer(self, height=0, width=0, stretch_height=False, stretch_width=False, stretch=0, location="next"):
+    def add_spacer(self, height=0, width=0, stretch_height=False, stretch_width=False, stretch=0, location="next", tag=None):
         """
         Add a spacer with the given width and height to the given location.
         
@@ -315,7 +326,8 @@ class IQLayoutManagedWidget:
             QtWidgets.QSizePolicy.MinimumExpanding if stretch_width else QtWidgets.QSizePolicy.Minimum,
             QtWidgets.QSizePolicy.MinimumExpanding if stretch_height else QtWidgets.QSizePolicy.Minimum)
         lname,lpos=self._normalize_location(location)
-        self.add_to_layout(spacer,location,kind="item")
+        with self.using_layout_tags(add={tag} if tag is not None else None):
+            self.add_to_layout(spacer,location,kind="item")
         self._spacers.append(spacer)  # otherwise the reference is lost, and the object might be deleted
         if lname is not None:
             r,c=lpos[:2]
@@ -332,7 +344,7 @@ class IQLayoutManagedWidget:
             elif lkind=="hbox" and stretch_width:
                 layout.setStretch(c,stretch[1])
         return spacer
-    def add_padding(self, kind="auto", location="next", stretch=0):
+    def add_padding(self, kind="auto", location="next", stretch=0, tag=None):
         """
         Add a padding (expandable spacer) of the given kind to the given location.
         
@@ -351,7 +363,7 @@ class IQLayoutManagedWidget:
                 kind="horizontal" if lkind=="hbox" else "vertical"
         stretch_height=kind in {"vertical","both"}
         stretch_width=kind in {"horizontal","both"}
-        return self.add_spacer(stretch_height=stretch_height,stretch_width=stretch_width,location=location,stretch=stretch)
+        return self.add_spacer(stretch_height=stretch_height,stretch_width=stretch_width,location=location,stretch=stretch,tag=tag)
     def _normalize_stretch(self, args):
         if len(args)==1:
             return list(enumerate(args[0]))
@@ -387,12 +399,13 @@ class IQLayoutManagedWidget:
             else:
                 raise ValueError("only gird and hbox layout support column stretch")
 
-    def add_decoration_label(self, text, location="next"):
+    def add_decoration_label(self, text, location="next", tag=None):
         """Add a decoration text label with the given text"""
         label=QtWidgets.QLabel(self)
         label.setText(str(text))
         label.setAlignment(QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter)
-        self.add_to_layout(label,location)
+        with self.using_layout_tags(add={tag} if tag is not None else None):
+            self.add_to_layout(label,location)
         return label
     def insert_row(self, row, sublayout=None, stretch=0):
         """Insert a new row at the given location in the grid layout"""
