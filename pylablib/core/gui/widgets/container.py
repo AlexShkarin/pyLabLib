@@ -617,3 +617,14 @@ class QTabContainer(IQContainer, QtWidgets.QTabWidget):
         """Set tab by name"""
         tab=self.c[name]
         self.setCurrentIndex(self.indexOf(tab))
+    def get_index_by_name(self, name):
+        """Get index by the tab's name"""
+        tab=self.c[name]
+        return self.indexOf(tab)
+    def get_name_by_index(self, idx):
+        """Return the name of the tab at a given index, or ``None`` if this tab is not being tracked"""
+        tab=self.widget(idx)
+        for n,v in self._tabs:
+            if v is tab:
+                return n
+        return None

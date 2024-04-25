@@ -45,19 +45,23 @@ def _tryint(v):
         return int(v)
     except ValueError:
         return v
-def cmp_versions(ver1, ver2):
+def cmp_versions(ver1, ver2, default="?"):
     """
     Compare two package versions.
     
     Return ``'<'`` if the first version is older (smaller), ``'>'`` if it's younger (larger) or ``'='`` if it's the same.
+    If the versions are not comparable (e.g., have different format), return `default`.
     """
     ver1=[_tryint(v.strip()) for v in str(ver1).split(".")]
     ver2=[_tryint(v.strip()) for v in str(ver2).split(".")]
-    if ver1>ver2:
-        return ">"
-    if ver1<ver2:
-        return "<"
-    return "="
+    try:
+        if ver1>ver2:
+            return ">"
+        if ver1<ver2:
+            return "<"
+        return "="
+    except TypeError:
+        return default
 def cmp_package_version(pkg, ver):
     """
     Compare current package version to `ver`.
