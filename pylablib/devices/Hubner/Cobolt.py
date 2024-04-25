@@ -42,6 +42,7 @@ class Cobolt(comm_backend.ICommBackendWrapper):
         except HubnerBackendError:
             if "default" in kwargs:
                 return kwargs["default"]
+            raise
         if result.lower().startswith("syntax error"):
             raise HubnerError(result)
         if data_type=="string":

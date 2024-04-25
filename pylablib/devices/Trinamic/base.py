@@ -34,6 +34,7 @@ class TMCM1110(comm_backend.ICommBackendWrapper,stage.IStage):
         self._add_settings_variable("limit_switches_parameters",self.get_limit_switches_parameters,self.setup_limit_switches)
         self._add_settings_variable("home_parameters",self.get_home_parameters,self.setup_home)
         self._add_status_variable("current_parameters",self.get_current_parameters)
+        self._add_status_variable("limit_switches_state",self.get_limit_switches_state)
         self._add_status_variable("velocity_factor",self.get_velocity_factor)
         self._add_status_variable("acceleration_factor",self.get_acceleration_factor)
         self._add_status_variable("microstep_resolution",self.get_microstep_resolution)
@@ -192,14 +193,39 @@ class TMCM1110(comm_backend.ICommBackendWrapper,stage.IStage):
 
     def get_limit_switches_parameters(self, axis=0, addr=0):
         """Return limit switch parameters ``(left_enable, right_enable)``"""
-        return TLimitSwitchParams(bool(self.get_axis_parameter(13,axis=axis,addr=addr)), bool(self.get_axis_parameter(12,axis=axis,addr=addr)))
+        return TLimitSwitchParams(self.get_axis_parameter(13,axis=axis,addr=addr)==0, self.get_axis_parameter(12,axis=axis,addr=addr)==0)
     def setup_limit_switches(self, left_enable=None, right_enable=None, axis=0, addr=0):
         """Setup limit switch parameters"""
         if left_enable is not None:
-            self.set_axis_parameter(13,1 if left_enable else 0,axis=axis,addr=addr)
+            self.set_axis_parameter(13,0 if left_enable else 1,axis=axis,addr=addr)
         if right_enable is not None:
-            self.set_axis_parameter(12,1 if right_enable else 0,axis=axis,addr=addr)
+            self.set_axis_parameter(12,0 if right_enable else 1,axis=axis,addr=addr)
         return self.get_limit_switches_parameters(axis=axis,addr=addr)
+    def get_limit_switches_state(self, axis=0, addr=0):
+        """Get the state of the left and right limit switches"""
+        return bool(self.get_axis_parameter(11,axis=axis,addr=addr)),bool(self.get_axis_parameter(10,axis=axis,addr=addr))
+    def get_switch_polarity(self, axis=0, addr=0):
+        """
+        Get end switch polarity (``False`` for normal, ``True`` for reversed).
+        
+        Note that for 3-axis controller (TMCM-3110) the polarity is the same for all axes,
+        and for 6-axis controller (TMCM-6110) it has to be the same for the first 3 and the last 3 axes
+        """
+        pol=self.get_global_parameter(79,addr=addr)
+        mask=0x01 if axis<3 else 0x02
+        return bool(pol&mask)
+    def set_switch_polarity(self, polarity=False, axis=0, addr=0):
+        """
+        Set end switch polarity (``False`` for normal, ``True`` for reversed).
+        
+        Note that for 3-axis controller (TMCM-3110) the polarity is the same for all axes,
+        and for 6-axis controller (TMCM-6110) it has to be the same for the first 3 and the last 3 axes
+        """
+        pol=self.get_global_parameter(79,addr=addr)
+        mask=0x01 if axis<3 else 0x02
+        pol=(pol&~mask)|(mask if polarity else 0)
+        self.set_global_parameter(79,pol,addr=addr)
+        return self.get_switch_polarity(axis=axis,addr=addr)
     
     _p_home_mode=interface.EnumParameterClass("home_mode",
         {"lim_left":1,"lim_right_left":2,"lim_right_left_bothsides":3,"lim_left_bothsides":4,
