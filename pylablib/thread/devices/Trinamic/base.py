@@ -18,6 +18,7 @@ class TMCM1110Thread(device_thread.DeviceThread):
 
     Commands:
         - ``move_to``: move to a new position
+        - ``move_by``: move by a given distance
         - ``set_position_reference``: set current position reference
         - ``jog``: start jogging into a given direction
         - ``stop_motion``: stop motion
@@ -34,6 +35,7 @@ class TMCM1110Thread(device_thread.DeviceThread):
         self.add_job("update_measurements",self.update_measurements,.5)
         self.add_job("update_parameters",self.update_parameters,2)
         self.add_command("move_to")
+        self.add_command("move_by")
         self.add_command("set_position_reference")
         self.add_command("jog")
         self.add_command("home")
@@ -58,6 +60,12 @@ class TMCM1110Thread(device_thread.DeviceThread):
             self._stop_wait()
             self.device.move_to(position)
             self.update_measurements()
+    def move_by(self, distance, axis=0):
+        """Move by `distance` (positive or negative)"""
+        if self.open():
+            self._stop_wait()
+            self.device.move_by(distance)
+            self.update_measurements()
     def set_position_reference(self, position=0):
         """Reference to a new position (assign current position to `position`)"""
         if self.open():
@@ -69,11 +77,11 @@ class TMCM1110Thread(device_thread.DeviceThread):
             self._stop_wait()
             self.device.jog(direction)
             self.update_measurements()
-    def home(self):
-        """Home the motor"""
+    def home(self, sync=True):
+        """Home the motor and wait until the homing is done (if `sync` is ``True``)"""
         if self.open():
             self._stop_wait()
-            self.device.home()
+            self.device.home(wait=sync)
             self.update_measurements()
     def stop_motion(self):
         """Stop motion"""
@@ -109,6 +117,7 @@ class TMCMx110Thread(device_thread.DeviceThread):
 
     Commands:
         - ``move_to``: move to a new position
+        - ``move_by``: move by a given distance
         - ``set_position_reference``: set current position reference
         - ``jog``: start jogging into a given direction
         - ``stop_motion``: stop motion
@@ -127,6 +136,7 @@ class TMCMx110Thread(device_thread.DeviceThread):
         self.add_job("update_measurements",self.update_measurements,.5)
         self.add_job("update_parameters",self.update_parameters,2)
         self.add_command("move_to")
+        self.add_command("move_by")
         self.add_command("set_position_reference")
         self.add_command("jog")
         self.add_command("home")
@@ -156,6 +166,12 @@ class TMCMx110Thread(device_thread.DeviceThread):
             self._stop_wait(axis=axis)
             self.device.move_to(position,axis=axis)
             self.update_measurements()
+    def move_by(self, distance, axis=0):
+        """Move by `distance` (positive or negative)"""
+        if self.open():
+            self._stop_wait(axis=axis)
+            self.device.move_by(distance,axis=axis)
+            self.update_measurements()
     def set_position_reference(self, position=0, axis=0):
         """Reference to a new position (assign current position to `position`)"""
         if self.open():
@@ -167,11 +183,11 @@ class TMCMx110Thread(device_thread.DeviceThread):
             self._stop_wait(axis=axis)
             self.device.jog(direction,axis=axis)
             self.update_measurements()
-    def home(self, axis=0):
-        """Home the motor"""
+    def home(self, axis=0, sync=True):
+        """Home the motor and wait until the homing is done (if `sync` is ``True``)"""
         if self.open():
             self._stop_wait(axis=axis)
-            self.device.home(axis=axis)
+            self.device.home(axis=axis,wait=sync)
             self.update_measurements()
     def stop_motion(self, axis=0):
         """Stop motion"""

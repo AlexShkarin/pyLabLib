@@ -40,6 +40,8 @@ class TMCM1110(comm_backend.ICommBackendWrapper,stage.IStage):
         self._add_status_variable("microstep_resolution",self.get_microstep_resolution)
         self._add_status_variable("current_speed",self.get_current_speed)
         self._add_status_variable("moving",self.is_moving)
+        self._add_status_variable("homing",self.is_homing)
+        self._add_status_variable("last_home_position",self.get_last_home_position)
         self.open()
 
     def open(self):
@@ -289,6 +291,9 @@ class TMCM1110(comm_backend.ICommBackendWrapper,stage.IStage):
     def is_homing(self, axis=0, addr=0):
         """Check if homing is in progress at the given address"""
         return bool(self.query(13,2,0,bank=axis,addr=addr).value)
+    def get_last_home_position(self, axis=0, addr=0):
+        """Get the last readout position when the homing operation was complete (0 upon startup)"""
+        return self.get_axis_parameter(197,axis=axis,addr=addr)
 
     def get_velocity_parameters(self, axis=0, addr=0):
         """
