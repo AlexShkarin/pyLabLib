@@ -25,7 +25,14 @@ The laser is identified by its VISA address, typically looking like ``"USB0::0x1
     >> pll.list_backend_resources("visa")
     ('USB0::0x17E7::0x0102::01-01-10::INSTR',)
     >> from pylablib.devices import Sirah
-    >> laser = Sirah.SirahMatisse("")
+    >> laser = Sirah.SirahMatisse("USB0::0x17E7::0x0102::01-01-10::INSTR")
+    >> laser.close()
+
+Alternatively, one can use a network connection to the Matisse Commander server, if it is enabled in the Matisse Commander communication Options::
+
+    >> import pylablib as pll
+    >> from pylablib.devices import Sirah
+    >> laser = Sirah.SirahMatisse(("127.0.0.1",30000))  # local server on the default port 30000
     >> laser.close()
 
 Operation
