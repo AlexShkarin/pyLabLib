@@ -18,6 +18,7 @@ class TrinamicTimeoutError(TrinamicError):
 TLimitSwitchParams=collections.namedtuple("TLimitSwitchParams",["left_enable","right_enable"])
 TVelocityParams=collections.namedtuple("TVelocityParams",["speed","accel","pulse_divisor","ramp_divisor"])
 THomeParams=collections.namedtuple("THomeParams",["mode","search_speed","switch_speed"])
+TTMCM1110ReplyData=collections.namedtuple("TTMCM1110ReplyData",["comm","status","value","addr","module"])
 class TMCM1110(comm_backend.ICommBackendWrapper,stage.IStage):
     """
     Trinamic stepper motor controller TMCM-1110 controlled using TMCL Firmware.
@@ -55,7 +56,6 @@ class TMCM1110(comm_backend.ICommBackendWrapper,stage.IStage):
         data_str=struct.pack(">BBBBi",addr,comm,comm_type,bank,int(value))
         chksum=sum([b for b in data_str])%0x100
         return data_str+struct.pack("<B",chksum)
-    ReplyData=collections.namedtuple("ReplyData",["comm","status","value","addr","module"])
     @staticmethod
     def _parse_reply(reply, result_format="i"):
         reply=bytes(reply)
@@ -68,7 +68,7 @@ class TMCM1110(comm_backend.ICommBackendWrapper,stage.IStage):
             value=reply[4:8]
         else:
             value,=struct.unpack(">I" if result_format=="u" else ">i",reply[4:8])
-        return TMCM1110.ReplyData(comm,status,value,addr,module)
+        return TTMCM1110ReplyData(comm,status,value,addr,module)
     _status_codes={100:"Success", 101:"Command loaded", 1:"Wrong checksum", 2:"Invalid command", 3:"Wrong type", 4:"Invalid value", 5:"EEPROM locked", 6:"Command not available"}
     @classmethod
     def _check_status(cls, status):

@@ -245,7 +245,7 @@ class DCAMCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribute
         return [DCAMAttribute(self.handle,pid) for pid in ids]
     def _normalize_attribute_name(self, name):
         return name.lower().replace(" ","_")
-    def get_attribute_value(self, name, enum_as_str=False, error_on_missing=True, default=None):  # pylint: disable=arguments-differ
+    def get_attribute_value(self, name, enum_as_str=False, error_on_missing=True, default=None):  # pylint: disable=arguments-differ, arguments-renamed
         """
         Get value of an attribute with the given name.
         

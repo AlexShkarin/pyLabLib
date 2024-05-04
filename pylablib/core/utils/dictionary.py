@@ -978,26 +978,26 @@ class Dictionary:
             return self._make_similar_dict({},copy=False)
         return self._make_similar_dict(dfs_tree,copy=False)
 
-class DictionaryDiff(collections.namedtuple("DictionaryDiff",["same","changed_from","changed_to","removed","added"])): # making Sphinx autodoc generate correct docstring
-    """
-    Describes a difference between the two dictionaries.
-    
-    Attributes:
-        same (:class:`Dictionary`): Contains the leafs which is the same.
-        changed_from (:class:`Dictionary`): Contains the leafs from the first dictionary which have different values in the second dictionary.
-        changed_to (:class:`Dictionary`): Contains the leafs from the second dictionary which have different values in the first dictionary.
-        removed (:class:`Dictionary`): Contains the leafs from the first dictionary which are absent in the second dictionary.
-        added (:class:`Dictionary`): Contains the leafs from the second dictionary which are absent in the first dictionary.
-    """
+DictionaryDiff=collections.namedtuple("DictionaryDiff",["same","changed_from","changed_to","removed","added"])
+"""
+Describes a difference between the two dictionaries.
 
-class DictionaryIntersection(collections.namedtuple("DictionaryIntersection",["common","individual"])): # making Sphinx autodoc generate correct docstring
-    """
-    Describes the result of finding intersection of multiple dictionaries.
-    
-    Attributes:
-        common (:class:`Dictionary`): Contains the intersection of all dictionaries.
-        individual ([:class:`Dictionary`]): Contains list of difference from intersection for all dictionaries.
-    """
+Attributes:
+    same (:class:`Dictionary`): Contains the leafs which is the same.
+    changed_from (:class:`Dictionary`): Contains the leafs from the first dictionary which have different values in the second dictionary.
+    changed_to (:class:`Dictionary`): Contains the leafs from the second dictionary which have different values in the first dictionary.
+    removed (:class:`Dictionary`): Contains the leafs from the first dictionary which are absent in the second dictionary.
+    added (:class:`Dictionary`): Contains the leafs from the second dictionary which are absent in the first dictionary.
+"""
+
+DictionaryIntersection=collections.namedtuple("DictionaryIntersection",["common","individual"])
+"""
+Describes the result of finding intersection of multiple dictionaries.
+
+Attributes:
+    common (:class:`Dictionary`): Contains the intersection of all dictionaries.
+    individual ([:class:`Dictionary`]): Contains list of difference from intersection for all dictionaries.
+"""
 
 ### Conversion to and from a tuple ###
 ### Used in .strdump module (see that module for more info) ###

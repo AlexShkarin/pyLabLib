@@ -370,7 +370,7 @@ class BaslerPylonCamera(camera.IROICamera, camera.IAttributeCamera, camera.IExpo
         If ``enum_as_str==True``, return enum-style values as strings; otherwise, return corresponding integer values.
         """
         return super().get_attribute_value(name,error_on_missing=error_on_missing,default=default,enum_as_str=enum_as_str)
-    def set_attribute_value(self, name, value, truncate=True, error_on_missing=True):  # pylint: disable=arguments-differ
+    def set_attribute_value(self, name, value, truncate=True, error_on_missing=True):  # pylint: disable=arguments-differ, arguments-renamed
         """
         Set value of an attribute with the given name.
         

@@ -11,6 +11,6 @@ class MightexSSeriesCameraThread(camera.GenericCameraThread):
     def connect_device(self):
         with self.using_devclass("Mightex.MightexSSeriesCamera",host=self.remote) as cls:
             self.device=cls(idx=self.mightex_idx)  # pylint: disable=not-callable
-    def setup_task(self, idx=0, remote=None, misc=None):  # pylint: disable=arguments-differ
+    def setup_task(self, idx=0, remote=None, misc=None):  # pylint: disable=arguments-differ, arguments-renamed
         self.mightex_idx=idx
         super().setup_task(remote=remote,misc=misc)

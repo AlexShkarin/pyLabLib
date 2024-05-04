@@ -250,7 +250,7 @@ class ParamTable(container.QWidgetContainer):
             self.remove_layout_element(par.label)
         if par.indicator is not None:
             self.remove_layout_element(par.indicator)
-    def add_virtual_element(self, name, value=None, multivalued=False, on_set_value="store", signal_kind="none", add_indicator=None):
+    def add_virtual_element(self, name, value=None, multivalued=False, on_set_value="store", signal_kind="none", add_indicator=None):  # pylint: disable=arguments-renamed
         """
         Add a virtual table element.
 

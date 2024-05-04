@@ -28,7 +28,7 @@ class PvcamCameraThread(camera.GenericCameraThread):
         if "trigger_mode" in parameters:
             trig_mode_alias={"int":"e_int","ext":"e_trig_first"}
             parameters["trigger_mode"]=trig_mode_alias.get(parameters["trigger_mode"],parameters["trigger_mode"])
-    def setup_task(self, cam_name=None, remote=None, misc=None):  # pylint: disable=arguments-differ
+    def setup_task(self, cam_name=None, remote=None, misc=None):  # pylint: disable=arguments-differ, arguments-renamed
         self.cam_name=cam_name
         super().setup_task(remote=remote,misc=misc)
     def _apply_additional_parameters(self, parameters):

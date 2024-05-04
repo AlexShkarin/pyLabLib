@@ -174,7 +174,7 @@ class SirahMatisseTunerThread(SirahMatisseThread):
     def close_device(self):
         self.stop_tuning()
         return super().close_device()
-    def setup_task(self, conn, wmversion, remote=None, wmremote="auto", calibration=None):  # pylint: disable=arguments-differ
+    def setup_task(self, conn, wmversion, remote=None, wmremote="auto", calibration=None):  # pylint: disable=arguments-differ, arguments-renamed
         self.wmversion=wmversion
         self.wmremote=wmremote if wmremote!="auto" else remote
         self.calibration=calibration

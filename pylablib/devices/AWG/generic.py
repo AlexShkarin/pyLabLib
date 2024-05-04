@@ -96,14 +96,14 @@ class GenericAWG(SCPI.SCPIDevice):
                 raise self.Error("option '{}' for channel {} is not supported by this device".format(name,channel))
             return False
         return True
-    def _add_scpi_parameter(self, name, comm, kind="float", parameter=None, set_delay=0, channel=None, comm_kind="source", add_variable=False):  # pylint: disable=arguments-differ
+    def _add_scpi_parameter(self, name, comm, kind="float", parameter=None, set_delay=0, channel=None, comm_kind="source", add_variable=False):  # pylint: disable=arguments-differ, arguments-renamed
         if channel is not None and name not in self._all_channel_commands:
             if not self._can_add_command(name,channel):
                 return
             name=self._build_variable_name(name,channel)
             comm=self._build_channel_command(comm,channel,kind=comm_kind)
         return super()._add_scpi_parameter(name,comm,kind=kind,parameter=parameter,set_delay=set_delay,add_variable=add_variable)
-    def _modify_scpi_parameter(self, name, comm, kind=None, parameter=None, set_delay=0, channel=None, comm_kind="source"):  # pylint: disable=arguments-differ
+    def _modify_scpi_parameter(self, name, comm, kind=None, parameter=None, set_delay=0, channel=None, comm_kind="source"):  # pylint: disable=arguments-differ, arguments-renamed
         if channel is not None and name not in self._all_channel_commands:
             if not self._can_add_command(name,channel):
                 return

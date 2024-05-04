@@ -13,7 +13,7 @@ class BaslerPylonCameraThread(camera.GenericCameraThread):
     def connect_device(self):
         with self.using_devclass("Basler.BaslerPylonCamera",host=self.remote) as cls:
             self.device=cls(idx=self.basler_idx,name=self.basler_name)  # pylint: disable=not-callable
-    def setup_task(self, idx=0, name=None, remote=None, misc=None):  # pylint: disable=arguments-differ
+    def setup_task(self, idx=0, name=None, remote=None, misc=None):  # pylint: disable=arguments-differ, arguments-renamed
         self.basler_idx=idx
         self.basler_name=name
         super().setup_task(remote=remote,misc=misc)
