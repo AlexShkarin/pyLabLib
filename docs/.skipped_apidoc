@@ -49,6 +49,7 @@
 ..\pylablib\devices\Thorlabs\tl_camera_sdk_lib.py
 ..\pylablib\devices\uc480\uc480_defs.py
 ..\pylablib\devices\uc480\uc480_lib.py
+..\pylablib\devices\Windows\winmm_lib.py
 ..\pylablib\core\dataproc\ctransform.c
 ..\pylablib\devices\Andor\utils.c
 ..\pylablib\devices\Basler\utils.c

@@ -57,6 +57,7 @@ Subpackages
    pylablib.devices.Toptica
    pylablib.devices.Trinamic
    pylablib.devices.Voltcraft
+   pylablib.devices.Windows
    pylablib.devices.interface
    pylablib.devices.uc480
    pylablib.devices.utils
