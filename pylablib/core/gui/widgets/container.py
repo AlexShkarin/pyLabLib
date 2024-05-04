@@ -598,7 +598,7 @@ class QTabContainer(IQContainer, QtWidgets.QTabWidget):
         else:
             if name not in self._hidden_tabs:
                 return
-            frame,caption,prev_names=self._hidden_tabs
+            frame,caption,prev_names=self._hidden_tabs[name]
             prev_idx=[self.indexOf(self._tabs[n]) for n in prev_names if n in self._tabs]
             idx=max(prev_idx+[-1])+1
             self.insertTab(idx,frame,caption)

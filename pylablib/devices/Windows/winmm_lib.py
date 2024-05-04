@@ -26,8 +26,7 @@ drMMRESULT={
     18: "MMSYSERR_DELETEERROR",
     19: "MMSYSERR_VALNOTFOUND",
     20: "MMSYSERR_NODRIVERCB",
-    20: "MMSYSERR_LASTERROR",
-};
+}
 class WinMMError(DeviceError):
     """Generic WinMM error"""
     def __init__(self, func, code):
@@ -38,11 +37,11 @@ class WinMMError(DeviceError):
         super().__init__(self.msg)
 def errchecker():
     """A WinMM error checking function"""
-    def errchecker(result, func, arguments):  # pylint: disable=unused-argument
+    def errcheck(result, func, arguments):  # pylint: disable=unused-argument
         if result:
             raise WinMMError(func.__name__,result)
         return result
-    return errchecker
+    return errcheck
 
 MAXPNAMELEN=32
 MAX_JOYSTICKOEMVXDNAME=260

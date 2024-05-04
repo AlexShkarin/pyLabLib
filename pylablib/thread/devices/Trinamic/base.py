@@ -60,7 +60,7 @@ class TMCM1110Thread(device_thread.DeviceThread):
             self._stop_wait()
             self.device.move_to(position)
             self.update_measurements()
-    def move_by(self, distance, axis=0):
+    def move_by(self, distance):
         """Move by `distance` (positive or negative)"""
         if self.open():
             self._stop_wait()

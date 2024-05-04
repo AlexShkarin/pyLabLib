@@ -58,6 +58,8 @@ class Joystick(interface.IDevice):
             self._opened=False
     def is_opened(self):
         return self._opened
+    def _get_connection_parameters(self):
+        return (self.idx,self.expanded_events)
     def start(self):
         """Start the polling loop (used for events recording)"""
         self.stop()
