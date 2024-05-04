@@ -6,9 +6,9 @@ import ctypes
 
 cdef int ret_val_size=ctypes.sizeof(pylonC_defs.PylonGrabResult_t)
 
-ctypedef int (*pPylonStreamGrabberRetrieveResult)(void *hStg, void *pGrabResult, unsigned char *pReady) nogil
-ctypedef int (*pPylonStreamGrabberQueueBuffer)(void *hStg, void *hBuf, void *pContext) nogil
-ctypedef int (*pPylonWaitObjectWait)(void *hWobj, unsigned timeout, void *pResult) nogil
+ctypedef int (*pPylonStreamGrabberRetrieveResult)(void *hStg, void *pGrabResult, unsigned char *pReady) noexcept nogil
+ctypedef int (*pPylonStreamGrabberQueueBuffer)(void *hStg, void *hBuf, void *pContext) noexcept nogil
+ctypedef int (*pPylonWaitObjectWait)(void *hWobj, unsigned timeout, void *pResult) noexcept nogil
 
 
 @cython.cdivision(True)

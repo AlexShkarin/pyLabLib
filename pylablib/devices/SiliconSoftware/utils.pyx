@@ -5,7 +5,7 @@ ctypedef long long int int64_t
 ctypedef unsigned int DWORD
 
 ctypedef int64_t (*pFg_getStatusEx)(void *Fg, int Param, int64_t Data, unsigned DmaIndex, void *pMem) nogil
-ctypedef int (*pFg_AcquireEx)(void *Fg, unsigned DmaIndex, int64_t PicCount, int nFlag, void *pMem) nogil
+ctypedef int (*pFg_AcquireEx)(void *Fg, unsigned DmaIndex, int64_t PicCount, int nFlag, void *pMem) noexcept nogil
 cdef extern void Sleep(DWORD dwMilliseconds) nogil
 
 cdef enum:

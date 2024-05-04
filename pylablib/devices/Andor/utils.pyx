@@ -1,8 +1,8 @@
 import cython
 from libc.string cimport memcpy
 
-ctypedef int (*pAT_WaitBuffer)(int Hndl, void **Ptr, int *PtrSize, unsigned int Timeout) nogil
-ctypedef int (*pAT_QueueBuffer)(int Hndl, void *Ptr, int PtrSize) nogil
+ctypedef int (*pAT_WaitBuffer)(int Hndl, void **Ptr, int *PtrSize, unsigned int Timeout) noexcept nogil
+ctypedef int (*pAT_QueueBuffer)(int Hndl, void *Ptr, int PtrSize) noexcept nogil
 
 @cython.cdivision(True)
 cdef int clooper(int Hndl, unsigned nbuff, void **hbuffers, int esize, int queued, int *looping, unsigned *nread,
