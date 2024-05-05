@@ -514,6 +514,7 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         """
         Get current velocity parameters ``(min_velocity, acceleration, max_velocity)``
         
+        Note that, according to the documentation, the minimal velocity is always zero.
         If ``scale==True``, return values in the physical units (see class description); otherwise, return it in the device internal units.
         """
         data=self.query(0x0414,self._make_channel(channel),dest=("channel",channel)).data
@@ -528,6 +529,7 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         Set velocity parameters.
         
         If any parameter is ``None``, use the current value.
+        Note that, according to the documentation, the minimal velocity is always zero, so changing it has no effect.
         If ``scale==True``, assume that the specified values are in the physical units (see class description); otherwise, assume it is in the device internal units.
         """
         current_parameters=self._get_velocity_parameters(channel=channel,scale=False)
@@ -938,7 +940,6 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
         return self._pzmot_get_enabled_channels()
     def _pzmot_autoenable(self, channel, auto_enable=True):
         if auto_enable:
-            channel={0x01:1,0x02:2,0x04:3,0x08:4}[channel]
             enabled=self._pzmot_get_enabled_channels()
             if channel not in enabled:
                 self._pzmot_enable_channels(channel)
@@ -947,8 +948,8 @@ class KinesisDevice(IMultiaxisStage,BasicKinesisDevice):
     @interface.use_parameters(channel="channel_id")
     def _pzmot_move_to(self, position, auto_enable=True, channel=None):
         """Move piezo-motor to `position` (positive or negative)"""
-        self._pzmot_autoenable(channel,auto_enable)
-        self.send_comm_data(0x08D4,struct.pack("<Hi",channel,position))
+        self._pzmot_autoenable({0x01:1,0x02:2,0x04:3,0x08:4}[channel],auto_enable)
+        self.send_comm_data(0x08D4,struct.pack("<Hi",channel,int(position)))
     @muxchannel(mux_argnames="distance")
     def _pzmot_move_by(self, distance=1, auto_enable=True, channel=None):
         """Move piezo-motor by a given `distance` (positive or negative)"""
