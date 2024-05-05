@@ -35,4 +35,5 @@ Currently supported devices:
     Lumel
     Omron
     misc_devices
+    Windows
     protocols

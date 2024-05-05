@@ -25,8 +25,15 @@ def list_joysticks():
     return js
 
 TJoystickEvent=collections.namedtuple("TJoystickEvent",["kind","index","old","new","timestamp"])
-TJoystickEventEx=collections.namedtuple("TJoystickEvent",["kind","index","old","new","state","timestamp"])
+TJoystickEventEx=collections.namedtuple("TJoystickEventEx",["kind","index","old","new","state","timestamp"])
 class Joystick(interface.IDevice):
+    """
+    Generic Windows joystick device.
+
+    Args:
+        idx: joystick index (0-based) in the list returned by :func:`list_joysticks`; if ``None``, use the first valid index.
+        expanded_events (bool): if ``True``, the events include the full joystick state; otherwise, they only record the change of the state at the particular event
+    """
     Error=winmm_lib.WinMMError
     def __init__(self, idx=None, expanded_events=False):
         super().__init__()

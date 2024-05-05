@@ -37,6 +37,7 @@
     - :ref:`ElektroAutomatik power supplies <elektroautomatik_sources>`
     - :ref:`Rigol power supplies <rigol_power_supply>`
 
+- :ref:`Generic Windows devices <generic_windows_devices>`
 - :ref:`Mid-level protocols <protocols>`
 
     - :ref:`Modbus <protocols_modbus>`
