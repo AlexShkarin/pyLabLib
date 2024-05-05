@@ -97,7 +97,7 @@ class TopticaIBeam(comm_backend.ICommBackendWrapper):
     
     def reboot(self):
         """Reboot the laser system"""
-        self.query("reset system",reply=False)
+        return self.query("reset system",reply=False,multiline=True)
     
     def get_device_info(self):
         """Get the device info of the laser system: ``(serial, version)``"""
