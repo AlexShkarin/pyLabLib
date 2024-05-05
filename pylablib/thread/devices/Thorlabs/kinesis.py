@@ -141,6 +141,8 @@ class KinesisPiezoMotorThread(device_thread.DeviceThread):
         self.default_channels=default_channels
         self.add_job("update_measurements",self.update_measurements,.5)
         self.add_job("update_parameters",self.update_parameters,2)
+        self.add_device_command("enable_channels")
+        self.add_device_command("get_enabled_channels")
         self.add_command("move_to")
         self.add_command("set_position_reference")
         self.add_command("move_by")
@@ -193,7 +195,73 @@ class KinesisPiezoMotorThread(device_thread.DeviceThread):
     def setup_drive(self, velocity=None, voltage=None, acceleration=None, channel=None):
         """Set maximal motion velocity, maximal voltage, and acceleration on a given channel"""
         if self.open():
-            self.device.setup_velocity(max_voltage=voltage,velocity=velocity,acceleration=acceleration,channel=channel)
+            self.device.setup_drive(max_voltage=voltage,velocity=velocity,acceleration=acceleration,channel=channel)
+            self.update_parameters()
+
+
+
+class KinesisPiezoControllerThread(device_thread.DeviceThread):
+    """
+    Thorlabs piezo controller (TPZ/KPZ series) device thread.
+
+    Device args:
+        - ``conn``: serial connection parameters (usually an 8-digit device serial number)
+        - ``**kwargs``: additional arguments supplied on the device creation (e.g., ``default_channel``)
+        - ``default_channels``: number of channels used by default if the device could not be connected
+        - ``remote``: address of the remote host where the device is connected; ``None`` (default) for local device, or ``"disconnect"`` to not connect
+
+    Variables:
+        - ``enabled``: whether the output is enabled
+        - ``voltage``: last measured output voltage
+        - ``parameters``: main stage parameters: voltage range and source, etc.
+
+    Commands:
+        - ``enable_channel``: enable or disable the output
+        - ``set_output_voltage``: set the software output voltage
+        - ``setup_voltage_output_parameters``: setup voltage output parameters: source and range
+    """
+    def connect_device(self):
+        with self.using_devclass("Thorlabs.KinesisPiezoController",host=self.remote) as cls:
+            self.device=cls(conn=self.conn,**self.dev_kwargs)  # pylint: disable=not-callable
+            self.device.get_output_voltage()
+    def setup_task(self, conn, remote=None, default_channels=1, **kwargs):  # pylint: disable=arguments-differ
+        self.device_reconnect_tries=5
+        self.conn=conn
+        self.remote=remote
+        self.dev_kwargs=kwargs
+        self.default_channels=default_channels
+        self.add_job("update_measurements",self.update_measurements,.5)
+        self.add_job("update_parameters",self.update_parameters,2)
+        self.add_command("enable_channel")
+        self.add_command("set_output_voltage")
+        self.add_command("setup_voltage_output_parameters")
+    def update_measurements(self):
+        if self.open():
+            for ch in self.device.get_all_axes():
+                self.v["voltage",ch]=self.device.get_output_voltage(channel=ch)
+                self.v["enabled",ch]=self.device.is_channel_enabled(channel=ch)
+        else:
+            for ch in range(1,self.default_channels+1):
+                self.v["voltage",ch]=0
+                self.v["enabled",ch]=False
+    
+    def enable_channel(self, enabled=True, channel=None):
+        """Enable or disable the given channel"""
+        if self.open():
+            self.device.enable_channel(enabled,channel=channel)
+            self.update_measurements()
+    def set_output_voltage(self, voltage, channel=None):
+        """Set piezo controller output voltage"""
+        if self.open():
+            self.device.set_output_voltage(voltage,channel=channel)
+            self.update_measurements()
+    def setup_voltage_output_parameters(self, src=None, rng=None, channel=None):
+        """Set the voltage output parameters: source and range"""
+        if self.open():
+            if src is not None:
+                self.device.set_voltage_source(src,channel=channel)
+            if rng is not None:
+                self.device.set_voltage_range(rng,channel=channel)
             self.update_parameters()
 
 
@@ -234,7 +302,7 @@ class MFFThread(device_thread.DeviceThread):
 
 
 
-class ThorlabsKinesisQuadDetectorThread(device_thread.DeviceThread):
+class KinesisQuadDetectorThread(device_thread.DeviceThread):
     """
     Thorlabs Kinesis quadrature detector thread.
 

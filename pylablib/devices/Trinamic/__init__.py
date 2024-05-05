@@ -1,1 +1,1 @@
-from .base import TMCM1110, TrinamicError
+from .base import TMCM1110, TMCMx110, TrinamicError

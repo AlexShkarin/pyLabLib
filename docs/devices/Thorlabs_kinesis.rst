@@ -6,9 +6,9 @@
 Thorlabs APT/Kinesis devices
 ==============================
 
-Thorlabs has a variety of APT/Kinesis devices for various motion-related functionality (mostly motor controllers and piezo drivers), which share the same API. The library uses an older and more low-level APT protocol to communicate with these devices. So far it has been only implemented for motor controllers and some :ref:`specialized devices <misc_thorlabs>` and tested with KDC101, KST101, K10CR1, and BSC201 motor controllers, KIM101 piezo motor controller, and TPA101 quadrature sensor controller.
+Thorlabs has a variety of APT/Kinesis devices for various motion-related functionality (mostly motor controllers and piezo drivers), which share the same API. The library uses an older and more low-level APT protocol to communicate with these devices. So far it has been only implemented for motor controllers and some :ref:`specialized devices <misc_thorlabs>` and tested with KDC101, KST101, K10CR1, and BSC201 motor controllers, KIM101 piezo motor controller, KPZ101 piezo output controller, and TPA101 quadrature sensor controller.
 
-The main device classes are :class:`pylablib.devices.Thorlabs.BasicKinesisDevice<.kinesis.BasicKinesisDevice>` for a generic Kinesis/APT devices :class:`pylablib.devices.Thorlabs.KinesisMotor<.kinesis.KinesisMotor>` aimed at motor controllers such as K10CR1 or KDC101, and :class:`pylablib.devices.Thorlabs.KinesisPiezoMotor<.kinesis.KinesisPiezoMotor>` for piezo drivers such as KIM and TIM.
+The main device classes are :class:`pylablib.devices.Thorlabs.BasicKinesisDevice<.kinesis.BasicKinesisDevice>` for a generic Kinesis/APT devices :class:`pylablib.devices.Thorlabs.KinesisMotor<.kinesis.KinesisMotor>` aimed at motor controllers such as K10CR1 or KDC101, :class:`pylablib.devices.Thorlabs.KinesisPiezoMotor<.kinesis.KinesisPiezoMotor>` for piezo drivers such as KIM and TIM, and :class:`pylablib.devices.Thorlabs.KinesisPiezoController<.kinesis.KinesisPiezoController>` for piezo controllers such as KPZ and TPZ.
 
 
 Software requirements
@@ -63,6 +63,12 @@ This controller has several features and differences compared to most other stag
     - The controllers are treated as multi-axis. However, to be compatible with other Kinesis motor, the channel argument is not required, and it defaults to the currently selected "default" channel (1 in the beginning). To control different channels, you can either supply ``channel`` argument explicitly, or specify a different default channel using :meth:`.KinesisPiezoMotor.set_default_channel` or :meth:`.KinesisPiezoMotor.using_channel`.
     - The motor power-up parameters for jogging and drive can be different from the parameters showing up in the APT/Kinesis controller. This can lead to problems if, e.g., speed is too low. You should make sure to check those parameters using :meth:`.KinesisPiezoMotor.get_drive_parameters` and :meth:`.KinesisPiezoMotor.get_jog_parameters`.
     - Even open-loop controllers support absolute positioning, which is achieved simply by counting steps in both directions. However, unlike stepper motors or encoders, these steps can be different depending on the direction, position, instantaneous load, speed, etc. Hence, the absolute positions quickly become unreliable. It is, therefore, recommended to generally use relative positioning using :meth:`.KinesisPiezoMotor.move_by` method.
+
+
+Piezo controllers
+=======================
+
+This controller acts more as a voltage amplifier than as a stage. Therefore, it does not have any motion-related commands (such as ``move_to``), and instead is mainly operated through :meth:`.KinesisPiezoController.enable_channel` and :meth:`.KinesisPiezoController.set_output_voltage` methods to control the output. In addition, it supports controlling the full output range (:meth:`.KinesisPiezoController.set_voltage_range`) and the voltage source (:meth:`.KinesisPiezoController.set_voltage_source`).
 
 
 .. _stages_thorlabs_kinesis_quad:

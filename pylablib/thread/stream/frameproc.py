@@ -344,7 +344,7 @@ class BackgroundSubtractionThread(controller.QTaskThread):
         - ``snapshot/parameters``: parameters of the snapshot background subtraction: ``"count"`` for number of frames to combine for the background,
             ``"mode"`` for the combination mode (``"min"``, ``"mean"``, etc.), ``"dtype"`` for the final dtype, ``"offset"`` to enable or disable background offset
         - ``snapshot/grabbed``: number of grabbed frames in the snapshot background buffer
-        - ``snapshot/background``: status of the snapshot background: ``"frame"`` for the final frame and ``"offset"`` for the final offset,
+        - ``snapshot/background/*``: status of the snapshot background: ``"frame"`` for the final frame and ``"offset"`` for the final offset,
             ``"buffer"`` for the whole background buffer, ``"state"`` for the buffer state, and ``"saving"`` for the saving method;
             state can be ``"none"`` (none acquired), ``"acquiring"`` (accumulation in progress), ``"valid"`` (acquired and valid), or ``"wrong_size"`` (size mismatch);
             saving method can be ``"none"`` (don't save background), ``"only_bg"`` (only save background frame), or ``"all"`` (save background + all comprising frames).

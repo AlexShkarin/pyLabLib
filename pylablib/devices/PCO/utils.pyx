@@ -13,7 +13,7 @@ cdef extern BOOL ResetEvent(HANDLE hEvent) nogil
 cdef extern DWORD WaitForSingleObject(HANDLE hHandle, DWORD dwMilliseconds) nogil
 cdef extern void Sleep(DWORD dwMilliseconds) nogil
 
-ctypedef int (*pPCO_AddBufferExtern)(HANDLE ph, HANDLE hEvent, WORD wActSeg, DWORD dw1stImage, DWORD dwLastImage, DWORD dwSynch, void *pBuf, DWORD dwLen, DWORD *dwStatus) nogil
+ctypedef int (*pPCO_AddBufferExtern)(HANDLE ph, HANDLE hEvent, WORD wActSeg, DWORD dw1stImage, DWORD dwLastImage, DWORD dwSynch, void *pBuf, DWORD dwLen, DWORD *dwStatus) noexcept nogil
 ctypedef int (*pNotify)()
 
 cdef DWORD max_sched_buff=32

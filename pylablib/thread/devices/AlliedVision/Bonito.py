@@ -33,6 +33,6 @@ class IMAQBonitoCameraThread(GenericBonitoCameraThread):
         with self.using_devclass("AlliedVision.BonitoIMAQCamera",host=self.remote) as cls:
             self.device=cls(imaq_name=self.imaq_name)  # pylint: disable=not-callable
         
-    def setup_task(self, imaq_name, remote=None, misc=None):  # pylint: disable=arguments-differ
+    def setup_task(self, imaq_name, remote=None, misc=None):  # pylint: disable=arguments-differ, arguments-renamed
         self.imaq_name=imaq_name
         super().setup_task(remote=remote,misc=misc)

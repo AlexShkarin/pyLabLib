@@ -538,6 +538,7 @@ class QTabContainer(IQContainer, QtWidgets.QTabWidget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args,**kwargs)
         self._tabs={}
+        self._hidden_tabs={}
     def _insert_tab(self, tab, caption, index):
         if index is None:
             index=self.count()
@@ -578,6 +579,30 @@ class QTabContainer(IQContainer, QtWidgets.QTabWidget):
         idx=self.indexOf(frame)
         self.removeTab(idx)
         frame.deleteLater()
+    def _get_tab_name(self, widget):
+        for n,w in self._tabs.items():
+            if w is widget:
+                return n
+        return None
+    def hide_tab(self, name, hide=True):
+        """Hide or show a tab with the given name"""
+        frame=self._tabs[name]
+        if hide:
+            if name in self._hidden_tabs:
+                return
+            idx=self.indexOf(frame)
+            caption=self.tabText(idx)
+            prev_names=[self._get_tab_name(self.widget(i) for i in range(idx))]
+            self.removeTab(idx)
+            self._hidden_tabs[name]=(frame,caption,prev_names)
+        else:
+            if name not in self._hidden_tabs:
+                return
+            frame,caption,prev_names=self._hidden_tabs[name]
+            prev_idx=[self.indexOf(self._tabs[n]) for n in prev_names if n in self._tabs]
+            idx=max(prev_idx+[-1])+1
+            self.insertTab(idx,frame,caption)
+            del self._hidden_tabs[name]
     def clear(self):
         for n in list(self._tabs):
             self.remove_tab(n)
@@ -592,3 +617,14 @@ class QTabContainer(IQContainer, QtWidgets.QTabWidget):
         """Set tab by name"""
         tab=self.c[name]
         self.setCurrentIndex(self.indexOf(tab))
+    def get_index_by_name(self, name):
+        """Get index by the tab's name"""
+        tab=self.c[name]
+        return self.indexOf(tab)
+    def get_name_by_index(self, idx):
+        """Return the name of the tab at a given index, or ``None`` if this tab is not being tracked"""
+        tab=self.widget(idx)
+        for n,v in self._tabs:
+            if v is tab:
+                return n
+        return None

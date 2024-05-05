@@ -42,7 +42,7 @@ class AndorSDK3CameraThread(camera.GenericCameraThread):
                 self.device.set_cooler(True)
             except self.DeviceError:  # pylint: disable=catching-non-exception
                 pass
-    def setup_task(self, idx=0, remote=None, misc=None):  # pylint: disable=arguments-differ
+    def setup_task(self, idx=0, remote=None, misc=None):  # pylint: disable=arguments-differ, arguments-renamed
         self.idx=idx
         super().setup_task(remote=remote,misc=misc)
     def acq_finalize_regular(self):

@@ -52,7 +52,10 @@ class SirahMatisseThread(device_thread.DeviceThread):
     def setup_task(self, conn, remote=None):  # pylint: disable=arguments-differ
         self.conn=conn
         self.remote=remote
-        self.add_job("update_measurements",self.update_measurements,1.)
+        self._fast_update_parameters=set()
+        self.add_job("update_measurements",self.update_measurements,.2)
+        self.add_job("update_measurements_fast",self.update_measurements_fast,.02)
+        self.add_command("change_fast_update_parameters")
         self.add_device_command("bifi_move_to")
         self.add_device_command("bifi_stop")
         self.add_device_command("thinet_move_to")
@@ -95,21 +98,33 @@ class SirahMatisseThread(device_thread.DeviceThread):
         if self.open():
             self.device.set_scan_status("run" if enable else "stop")
             self.update_parameters()
-
+    def change_fast_update_parameters(self, add=None, remove=None):
+        """Change the list of parameters which are updated at a higher rate"""
+        self._fast_update_parameters=(self._fast_update_parameters|set(add or []))-set(remove or [])
+    _status_params={"thinet_locked":"thinet_ctl_status","piezoet_locked":"piezoet_ctl_status","slowpiezo_locked":"slowpiezo_ctl_status","scanning":"scan_status"}
+    def update_measurements_fast(self):
+        if self.open():
+            for n in self._fast_update_parameters:
+                try:
+                    if n in self._status_params:
+                        self.v[n]=self.device.dv[self._status_params[n]]=="run"
+                    else:
+                        self.v[n]=self.device.dv[n]
+                except self.DeviceError:  # pylint: disable=catching-non-exception
+                    pass
     def update_measurements(self):
         power_params=["diode_power","thinet_power"]
         position_params=["bifi_position","thinet_position","piezoet_position",
                     "slowpiezo_position","fastpiezo_position","scan_position","refcell_position"]
         locked_params=["fastpiezo_locked"]
-        status_params={"thinet_locked":"thinet_ctl_status","piezoet_locked":"piezoet_ctl_status","slowpiezo_locked":"slowpiezo_ctl_status","scanning":"scan_status"}
         param_defaults={p:0 for p in power_params+position_params}
         param_defaults.update({p:False for p in locked_params})
-        param_defaults.update({p:False for p in status_params})
+        param_defaults.update({p:False for p in self._status_params})
         if self.open():
             for n,v in param_defaults.items():
                 try:
-                    if n in status_params:
-                        self.v[n]=self.device.dv[status_params[n]]=="run"
+                    if n in self._status_params:
+                        self.v[n]=self.device.dv[self._status_params[n]]=="run"
                     else:
                         self.v[n]=self.device.dv[n]
                 except self.DeviceError:  # pylint: disable=catching-non-exception
@@ -159,19 +174,18 @@ class SirahMatisseTunerThread(SirahMatisseThread):
     def close_device(self):
         self.stop_tuning()
         return super().close_device()
-    def setup_task(self, conn, wmversion, remote=None, wmremote="auto", calibration=None):  # pylint: disable=arguments-differ
-        self.conn=conn
-        self.remote=remote
+    def setup_task(self, conn, wmversion, remote=None, wmremote="auto", calibration=None):  # pylint: disable=arguments-differ, arguments-renamed
         self.wmversion=wmversion
         self.wmremote=wmremote if wmremote!="auto" else remote
         self.calibration=calibration
         self._lock_frequency=None
         self._fine_device="slow_piezo"
-        self.add_job("update_measurements",self.update_measurements,.2)
+        super().setup_task(conn=conn,remote=remote)
         self.v["stitched_scan/stitching"]=0
         self.v["tuning/locking"]=False
         self.v["fine_tune_device"]=self._fine_device
         self.v["fine_scan/device_range_curr"]=self.v["fine_scan/device_range_start"]=None
+        self.v["fine_scan/device_rate_curr"]=None
         self.update_progress(0)
         self.add_command("set_fine_tune_device")
         self.add_batch_job("tune_to",self.tune_to_loop,self.tune_to_finalize)
@@ -311,6 +325,7 @@ class SirahMatisseTunerThread(SirahMatisseThread):
         start_point=None if crng is None else (crng[0]+crng[1])/2
         self.tuner.fine_sweep_stop(start_point=start_point)
         self.v["fine_scan/device_range_curr"]=self.v["fine_scan/device_range_start"]=None
+        self.v["fine_scan/device_rate_curr"]=None
     def fine_scan_start(self, span, rate, kind="continuous"):
         """
         Start fine scan with the given span and at a given rate around the current frequency.
@@ -323,8 +338,9 @@ class SirahMatisseTunerThread(SirahMatisseThread):
             self.stop_tuning()
             self.update_operation_status("fine_scan")
             self.update_scan_status("setup")
-            rng=self.tuner.fine_sweep_start(span,up_speed=rate,down_speed=rate,kind="cont_up" if kind=="continuous" else "single_up",device=self._fine_device)
+            rng,speeds=self.tuner.fine_sweep_start(span,up_speed=rate,down_speed=rate,kind="cont_up" if kind=="continuous" else "single_up",device=self._fine_device)
             self.v["fine_scan/device_range_curr"]=self.v["fine_scan/device_range_start"]=rng
+            self.v["fine_scan/device_rate_curr"]=speeds[0]
             self.update_scan_status("running")
     def _sanitize_rng(self, rng, lim, minw):
         rmin,rmax=lim
@@ -390,7 +406,7 @@ class SirahMatisseTunerThread(SirahMatisseThread):
             self.tuner.fine_sweep_stop(return_to_start=False)
             self.update_scan_status("running")
             try:
-                for sweeping in self.tuner.stitched_scan_gen(scan_range,single_span,rate,device=self._fine_device):
+                for sweeping in self.tuner.stitched_scan_gen(scan_range,single_span,rate,device=self._fine_device,segment_end_timeout=5.):
                     self.v["stitched_scan/stitching"]=0 if sweeping else 1
                     if sweeping:
                         f0,f1=scan_range[:2]

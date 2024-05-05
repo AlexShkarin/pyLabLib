@@ -273,7 +273,7 @@ class IMAQdxCamera(camera.IROICamera, camera.IAttributeCamera):
         If ``enum_as_str==True``, return enum-style values as strings; otherwise, return corresponding integer values.
         """
         return super().get_attribute_value(name,error_on_missing=error_on_missing,default=default,enum_as_str=enum_as_str)
-    def set_attribute_value(self, name, value, truncate=True, error_on_missing=True):  # pylint: disable=arguments-differ
+    def set_attribute_value(self, name, value, truncate=True, error_on_missing=True):  # pylint: disable=arguments-differ, arguments-renamed
         """
         Set value of an attribute with the given name.
         
@@ -428,13 +428,14 @@ class IMAQdxCamera(camera.IROICamera, camera.IAttributeCamera):
             return data
         if self._raw_readout_format=="rows":
             return data.reshape((shape[0],-1))
-        supported_formats=["Mono8","Mono10","Mono12","Mono16","Mono32"]
-        if pixel_format not in supported_formats:
+        supported_formats=["mono8","mono10","mono12","mono16","mono32"]
+        norm_pixel_format=pixel_format.strip().replace(" ","").lower()
+        if norm_pixel_format not in supported_formats:
             sf_string=", ".join(supported_formats)
-            raise IMAQdxError("pixel format {} is not supported, only [{}] are supported; raw data readout can be enabled via enable_raw_readout method".format(pixel_format,sf_string))
-        if pixel_format=="Mono8":
+            raise IMAQdxError("pixel format {} ('{}') is not supported, only [{}] are supported; raw data readout can be enabled via 'enable_raw_readout' method".format(pixel_format,norm_pixel_format,sf_string))
+        if norm_pixel_format=="mono8":
             return data.reshape(shape)
-        elif pixel_format in ["Mono10","Mono12","Mono16"]:
+        elif norm_pixel_format in ["mono10","mono12","mono16"]:
             return data.view("<u2").reshape(shape)
         else:
             return data.view("<u4").reshape(shape)

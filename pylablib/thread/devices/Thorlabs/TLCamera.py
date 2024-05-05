@@ -15,7 +15,7 @@ class ThorlabsTLCameraThread(camera.GenericCameraThread):
     def connect_device(self):
         with self.using_devclass("Thorlabs.ThorlabsTLCamera",host=self.remote) as cls:
             self.device=cls(serial=self.serial)  # pylint: disable=not-callable
-    def setup_task(self, serial, remote=None, misc=None):  # pylint: disable=arguments-differ
+    def setup_task(self, serial, remote=None, misc=None):  # pylint: disable=arguments-differ, arguments-renamed
         if isinstance(serial,tuple):
             serial=serial[0]
         self.serial=serial

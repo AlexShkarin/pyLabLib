@@ -1,10 +1,11 @@
-from ...core.devio import SCPI, interface
+from ...core.devio import SCPI, interface, comm_backend
 from ...core.utils import py3, general
 from .base import GenericSirahError, GenericSirahBackendError
 
 import time
 import collections
 import warnings
+import struct
 
 
 TThinetCtlParameters=collections.namedtuple("TThinetCtlParameters",["setpoint","P","I","avg"])
@@ -22,12 +23,20 @@ class SirahMatisse(SCPI.SCPIDevice):
 
     Args:
         addr: device address (usually a VISA name).
+        use_mc_server: determines whether Matisse Commander server is used for the communication (it has somewhat different command format);
+            if ``"auto"``, assumed to be ``True`` for network connections and ``False`` otherwise
     """
     Error=GenericSirahError
     ReraiseError=GenericSirahBackendError
     _bool_selector=("FALSE","TRUE")
-    def __init__(self, addr):
-        super().__init__(addr)
+    def __init__(self, addr, use_mc_server="auto"):
+        if use_mc_server=="auto":
+            use_mc_server=comm_backend.autodetect_backend(addr)=="network"
+        self._use_mc_server=use_mc_server
+        if self._use_mc_server:
+            super().__init__(addr,term_read=b"",term_write=b"",backend_params={"datatype":"bytes"})
+        else:
+            super().__init__(addr)
         with self._close_on_error():
             self.get_id()
         self._add_scpi_parameter("diode_power","DPOW:DC")
@@ -111,7 +120,7 @@ class SirahMatisse(SCPI.SCPIDevice):
         self._add_settings_variable("fastpiezo_ctl_status",self.get_fastpiezo_ctl_status,self.set_fastpiezo_ctl_status,ignore_error=GenericSirahError)
         self._add_settings_variable("fastpiezo_ctl_params",self.get_fastpiezo_ctl_params,self.set_fastpiezo_ctl_params,ignore_error=GenericSirahError)
         self._add_status_variable("refcell_position",self.get_refcell_position,ignore_error=GenericSirahError)
-        self._add_settings_variable("refcell_waveform_params",self.get_refcell_waveform_params,self.set_refcell_waveform_params,ignore_error=GenericSirahError)
+        self._add_settings_variable("refcell_waveform_params",self.get_refcell_waveform_params,self.set_refcell_waveform_params,ignore_error=(GenericSirahError,ValueError))
         self._add_settings_variable("scan_status",self.get_scan_status,self.set_scan_status)
         self._add_settings_variable("scan_position",self.get_scan_position,self.set_scan_position)
         self._add_settings_variable("scan_params",self.get_scan_params,self.set_scan_params)
@@ -119,7 +128,11 @@ class SirahMatisse(SCPI.SCPIDevice):
     _id_comm="IDN?"
     _float_fmt="{:.8f}"
     def _instr_read(self, raw=False, size=None):
-        res=super()._instr_read(raw=raw,size=size)
+        if self._use_mc_server:
+            l,=struct.unpack(">I",self.instr.read(4))
+            res=self.instr.read(l)
+        else:
+            res=super()._instr_read(raw=raw,size=size)
         if not raw:
             res=res.strip()
             if res.startswith(b":"):
@@ -128,6 +141,17 @@ class SirahMatisse(SCPI.SCPIDevice):
             elif res.upper().startswith(b"!ERROR"):
                 raise GenericSirahError("device replied with an error: {}".format(py3.as_str(res[6:]).strip()))
         return res
+    def _instr_write(self, msg):
+        if self._use_mc_server:
+            self.instr.write(struct.pack(">I",len(msg)))
+            return self.instr.write(py3.as_bytes(msg))
+        else:
+            return super()._instr_write(msg)
+    def close(self):
+        if self._use_mc_server and self.instr:
+            self.write(b"Close_Network_Connection")
+            time.sleep(0.5)
+        super().close()
     
     _ask_err_ntries=3
     _ask_err_delay=1.
@@ -294,7 +318,7 @@ class SirahMatisse(SCPI.SCPIDevice):
         if wait:
             self.thinet_wait_move(timeout=wait_timeout)
     
-    _p_lock_ctl_status=interface.EnumParameterClass("lock_ctl_status",[("run","RUN"),("run","RU"),("stop","STOP"),("stop","ST")])
+    _p_lock_ctl_status=interface.EnumParameterClass("lock_ctl_status",[("run","RUN"),("run","RU"),("run","TRUE"),("stop","STOP"),("stop","ST"),("stop","FALSE")])
     def get_thinet_ctl_status(self):
         """Get thin etalon lock status (``"run"`` or ``"stop"``)"""
         return self._get_scpi_parameter("thinet_ctl_status")

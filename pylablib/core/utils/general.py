@@ -414,6 +414,19 @@ class DummyResource:
         return False
 
 
+### Unique classes and objects ###
+
+def unique_class(repr_text="UNIQUE"):
+    """
+    Return a newly created unique class with the given representation text.
+
+    Can be used as a placeholder in methods where a "not supplied" default value is required, but any value can in principle be supplied.
+    """
+    class Unique:
+        def __repr__(self):
+            return repr_text
+    return Unique
+
 
 ### Errors handling / retrying ###
 

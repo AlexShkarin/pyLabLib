@@ -170,8 +170,8 @@ class QScheduledCall:
         """Execute the call and notify the result synchronizer (invoked by the destination thread)"""
         if self._check_notified():
             return
+        res=("fail",None)
         try:
-            res=("fail",None)
             res=("result",self.func(*self.args,**self.kwargs))
         except Exception as e:  # pylint: disable=broad-except
             res=("exception",e)

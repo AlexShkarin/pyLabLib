@@ -8,6 +8,7 @@ Subpackages
    :maxdepth: 4
 
    pylablib.devices.AWG
+   pylablib.devices.Agilent
    pylablib.devices.AlliedVision
    pylablib.devices.Andor
    pylablib.devices.Arcus
@@ -21,6 +22,7 @@ Subpackages
    pylablib.devices.DCAM
    pylablib.devices.ElektroAutomatik
    pylablib.devices.HighFinesse
+   pylablib.devices.Hubner
    pylablib.devices.IMAQ
    pylablib.devices.IMAQdx
    pylablib.devices.KJL
@@ -37,6 +39,7 @@ Subpackages
    pylablib.devices.NKT
    pylablib.devices.Newport
    pylablib.devices.OZOptics
+   pylablib.devices.Omron
    pylablib.devices.Ophir
    pylablib.devices.PCO
    pylablib.devices.Pfeiffer
@@ -54,6 +57,7 @@ Subpackages
    pylablib.devices.Toptica
    pylablib.devices.Trinamic
    pylablib.devices.Voltcraft
+   pylablib.devices.Windows
    pylablib.devices.interface
    pylablib.devices.uc480
    pylablib.devices.utils

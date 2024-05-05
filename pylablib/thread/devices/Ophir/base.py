@@ -16,7 +16,7 @@ class VegaPowerMeterThread(device_thread.DeviceThread):
     Commands:
         - ``configure``: configure filter and range index
     """
-    default_parameter_values={"range_idx":0,"wavelength":0}
+    default_parameter_values={"range_idx":0,"wavelength":0,"filter_in":False}
     parameter_variables=default_parameter_values.keys()
     def connect_device(self):
         with self.using_devclass("Ophir.VegaPowerMeter",host=self.remote) as cls:
@@ -58,3 +58,4 @@ class VegaPowerMeterThread(device_thread.DeviceThread):
                 self.device.set_range_idx(rng_idx)
             if wavelength is not None:
                 self.device.set_wavelength(wavelength)
+            self.update_parameters()

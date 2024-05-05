@@ -3,7 +3,7 @@ Uniform representation of values from different widgets: numerical and text edit
 """
 
 from .widgets import edit
-from ..utils import dictionary, py3, string, functions as func_utils
+from ..utils import dictionary, py3, string, functions as func_utils, funcargparse
 from ..utils.functions import FunctionSignature
 from ..thread.controller import gui_thread_method
 
@@ -39,10 +39,7 @@ def has_methods(widget, methods_sets):
 
     `methods_sets` is a list of method sets. The function returns ``True`` if the widget has at least one method from each of the sets.
     """
-    for ms in methods_sets:
-        if not any([_hasattr(widget,m) for m in ms]):
-            return False
-    return True
+    return all(any(_hasattr(widget,m) for m in ms) for ms in methods_sets)
 
 def get_method_kind(method, add_args=0):
     """
@@ -130,6 +127,23 @@ class IValueHandler:
             signal.connect(handler,QtCore.Qt.DirectConnection)
         elif not only_signal:
             self._change_handlers.append(handler)
+    def disconnect_value_changed_handler(self, handler=None):
+        """
+        Disconnect value changed signal.
+        
+        Works both for Qt signals (by calling their ``disconnect`` method directly), and for emulated signals (used for non-signal-emitting widgets).
+        If `handler` is ``None``, disconnect all events.
+        """
+        signal=self.get_value_changed_signal()
+        if handler is None:
+            if signal is not None:
+                signal.disconnect()
+            self._change_handlers=[]
+        else:
+            if signal is not None:
+                signal.disconnect(handler)
+            if handler in self._change_handlers:
+                self._change_handlers=[h for h in self._change_handlers if h is not handler]
     def _notify_value_changed_handlers(self, value):
         """Notify emulated value changed handlers"""
         for h in self._change_handlers:
@@ -147,6 +161,23 @@ class IValueHandler:
         return True
 
 
+class VirtualValueChangedSignal:
+    """
+    Qt signal emulator for virtual values
+    
+    Provides ``connect`` and ``disconnect`` methods which register a callback for value changing events.
+    (analogous to direct signal connection).
+    """
+    def __init__(self, handler):
+        self.handler=handler
+    def connect(self, func):
+        """Connect the callback"""
+        if self.handler is not None:
+            self.handler.connect_value_changed_handler(func,only_signal=False)
+    def disconnect(self, func=None):
+        """Disconnect the callback, or all callbacks if `func` is ``None``"""
+        if self.handler is not None:
+            self.handler.disconnect_value_changed_handler(func)
 class VirtualValueHandler(IValueHandler):
     """
     Virtual value handler (to simulate controls which are not present in the GUI).
@@ -154,17 +185,31 @@ class VirtualValueHandler(IValueHandler):
     Args:
         value: initial value
         multivalued (bool): if ``True``, the internal value is assumed to be complex, so it is forced to be a :class:`.Dictionary` every time it is set.
+        on_set_value: behavior when value is set; can be ``"store"`` (store as the current value and return on ``get_value`` later) or ``"ignore"`` (keep the original value)
+        signal_kind: value changed signal kind; can be ``"none"`` (no signal), ``"direct"`` (emulation of direct-connection signal, which is called whenever the value changes),
+            or ``"dummy"`` (emulation of direct-connection signal, which is never called)
     """
-    def __init__(self, value=None, multivalued=False):
+    def __init__(self, value=None, multivalued=False, on_set_value="store", signal_kind="none"):
         super().__init__(None)
         self.multivalued=multivalued
         self.value=dictionary.Dictionary(value) if multivalued else value
+        funcargparse.check_parameter_range(signal_kind,"signal_kind",["none","direct","dummy"])
+        if signal_kind=="none":
+            self.value_changed_signal=None
+        else:
+            self.value_changed_signal=VirtualValueChangedSignal(None if signal_kind=="dummy" else self)
+        funcargparse.check_parameter_range(on_set_value,"on_set_value",["store","ignore"])
+        self.on_set_value=on_set_value
+    def get_value_changed_signal(self):
+        return self.value_changed_signal
     def get_value(self, name=None):
         if name is None:
             return self.value
         else:
             return self.value[name]
     def set_value(self, value, name=None):
+        if self.on_set_value=="ignore":
+            return
         if name is None:
             if self.multivalued:
                 self.value=dictionary.Dictionary(value)
@@ -683,9 +728,7 @@ class GUIValues:
         if disconnect:
             handler=self.get_handler(name)
             try:
-                signal=handler.get_value_changed_signal()
-                if signal is not None:
-                    handler.get_value_changed_signal().disconnect()
+                handler.disconnect_value_changed_handler()
             except (TypeError,RuntimeError): # no signals connected or no handle
                 pass
         del self.handlers[name]
@@ -775,7 +818,7 @@ class GUIValues:
         if add_indicator:
             self.add_indicator_handler(name,StandardIndicatorHandler(gui_values))
         return h
-    def add_virtual_element(self, name, value=None, multivalued=False, add_indicator=True):
+    def add_virtual_element(self, name, value=None, multivalued=False, on_set_value="store", signal_kind="none", add_indicator=True):
         """
         Add a virtual value element.
 
@@ -783,9 +826,14 @@ class GUIValues:
         (its value can be set or read, it has on-change events, it can have indicator).
         The element value is simply stored on set and retrieved on get.
         If ``multivalued==True``, the internal value is assumed to be complex, so it is forced to be a :class:`.Dictionary` every time it is set.
+        `on_set_value` specifies the behavior when value is set; can be ``"store"`` (store as the current value and return on ``get_value`` later)
+        or ``"ignore"`` (keep the original value)
+        `signal_kind` specifies value changed signal kind; can be ``"none"`` (no signal),
+        ``"direct"`` (emulation of direct-connection signal, which is called whenever the value changes),
+        or ``"dummy"`` (emulation of direct-connection signal, which is never called).
         If ``add_indicator==True``, add default indicator handler as well.
         """
-        h=self.add_handler(name,VirtualValueHandler(value,multivalued=multivalued))
+        h=self.add_handler(name,VirtualValueHandler(value,multivalued=multivalued,on_set_value=on_set_value,signal_kind=signal_kind))
         if add_indicator:
             self.add_indicator_handler(name,VirtualIndicatorHandler(value,multivalued=multivalued))
         return h

@@ -23,6 +23,33 @@ you can write
     import pylablib.legacy as pll
     from pylablib.legacy.aux_libs.devices import Lakeshore
 
+1.4.3
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Devices
+
+    * Added multiple devices:
+    
+        + Agilent XGS600 pressure gauge controller
+        + Hubner Cobolt lasers (tested with Cobolt MLD 06-01 laser)
+        + Omron E5_C temperature controllers (tested with E5GC-QX1A6M-015 controller)
+        + Thorlabs Kinesis Piezo controllers (tested with KPZ101)
+
+    * Extended device support:
+
+        + Multi-axis Trinamic TMCM controllers (tested with TMCM6110)
+        + Matisse Commander server support for Sirah Matisse lasers
+        + Added trigger mode selection for uc480/uEye cameras
+
+    * Bug fixes and improved support of specific models:
+    
+        + Thorlabs Scientific Cameras monochrome bug
+        + Fixed minor Thorlabs Kinesis enumeration bugs and KIM101 channel selection bug
+
+- Minor additional functions and bugfixes
+    * Fixed module versioning bug which prevented the use of PyInstaller
+    * GUI additions: button-selector widgets (alternative to combo box), tab hiding, widget tags for finer GUI control
+
 1.4.2
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

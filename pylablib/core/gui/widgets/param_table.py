@@ -1,4 +1,4 @@
-from . import edit, label as widget_label, combo_box, button as widget_button
+from . import edit, label as widget_label, combo_box, button as widget_button, button_selector
 from . import container
 from ...thread import threadprop, controller
 from .. import value_handling
@@ -182,19 +182,22 @@ class ParamTable(container.QWidgetContainer):
             wlabel=QtWidgets.QLabel(self)
             wlabel.setObjectName("{}__label".format(name))
             llname,llocation=self._normalize_location(llocation,default_location=(row,col,rowspan,1),default_layout=lname)
-            self._insert_layout_element(llname,wlabel,llocation)
+            with self.using_layout_tags(add={"parameter."+name}):
+                self._insert_layout_element(llname,wlabel,llocation)
             wlabel.setText(label)
         else:
             wlabel=None
         if location!="skip":
-            self._insert_layout_element(lname,widget,(row,col+labelspan,rowspan,colspan-labelspan-indspan))
+            with self.using_layout_tags(add={"parameter."+name}):
+                self._insert_layout_element(lname,widget,(row,col+labelspan,rowspan,colspan-labelspan-indspan))
         value_handler=value_handler or value_handling.create_value_handler(widget)
         if add_indicator:
             windicator=QtWidgets.QLabel(self)
             windicator.setObjectName("{}__indicator".format(name))
             if ilocation=="next_line":
                 ilname,ilocation=self._normalize_location((row+1,col+labelspan,1,colspan-labelspan),default_location=(row,col+colspan-1,rowspan,1),default_layout=lname)
-            self._insert_layout_element(ilname,windicator,ilocation)
+            with self.using_layout_tags(add={"parameter."+name}):
+                self._insert_layout_element(ilname,windicator,ilocation)
             indicator_handler=value_handling.LabelIndicatorHandler(windicator,formatter=value_handler if add_indicator==True else add_indicator)
         else:
             windicator=None
@@ -247,7 +250,7 @@ class ParamTable(container.QWidgetContainer):
             self.remove_layout_element(par.label)
         if par.indicator is not None:
             self.remove_layout_element(par.indicator)
-    def add_virtual_element(self, name, value=None, multivalued=False, add_indicator=None):
+    def add_virtual_element(self, name, value=None, multivalued=False, on_set_value="store", signal_kind="none", add_indicator=None):  # pylint: disable=arguments-renamed
         """
         Add a virtual table element.
 
@@ -255,9 +258,14 @@ class ParamTable(container.QWidgetContainer):
         (its value can be set or read, it has on-change events, it can have indicator).
         The element value is simply stored on set and retrieved on get.
         If ``multivalued==True``, the internal value is assumed to be complex, so it is forced to be a :class:`.Dictionary` every time it is set.
+        `on_set_value` specifies the behavior when value is set; can be ``"store"`` (store as the current value and return on ``get_value`` later)
+        or ``"ignore"`` (keep the original value)
+        `signal_kind` specifies value changed signal kind; can be ``"none"`` (no signal),
+        ``"direct"`` (emulation of direct-connection signal, which is called whenever the value changes),
+        or ``"dummy"`` (emulation of direct-connection signal, which is never called).
         If ``add_indicator==True``, add default indicator handler as well.
         """
-        value_handler=value_handling.VirtualValueHandler(value,multivalued=multivalued)
+        value_handler=value_handling.VirtualValueHandler(value,multivalued=multivalued,on_set_value=on_set_value,signal_kind=signal_kind)
         if add_indicator is None:
             add_indicator=self.add_indicator
         indicator_handler=value_handling.VirtualIndicatorHandler(multivalued=multivalued) if add_indicator else None
@@ -375,26 +383,48 @@ class ParamTable(container.QWidgetContainer):
         widget=widget_label.TextLabel(self,value=value)
         widget.setObjectName(self.name+"_"+name)
         return self.add_simple_widget(name,widget,label=label,add_indicator=False,location=location,tooltip=tooltip,add_change_event=add_change_event)
-    def add_enum_label(self, name, options, value=None, out_of_range="error", prep=None, label=None, location=None, tooltip=None, add_change_event=False, virtual=False):
+    def add_enum_label(self, name, options, value=None, out_of_range="error", prep=None, styles=None, label=None, location=None, tooltip=None, add_change_event=False, virtual=False):
         """
         Add a text label to the table.
 
         Args:
             name (str): widget name (used to reference its value in the values table)
-            options (list): dictionary ``{index_value: text}`` which converts values into text
+            options (dict): dictionary ``{index_value: text}`` which converts values into text
             out_of_range (str): behavior when out-of-range value is applied;
                 can be ``"error"`` (raise error), ``"text"`` (convert value into text), or ``"ignore"`` (keep current value).
             prep: a function which takes a single value argument and converts into an option; useful for "fuzzy" options (e.g., when 0 and ``False`` mean the same thing)
+            styles: a dictionary ``{value: style}`` which defines stylesheet styles based on the value (if some values are not in the dictionary, use default no-style value)
             virtual (bool): if ``True``, the widget is not added, and a virtual handler is added instead
             
         Rest of the arguments and the return value are the same as :meth:`add_simple_widget`.
         """
         if virtual:
             return self.add_virtual_element(name,value=value)
-        widget=widget_label.EnumLabel(self,options=options,value=value,prep=prep)
+        widget=widget_label.EnumLabel(self,options=options,value=value,prep=prep,styles=styles)
         widget.set_out_of_range(out_of_range)
         widget.setObjectName(self.name+"_"+name)
         return self.add_simple_widget(name,widget,label=label,add_indicator=False,location=location,tooltip=tooltip,add_change_event=add_change_event)
+    def add_style_indicator_label(self, name, caption, options=(True,False), value=False, out_of_range="error", prep=bool, styles=None, label=None, location=None, tooltip=None, add_change_event=False, virtual=False):
+        """
+        Add a label to the table with a fixed caption but whose style indicates the value.
+
+        Args:
+            name (str): widget name (used to reference its value in the values table)
+            caption: text on the label
+            options (list): list with the possible values
+            out_of_range (str): behavior when out-of-range value is applied;
+                can be ``"error"`` (raise error), ``"text"`` (convert value into text), or ``"ignore"`` (keep current value).
+            prep: a function which takes a single value argument and converts into an option; useful for "fuzzy" options (e.g., when 0 and ``False`` mean the same thing)
+            styles: a dictionary ``{value: style}`` which defines stylesheet styles based on the value (if some values are not in the dictionary, use default no-style value);
+                can be a single string value, which gets assigned to ``True`` value
+            virtual (bool): if ``True``, the widget is not added, and a virtual handler is added instead
+            
+        Rest of the arguments and the return value are the same as :meth:`add_simple_widget`.
+        """
+        if not isinstance(styles,dict):
+            styles={True:styles}
+        return self.add_enum_label(name,options={k:caption for k in options},value=value,out_of_range=out_of_range,prep=prep,styles=styles,
+            label=label,location=location,tooltip=tooltip,add_change_event=add_change_event,virtual=virtual)
     def add_num_label(self, name, value=0, limiter=None, formatter=None, label=None, tooltip=None, location=None, add_change_event=False, virtual=False):
         """
         Add a numerical label to the table.
@@ -491,6 +521,35 @@ class ParamTable(container.QWidgetContainer):
         if virtual:
             return self.add_virtual_element(name,value=value,add_indicator=add_indicator)
         widget=combo_box.ComboBox(self)
+        widget.setObjectName(self.name+"_"+name)
+        widget.set_out_of_range(action=out_of_range)
+        if options is not None:
+            widget.set_options(options,index_values=index_values)
+            if value is not None:
+                widget.set_value(value)
+            else:
+                index_values=widget.get_index_values()
+                widget.set_value(index_values[0] if index_values else 0)
+        return self.add_simple_widget(name,widget,label=label,add_indicator=add_indicator,location=location,tooltip=tooltip,add_change_event=add_change_event)
+    def add_button_selector(self, name, value=None, options=None, index_values=None, out_of_range="reset", label=None, add_indicator=None, location=None, tooltip=None, add_change_event=True, virtual=False):
+        """
+        Add a combo box to the table.
+
+        Args:
+            name (str): widget name (used to reference its value in the values table)
+            value: specifies initial value
+            options (list): list of strings specifying box options or a dictionary ``{option: index_value}``
+            index_values (list): list of values corresponding to box options; if supplied, these values are used when setting/getting values or sending signals;
+                if `options` is a dictionary, this parameter is ignored
+            out_of_range (str): behavior when out-of-range value is applied;
+                can be ``"error"`` (raise error), ``"reset"`` (reset to no-value position), or ``"ignore"`` (keep current value).
+            virtual (bool): if ``True``, the widget is not added, and a virtual handler is added instead
+            
+        Rest of the arguments and the return value are the same as :meth:`add_simple_widget`.
+        """
+        if virtual:
+            return self.add_virtual_element(name,value=value,add_indicator=add_indicator)
+        widget=button_selector.ButtonSelector(self)
         widget.setObjectName(self.name+"_"+name)
         widget.set_out_of_range(action=out_of_range)
         if options is not None:

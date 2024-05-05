@@ -61,10 +61,13 @@ class Finesse(comm_backend.ICommBackendWrapper):
         """Get device information ``(serial, software_version, cal_date)``"""
         return TDeviceInfo(self.query("SERIAL?"),self.query("SOFTVER?"),self.query("CALDATE?"))
     def _parse_work_hours(self, s):
-        m=re.match(r".*=\s*(\d+)\s*mins$",s.lower())
+        m=re.match(r".*=\s*(\d+)\s*mins$",s,re.IGNORECASE)
+        if m is not None:
+            return float(m[1])/60.
+        m=re.match(r".*=\s*(.\d+)\s*mins$",s,re.IGNORECASE)  # sometimes the first symbol is a letter; interpret as char index overflow
         if m is None:
             raise LaserQuantumError("can't parse work hours string: {}".format(s))
-        return float(m[1])/60.
+        return (((ord(m[1][0])-ord('0'))*10**(len(m[1])-1))+float(m[1][1:]))/60.
     def get_work_hours(self):
         """Get the work hours (PSU run time, laser run time, laser above threshold time)"""
         return TWorkHours(*[self._parse_work_hours(ln) for ln in self.query("TIMERS?",reply_lines=3)])

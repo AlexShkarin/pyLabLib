@@ -28,7 +28,7 @@ class ShamrockLibError(AndorError):
         except ShamrockLibError:
             pass
         msg="function '{}' raised error {}({}): {}".format(func,code,self.name,self.desc)
-        AndorError.__init__(self,msg)
+        super().__init__(msg)
 def errcheck(passing=None, lib=None):
     """
     Build an error checking function.
@@ -152,6 +152,24 @@ class ShamrockLib:
         self.ShamrockGetShutter=wrapper(lib.ShamrockGetShutter)
         #  ctypes.c_uint ShamrockSetShutter(ctypes.c_int device, ctypes.c_int mode)
         self.ShamrockSetShutter=wrapper(lib.ShamrockSetShutter)
+
+        #  ctypes.c_uint ShamrockIrisIsPresent(ctypes.c_int device, ctypes.c_int iris, ctypes.POINTER(ctypes.c_int) present)
+        self.ShamrockIrisIsPresent=wrapper(lib.ShamrockIrisIsPresent)
+        #  ctypes.c_uint ShamrockSetIris(ctypes.c_int device, ctypes.c_int iris, ctypes.c_int value)
+        self.ShamrockSetIris=wrapper(lib.ShamrockSetIris)
+        #  ctypes.c_uint ShamrockGetIris(ctypes.c_int device, ctypes.c_int iris, ctypes.POINTER(ctypes.c_int) value)
+        self.ShamrockGetIris=wrapper(lib.ShamrockGetIris)
+
+        #  ctypes.c_uint ShamrockSetFocusMirror(ctypes.c_int device, ctypes.c_int focus)
+        self.ShamrockSetFocusMirror=wrapper(lib.ShamrockSetFocusMirror)
+        #  ctypes.c_uint ShamrockGetFocusMirror(ctypes.c_int device, ctypes.POINTER(ctypes.c_int) focus)
+        self.ShamrockGetFocusMirror=wrapper(lib.ShamrockGetFocusMirror)
+        #  ctypes.c_uint ShamrockGetFocusMirrorMaxSteps(ctypes.c_int device, ctypes.POINTER(ctypes.c_int) steps)
+        self.ShamrockGetFocusMirrorMaxSteps=wrapper(lib.ShamrockGetFocusMirrorMaxSteps)
+        #  ctypes.c_uint ShamrockFocusMirrorReset(ctypes.c_int device)
+        self.ShamrockFocusMirrorReset=wrapper(lib.ShamrockFocusMirrorReset)
+        #  ctypes.c_uint ShamrockFocusMirrorIsPresent(ctypes.c_int device, ctypes.POINTER(ctypes.c_int) present)
+        self.ShamrockFocusMirrorIsPresent=wrapper(lib.ShamrockFocusMirrorIsPresent)
 
         #  ctypes.c_uint ShamrockFilterIsPresent(ctypes.c_int device, ctypes.POINTER(ctypes.c_int) present)
         self.ShamrockFilterIsPresent=wrapper(lib.ShamrockFilterIsPresent)

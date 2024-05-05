@@ -29,9 +29,9 @@ dep_devio_extra=['nidaqmx','websocket-client']
 dep_pyqt5=['pyqt5>=5.9','pyqtgraph']
 dep_pyside2=['pyside2','shiboken2','pyqtgraph>0.10']
 setup(
-    # name='pylablib',
-    name='pylablib-lightweight',
-    version='1.4.2',
+    name='pylablib',
+    # name='pylablib-lightweight',
+    version='1.4.3',
     description='Code for use in lab environment: experiment automation, data acquisition, device communication',
     long_description=long_description,
     long_description_content_type="text/x-rst",
@@ -53,6 +53,7 @@ setup(
     'Programming Language :: Python :: 3.9',
     'Programming Language :: Python :: 3.10',
     'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
     ],
     project_urls={
     'Documentation': 'https://pylablib.readthedocs.io',

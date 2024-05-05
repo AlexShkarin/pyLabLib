@@ -283,7 +283,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         `kind` can be ``"float"``, ``"int"``, ``"str"``, ``"bool"``, ``"enum"``, or ``"comm"`` (command).
         """
         self.attributes[name]=AndorSDK3Attribute(self.handle,name,kind=kind)
-    def get_attribute(self, name, update_properties=False, error_on_missing=True):  # pylint: disable=arguments-differ
+    def get_attribute(self, name, update_properties=False, error_on_missing=True):  # pylint: disable=arguments-differ, arguments-renamed
         """
         Get the camera attribute with the given name.
         
@@ -293,7 +293,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         if att is not None and update_properties:
             att.update_properties()
         return att
-    def get_attribute_value(self, name, enum_as_str=True, update_properties=False, error_on_missing=True, default=None):  # pylint: disable=arguments-differ
+    def get_attribute_value(self, name, enum_as_str=True, update_properties=False, error_on_missing=True, default=None):  # pylint: disable=arguments-differ, arguments-renamed
         """
         Get value of an attribute with the given name.
         
@@ -304,7 +304,7 @@ class AndorSDK3Camera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttr
         error_on_missing=error_on_missing and (default is None)
         attr=self.get_attribute(name,update_properties=update_properties,error_on_missing=error_on_missing)
         return default if attr is None else attr.get_value(not_implemented_error=error_on_missing,enum_as_str=enum_as_str,default=default)
-    def set_attribute_value(self, name, value, update_properties=True, error_on_missing=True):  # pylint: disable=arguments-differ
+    def set_attribute_value(self, name, value, update_properties=True, error_on_missing=True):  # pylint: disable=arguments-differ, arguments-renamed
         """
         Set value of an attribute with the given name.
         

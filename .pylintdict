@@ -397,6 +397,8 @@ ypos
 TQD
 TPA
 KPA
+TPZ
+KPZ
 stylesheet
 Leybold
 ITR
@@ -476,3 +478,12 @@ debayering
 dtrrts
 Uno
 NIR
+Hubner
+Cobolt
+TEC
+MLD
+DPL
+ccurrent
+cpower
+Omron
+naxes

@@ -51,7 +51,7 @@ class IMAQPhotonFocusCameraThread(GenericPhotonFocusCameraThread):
         with self.using_devclass("PhotonFocus.PhotonFocusIMAQCamera",host=self.remote) as cls:
             self.device=cls(imaq_name=self.imaq_name,pfcam_port=self.pfcam_port)  # pylint: disable=not-callable
         
-    def setup_task(self, imaq_name="img0", pfcam_port=0, remote=None, misc=None):  # pylint: disable=arguments-differ
+    def setup_task(self, imaq_name="img0", pfcam_port=0, remote=None, misc=None):  # pylint: disable=arguments-differ, arguments-renamed
         self.imaq_name=imaq_name
         self.pfcam_port=pfcam_port
         super().setup_task(remote=remote,misc=misc)
@@ -69,7 +69,7 @@ class SiliconSoftwarePhotonFocusCameraThread(GenericPhotonFocusCameraThread):
         with self.using_devclass("PhotonFocus.PhotonFocusSiSoCamera",host=self.remote) as cls:
             self.device=cls(siso_board=self.siso_board,siso_applet=self.siso_applet,siso_port=self.siso_port,pfcam_port=self.pfcam_port)  # pylint: disable=not-callable
         
-    def setup_task(self, siso_board, siso_applet=None, siso_port=0, pfcam_port=0, remote=None, misc=None):  # pylint: disable=arguments-differ
+    def setup_task(self, siso_board, siso_applet=None, siso_port=0, pfcam_port=0, remote=None, misc=None):  # pylint: disable=arguments-differ, arguments-renamed
         self.siso_board=siso_board
         self.siso_applet=siso_applet
         self.siso_port=siso_port
@@ -89,7 +89,7 @@ class BitFlowPhotonFocusCameraThread(GenericPhotonFocusCameraThread):
         with self.using_devclass("PhotonFocus.PhotonFocusBitFlowCamera",host=self.remote) as cls:
             self.device=cls(bitflow_idx=self.bitflow_idx,bitflow_camfile=self.bitflow_camfile,pfcam_port=self.pfcam_port)  # pylint: disable=not-callable
         
-    def setup_task(self, bitflow_idx=0, bitflow_camfile=None, pfcam_port=0, remote=None, misc=None):  # pylint: disable=arguments-differ
+    def setup_task(self, bitflow_idx=0, bitflow_camfile=None, pfcam_port=0, remote=None, misc=None):  # pylint: disable=arguments-differ, arguments-renamed
         self.bitflow_idx=bitflow_idx
         self.pfcam_port=pfcam_port
         self.bitflow_camfile=bitflow_camfile

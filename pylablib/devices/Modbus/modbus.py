@@ -23,10 +23,11 @@ class GenericModbusRTUDevice(comm_backend.ICommBackendWrapper):
         conn: serial connection parameters (usually port, a tuple containing port and baudrate,
             or a tuple with full specification such as ``("COM1", 9600, 8, 'N', 1)``)
         daddr: default device address
+        conn_defaults: default connection parameters (baud rate, parity bits, etc.)
     """
     Error=ModbusError
-    def __init__(self, conn, daddr=1):
-        instr=comm_backend.new_backend(conn,"serial",term_read="",term_write="",defaults={"serial":("COM1",9600)},reraise_error=ModbusBackendError)
+    def __init__(self, conn, daddr=1, conn_defaults=("COM1",9600)):
+        instr=comm_backend.new_backend(conn,"serial",term_read="",term_write="",defaults={"serial":conn_defaults},reraise_error=ModbusBackendError)
         self.mb_daddr=daddr
         super().__init__(instr)
     

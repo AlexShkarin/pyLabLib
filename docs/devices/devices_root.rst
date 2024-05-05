@@ -21,6 +21,7 @@ Currently supported devices:
     Toptica
     Sirah
     NKT
+    Hubner
     Tektronix
     Keithley
     Rigol
@@ -32,5 +33,7 @@ Currently supported devices:
     ElektroAutomatik
     Voltcraft
     Lumel
+    Omron
     misc_devices
+    Windows
     protocols

@@ -21,11 +21,11 @@ def upload(production=False):
 
 
 parser=argparse.ArgumentParser()
-parser.add_argument("--update",action="store_true")
-parser.add_argument("-b","--build",action="store_true")
-parser.add_argument("-w","--wheel",action="store_true")
-parser.add_argument("-u","--upload",action="store_true")
-parser.add_argument("-p","--production",action="store_true")
+parser.add_argument("--update",action="store_true",help="Update wheel and twine packages before run")
+parser.add_argument("-b","--build",action="store_true",help="clear the build and run setup.py")
+parser.add_argument("-w","--wheel",action="store_true",help="build a wheel in addition to a pure Python distribution")
+parser.add_argument("-u","--upload",action="store_true",help="upload to the server (testpy, unless -p is also specified)")
+parser.add_argument("-p","--production",action="store_true",help="upload to the main pypi server (if -u is also specified)")
 args=parser.parse_args()
 
 if args.update:

@@ -279,7 +279,7 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
     def _list_attributes(self):
         atts=[PvcamAttribute(self.handle,p,cam=self) for p in pvcam_defs.PARAM]
         return [a for a in atts if a.available and a._attr_type_n in lib.supported_params]
-    def get_attribute_value(self, name, error_on_missing=True, error_on_noacq=False, default=None, enum_as_str=True):  # pylint: disable=arguments-differ
+    def get_attribute_value(self, name, error_on_missing=True, error_on_noacq=False, default=None, enum_as_str=True):  # pylint: disable=arguments-differ, arguments-renamed
         """
         Get value of an attribute with the given name.
         
@@ -289,7 +289,7 @@ class PvcamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         If ``enum_as_str==True``, return enum-style values as strings; otherwise, return corresponding integer values.
         """
         return super().get_attribute_value(name,error_on_missing=error_on_missing,default=default,error_on_noacq=error_on_noacq,enum_as_str=enum_as_str)
-    def set_attribute_value(self, name, value, truncate=True, error_on_missing=True):  # pylint: disable=arguments-differ
+    def set_attribute_value(self, name, value, truncate=True, error_on_missing=True):  # pylint: disable=arguments-differ, arguments-renamed
         """
         Set value of an attribute with the given name.
         

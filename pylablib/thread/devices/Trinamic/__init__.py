@@ -1,1 +1,1 @@
-from .base import TMCM1110Thread
+from .base import TMCM1110Thread, TMCMx110Thread

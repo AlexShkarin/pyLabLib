@@ -373,7 +373,7 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         """
         Change the temperature setpoint (in C).
 
-        If ``enable_cooler==True``, turn the cooler on automatically.
+        If ``enable_cooler==True``, turn the cooler on automatically if present.
         """
         rng=lib.GetTemperatureRange()
         temperature=max(temperature,rng[0])
@@ -381,7 +381,10 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         temperature=int(temperature)
         lib.SetTemperature(temperature)
         if enable_cooler:
-            self.set_cooler(True)
+            try:
+                self.set_cooler(True)
+            except AndorSDK2LibError:
+                pass
         return temperature
     @_camfunc(getpar="temperature_setpoint",option=[("set",AC_SETFUNC.AC_SETFUNCTION_TEMPERATURE)])
     def get_temperature_setpoint(self):

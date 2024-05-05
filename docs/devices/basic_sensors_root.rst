@@ -23,3 +23,4 @@ Currently supported sensors:
     Pfeiffer
     Leybold
     KJL
+    Agilent

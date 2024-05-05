@@ -281,7 +281,7 @@ class IPhotonFocusCamera(camera.IAttributeCamera): # pylint: disable=abstract-me
                 pass
         return pfprops
 
-    def get_attribute_value(self, name, enum_as_str=True, error_on_missing=True, default=None):  # pylint: disable=arguments-differ
+    def get_attribute_value(self, name, enum_as_str=True, error_on_missing=True, default=None):  # pylint: disable=arguments-differ, arguments-renamed
         """
         Get value of an attribute with the given name.
         
@@ -291,7 +291,7 @@ class IPhotonFocusCamera(camera.IAttributeCamera): # pylint: disable=abstract-me
         If `name` points at a dictionary branch, return a dictionary with all values in this branch.
         """
         return super().get_attribute_value(name,enum_as_str=enum_as_str,error_on_missing=error_on_missing,default=default)
-    def set_attribute_value(self, name, value, truncate=True, error_on_missing=True):  # pylint: disable=arguments-differ
+    def set_attribute_value(self, name, value, truncate=True, error_on_missing=True):  # pylint: disable=arguments-differ, arguments-renamed
         """
         Set value of an attribute with the given name.
         
