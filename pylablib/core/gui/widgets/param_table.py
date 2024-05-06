@@ -250,7 +250,7 @@ class ParamTable(container.QWidgetContainer):
             self.remove_layout_element(par.label)
         if par.indicator is not None:
             self.remove_layout_element(par.indicator)
-    def add_virtual_element(self, name, value=None, multivalued=False, on_set_value="store", signal_kind="none", add_indicator=None):  # pylint: disable=arguments-renamed
+    def add_virtual_element(self, name, value=None, multivalued=False, on_set_value="store", signal_kind="none", add_indicator=None):
         """
         Add a virtual table element.
 
@@ -404,7 +404,7 @@ class ParamTable(container.QWidgetContainer):
         widget.set_out_of_range(out_of_range)
         widget.setObjectName(self.name+"_"+name)
         return self.add_simple_widget(name,widget,label=label,add_indicator=False,location=location,tooltip=tooltip,add_change_event=add_change_event)
-    def add_style_indicator_label(self, name, caption, options=(True,False), value=False, out_of_range="error", prep=bool, styles=None, label=None, location=None, tooltip=None, add_change_event=False, virtual=False):
+    def add_style_indicator_label(self, name, caption, options=(True,False), value=None, out_of_range="error", prep="auto", styles=None, label=None, location=None, tooltip=None, add_change_event=False, virtual=False):
         """
         Add a label to the table with a fixed caption but whose style indicates the value.
 
@@ -423,6 +423,11 @@ class ParamTable(container.QWidgetContainer):
         """
         if not isinstance(styles,dict):
             styles={True:styles}
+        bool_value=set(options)=={True,False}
+        if prep=="auto":
+            prep=bool if bool_value else None
+        if value is None and bool_value:
+            value=False
         return self.add_enum_label(name,options={k:caption for k in options},value=value,out_of_range=out_of_range,prep=prep,styles=styles,
             label=label,location=location,tooltip=tooltip,add_change_event=add_change_event,virtual=virtual)
     def add_num_label(self, name, value=0, limiter=None, formatter=None, label=None, tooltip=None, location=None, add_change_event=False, virtual=False):

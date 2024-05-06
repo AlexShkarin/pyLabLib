@@ -407,18 +407,24 @@ class IQLayoutManagedWidget:
         with self.using_layout_tags(add={tag} if tag is not None else None):
             self.add_to_layout(label,location)
         return label
-    def insert_row(self, row, sublayout=None, stretch=0):
-        """Insert a new row at the given location in the grid layout"""
+    def insert_row(self, row, sublayout=None, stretch=0, compress=False):
+        """Insert a new row at the given location in the grid layout; if ``compress==True``, and there is an empty row below, shift and use that instead"""
         layout,kind=self._sublayouts[sublayout or self._default_layout]
         if kind!="grid":
             raise ValueError("can add rows only to grid layouts (vbox layouts work automatically)")
-        utils.insert_layout_row(layout,row%(layout.rowCount() or 1),stretch=stretch)
-    def insert_column(self, col, sublayout=None, stretch=0):
-        """Insert a new column at the given location in the grid layout"""
+        utils.insert_layout_row(layout,row%(layout.rowCount() or 1),stretch=stretch,compress=compress)
+    def insert_column(self, col, sublayout=None, stretch=0, compress=False):
+        """Insert a new column at the given location in the grid layout; if ``compress==True``, and there are an empty column to the right, shift and use that instead"""
         layout,kind=self._sublayouts[sublayout or self._default_layout]
         if kind!="grid":
             raise ValueError("can add columns only to grid layouts (hbox layouts work automatically)")
-        utils.insert_layout_column(layout,col%(layout.colCount() or 1),stretch=stretch)
+        utils.insert_layout_column(layout,col%(layout.colCount() or 1),stretch=stretch,compress=compress)
+    def compress_grid_layout(self, sublayout=None):
+        """Find all empty rows in a grid layout and shift them to the bottom"""
+        layout,kind=self._sublayouts[sublayout or self._default_layout]
+        if kind!="grid":
+            raise ValueError("can only compress grid layouts")
+        utils.compress_grid_layout(layout)
 
     def clear(self):
         """Clear the layout and remove all the added elements"""
