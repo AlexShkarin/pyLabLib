@@ -1399,8 +1399,8 @@ class KinesisPiezoMotor(KinesisDevice):
     Args:
         conn(str): serial connection parameters (usually an 8-digit device serial number).
     """
-    def __init__(self, conn, default_channel=1):
-        super().__init__(conn,default_channel=default_channel)
+    def __init__(self, conn, default_channel=1, is_rack_system=False):
+        super().__init__(conn,default_channel=default_channel,is_rack_system=is_rack_system)
         self.add_background_comm(0x08D6) # move completed
         self._add_status_variable("enabled_channels",self.get_enabled_channels,self.enable_channels)
         self._add_status_variable("position",lambda: self.get_position(channel="all"))
@@ -1455,8 +1455,8 @@ class KinesisPiezoController(KinesisDevice):
     Args:
         conn(str): serial connection parameters (usually an 8-digit device serial number).
     """
-    def __init__(self, conn):
-        super().__init__(conn)
+    def __init__(self, conn, is_rack_system=False):
+        super().__init__(conn,is_rack_system=is_rack_system)
         self.add_background_comm(0x0654) # randomly returned occasionally on enabling/disabling channels
         self._add_status_variable("enabled",self.is_channel_enabled,self.enable_channel)
         self._add_settings_variable("output",self.get_output_voltage,self.set_output_voltage)
