@@ -2,6 +2,7 @@ from ...core.devio import interface
 from ...core.utils import py3
 
 from . import winmm_lib
+from .winmm_lib import WinMMError
 
 import threading
 import collections
@@ -20,7 +21,7 @@ def list_joysticks():
             caps=lib.joyGetDevCapsA(i)
             if caps.szPname and caps.wMid and caps.wPid:
                 js[i]=_get_device_info(caps)
-        except winmm_lib.WinMMError:
+        except WinMMError:
             pass
     return js
 
@@ -34,7 +35,7 @@ class Joystick(interface.IDevice):
         idx: joystick index (0-based) in the list returned by :func:`list_joysticks`; if ``None``, use the first valid index.
         expanded_events (bool): if ``True``, the events include the full joystick state; otherwise, they only record the change of the state at the particular event
     """
-    Error=winmm_lib.WinMMError
+    Error=WinMMError
     def __init__(self, idx=None, expanded_events=False):
         super().__init__()
         if idx is None:

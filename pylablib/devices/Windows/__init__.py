@@ -1,1 +1,1 @@
-from .joystick import list_joysticks, Joystick
+from .joystick import list_joysticks, Joystick, WinMMError

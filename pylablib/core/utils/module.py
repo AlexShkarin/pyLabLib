@@ -214,13 +214,16 @@ def pip_install(pkg, upgrade=False):
     else:
         subprocess.call([get_executable(console=True), "-m", "pip", "install", pkg])
 
-def install_if_older(pkg, min_ver=""):
+def install_if_older(pkg, min_ver="", ignore_frozen=True):
     """
     Install `pkg` from the default PyPI repository if its version is lower that `min_ver`
     
     If `min_ver` is ``None``, upgrade to the newest version regardless; if ``min_ver==""``, install only if no version is installed.
-    Return ``True`` if the package was installed.
+    Return ``True`` if the package has just been installed.
+    If `ignore_frozen` is ``True`` and the code is running in a frozen package (e.g., PyInstaller), always return ``False`` and do not try to install anything.
     """
+    if ignore_frozen and getattr(sys,"frozen",False):
+        return False
     if get_package_version(pkg) is None or cmp_package_version(pkg,min_ver)=="<":
         pip_install(pkg,upgrade=True)
         return True
