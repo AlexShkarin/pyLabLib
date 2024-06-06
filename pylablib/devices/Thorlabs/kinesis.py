@@ -10,6 +10,7 @@ import contextlib
 
 import re
 import time
+import sys
 
 import collections
 
@@ -40,8 +41,12 @@ class BasicKinesisDevice(comm_backend.ICommBackendWrapper):
     """
     Error=ThorlabsError
     def __init__(self, conn, timeout=3., is_rack_system=False):
-        defaults={"serial":{"baudrate":115200,"rtscts":True}, "ft232":{"baudrate":115200,"rtscts":True}}
-        instr=comm_backend.new_backend(conn,backend=("auto","ft232"),term_write=b"",term_read=b"",timeout=timeout,
+        if sys.platform == "linux" or sys.platform == "darwin":
+            backend_type = "serial"
+        elif sys.platform == "win32":
+            backend_type = "ft232"
+        defaults={"serial":{"baudrate":115200,"rtscts":True}, backend_type:{"baudrate":115200,"rtscts":True}}
+        instr=comm_backend.new_backend(conn,backend=("auto", backend_type),term_write=b"",term_read=b"",timeout=timeout,
             defaults=defaults,reraise_error=ThorlabsBackendError)
         instr.setup_cooldown(write=0.003)
         try:
