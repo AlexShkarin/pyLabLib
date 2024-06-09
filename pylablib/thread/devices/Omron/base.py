@@ -18,6 +18,7 @@ class OmronE5xCControllerThread(device_thread.DeviceThread):
     def connect_device(self):
         with self.using_devclass("Omron.OmronE5xCController",host=self.remote) as cls:
             self.device=cls(conn=self.conn,daddr=self.daddr)  # pylint: disable=not-callable
+            self.device.get_measurementi()
     def setup_task(self, conn, daddr=1, remote=None):  # pylint: disable=arguments-differ
         self.device_reconnect_tries=5
         self.conn=conn

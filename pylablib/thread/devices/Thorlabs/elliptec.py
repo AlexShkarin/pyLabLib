@@ -54,7 +54,7 @@ class ElliptecMotorThread(device_thread.DeviceThread):
     def _open_addr(self, addr=None):
         if not self.open():
             return False
-        return addr is None or addr in self.addrs
+        return addr is None or addr=="all" or addr in self.addrs
     def update_measurements(self):
         if self.open():
             position=self.device.get_position(addr="all")
@@ -99,7 +99,7 @@ class ElliptecMotorThread(device_thread.DeviceThread):
         else:
             self.device.move_to((pos+dest)/2,addr=addr)
         self.sleep(0.2)
-    def move_to(self, position, addr=None):
+    def move_to(self, position, addr=None, update=True):
         """Move to `position` (positive or negative)"""
         if self._open_addr(addr):
             with self._moving(addr):
@@ -115,7 +115,8 @@ class ElliptecMotorThread(device_thread.DeviceThread):
                         self.device.close()
                         time.sleep(1.)
                         self.device.open()
-            self.update_measurements()
+            if update:
+                self.update_measurements()
     def move_by(self, distance, addr=None):
         """Move by `distance` (positive or negative)"""
         if self._open_addr(addr):

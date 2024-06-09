@@ -20,6 +20,7 @@ class OmronE5xCController(GenericModbusRTUDevice):
     """
     def __init__(self, conn, daddr=1):
         super().__init__(conn,daddr=daddr,conn_defaults=("COM1",9600,8,"E",1))
+        self.instr.set_timeout(1.)
         # self._add_info_variable("device_info",self.get_device_info)
         self._add_status_variable("measurementi",self.get_measurementi)
         self._add_settings_variable("setpointi",self.get_setpointi,self.set_setpointi)
@@ -44,7 +45,7 @@ class OmronE5xCController(GenericModbusRTUDevice):
             try:
                 return struct.unpack(self._reg_fmts[kind,nbytes],self.mb_read_holding_registers(address,nbytes//2))[0]
             except ModbusError as err:
-                if i==self._retry_n:
+                if i==self._retry_n-1:
                     raise
                 print("retry {} error {}".format(i,err))
                 time.sleep(self._retry_wait)

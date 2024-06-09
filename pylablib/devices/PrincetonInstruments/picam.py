@@ -519,6 +519,7 @@ class PicamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         """
         self.clear_acquisition()
         super().setup_acquisition(mode=mode,nframes=nframes)
+        self._commit_parameters()
         self._frames_per_readout=self.cav["Frames per Readout"]
         nreadouts=(nframes-1)//self._frames_per_readout+1
         self._allocate_buffer(self.cav["Readout Stride"],self.cav["Frame Stride"],nreadouts)
