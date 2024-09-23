@@ -157,16 +157,18 @@ class AndorSDK2Camera(camera.IBinROICamera, camera.IExposureCamera):
         self._add_settings_variable("frame_period",self.get_frame_period,self.set_frame_period)
         
     def _initial_setup_temperature(self):
+        enable_cooler=True
         if self._start_temperature=="off":
             trng=self.get_temperature_range()
-            self.set_temperature(trng[1] if trng else 0,enable_cooler=False)
-        if self._start_temperature is None:
+            self._start_temperature=trng[1] if trng else 0
+            enable_cooler=False
+        elif self._start_temperature is None:
             trng=self.get_temperature_range()
             if trng:
                 self._start_temperature=trng[0]+int((trng[1]-trng[0])*0.2)
             else:
                 self._start_temperature=0
-            self.set_temperature(self._start_temperature,enable_cooler=True)
+    self.set_temperature(self._start_temperature, enable_cooler=enable_cooler)
     def _initial_setup_ext_trigger(self):
         try:
             lrng=self.get_trigger_level_limits()
