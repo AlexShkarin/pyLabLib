@@ -300,6 +300,8 @@ class IFileSystemDataLocation(IDataLocation):
     def is_free(self, name=None):
         path=self.get_filesystem_path(name,path_type="absolute")
         return not os.path.exists(path)
+    def _ensure_containing_folder(self):
+        pass
     def _open_file_stream(self, name, mode, data_type):
         name=LocationName.from_object(name)
         name_str=name.to_string()
@@ -318,8 +320,10 @@ class IFileSystemDataLocation(IDataLocation):
         if mode=="read":
             s=self._open_file_stream(name,"r",data_type)
         elif mode=="write":
+            self._ensure_containing_folder()
             s=self._open_file_stream(name,"w",data_type)
         elif mode=="append":
+            self._ensure_containing_folder()
             s=self._open_file_stream(name,"a",data_type)
             s.seek(0,2)
         else:
@@ -347,7 +351,8 @@ class SingleFileSystemDataLocation(IFileSystemDataLocation):
         super().__init__(encoding=encoding)
         self.rel_path=file_path
         self.abs_path=os.path.abspath(file_path)
-        file_utils.retry_ensure_dir(os.path.split(file_path)[0])
+    def _ensure_containing_folder(self):
+        file_utils.retry_ensure_dir(os.path.split(self.abs_path)[0])
     def get_filesystem_path(self, name=None, path_type="absolute"):
         name=LocationName.from_object(name)
         if name.path is None and name.ext is None:
@@ -382,7 +387,8 @@ class PrefixedFileSystemDataLocation(IFileSystemDataLocation):
         else:
             self.master_ext=self.master_ext[1:]
         self.prefix_template=prefix_template
-        file_utils.retry_ensure_dir(os.path.split(file_path)[0])
+    def _ensure_containing_folder(self):
+        file_utils.retry_ensure_dir(self.abs_path)
     def get_filesystem_path(self, name=None, path_type="absolute"):
         name=LocationName.from_object(name)
         if not path_type in {"absolute", "relative","name"}:
@@ -424,6 +430,7 @@ class FolderFileSystemDataLocation(IFileSystemDataLocation):
         self.abs_path=os.path.abspath(folder_path)
         self.default_name=default_name
         self.default_ext=default_ext
+    def _ensure_containing_folder(self):
         file_utils.retry_ensure_dir(self.abs_path)
     def get_filesystem_path(self, name=None, path_type="absolute"):
         name=LocationName.from_object(name)
