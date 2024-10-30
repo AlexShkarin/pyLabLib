@@ -42,7 +42,7 @@ class TMCM1110(comm_backend.ICommBackendWrapper,stage.IStage):
         self._add_status_variable("current_speed",self.get_current_speed)
         self._add_status_variable("moving",self.is_moving)
         self._add_status_variable("homing",self.is_homing)
-        self._add_status_variable("last_home_position",self.get_last_home_position)
+        self._add_status_variable("last_home_position",self.get_last_home_position,ignore_error=TrinamicError)
         self.open()
 
     def open(self):

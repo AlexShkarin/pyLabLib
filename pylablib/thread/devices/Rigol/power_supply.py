@@ -24,7 +24,7 @@ class DP1116A(device_thread.DeviceThread):
     """
     def connect_device(self):
         with self.using_devclass("Rigol.DP1116A",host=self.remote) as cls:
-            self.device=cls(adde=self.conn)  # pylint: disable=not-callable
+            self.device=cls(addr=self.conn)  # pylint: disable=not-callable
     def setup_task(self, conn, remote_mode="force", remote=None):  # pylint: disable=arguments-differ
         self.device_reconnect_tries=5
         self.conn=conn

@@ -1,1 +1,1 @@
-from .base import Cryocon1x
+from .base import Cryocon1x, CryoconError

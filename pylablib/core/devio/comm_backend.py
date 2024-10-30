@@ -980,7 +980,7 @@ try:
                 return py3.as_str(v)
             if isinstance(v,(tuple,list)):
                 return type(v)([FT232DeviceBackend._as_str(e) for e in v])
-            return s
+            return v
         @staticmethod
         def list_resources(desc=False):
             try:
