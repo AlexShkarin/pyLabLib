@@ -85,7 +85,7 @@ class TracePlotterCtl(QWidgetContainer):
 
 
 mpl_colors=['#1f77b4','#ff7f0e','#2ca02c','#d62728','#9467bd','#8c564b','#e377c2','#bcbd22','#17becf']
-old_style_colors=['#40FF40','#4040FF','#FF4040','#FFFF00','#00FFFF','#FF00FF','#C0C0C0','#404040']
+old_style_colors=['#40FF40','#4040FF','#FF4040','#FFFF00','#00FFFF','#FF00FF','#C0C0C0']
 all_colors=mpl_colors+old_style_colors
 class TracePlotter(QLayoutManagedWidget):
     """
