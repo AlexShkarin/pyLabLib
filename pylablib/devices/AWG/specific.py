@@ -1,3 +1,5 @@
+from ...core.devio import interface
+
 from .generic import GenericAWG
 
 
@@ -172,3 +174,49 @@ class RigolDG1000(GenericAWG):
     def sync_phase(self):
         """Synchronize phase between two channels"""
         self.write("PHASE:ALIGN")
+
+
+
+class RigolDG1020Z(GenericAWG):
+    """
+    Rigol DG1020Z AWG.
+    """
+    _channels_number=2
+    _supported_functions={"sine","square","noise","ramp","pulse","dc","user"}
+    _single_channel_commands={  "output_sync",
+                                "burst_enabled","burst_mode","burst_ncycles","gate_polarity",
+                                "trigger_source","trigger_slope","trigger_output","output_trigger_slope"}
+    _range_mode="both"
+    _set_angle_unit=False
+    def __init__(self, addr):
+        GenericAWG.__init__(self,addr)
+        for ch in range(1,self._channels_number+1):
+            self._modify_scpi_parameter("pulse_width","PULSE:WIDTH",channel=ch)
+        self._remove_device_variable("ch1/trigger_output")
+        self._remove_device_variable("ch1/output_trigger_slope")
+        self._add_scpi_parameter("clock_source",":SYST:ROSC:SOUR",kind="param",parameter="clock_source",add_variable=True)
+    _p_clock_source=interface.EnumParameterClass("clock_source",["int","ext"],value_case="upper",match_prefix=True)
+    _p_trigger_source=interface.EnumParameterClass("trigger_source",{"imm":"INT","ext":"EXT","bus":"BUS"},value_case="upper",match_prefix=True)
+    def _build_channel_command(self, comm, channel, kind="source"):
+        """Build channel-specific command"""
+        channel=self._get_channel(channel)
+        sfx=""
+        if comm.endswith("?"):
+            sfx="?"
+            comm=comm[:-1]
+        if kind=="output":
+            comm=":OUTPUT{}:".format(channel)+comm if comm else ":OUTPUT{}".format(channel)
+        else:
+            comm=":SOURCE{}:".format(channel)+comm if comm else ":SOURCE{}".format(channel)
+        return comm+sfx
+    def sync_phase(self):
+        """Synchronize phase between two channels"""
+        self.write(":SOURCE1:PHASE:INIT")
+        self.write(":SOURCE2:PHASE:INIT")
+    
+    def get_clock_source(self):
+        """Get 10MHz clock source (``"int"`` or ``"ext"``)"""
+        return self._get_scpi_parameter("clock_source")
+    def set_clock_source(self, source):
+        """Set 10MHz clock source (``"int"`` or ``"ext"``)"""
+        return self._set_scpi_parameter("clock_source",source,result=True)
