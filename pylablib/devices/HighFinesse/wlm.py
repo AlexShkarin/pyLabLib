@@ -142,6 +142,7 @@ class WLM(interface.IDevice):
                         EGetError.ErrNoSignal:"nosig",
                         EGetError.ErrBadSignal:"badsig",
                         EGetError.ErrLowSignal:"under",
+                        EGetError.ErrOutOfRange:"outofrange",
                         EGetError.ErrBigSignal:"over",
                         EGetError.ErrWlmMissing:"nowlm"}
     @muxchannel

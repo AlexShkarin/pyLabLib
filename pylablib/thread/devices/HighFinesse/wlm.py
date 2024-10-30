@@ -52,7 +52,7 @@ class WLMThread(device_thread.DeviceThread):
         badval=False
         if self.open():
             freq=self.device.get_frequency(channel=channel,error_on_invalid=False)
-            if freq in ["under","over","nosig","badsig","noval","nowlm"]:
+            if freq in ["under","over","nosig","badsig","outofrange","noval"]:
                 data=freq,None,None
                 badval=True
             else:
