@@ -83,6 +83,7 @@ class ImagePlotterCtl(QWidgetContainer):
                 self.img_lim_preset=self.v["minlim"],self.v["maxlim"]
             @controller.exsafe
             def load_img_lim_preset():
+                self.v["normalize"]=False
                 self.v["minlim"],self.v["maxlim"]=self.img_lim_preset
             self.params.vs["save_preset"].connect(save_img_lim_preset,QtCore.Qt.DirectConnection)
             self.params.vs["load_preset"].connect(load_img_lim_preset,QtCore.Qt.DirectConnection)

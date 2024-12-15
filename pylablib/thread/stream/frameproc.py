@@ -426,7 +426,7 @@ class BackgroundSubtractionThread(controller.QTaskThread):
             step=self.v["snapshot/parameters/step"]
             if len(self.snapshot_buffer)<count:
                 self.snapshot_buffer+=msg.get_frames_stack((count-len(self.snapshot_buffer))*step)[self._snapshot_frame_offset::step]
-                if self.snapshot_buffer[0].shape!=self.snapshot_buffer[-1].shape:
+                if len(self.snapshot_buffer) and self.snapshot_buffer[0].shape!=self.snapshot_buffer[-1].shape:
                     self.snapshot_buffer=[]
             self.snapshot_buffer=self.snapshot_buffer[:count]
             self.v["snapshot/grabbed"]=len(self.snapshot_buffer)

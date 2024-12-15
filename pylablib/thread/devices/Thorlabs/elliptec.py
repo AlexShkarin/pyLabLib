@@ -47,8 +47,8 @@ class ElliptecMotorThread(device_thread.DeviceThread):
         self.dev_kwargs=kwargs
         self.dest_tolerance=dest_tolerance
         self.add_job("update_measurements",self.update_measurements,.5)
-        self.add_command("move_to",limit_queue=("addr",1),on_full_queue="skip_oldest")
-        self.add_command("move_by",limit_queue=("addr",1),on_full_queue="skip_oldest")
+        self.add_command("move_to",limit_queue=("addr",5),on_full_queue="skip_oldest")
+        self.add_command("move_by",limit_queue=("addr",5),on_full_queue="skip_oldest")
         self.add_command("home")
         self.add_command("set_velocity")
     def _open_addr(self, addr=None):
