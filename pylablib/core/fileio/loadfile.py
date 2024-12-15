@@ -247,7 +247,25 @@ def build_file_format(location_file, file_format="generic", **kwargs):
 
 
 
-def load_csv(path=None, out_type="default", dtype="numeric", columns=None, delimiters=None, empty_entry_substitute=None, ignore_corrupted_lines=True, skip_lines=0, loc="file", encoding=None, return_file=False):
+def load_raw(path=None, loc="file", skip_bytes=0, nbytes=None, encoding=None, transformer=None):
+    """
+    Load raw binary data from the file.
+
+    Args:
+        path (str): path to the file of a file-like object
+        loc (str): location type (``"file"`` means the usual file location; see :func:`.location.get_location` for details)
+        skip_bytes (int): Number of bytes to skip from the beginning of the file.
+        nbytes (int): Number of bytes to read from the file.
+        encoding: if a new file location is opened, this specifies the encoding
+        transformer: binary transformer applied to the file data (note that the whole file is read into memory and transformed if the transformer is specified)
+    """
+    location_file=location.LocationFile(location.get_location(path,loc,encoding=encoding,transformer=transformer))
+    with location_file.open("rb") as stream:
+        if skip_bytes:
+            stream.seek(skip_bytes,1)
+        return stream.read(nbytes if nbytes is not None else -1)
+
+def load_csv(path=None, out_type="default", dtype="numeric", columns=None, delimiters=None, empty_entry_substitute=None, ignore_corrupted_lines=True, skip_lines=0, loc="file", encoding=None, transformer=None, return_file=False):
     """
     Load data table from a CSV/table file.
 
@@ -268,9 +286,10 @@ def load_csv(path=None, out_type="default", dtype="numeric", columns=None, delim
         skip_lines (int): number of lines to skip from the beginning of the file
         loc (str): location type (``"file"`` means the usual file location; see :func:`.location.get_location` for details)
         encoding: if a new file location is opened, this specifies the encoding
+        transformer: binary transformer applied to the file data (note that the whole file is read into memory and transformed if the transformer is specified)
         return_file (bool): if ``True``, return :class:`.DataFile` object (contains some metainfo); otherwise, return just the file data
     """
-    location_file=location.LocationFile(location.get_location(path,loc,encoding=encoding))
+    location_file=location.LocationFile(location.get_location(path,loc,encoding=encoding,transformer=transformer))
     file_format=CSVTableInputFileFormat(out_type=out_type,dtype=dtype,columns=columns,delimiters=delimiters,
         empty_entry_substitute=empty_entry_substitute,ignore_corrupted_lines=ignore_corrupted_lines,skip_lines=skip_lines)
     data_file=file_format.read(location_file)
@@ -290,7 +309,7 @@ def load_csv_desc(path=None, loc="file", encoding=None, return_file=False):
     """
     return load_dict(path=path,loc=loc,encoding=encoding,return_file=return_file)
 
-def load_bin(path=None, out_type="default", dtype="<f8", columns=None, packing="flatten", preamble=None, skip_bytes=0, loc="file", encoding=None, return_file=False):
+def load_bin(path=None, out_type="default", dtype="<f8", columns=None, packing="flatten", preamble=None, skip_bytes=0, loc="file", encoding=None, transformer=None, return_file=False):
     """
     Load data from the binary file.
 
@@ -308,9 +327,10 @@ def load_bin(path=None, out_type="default", dtype="<f8", columns=None, packing="
         skip_bytes (int): Number of bytes to skip from the beginning of the file.
         loc (str): location type (``"file"`` means the usual file location; see :func:`.location.get_location` for details)
         encoding: if a new file location is opened, this specifies the encoding
+        transformer: binary transformer applied to the file data (note that the whole file is read into memory and transformed if the transformer is specified)
         return_file (bool): if ``True``, return :class:`.DataFile` object (contains some metainfo); otherwise, return just the file data
     """
-    location_file=location.LocationFile(location.get_location(path,loc,encoding=encoding))
+    location_file=location.LocationFile(location.get_location(path,loc,encoding=encoding,transformer=transformer))
     file_format=BinaryTableInputFileFormatter(out_type=out_type,dtype=dtype,columns=columns,packing=packing,
         preamble=preamble,skip_bytes=skip_bytes)
     data_file=file_format.read(location_file)
@@ -330,7 +350,7 @@ def load_bin_desc(path=None, loc="file", encoding=None, return_file=False):
     """
     return load_dict(path=path,loc=loc,encoding=encoding,return_file=return_file)
 
-def load_dict(path=None, case_normalization=None, inline_dtype="generic", entry_format="value", inline_out_type="default", skip_lines=0, allow_duplicate_keys=False, loc="file", encoding=None, return_file=False):
+def load_dict(path=None, case_normalization=None, inline_dtype="generic", entry_format="value", inline_out_type="default", skip_lines=0, allow_duplicate_keys=False, loc="file", encoding=None, transformer=None, return_file=False):
     """
     Load data from the dictionary file.
 
@@ -352,9 +372,10 @@ def load_dict(path=None, case_normalization=None, inline_dtype="generic", entry_
         skip_lines (int): Number of lines to skip from the beginning of the file.
         loc (str): location type (``"file"`` means the usual file location; see :func:`.location.get_location` for details)
         encoding: if a new file location is opened, this specifies the encoding
+        transformer: binary transformer applied to the file data (note that the whole file is read into memory and transformed if the transformer is specified)
         return_file (bool): if ``True``, return :class:`.DataFile` object (contains some metainfo); otherwise, return just the file data
     """
-    location_file=location.LocationFile(location.get_location(path,loc,encoding=encoding))
+    location_file=location.LocationFile(location.get_location(path,loc,encoding=encoding,transformer=transformer))
     file_format=DictionaryInputFileFormat(case_normalization=case_normalization,
         inline_dtype=inline_dtype,inline_out_type=inline_out_type,
         entry_format=entry_format,skip_lines=skip_lines,allow_duplicate_keys=allow_duplicate_keys)
@@ -364,7 +385,7 @@ def load_dict(path=None, case_normalization=None, inline_dtype="generic", entry_
 
 
 
-def load_generic(path=None, file_format=None, loc="file", encoding=None, return_file=False, **kwargs):
+def load_generic(path=None, file_format=None, loc="file", encoding=None, transformer=None, return_file=False, **kwargs):
     """
     Load data from the file.
     
@@ -374,6 +395,7 @@ def load_generic(path=None, file_format=None, loc="file", encoding=None, return_
             can also be an :class:`IInputFileFormat` instance for specific reading method
         loc (str): location type (``"file"`` means the usual file location; see :func:`.location.get_location` for details)
         encoding: if a new file location is opened, this specifies the encoding
+        transformer: binary transformer applied to the file data (note that the whole file is read into memory and transformed if the transformer is specified)
         return_file (bool): if ``True``, return :class:`.DataFile` object (contains some metainfo); otherwise, return just the file data
     
     `**kwargs` are passed to the file formatter used to read the data
@@ -386,7 +408,7 @@ def load_generic(path=None, file_format=None, loc="file", encoding=None, return_
         - ``'dict'``: Dictionary file, corresponds to :class:`DictionaryInputFileFormat`;
         - ``'bin'``: Binary file, corresponds to :class:`BinaryTableInputFileFormatter`
     """
-    location_file=location.LocationFile(location.get_location(path,loc,encoding=encoding))
+    location_file=location.LocationFile(location.get_location(path,loc,encoding=encoding,transformer=transformer))
     file_format=build_file_format(location_file,file_format=file_format,**kwargs)
     data_file=file_format.read(location_file)
     return data_file if return_file else data_file.data

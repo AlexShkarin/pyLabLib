@@ -8,6 +8,7 @@ from . import dict_entry
 
 from ..utils import string as string_utils
 from ..utils import dictionary
+from ..utils import py3
 
 import numpy as np
 import pandas as pd
@@ -322,7 +323,22 @@ def get_output_format(data, output_format, **kwargs):
 
 
 
-def save_csv(data, path, delimiters="\t", value_formats=None, use_rep_classes=False, save_columns=True, save_props=True, save_comments=True, save_time=True, loc="file", encoding=None):
+def save_raw(data, path, loc="file", encoding=None, transformer=None):
+    """
+    Load raw binary data from the file.
+
+    Args:
+        data: data to write
+        path (str): path to the file of a file-like object
+        loc (str): location type (``"file"`` means the usual file location; see :func:`.location.get_location` for details)
+        encoding: if a new file location is opened, this specifies the encoding
+        transformer: binary transformer applied to the file data
+    """
+    location_file=location.LocationFile(location.get_location(path,loc,encoding=encoding,transformer=transformer))
+    with location_file.open("wb") as stream:
+        return stream.write(py3.as_bytes(data))
+
+def save_csv(data, path, delimiters="\t", value_formats=None, use_rep_classes=False, save_columns=True, save_props=True, save_comments=True, save_time=True, loc="file", encoding=None, transformer=None):
     """
     Save data to a CSV file.
     
@@ -339,10 +355,11 @@ def save_csv(data, path, delimiters="\t", value_formats=None, use_rep_classes=Fa
         save_time (bool): If ``True``, append the file creation time in the end.
         loc (str): Location type.
         encoding: if a new file location is opened, this specifies the encoding.
+        transformer: binary transformer applied to the file data
     """
     data,output_format=get_output_format(data,"csv",delimiters=delimiters,value_formats=value_formats,use_rep_classes=use_rep_classes,save_columns=save_columns,
         save_props=save_props,save_comments=save_comments,save_time=save_time)
-    f=location.LocationFile(location.get_location(path,loc,encoding=encoding))
+    f=location.LocationFile(location.get_location(path,loc,encoding=encoding,transformer=transformer))
     output_format.write(f,data)
 
 def save_csv_desc(data, path, loc="file", encoding=None):
@@ -361,7 +378,7 @@ def save_csv_desc(data, path, loc="file", encoding=None):
     f=location.LocationFile(location.get_location(path,loc,encoding=encoding))
     output_format.write(f,data)
 
-def save_bin(data, path, dtype=None, transposed=False, loc="file", encoding=None):
+def save_bin(data, path, dtype=None, transposed=False, loc="file", encoding=None, transformer=None):
     """
     Save data to a binary file.
     
@@ -372,9 +389,10 @@ def save_bin(data, path, dtype=None, transposed=False, loc="file", encoding=None
         transposed (bool): If ``False``, write the data row-wise; otherwise, write it column-wise.
         loc (str): Location type.
         encoding: if a new file location is opened, this specifies the encoding.
+        transformer: binary transformer applied to the file data
     """
     data,output_format=get_output_format(data,"bin",dtype=dtype,transposed=transposed)
-    f=location.LocationFile(location.get_location(path,loc,encoding=encoding))
+    f=location.LocationFile(location.get_location(path,loc,encoding=encoding,transformer=transformer))
     output_format.write(f,data)
 
 def save_bin_desc(data, path, loc="file", encoding=None):
@@ -391,7 +409,7 @@ def save_bin_desc(data, path, loc="file", encoding=None):
     f=location.LocationFile(location.get_location(path,loc,encoding=encoding))
     output_format.write(f,data)
 
-def save_dict(data, path, param_formats=None, use_rep_classes=False, table_format="inline", inline_delimiters="\t", inline_formats=None, save_props=True, save_comments=True, save_time=True, loc="file", encoding=None):
+def save_dict(data, path, param_formats=None, use_rep_classes=False, table_format="inline", inline_delimiters="\t", inline_formats=None, save_props=True, save_comments=True, save_time=True, loc="file", encoding=None, transformer=None):
     """
     Save dictionary to a text file.
     
@@ -412,17 +430,18 @@ def save_dict(data, path, param_formats=None, use_rep_classes=False, table_forma
         save_time (bool): If ``True``, append the file creation time in the end.
         loc (str): Location type.
         encoding: if a new file location is opened, this specifies the encoding.
+        transformer: binary transformer applied to the file data
     """
     data,output_format=get_output_format(data,"dict",param_formats=param_formats,use_rep_classes=use_rep_classes,table_format=table_format,inline_delimiters=inline_delimiters,
         inline_formats=inline_formats,save_props=save_props,save_comments=save_comments,save_time=save_time)
-    f=location.LocationFile(location.get_location(path,loc,encoding=encoding))
+    f=location.LocationFile(location.get_location(path,loc,encoding=encoding,transformer=transformer))
     output_format.write(f,data)
 
 
 
 
 
-def save_generic(data, path, output_format=None, loc="file", encoding=None, **kwargs):
+def save_generic(data, path, output_format=None, loc="file", encoding=None, transformer=None, **kwargs):
     """
     Save data to a file.
     
@@ -435,6 +454,7 @@ def save_generic(data, path, output_format=None, loc="file", encoding=None, **kw
             an already prepared :class:`IOutputFileFormat` object. 
         loc (str): Location type.
         encoding: if a new file location is opened, this specifies the encoding.
+        transformer: binary transformer applied to the file data
     
     `**kwargs` are passed to the file formatter constructor
     (see :class:`CSVTableOutputFileFormat`, :class:`DictionaryOutputFileFormat` and :class:`TableBinaryOutputFileFormat` for the possible arguments).
@@ -454,6 +474,6 @@ def save_generic(data, path, output_format=None, loc="file", encoding=None, **kw
         else:
             raise ValueError("can't determine output file format for data: {}".format(data))
     data,output_format=get_output_format(data,output_format,**kwargs)
-    loc=location.get_location(path,loc,encoding=encoding)
+    loc=location.get_location(path,loc,encoding=encoding,transformer=transformer)
     f=location.LocationFile(loc)
     output_format.write(f,data)
