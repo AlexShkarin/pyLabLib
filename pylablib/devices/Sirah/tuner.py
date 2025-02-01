@@ -6,6 +6,7 @@ from .base import GenericSirahError
 import numpy as np
 import pandas as pd
 import time
+import contextlib
 
 
 class FrequencyReadSirahError(GenericSirahError):
@@ -635,6 +636,23 @@ class MatisseTuner:
         tune_rng=self._slow_piezo_rng if device=="slow_piezo" else self._ref_cell_rng
         cal=self._slow_piezo_cal if device=="slow_piezo" else self._ref_cell_cal
         return max_speed,tune_rng,cal
+    def _set_fine_tune_params(self, device, max_speed=None, tune_rng=None, cal=None):
+        if device=="slow_piezo":
+            self._slow_piezo_max_speed=max_speed if max_speed is not None else self._slow_piezo_max_speed
+            self._slow_piezo_rng=tune_rng if tune_rng is not None else self._slow_piezo_rng
+            self._slow_piezo_cal=cal if cal is not None else self._slow_piezo_cal
+        else:
+            self._ref_cell_max_speed=max_speed if max_speed is not None else self._ref_cell_max_speed
+            self._ref_cell_rng=tune_rng if tune_rng is not None else self._ref_cell_rng
+            self._ref_cell_cal=cal if cal is not None else self._ref_cell_cal
+    @contextlib.contextmanager
+    def _override_fine_tune_params(self, device, max_speed=None, tune_rng=None, cal=None):
+        par=self._get_fine_tune_params(device)
+        try:
+            self._set_fine_tune_params(device,max_speed=max_speed,tune_rng=tune_rng,cal=cal)
+            yield
+        finally:
+            self._set_fine_tune_params(device,*par)
 
     _fine_tune_step_par=(0.01,2,0.001,0.1)  # slow piezo "zoom-in" parameters ``(init, factor, final, delay)``
     # start with ``init`` position step, and every time the desired frequency is reached, reduce it by ``factor`` and flip the direction,
@@ -772,6 +790,33 @@ class MatisseTuner:
         for _ in self.tune_to_gen(target,level=level,fine_device=fine_device,tolerance=tolerance,local_level=local_level):
             time.sleep(1E-3)
 
+    def fine_sweep_start_gen(self, span, up_speed, down_speed=None, device="slow_piezo", kind="cont_up", current_pos=0.5):
+        """
+        Same as :meth:`fine_sweep_start`, but made as a generater which yields occasionally.
+        
+        Can be used to run this scan in parallel with some other task, or to be able to interrupt it in the middle.
+        """
+        funcargparse.check_parameter_range(kind,"kind",["cont_up","cont_down","single_up","single_down"])
+        funcargparse.check_parameter_range(device,"device",["slow_piezo","ref_cell"])
+        span=self._to_int_units(span,device)
+        max_speed,tune_rng,_=self._get_fine_tune_params(device)
+        up_speed=min(self._to_int_units(abs(up_speed),device),max_speed)
+        down_speed=up_speed if down_speed is None else min(self._to_int_units(abs(down_speed),device),max_speed)
+        self._setup_fine_tune_lock(device)
+        p=self._get_fine_position(device)
+        self._fine_scan_start=device,p
+        scan_rng=max(tune_rng[0],p-span*current_pos),min(tune_rng[1],p-span*current_pos+span)
+        if kind in ["cont_up","single_up"]:
+            start=scan_rng[0]
+            mode=(False,False,kind=="single_up")
+        else:
+            start=scan_rng[1]
+            mode=(True,kind=="single_down",False)
+        for _ in self._move_cont_gen(device,start,max_speed):
+            yield
+        self.laser.set_scan_params(device=device,mode=mode,lower_limit=scan_rng[0],upper_limit=scan_rng[1],rise_speed=up_speed,fall_speed=down_speed)
+        self.laser.set_scan_status("run")
+        yield scan_rng,(up_speed,down_speed)
     def fine_sweep_start(self, span, up_speed, down_speed=None, device="slow_piezo", kind="cont_up", current_pos=0.5):
         """
         Start a fine sweep using the slow piezo or the ref cell.
@@ -782,26 +827,10 @@ class MatisseTuner:
         and `current_pos` is the relative position of the current position withing the sweep range (0 means that it's the lowest position of the sweep,
         1 means it's the highest, 0.5 means that it's in the center).
         """
-        funcargparse.check_parameter_range(kind,"kind",["cont_up","cont_down","single_up","single_down"])
-        funcargparse.check_parameter_range(device,"device",["slow_piezo","ref_cell"])
-        span=self._to_int_units(span,device)
-        max_speed,tune_rng,_=self._get_fine_tune_params(device)
-        up_speed=min(self._to_int_units(abs(up_speed),device),max_speed)
-        down_speed=up_speed if down_speed is None else min(self._to_int_units(abs(down_speed),device),max_speed)
-        self._setup_fine_tune_lock(device)
-        p=self._get_fine_position(device)
-        self._fine_scan_start=p
-        scan_rng=max(tune_rng[0],p-span*current_pos),min(tune_rng[1],p-span*current_pos+span)
-        if kind in ["cont_up","single_up"]:
-            start=scan_rng[0]
-            mode=(False,False,kind=="single_up")
-        else:
-            start=scan_rng[1]
-            mode=(True,kind=="single_down",False)
-        self._move_cont(device,start,max_speed)
-        self.laser.set_scan_params(device=device,mode=mode,lower_limit=scan_rng[0],upper_limit=scan_rng[1],rise_speed=up_speed,fall_speed=down_speed)
-        self.laser.set_scan_status("run")
-        return scan_rng,(up_speed,down_speed)
+        scan_par=None
+        for scan_par in self.fine_sweep_start_gen(span,up_speed,down_speed=down_speed,device=device,kind=kind,current_pos=current_pos):
+            time.sleep(1E-3)
+        return scan_par
     def fine_sweep_stop(self, return_to_start=True, start_point=None):
         """
         Stop currently running fast sweep.
@@ -811,9 +840,11 @@ class MatisseTuner:
         """
         self.laser.set_scan_status("stop")
         if start_point is None:
-            start_point=self._fine_scan_start
+            start_point=self._fine_scan_start[1] if self._fine_scan_start is not None else None
         if return_to_start and start_point is not None:
             device=self.laser.get_scan_params()[0]
+            if device=="none" and self._fine_scan_start is not None:
+                device=self._fine_scan_start[0]
             self._move_cont(device,start_point,self._get_fine_tune_params(device)[0])
         self._fine_scan_start=None
     
@@ -863,8 +894,9 @@ class MatisseTuner:
         ctd=general.Countdown(segment_end_timeout)
         furtherst_freq=None
         while (full_rng[1]-f)*scandir>0:
-            for _ in self.tune_to_gen(f,fine_device=device,local_level=local_level):
-                yield False
+            with self._override_fine_tune_params(device,max_speed=max(self._get_fine_tune_params(device)[0],speed)):
+                for _ in self.tune_to_gen(f,fine_device=device,local_level=local_level):
+                    yield False
             f0=self.get_frequency()
             scan_freqs=[]
             if abs(f0-f)<stitch_tune_precision:

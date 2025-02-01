@@ -195,6 +195,7 @@ class SirahMatisseTunerThread(SirahMatisseThread):
         self.add_command("lock_frequency_start")
         self.add_command("lock_frequency_stop")
         self.add_command("change_lock_frequency")
+        self.add_batch_job("fine_scan",self.fine_scan_loop,self.fine_scan_finalize)
         self.add_command("fine_scan_start")
         self.add_command("fine_scan_stop")
         self.add_command("fine_scan_adjust",limit_queue=3,on_full_queue="skip_oldest")
@@ -326,6 +327,29 @@ class SirahMatisseTunerThread(SirahMatisseThread):
         self.tuner.fine_sweep_stop(start_point=start_point)
         self.v["fine_scan/device_range_curr"]=self.v["fine_scan/device_range_start"]=None
         self.v["fine_scan/device_rate_curr"]=None
+    
+    def fine_scan_loop(self, span, rate, kind="continuous"):
+        """
+        Start and continue fine scan with the given span and at a given rate around the current frequency.
+
+        Currently, only ``kind=="continuous"`` is supported.
+        """
+        if self.open():
+            self.tuner.fine_sweep_stop()
+            scan_par=None
+            for scan_par in self.tuner.fine_sweep_start_gen(span,up_speed=rate,down_speed=rate,kind="cont_up" if kind=="continuous" else "single_up",device=self._fine_device):
+                yield
+            if scan_par is not None:
+                self.v["fine_scan/device_range_curr"]=self.v["fine_scan/device_range_start"]=scan_par[0]
+                self.v["fine_scan/device_rate_curr"]=scan_par[1][0]
+            self.update_scan_status("running")
+            while True:
+                yield
+    def fine_scan_finalize(self, *args, **kwargs):
+        if self.open():
+            self._stop_fine_sweep()
+        self.update_scan_status("idle")
+        self.update_operation_status("idle")
     def fine_scan_start(self, span, rate, kind="continuous"):
         """
         Start fine scan with the given span and at a given rate around the current frequency.
@@ -338,10 +362,7 @@ class SirahMatisseTunerThread(SirahMatisseThread):
             self.stop_tuning()
             self.update_operation_status("fine_scan")
             self.update_scan_status("setup")
-            rng,speeds=self.tuner.fine_sweep_start(span,up_speed=rate,down_speed=rate,kind="cont_up" if kind=="continuous" else "single_up",device=self._fine_device)
-            self.v["fine_scan/device_range_curr"]=self.v["fine_scan/device_range_start"]=rng
-            self.v["fine_scan/device_rate_curr"]=speeds[0]
-            self.update_scan_status("running")
+            self.start_batch_job("fine_scan",0.05,span=span,rate=rate,kind=kind)
     def _sanitize_rng(self, rng, lim, minw):
         rmin,rmax=lim
         r0,r1=max(rmin,min(rng[0],rmax)),max(rmin,min(rng[1],rmax))
@@ -373,10 +394,7 @@ class SirahMatisseTunerThread(SirahMatisseThread):
             self.v["fine_scan/device_range_curr"]=tuple(rng)
     def fine_scan_stop(self):
         """Stop currently going fine scan"""
-        if self.open():
-            self._stop_fine_sweep()
-        self.update_scan_status("idle")
-        self.update_operation_status("idle")
+        self.stop_batch_job("fine_scan")
 
     def coarse_scan_loop(self, bifi_rng, te_rng):
         if self.open():
