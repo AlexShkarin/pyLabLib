@@ -389,3 +389,66 @@ class Lakeshore370(SCPI.SCPIDevice):  # TODO: finish / check
         value=[c if v is None else v for c,v in zip(current,[enabled,settle_time,window])]
         self.write("FILTER",[channel]+value)
         return self._wip.get_filter_settings(channel)
+
+
+
+
+TLakeshore325SensorType=collections.namedtuple("TLakeshore325SensorType",["sensor_type","compensation"])
+class Lakeshore235(SCPI.SCPIDevice):
+    """
+    Lakeshore 235 temperature controller.
+
+    Args:
+        conn: serial connection parameters (usually port or a tuple containing port and baudrate)
+    """
+    Error=LakeshoreError
+    ReraiseError=LakeshoreBackendError
+    def __init__(self, conn):
+        SCPI.SCPIDevice.__init__(self,conn,backend="serial",term_write="\r\n",term_read="\r\n",backend_defaults={"serial":("COM1",9600,7,'O',1)})
+        self._add_settings_variable("sensor_type",self.get_sensor_type,self.set_sensor_type,mux=("AB",0))
+        self._add_status_variable("temperature",self.get_all_temperatures)
+        self._add_status_variable("sensor_reading",self.get_all_sensor_readings,priority=-1)
+        try:
+            self.get_id(timeout=2.)
+        except self.instr.Error:
+            self.close()
+            raise
+    _float_fmt="{:.3f}"
+    
+    _p_channel=interface.EnumParameterClass("channel",["A","B"])
+    _p_sensor_type=interface.EnumParameterClass("sensor_type",{"diode_si":0,"diode_gaalas":1,"plat_250":2,"plat_500":3,"plat_1k":4,"ntc":5,"tcoupl_25":6,"tcoupl_50":7,"diode_2.5":8,"diode_7.5":9})
+    @interface.use_parameters(_returns=("sensor_type",None))
+    def get_sensor_type(self, channel):
+        """
+        Get sensor type for a given channel (``"A"`` or ``"B"``).
+
+        For types, see ``INTYPE`` command description in the Lakeshore 218 programming manual.
+        """
+        return tuple(self.ask("INTYPE? {}".format(channel),["int","bool"]))
+    @interface.use_parameters
+    def set_sensor_type(self, channel, sensor_type, compensation=False):
+        """
+        Set sensor type for a given channel (``"A"`` or ``"B"``).
+
+        For types, see ``INTYPE`` command description in the Lakeshore 218 programming manual.
+        """
+        compensation="1" if compensation else "0"
+        self.write("INTYPE",[channel,sensor_type,compensation])
+        self.wait_dev()
+        return self._wip.get_sensor_type(channel)
+    
+    @interface.use_parameters
+    def get_temperature(self, channel):
+        """Get readings (in Kelvin) on a given channel (``"A"`` or ``"B"``)"""
+        return self.ask("KRDG? {}".format(channel),"float")
+    def get_all_temperatures(self):
+        """Get readings (in Kelvin) on all channels"""
+        return [self.get_temperature(ch) for ch in ["A","B"]]
+    
+    @interface.use_parameters
+    def get_sensor_reading(self, channel):
+        """Get readings (in sensor units) on a given channel (``"A"`` or ``"B"``)"""
+        return self.ask("SRDG? {}".format(channel),"float")
+    def get_all_sensor_readings(self):
+        """Get readings (in sensor units) on all channels"""
+        return [self.get_sensor_reading(ch) for ch in ["A","B"]]
