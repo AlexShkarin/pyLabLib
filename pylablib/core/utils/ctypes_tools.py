@@ -1,6 +1,12 @@
 import ctypes
 import sys
+import platform
 
+_platform="win" if platform.system()=="Windows" else "linux"
+
+##### Cross-platform support #####
+
+WINFUNCTYPE=ctypes.WINFUNCTYPE if _platform=="win" else ctypes.CFUNCTYPE
 
 ##### Windows types #####
 

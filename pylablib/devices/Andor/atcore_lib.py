@@ -6,7 +6,7 @@ from .atcore_defs import define_functions
 from .atcore_features import feature_types  # pylint: disable=unused-import
 from .base import AndorError
 
-from ...core.utils import ctypes_wrap
+from ...core.utils import ctypes_wrap, ctypes_tools
 from ..utils import load_lib
 
 import ctypes
@@ -132,7 +132,7 @@ class AndorSDK3Lib:
         self.AT_Command=wrapper(lib.AT_Command)
 
         # typedef int (AT_EXP_CONV *FeatureCallback)(AT_H Hndl, const AT_WC* Feature, void* Context);
-        self.c_callback=ctypes.WINFUNCTYPE(ctypes.c_int,AT_H,AT_pWC,ctypes.c_void_p)
+        self.c_callback=ctypes_tools.WINFUNCTYPE(ctypes.c_int,AT_H,AT_pWC,ctypes.c_void_p)
         #  ctypes.c_int AT_RegisterFeatureCallback(AT_H Hndl, ctypes.POINTER(AT_WC) Feature, FeatureCallback EvCallback, ctypes.c_void_p Context)
         self.AT_RegisterFeatureCallback_lib=wrapper(lib.AT_RegisterFeatureCallback)
         #  ctypes.c_int AT_UnregisterFeatureCallback(AT_H Hndl, ctypes.POINTER(AT_WC) Feature, FeatureCallback EvCallback, ctypes.c_void_p Context)

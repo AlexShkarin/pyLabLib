@@ -1,7 +1,7 @@
 from .NewClassic_USBCamera_SDK_lib import wlib as lib
 from .base import MightexError, MightexTimeoutError
 
-from ...core.utils import py3
+from ...core.utils import py3, ctypes_tools
 from ...core.devio import interface
 from ..interface import camera
 from ..utils import load_lib
@@ -237,7 +237,7 @@ class MightexSSeriesCamera(camera.IBinROICamera, camera.IExposureCamera):
                     stat[1]=0
                 stat[0]=0
             self._cb_body=callback_body
-            _cb_body_ct=ctypes.WINFUNCTYPE(None,ctypes.c_uint64,ctypes.c_uint64,ctypes.c_uint64)(callback_body.address)
+            _cb_body_ct=ctypes_tools.WINFUNCTYPE(None,ctypes.c_uint64,ctypes.c_uint64,ctypes.c_uint64)(callback_body.address)
             pcomm_=self.comm.ctypes.data
             pstat_=self.stat.ctypes.data
             @nb.cfunc(nb.types.void(nb.uint64,nb.uint64),nopython=True)

@@ -4,7 +4,7 @@ from . import NewClassic_USBCamera_SDK_defs  # pylint: disable=unused-import
 from .NewClassic_USBCamera_SDK_defs import define_functions
 from .base import MightexError
 
-from ...core.utils import ctypes_wrap
+from ...core.utils import ctypes_wrap, ctypes_tools
 import ctypes
 from ..utils import load_lib
 import platform
@@ -110,7 +110,7 @@ class NewClassicLib:
         #  SDK_RETURN_CODE NewClassicUSB_StopFrameGrab()
         self.NewClassicUSB_StopFrameGrab=wrapper(lib.NewClassicUSB_StopFrameGrab)
 
-        self.frame_callback=ctypes.WINFUNCTYPE(None,NewClassic_USBCamera_SDK_defs.PTProcessedDataProperty,ctypes.c_char_p)
+        self.frame_callback=ctypes_tools.WINFUNCTYPE(None,NewClassic_USBCamera_SDK_defs.PTProcessedDataProperty,ctypes.c_char_p)
         #  SDK_RETURN_CODE NewClassicUSB_InstallFrameHooker(ctypes.c_int FrameType, FrameDataCallBack FrameHooker)
         self.NewClassicUSB_InstallFrameHooker=wrapper(lib.NewClassicUSB_InstallFrameHooker)
         #  SDK_RETURN_CODE NewClassicUSB_InstallUSBDeviceHooker(DeviceFaultCallBack USBDeviceHooker)

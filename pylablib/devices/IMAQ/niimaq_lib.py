@@ -9,7 +9,7 @@ from .niimaq_defs import SESSION_ID, IMG_ERR
 from .niimaq_defs import define_functions
 from .niimaq_attrtypes import IMG_ATTR_DOUBLE, IMG_ATTR_UINT64, IMG_ATTR_NA  # pylint: disable=unused-import
 
-from ...core.utils import ctypes_wrap, py3
+from ...core.utils import ctypes_wrap, ctypes_tools, py3
 from ...core.devio.comm_backend import DeviceError
 from ..utils import load_lib
 
@@ -173,7 +173,7 @@ class IMAQLib:
         #  Int32 imgSessionWaitSignal2(SESSION_ID sid, ctypes.c_int signalType, uInt32 signalIdentifier, uInt32 signalPolarity, uInt32 timeout)
         self.imgSessionWaitSignal2=wrapper(lib.imgSessionWaitSignal2)
         # typedef  uInt32 (NI_CDECL * CALL_BACK_PTR2)(SESSION_ID boardid, IMG_ERR err, IMG_SIGNAL_TYPE signalType, uInt32 signalIdentifier, void* data);
-        self.c_callback=ctypes.WINFUNCTYPE(ctypes.c_uint32,SESSION_ID,IMG_ERR,ctypes.c_uint32,ctypes.c_uint32,ctypes.c_void_p)
+        self.c_callback=ctypes_tools.WINFUNCTYPE(ctypes.c_uint32,SESSION_ID,IMG_ERR,ctypes.c_uint32,ctypes.c_uint32,ctypes.c_void_p)
         #  Int32 imgSessionWaitSignalAsync2(SESSION_ID sid, ctypes.c_int signalType, uInt32 signalIdentifier, uInt32 signalPolarity, CALL_BACK_PTR2 funcptr, ctypes.c_void_p callbackData)
         self.imgSessionWaitSignalAsync2=wrapper(lib.imgSessionWaitSignalAsync2)
         

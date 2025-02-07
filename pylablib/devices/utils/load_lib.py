@@ -12,6 +12,7 @@ import collections
 library_parameters.library_parameters.update({"devices/only_windows_dlls":True},overwrite=False)
 _store_loaded_dlls=False
 _loaded_dlls=[]
+_platform="win" if platform.system()=="Windows" else "linux"
 
 def get_os_lib_folder():
     """Get default Windows DLL folder (``System32`` or ``SysWOW64``, depending on Python and Windows bitness)"""
@@ -92,12 +93,12 @@ def _load_dll(path, kind, add_environ_paths=True):
                     added_dirs.append(os.add_dll_directory(p)) # pylint: disable=no-member
                 except OSError:  # missing folder
                     pass
-            return ctypes.cdll.LoadLibrary(path) if kind=="cdecl" else ctypes.windll.LoadLibrary(path)
+            return ctypes.cdll.LoadLibrary(path) if kind=="cdecl" or _platform!="win" else ctypes.windll.LoadLibrary(path)
         finally:
             for d in added_dirs:
                 d.close()
     else:
-        return ctypes.cdll.LoadLibrary(path) if kind=="cdecl" else ctypes.windll.LoadLibrary(path)
+        return ctypes.cdll.LoadLibrary(path) if kind=="cdecl" or _platform!="win" else ctypes.windll.LoadLibrary(path)
 def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, depends=None, depends_required=True, error_message=None, check_order="location", return_location=False):
     """
     Load DLL.
@@ -120,8 +121,8 @@ def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, depe
             (in the latter case, `name` and `location` arguments are ignored, except for generating error message).
         return_location(bool): if ``True``, return a tuple ``(dll, location, folder)`` instead of a single dll.
     """
-    if platform.system()!="Windows" and not library_parameters.library_parameters["devices/only_windows_dlls"]:
-        raise OSError("DLLs are not available on non-Windows platform")
+    if _platform!="win" and library_parameters.library_parameters["devices/only_windows_dlls"]:
+        raise OSError("DLLs are untested and not available on non-Windows platform by default; pylablib.par['devices/only_windows_dlls']=True to override")
     if not isinstance(name,(list,tuple)):
         name=[name]
     if not isinstance(locations,(list,tuple)):

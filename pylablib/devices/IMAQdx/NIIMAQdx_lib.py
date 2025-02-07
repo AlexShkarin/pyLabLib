@@ -10,7 +10,7 @@ from .NIIMAQdx_defs import IMAQdxEnumItem
 from .NIIMAQdx_defs import IMAQdxVideoMode
 from .NIIMAQdx_defs import define_functions
 
-from ...core.utils import ctypes_wrap, py3
+from ...core.utils import ctypes_wrap, ctypes_tools, py3
 from ...core.devio.comm_backend import DeviceError
 from ..utils import load_lib
 
@@ -171,15 +171,15 @@ class IMAQdxLib:
         self.IMAQdxReadAttributes=wrapper(lib.IMAQdxReadAttributes)
         
         # typedef     uInt32 (NI_FUNC *FrameDoneEventCallbackPtr)(IMAQdxSession id, uInt32 bufferNumber, void* callbackData);
-        self.c_frame_done_callback=ctypes.WINFUNCTYPE(ctypes.c_uint32, NIIMAQdx_defs.IMAQdxSession, ctypes.c_uint32, ctypes.c_void_p)
+        self.c_frame_done_callback=ctypes_tools.WINFUNCTYPE(ctypes.c_uint32, NIIMAQdx_defs.IMAQdxSession, ctypes.c_uint32, ctypes.c_void_p)
         #  ctypes.c_int IMAQdxRegisterFrameDoneEvent(IMAQdxSession id, uInt32 bufferInterval, FrameDoneEventCallbackPtr callbackFunction, ctypes.c_void_p callbackData)
         self.IMAQdxRegisterFrameDoneEvent_lib=wrapper(lib.IMAQdxRegisterFrameDoneEvent)
         # typedef     uInt32 (NI_FUNC *PnpEventCallbackPtr)(IMAQdxSession id, IMAQdxPnpEvent pnpEvent, void* callbackData);
-        self.c_pnp_callback=ctypes.WINFUNCTYPE(ctypes.c_uint32, NIIMAQdx_defs.IMAQdxSession, ctypes.c_int, ctypes.c_void_p)
+        self.c_pnp_callback=ctypes_tools.WINFUNCTYPE(ctypes.c_uint32, NIIMAQdx_defs.IMAQdxSession, ctypes.c_int, ctypes.c_void_p)
         #  ctypes.c_int IMAQdxRegisterPnpEvent(IMAQdxSession id, ctypes.c_int event, PnpEventCallbackPtr callbackFunction, ctypes.c_void_p callbackData)
         self.IMAQdxRegisterPnpEvent_lib=wrapper(lib.IMAQdxRegisterPnpEvent)
         # typedef     void (NI_FUNC *AttributeUpdatedEventCallbackPtr)(IMAQdxSession id, const char* name, void* callbackData);
-        self.c_attr_updated_callback=ctypes.WINFUNCTYPE(None, NIIMAQdx_defs.IMAQdxSession, ctypes.c_char_p, ctypes.c_void_p)
+        self.c_attr_updated_callback=ctypes_tools.WINFUNCTYPE(None, NIIMAQdx_defs.IMAQdxSession, ctypes.c_char_p, ctypes.c_void_p)
         #  ctypes.c_int IMAQdxRegisterAttributeUpdatedEvent(IMAQdxSession id, ctypes.c_char_p name, AttributeUpdatedEventCallbackPtr callbackFunction, ctypes.c_void_p callbackData)
         self.IMAQdxRegisterAttributeUpdatedEvent_lib=wrapper(lib.IMAQdxRegisterAttributeUpdatedEvent)
 

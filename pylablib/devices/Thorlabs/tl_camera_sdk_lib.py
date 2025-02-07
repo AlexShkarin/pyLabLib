@@ -4,7 +4,7 @@ from . import tl_camera_sdk_defs  # pylint: disable=unused-import
 from .tl_camera_sdk_defs import drtl_error_codes
 from .tl_camera_sdk_defs import define_functions
 
-from ...core.utils import ctypes_wrap, py3
+from ...core.utils import ctypes_wrap, ctypes_tools, py3
 from ...core.devio.comm_backend import DeviceError
 from ..utils import load_lib
 
@@ -285,13 +285,13 @@ class ThorlabsTLCameraLib:
         #  ctypes.c_int tl_camera_get_frame_available_callback(ctypes.c_void_p tl_camera_handle, ctypes.c_void_p handler)
         self.tl_camera_get_frame_available_callback=wrapper(lib.tl_camera_get_frame_available_callback)
         #  ctypes.c_int tl_camera_set_frame_available_callback(ctypes.c_void_p tl_camera_handle, TL_CAMERA_FRAME_AVAILABLE_CALLBACK handler, ctypes.c_void_p context)
-        self.c_frame_available_callback=ctypes.WINFUNCTYPE(None, ctypes.c_void_p, ctypes.POINTER(ctypes.c_ushort), ctypes.c_int, ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p)
+        self.c_frame_available_callback=ctypes_tools.WINFUNCTYPE(None, ctypes.c_void_p, ctypes.POINTER(ctypes.c_ushort), ctypes.c_int, ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p)
         self.tl_camera_set_frame_available_callback_lib=wrapper(lib.tl_camera_set_frame_available_callback)
         #  ctypes.c_int tl_camera_set_camera_connect_callback(TL_CAMERA_CONNECT_CALLBACK handler, ctypes.c_void_p context)
-        self.c_camera_connect_callback=ctypes.WINFUNCTYPE(None, ctypes.c_char_p, ctypes.c_int, ctypes.c_void_p)
+        self.c_camera_connect_callback=ctypes_tools.WINFUNCTYPE(None, ctypes.c_char_p, ctypes.c_int, ctypes.c_void_p)
         self.tl_camera_set_camera_connect_callback_lib=wrapper(lib.tl_camera_set_camera_connect_callback)
         #  ctypes.c_int tl_camera_set_camera_disconnect_callback(TL_CAMERA_DISCONNECT_CALLBACK handler, ctypes.c_void_p context)
-        self.c_camera_disconnect_callback=ctypes.WINFUNCTYPE(None, ctypes.c_char_p, ctypes.c_void_p)
+        self.c_camera_disconnect_callback=ctypes_tools.WINFUNCTYPE(None, ctypes.c_char_p, ctypes.c_void_p)
         self.tl_camera_set_camera_disconnect_callback_lib=wrapper(lib.tl_camera_set_camera_disconnect_callback)
         
         #  ctypes.c_int tl_camera_convert_gain_to_decibels(ctypes.c_void_p tl_camera_handle, ctypes.c_int index_of_gain_value, ctypes.POINTER(ctypes.c_double) gain_dB)

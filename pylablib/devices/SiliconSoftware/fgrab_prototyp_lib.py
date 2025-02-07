@@ -4,7 +4,7 @@ from .fgrab_define_defs import FG_STATUS, drFG_STATUS, FG_PARAM
 from .fgrab_prototyp_defs import FgParamTypes, FgProperty, CFgApcControl, frameindex_t
 from .fgrab_prototyp_defs import define_functions
 
-from ...core.utils import ctypes_wrap, functions as func_utils
+from ...core.utils import ctypes_wrap, ctypes_tools, functions as func_utils
 from ...core.devio.comm_backend import DeviceError
 from ..utils import load_lib
 
@@ -250,7 +250,7 @@ class SIFgrabLib:
 
         #  ctypes.c_int Fg_registerApcHandler(ctypes.c_void_p Fg, ctypes.c_uint DmaIndex, ctypes.c_void_p control, ctypes.c_int flags)
         self.Fg_registerApcHandler_lib=wrapper(lib.Fg_registerApcHandler)
-        self.Fg_ApcFunc_t=ctypes.WINFUNCTYPE(ctypes.c_int,frameindex_t,ctypes.c_void_p)
+        self.Fg_ApcFunc_t=ctypes_tools.WINFUNCTYPE(ctypes.c_int,frameindex_t,ctypes.c_void_p)
         
 
         self._initialized=True

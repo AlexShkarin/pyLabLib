@@ -3,7 +3,7 @@
 from . import pvcam_defs
 from .pvcam_defs import define_functions, PARAM_TYPE, PL_PARAM_ATTRIBUTES
 
-from ...core.utils import ctypes_wrap, py3
+from ...core.utils import ctypes_wrap, ctypes_tools, py3
 from ...core.devio.comm_backend import DeviceError
 from ..utils import load_lib
 
@@ -157,7 +157,7 @@ class PvcamLib:
         #  rs_bool pl_cam_deregister_callback(int16 hcam, int32 callback_event)
         self.pl_cam_deregister_callback=wrapper(lib.pl_cam_deregister_callback)
         # typedef void (PV_DECL *PL_CALLBACK_SIG_EX3)(const FRAME_INFO* pFrameInfo, void* pContext);
-        self.c_callback=ctypes.WINFUNCTYPE(None,pvcam_defs.PFRAME_INFO,ctypes.c_void_p)
+        self.c_callback=ctypes_tools.WINFUNCTYPE(None,pvcam_defs.PFRAME_INFO,ctypes.c_void_p)
 
         #  rs_bool pl_pp_reset(int16 hcam)
         self.pl_pp_reset=wrapper(lib.pl_pp_reset)
