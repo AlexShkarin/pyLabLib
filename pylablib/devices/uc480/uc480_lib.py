@@ -65,15 +65,22 @@ class uc480Lib:
 
     @staticmethod
     def _load_dll(backend):
-        if backend=="uc480":
+        if backend=="uc480":  # windows-only
             lib_name="uc480.dll" if platform.architecture()[0][:2]=="32" else "uc480_64.dll"
+            dcx_path=load_lib.get_program_files_folder("Thorlabs/Scientific Imaging/DCx Camera Support/USB Driver Package")
             thorcam_path=load_lib.get_program_files_folder("Thorlabs/Scientific Imaging/ThorCam")
             error_message="The library is automatically supplied with Thorcam software\n"+load_lib.par_error_message.format("uc480")
-            return load_lib.load_lib(lib_name,locations=("parameter/uc480",thorcam_path,"global"),error_message=error_message,call_conv="cdecl")
+            return load_lib.load_lib(lib_name,locations=("parameter/uc480",dcx_path,thorcam_path,"global"),error_message=error_message,call_conv="cdecl")
         elif backend=="ueye":
-            lib_name="ueye_api.dll" if platform.architecture()[0][:2]=="32" else "ueye_api_64.dll"
-            ueye_path=load_lib.get_program_files_folder("IDS/uEye/USB driver package")
-            ids_path=load_lib.get_program_files_folder("IDS/uEye/develop/bin")
+            lib_name,ueye_path,ids_path=None,None,None
+            if platform.system() == 'Windows':
+                lib_name="ueye_api.dll" if platform.architecture()[0][:2]=="32" else "ueye_api_64.dll"
+                ueye_path=load_lib.get_program_files_folder("IDS/uEye/USB driver package")
+                ids_path=load_lib.get_program_files_folder("IDS/uEye/develop/bin")
+            else:  # TODO: other OSes? this assumes Linux
+                lib_name="libueye_api.so"
+                ueye_path="/opt/ids/ueye/lib"
+                ids_path="/opt/ids/ueye/lib/x86_64-linux-gnu"
             error_message="The library is automatically supplied with IDS uEye or IDS Software Suite\n"+load_lib.par_error_message.format("ueye")
             return load_lib.load_lib(lib_name,locations=("parameter/ueye",ueye_path,ids_path,"global"),error_message=error_message,call_conv="cdecl")
         else:
