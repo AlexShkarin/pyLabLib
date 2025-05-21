@@ -377,6 +377,13 @@ class ERROR(enum.IntEnum):
     IS_ERROR_CPU_IDLE_STATES_CONFIGURATION = _int32(204)
     IS_DEVICE_BUSY                         = _int32(205)
     IS_SENSOR_INITIALIZATION_FAILED        = _int32(206)
+    IS_IMAGE_BUFFER_NOT_DWORD_ALIGNED      = _int32(207)
+    IS_SEQ_BUFFER_IS_LOCKED                = _int32(208)
+    IS_FILE_PATH_DOES_NOT_EXIST            = _int32(209)
+    IS_INVALID_WINDOW_HANDLE               = _int32(210)
+    IS_INVALID_IMAGE_PARAMETER             = _int32(211)
+    IS_NO_SUCH_DEVICE                      = _int32(212)
+    IS_DEVICE_IN_USE                       = _int32(213)
 dERROR={a.name:a.value for a in ERROR}
 drERROR={a.value:a.name for a in ERROR}
 
