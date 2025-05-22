@@ -448,10 +448,13 @@ class uc480Lib:
         ncam=self.is_GetNumberOfCameras()
         if ncam==0:
             return []
+        assert ncam > 0 and ncam < (1<<12), ("Weird 'ncam' value: %d"%ncam)
+
         for _ in range(10):
             class UC480_CAMERA_LIST(ctypes.Structure):
-                _fields_=[  ("dwCount",ctypes.c_ulong),
+                _fields_=[  ("dwCount",ctypes.c_uint32),
                             ("uci",UC480_CAMERA_INFO*ncam)  ]
+
             cam_lst=UC480_CAMERA_LIST()
             cam_lst.dwCount=ncam
             self.is_GetCameraList_lib(ctypes.pointer(cam_lst))
@@ -460,7 +463,7 @@ class uc480Lib:
             else:
                 ncam=cam_lst.dwCount
         raise uc480Error("can not obtain the camera list: the list size keeps changing")
-    
+
     def is_GetCaptureStatus(self, hcam):
         status=uc480_defs.UC480_CAPTURE_STATUS_INFO()
         self.is_CaptureStatus(hcam,uc480_defs.CAPTURE_STATUS_CMD.IS_CAPTURE_STATUS_INFO_CMD_GET,ctypes.byref(status),ctypes.sizeof(status))
