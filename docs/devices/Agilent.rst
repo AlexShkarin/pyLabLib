@@ -40,6 +40,8 @@ The operation of this controller is fairly straightforward, but there is a coupl
 
 
 
+.. _vnas_agilent:
+
 Agilent VNAs
 ==============================
 
