@@ -991,7 +991,7 @@ try:
         
         
     _backends["ft232"]=FT232DeviceBackend
-except (ImportError,NameError,OSError):
+except (ImportError,NameError,OSError,FileNotFoundError,AttributeError):
     pass
 _backend_errors["ft232"]=_backend_install_message.format(name="pyft232",pkg="pyft232",mod="ft232")
 
