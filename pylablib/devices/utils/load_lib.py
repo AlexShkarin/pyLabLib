@@ -9,7 +9,7 @@ import contextlib
 import collections
 
 
-library_parameters.library_parameters.update({"devices/only_windows_dlls":True},overwrite=False)
+library_parameters.library_parameters.update({"devices/only_windows_dlls":True,"devices/dlls/show_load_errors":False},overwrite=False)
 _store_loaded_dlls=False
 _loaded_dlls=[]
 _platform="win" if platform.system()=="Windows" else "linux"
@@ -175,7 +175,9 @@ def load_lib(name, locations=("global",), call_conv="cdecl", locally=False, depe
                     else:
                         raise ValueError("unrecognized call convention: {}".format(call_conv))
                 return (dlls[-1],loc,paths[-1]) if return_location else dlls[-1]
-            except OSError:
+            except OSError as err:
+                if library_parameters.library_parameters["devices/dlls/show_load_errors"]:
+                    print("error importing library '{}' at location '{}': {}".format(n,loc,err))
                 if locally:
                     if old_env_path is None:
                         del os.environ["PATH"]
