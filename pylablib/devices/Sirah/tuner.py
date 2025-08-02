@@ -792,7 +792,7 @@ class MatisseTuner:
 
     def fine_sweep_start_gen(self, span, up_speed, down_speed=None, device="slow_piezo", kind="cont_up", current_pos=0.5):
         """
-        Same as :meth:`fine_sweep_start`, but made as a generater which yields occasionally.
+        Same as :meth:`fine_sweep_start`, but made as a generator which yields occasionally.
         
         Can be used to run this scan in parallel with some other task, or to be able to interrupt it in the middle.
         """
