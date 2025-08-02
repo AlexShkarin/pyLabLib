@@ -23,6 +23,19 @@ you can write
     import pylablib.legacy as pll
     from pylablib.legacy.aux_libs.devices import Lakeshore
 
+1.4.4
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Devices
+
+    * Added several devices:
+    
+        + Rigol DG1020Z arbitrary waveform generator
+        + Lakeshore 235 temperature controller
+        + Agilent E5071C vector network analyzer
+
+    * Improved Linux library loading support
+
 1.4.3
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
