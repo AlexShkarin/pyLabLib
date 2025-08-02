@@ -4,6 +4,15 @@ pylablib.core.fileio package
 Submodules
 ----------
 
+pylablib.core.fileio.bin\_transform module
+------------------------------------------
+
+.. automodule:: pylablib.core.fileio.bin_transform
+   :members:
+   :inherited-members:
+   :undoc-members:
+   :show-inheritance:
+
 pylablib.core.fileio.datafile module
 ------------------------------------
 

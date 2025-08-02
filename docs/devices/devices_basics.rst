@@ -190,6 +190,13 @@ In addition, you need to provide pylablib with the path to the DLLs. In many cas
     cam = Andor.AndorSDK3Camera()
 
 All of these requirements are described in detail for the specific devices.
+Note that DLL loading is only available on Windows by default. In order to use it on Linux, you always need to specify the path to the library and, in addition, disable the ``devices/only_windows_dlls`` library parameter::
+
+    import pylablib as pll
+    pll.par["devices/only_windows_dlls"] = False  # enable loading of DLLs on Linux
+    pll.par["devices/dlls/andor_sdk3"] = "/usr/local/lib/libatcore.so"
+    from pylablib.devices import Andor
+    cam = Andor.AndorSDK3Camera()
 
 Starting from Python 3.8 the DLL search path is changed to not include the files contained in ``PATH`` environment variable and in the script folder. By default, this behavior is still emulated when pylablib searches for the DLLs, since it is required in some cases (e.g., Photon Focus pfcam interface). If needed, it can be turned off (i.e., switched to the new default behavior of Python 3.8+) by setting ``pll.par["devices/dlls/add_environ_paths"]=False``.
 

@@ -6,9 +6,9 @@
 Lakeshore temperature sensors
 ==============================
 
-Lakeshore manufactures a range of temperature sensor controllers and resistance bridges, which are also used for temperature sensing. There is some overlap between different products, but they still use fairly distinct interfaces and interaction patterns. The code has been tested with Lakeshore 218 temperature controller.
+Lakeshore manufactures a range of temperature sensor controllers and resistance bridges, which are also used for temperature sensing. There is some overlap between different products, but they still use fairly distinct interfaces and interaction patterns. The code has been tested with Lakeshore 218 and Lakeshore 235 temperature controllers.
 
-The main device class is :class:`pylablib.devices.Lakeshore.Lakeshore218<.Lakeshore.base.Lakeshore218>`.
+The main device classes are :class:`pylablib.devices.Lakeshore.Lakeshore218<.Lakeshore.base.Lakeshore218>` and :class:`pylablib.devices.Lakeshore.Lakeshore235<.Lakeshore.base.Lakeshore235>`.
 
 
 Software requirements

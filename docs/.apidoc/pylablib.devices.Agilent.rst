@@ -22,6 +22,15 @@ pylablib.devices.Agilent.pressure module
    :undoc-members:
    :show-inheritance:
 
+pylablib.devices.Agilent.vna module
+-----------------------------------
+
+.. automodule:: pylablib.devices.Agilent.vna
+   :members:
+   :inherited-members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 

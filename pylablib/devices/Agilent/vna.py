@@ -9,7 +9,7 @@ class AgilentE5071C(SCPI.SCPIDevice):
     Agilent E5071C vector network analyzer.
     
     Args:
-        addr: device address; usually a VISA address string such as ``"USB0::0x0699::0x0364::C000000::INSTR"``
+        addr: device address; usually a VISA address string such as ``"USB0::0x0957::0x0D09::MY00000000::0::INSTR"``
     """
     _default_backend_timeout=10.
     Error=AgilentError
