@@ -1,12 +1,10 @@
-Overview
--------------------------
+## Overview
 
-.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.7324875.svg
-   :target: https://doi.org/10.5281/zenodo.7324875
+[![10.5281/zenodo.7324875](https://zenodo.org/badge/DOI/10.5281/zenodo.7324875.svg)](https://doi.org/10.5281/zenodo.7324875)
 
 PyLabLib aims to provide support for device control and experiment automation. It interfaces with lots of different of `devices <https://pylablib.readthedocs.io/en/latest/devices/devices_root.html>`__, including several different `camera interfaces <https://pylablib.readthedocs.io/en/latest/devices/cameras_root.html>`__, `translational stages <https://pylablib.readthedocs.io/en/latest/devices/stages_root.html>`__, `oscilloscopes <https://pylablib.readthedocs.io/en/latest/devices/Tektronix.html>`__, `AWGs <https://pylablib.readthedocs.io/en/latest/devices/generic_awgs.html>`__, `sensors <https://pylablib.readthedocs.io/en/latest/devices/basic_sensors_root.html>`__, and more. The interface is implemented in a natural way through Python objects, and is easy to understand. For example, here is a complete script which steps Thorlabs KDC101 stage by 10000 steps ten times, and each time grabs a frame with Andor iXon camera:
 
-.. code-block:: python
+```python
 
     from pylablib.devices import Thorlabs, Andor  # import the device libraries
     import numpy as np  # import numpy for saving
@@ -25,6 +23,7 @@ PyLabLib aims to provide support for device control and experiment automation. I
             images.append(img)
 
     np.array(images).astype("<u2").tofile("frames.bin")  # save frames as raw binary
+```
 
 The list of the devices is constantly expanding.
 
@@ -37,8 +36,7 @@ Additional utilities are added to simplify data acquisition, storage, and proces
 The most recent version of the library is available on GitHub (https://github.com/AlexShkarin/pyLabLib), and the documentation can be found at https://pylablib.readthedocs.io/ .
 
 
-Requirements
--------------------------
+## Requirements
 
 - Python 3 (tested with 3.6+)
 - Most extensively tested with Windows 10 and 64-bit Python. Linux is, in principle, supported, but devices which require manufacturer-provided DLLs (mostly cameras) might, potentially, have problems.
@@ -46,8 +44,7 @@ Requirements
 - Some devices might require `additional software <https://pylablib.readthedocs.io/en/latest/devices/devices_basics.html#dependencies-and-external-software>`__. If this is the case, the requirements are mentioned on the corresponding page.
 
 
-Installation
--------------------------
+## Installation
 
 You can install the library from PyPi::
 
@@ -56,7 +53,6 @@ You can install the library from PyPi::
 More options are described in the `documentation <https://pylablib.readthedocs.io/en/latest/install.html>`__.
 
 
-Related projects
--------------------------
+## Related projects
 
 `Pylablib cam-control <https://github.com/AlexShkarin/pylablib-cam-control>`__ - software for universal camera control and frames acquisition.

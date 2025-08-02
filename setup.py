@@ -12,7 +12,7 @@ import pathlib
 
 here = path.abspath(path.dirname(__file__))
 
-with open(path.join(here,'README.rst')) as f:
+with open(path.join(here,'README.md')) as f:
     long_description=f.read()
 
 def list_cython_extensions(folder="pylablib"):
@@ -34,7 +34,7 @@ setup(
     version='1.4.4',
     description='Code for use in lab environment: experiment automation, data acquisition, device communication',
     long_description=long_description,
-    long_description_content_type="text/x-rst",
+    long_description_content_type="text/markdown",
     url='https://github.com/AlexShkarin/pyLabLib',
     author='Alexey Shkarin',
     author_email='pylablib@gmail.com',
