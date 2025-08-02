@@ -1,11 +1,8 @@
 import numpy as np
 
-from ...core.devio import SCPI, data_format, interface, comm_backend
-from ...core.utils import funcargparse, general
+from ...core.devio import SCPI, interface
 
 from .base import AgilentError,AgilentBackendError
-
-import collections
 
 class AgilentE5071C(SCPI.SCPIDevice):
     """

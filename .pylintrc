@@ -437,7 +437,8 @@ disable=raw-checker-failed,
         attribute-defined-outside-init,
         unspecified-encoding,
         line-too-long,
-        protected-access
+        protected-access,
+        possibly-used-before-assignment
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option

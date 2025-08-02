@@ -215,6 +215,7 @@ class Fitter:
                 wkind="point"
         except ValueError:
             pass
+        wmat=1
         if wkind is None:
             if np.prod(weights.shape)==np.prod(y.shape)**2:
                 wkind="matrix"

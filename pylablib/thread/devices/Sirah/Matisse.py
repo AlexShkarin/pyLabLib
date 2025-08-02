@@ -345,7 +345,7 @@ class SirahMatisseTunerThread(SirahMatisseThread):
             self.update_scan_status("running")
             while True:
                 yield
-    def fine_scan_finalize(self, *args, **kwargs):
+    def fine_scan_finalize(self, *args, **kwargs):  # pylint: disable=unused-argument
         if self.open():
             self._stop_fine_sweep()
         self.update_scan_status("idle")

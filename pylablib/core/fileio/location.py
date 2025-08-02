@@ -4,7 +4,7 @@ Classes for describing a generic file location.
 
 # from io import open
 
-from ..utils import files as file_utils, py3
+from ..utils import files as file_utils
 from ..utils import dictionary
 
 import io
