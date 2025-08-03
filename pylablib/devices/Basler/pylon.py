@@ -186,13 +186,28 @@ class BaslerPylonAttribute:
     def update_limits(self):
         """Update minimal and maximal attribute limits and return tuple ``(min, max, inc)``"""
         if self.kind=="int":
-            self.min=lib.GenApiIntegerGetMin(self.node)
-            self.max=lib.GenApiIntegerGetMax(self.node)
-            self.inc=lib.GenApiIntegerGetInc(self.node)
+            try:
+                self.min=lib.GenApiIntegerGetMin(self.node)
+            except BaslerLibError:
+                self.min=None
+            try:
+                self.max=lib.GenApiIntegerGetMax(self.node)
+            except BaslerLibError:
+                self.max=None
+            try:
+                self.inc=lib.GenApiIntegerGetInc(self.node)
+            except BaslerLibError:
+                self.inc=None
             return (self.min,self.max,self.inc)
         elif self.kind=="float":
-            self.min=lib.GenApiFloatGetMin(self.node)
-            self.max=lib.GenApiFloatGetMax(self.node)
+            try:
+                self.min=lib.GenApiFloatGetMin(self.node)
+            except BaslerLibError:
+                self.min=None
+            try:
+                self.max=lib.GenApiFloatGetMax(self.node)
+            except BaslerLibError:
+                self.max=None
             return (self.min,self.max,self.inc)
         elif self.kind=="enum":
             self.values=[py3.as_str(lib.GenApiEnumerationEntryGetSymbolic(n)) for n in self._value_nodes]
@@ -203,12 +218,12 @@ class BaslerPylonAttribute:
         """Truncate value to lie within attribute limits"""
         self.update_limits()
         if self.kind in ["int","float"]:
-            if value<self.min:
+            if self.min is not None and value<self.min:
                 value=self.min
-            elif value>self.max:
+            elif self.max is not None and value>self.max:
                 value=self.max
             else:
-                if self.inc and self.inc>0:
+                if self.min is not None and self.inc and self.inc>0:
                     value=((value-self.min)//self.inc)*self.inc+self.min
         return value
 
