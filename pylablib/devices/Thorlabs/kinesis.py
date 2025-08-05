@@ -1246,7 +1246,7 @@ class KinesisMotor(KinesisDevice):
         if stage in {"PRM1-Z8","PRM1TZ8"}:
             return 1919.6418578623391,"deg" # that's what it says in the manual...
         if stage in {"CR1-Z7"}:
-            return 12288E3,"m"
+            return 1638.4,"deg"  # Scaling factor = 12288*48/360
         if stage in {"DDSM50","DDSM100"}:
             return 2000E3,"m"
         if stage in {"DDS220","DDS300","DDS600","MLS203"}:
