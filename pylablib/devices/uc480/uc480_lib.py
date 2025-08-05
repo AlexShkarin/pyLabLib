@@ -65,15 +65,22 @@ class uc480Lib:
 
     @staticmethod
     def _load_dll(backend):
-        if backend=="uc480":
+        if backend=="uc480":  # windows-only
             lib_name="uc480.dll" if platform.architecture()[0][:2]=="32" else "uc480_64.dll"
+            dcx_path=load_lib.get_program_files_folder("Thorlabs/Scientific Imaging/DCx Camera Support/USB Driver Package")
             thorcam_path=load_lib.get_program_files_folder("Thorlabs/Scientific Imaging/ThorCam")
             error_message="The library is automatically supplied with Thorcam software\n"+load_lib.par_error_message.format("uc480")
-            return load_lib.load_lib(lib_name,locations=("parameter/uc480",thorcam_path,"global"),error_message=error_message,call_conv="cdecl")
+            return load_lib.load_lib(lib_name,locations=("parameter/uc480",dcx_path,thorcam_path,"global"),error_message=error_message,call_conv="cdecl")
         elif backend=="ueye":
-            lib_name="ueye_api.dll" if platform.architecture()[0][:2]=="32" else "ueye_api_64.dll"
-            ueye_path=load_lib.get_program_files_folder("IDS/uEye/USB driver package")
-            ids_path=load_lib.get_program_files_folder("IDS/uEye/develop/bin")
+            lib_name,ueye_path,ids_path=None,None,None
+            if platform.system() == 'Windows':
+                lib_name="ueye_api.dll" if platform.architecture()[0][:2]=="32" else "ueye_api_64.dll"
+                ueye_path=load_lib.get_program_files_folder("IDS/uEye/USB driver package")
+                ids_path=load_lib.get_program_files_folder("IDS/uEye/develop/bin")
+            else:  # TODO: other OSes? this assumes Linux
+                lib_name="libueye_api.so"
+                ueye_path="/opt/ids/ueye/lib"
+                ids_path="/opt/ids/ueye/lib/x86_64-linux-gnu"
             error_message="The library is automatically supplied with IDS uEye or IDS Software Suite\n"+load_lib.par_error_message.format("ueye")
             return load_lib.load_lib(lib_name,locations=("parameter/ueye",ueye_path,ids_path,"global"),error_message=error_message,call_conv="cdecl")
         else:
@@ -441,10 +448,13 @@ class uc480Lib:
         ncam=self.is_GetNumberOfCameras()
         if ncam==0:
             return []
+        assert ncam > 0 and ncam < (1<<12), ("Weird 'ncam' value: %d"%ncam)
+
         for _ in range(10):
             class UC480_CAMERA_LIST(ctypes.Structure):
-                _fields_=[  ("dwCount",ctypes.c_ulong),
+                _fields_=[  ("dwCount",ctypes.c_uint32),
                             ("uci",UC480_CAMERA_INFO*ncam)  ]
+
             cam_lst=UC480_CAMERA_LIST()
             cam_lst.dwCount=ncam
             self.is_GetCameraList_lib(ctypes.pointer(cam_lst))
@@ -453,7 +463,7 @@ class uc480Lib:
             else:
                 ncam=cam_lst.dwCount
         raise uc480Error("can not obtain the camera list: the list size keeps changing")
-    
+
     def is_GetCaptureStatus(self, hcam):
         status=uc480_defs.UC480_CAPTURE_STATUS_INFO()
         self.is_CaptureStatus(hcam,uc480_defs.CAPTURE_STATUS_CMD.IS_CAPTURE_STATUS_INFO_CMD_GET,ctypes.byref(status),ctypes.sizeof(status))
