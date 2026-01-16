@@ -12,7 +12,7 @@ try:
 except ImportError:
     metadata=None
 try:
-    import pkg_resources
+    import importlib.resources as pkg_resources
 except ImportError:
     pkg_resources=None
 import sys

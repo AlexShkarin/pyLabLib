@@ -196,7 +196,7 @@ class BasicKinesisDevice(comm_backend.ICommBackendWrapper):
 
     _device_SN={   20:"BSC001", 21:"BPC001", 22:"BNT001", 25:"BMS001", 26:"KST101", 27:"KDC101", 28:"KBD101", 29:"KPZ101",
                     30:"BSC002", 31:"BPC002", 33:"BDC101", 35:"BMS002", 37:"MFF10." ,
-                    40:"(BSC101|SSC20.)", 41:"BPC101", 43:"BDC101", 44:"PPC001", 45:"LTS", 48:"MMR", 49:"MLJ",
+                    40:"(BSC101|SSC201)", 41:"BPC101", 43:"BDC101", 44:"PPC001", 45:"LTS", 48:"MMR", 49:"MLJ",
                     50:"MST60" , 51:"MPZ601", 52:"MNA601", 55:"K10CR1", 56:"KLS101", 57:"KNA101", 59:"KSG101",
                     60:"0ST001", 63:"ODC001", 64:"TLD001", 65:"TIM001", 67:"TBD001", 68:"KSC101", 69:"KPA101",
                     70:"BSC.03", 71:"BPC.03", 72:"BPS103", 73:"BBD103", 
@@ -213,8 +213,9 @@ class BasicKinesisDevice(comm_backend.ICommBackendWrapper):
             return True
         if model_no.startswith(port_model_no):
             return True
-        if re.match("^"+port_model_no+"$",model_no):
-            return True
+        for model in port_model_no.split("|"):
+            if re.match("^"+port_model_no+"$",model_no):
+                return True
         return False
     def get_device_info(self, dest="host"):
         """
@@ -1225,7 +1226,7 @@ class KinesisMotor(KinesisDevice):
             stages={2:"Z706",3:"Z712",4:"Z725",5:"CR1-Z7",6:"PRM1-Z8",
                     7:"MTS25-Z8",8:"MTS50-Z8",9:"Z825",10:"Z812",11:"Z806"}
             return stages.get(stage_id,None)
-        if self._model=="K10CR1" or self._model.startswith("MPC"):
+        if self._model=="K10CR1" or self._model.startswith(("MPC", "M30", "KVS30")):
             return self._model
         return None
     def _get_stage(self, scale):
@@ -1239,6 +1240,8 @@ class KinesisMotor(KinesisDevice):
         stage=stage.strip().upper()
         if stage=="STEP":
             return 1,"step"
+        if self._model.startswith("M30"):
+            return 1E7, "m"
         if stage in {"MTS25-Z8","MTS50-Z8","Z806","Z812","Z825"}:
             return 34304E3,"m"
         if stage in {"Z606","Z612","Z625"}:
@@ -1249,7 +1252,7 @@ class KinesisMotor(KinesisDevice):
             return 12288E3,"m"
         if stage in {"DDSM50","DDSM100"}:
             return 2000E3,"m"
-        if stage in {"DDS220","DDS300","DDS600","MLS203"}:
+        if stage in {"DDS220","DDS300","DDS600","MLS203"} or self._model.startswith("KVS30"):
             return 20000E3,"m"
         if stage=="DDR100":
             return 3276800/360,"deg"
@@ -1259,7 +1262,7 @@ class KinesisMotor(KinesisDevice):
             return 1440000/360,"deg"
         if stage=="HDR50":
             return 75091/0.99997,"deg"
-        if self._model in ["TST001","MST601"] or self._model.startswith("BSC00") or self._model.startswith("BSC10"):
+        if self._model in ["TST001","MST601"] or self._model.startswith(("BSC00", "BSC10")):
             if stage.startswith("ZST"):
                 return 125540.35E3,"m"
             if stage.startswith("ZFS"):
@@ -1274,7 +1277,7 @@ class KinesisMotor(KinesisDevice):
                 return 25600/360,"deg"
             if stage=="NR360":
                 return 25600/(360/66),"deg"
-        if self._model in ["TST101","KST101","MST602","K10CR1"] or self._model.startswith("BSC20") or self._model.startswith("SSC20"):
+        if self._model in ["TST101","KST101","MST602","K10CR1"] or self._model.startswith(("BSC20", "SSC20")):
             if stage.startswith("ZST"):
                 return 2008645.63E3,"m"
             if stage.startswith("ZFS"):
@@ -1310,10 +1313,14 @@ class KinesisMotor(KinesisDevice):
         if self._model in ["TBD001","KBD101"] or self._model.startswith("BBD10") or self._model.startswith("BBD20"):
             time_conv=102.4E-6
             return (ssc,ssc*time_conv*2**16,ssc*time_conv**2*2**16),units
-        if self._model in ["TST001","MST601"] or self._model.startswith("BSC00") or self._model.startswith("BSC10") or self._model.startswith("MPC"):
+        if self._model in ["TST001","MST601"] or self._model.startswith(("BSC", "MPC", "M30", "KVS30")):
             return (ssc,ssc,ssc),units
-        if self._model in ["TST101","KST101","MST602","K10CR1"] or self._model.startswith("BSC20"):
+        if self._model in ["TST101","KST101","MST602","K10CR1"]:
             vpr=53.68
+            avr=204.94E-6
+            return (ssc,ssc*vpr,ssc*vpr*avr),units
+        if self._model.startswith("BSC20") or self._model.startswith("SCC20"):
+            vpr=8.26
             avr=204.94E-6
             return (ssc,ssc*vpr,ssc*vpr*avr),units
         warnings.warn("can't recognize motor model {}; setting all scales to internal units".format(self._model))
