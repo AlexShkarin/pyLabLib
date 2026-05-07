@@ -550,6 +550,8 @@ class RunningDecimationFilter:
         on_incomplete: determines what to return while the filter window is not yet full;
             can be ``"none"`` (default, return ``None``), or ``"partial"`` (operate on the partial accumulated data)
     """
+    _MODE_FUNCS = {"mean": np.mean, "min": np.min, "max": np.max, "median": np.median}
+
     def __init__(self, n, mode="mean", on_incomplete="none"):
         self.n=n
         funcargparse.check_parameter_range(mode,"mode",["mean","min","max","median"])
@@ -559,14 +561,9 @@ class RunningDecimationFilter:
         funcargparse.check_parameter_range(on_incomplete,"on_incomplete",["none","partial"])
         self.on_incomplete=on_incomplete
     def _dec_func(self):
-        if self.mode=="mean":
-            return np.mean
-        if self.mode=="min":
-            return np.min
-        if self.mode=="max":
-            return np.max
-        if self.mode=="median":
-            return np.median
+        """Return the numpy function corresponding to the current decimation mode."""
+        return self._MODE_FUNCS[self.mode]
+
     def get(self):
         """Get the filtered result"""
         if len(self._buffer)<self.n and self.on_incomplete=="none":
