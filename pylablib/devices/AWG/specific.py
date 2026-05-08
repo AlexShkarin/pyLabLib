@@ -21,7 +21,69 @@ class Agilent33220A(GenericAWG):
     """
     pass
 
+from numpy import asarray, float32
+class Agilent33600A(GenericAWG):
+    """
+    Minimal driver wrapper for Keysight/Agilent 33600A series AWGs.
 
+    Args:
+        addr: VISA address of the instrument.
+        channels_number: number of channels; default is 2.
+    """
+
+    def __init__(self, addr, channels_number=2):
+        self._channels_number = channels_number
+        super().__init__(addr)
+
+        # Access the raw PyVISA instrument
+        visa_instr = self.instr.instr
+        visa_instr.timeout = 20_000          # ms
+        visa_instr.chunk_size = 4 * 1024 * 1024  # 4 MB safe value
+
+    def upload_custom_waveform(self, name, waveform, channel):
+        """
+        Upload a custom waveform to the specified channel.
+
+        Args:
+            name (str): Name to assign to the waveform in the AWG.
+            waveform (array-like): Waveform data as float32 values in [-1, 1].
+            channel (int, optional): Channel number. Default is 1.
+        """
+        waveform = asarray(waveform, dtype=float32)
+        payload = waveform.tobytes()
+
+        visa_instr = self.instr.instr
+
+        # 1. Setup
+        self.write("DISP:TEXT 'Uploading ARB'")
+        self.write("FORM:BORD SWAP")
+        self.write(f"SOUR{channel}:DATA:VOL:CLE")
+
+        # 2. Manual binary upload
+        byte_count = len(payload)
+        len_str = str(byte_count)
+        header = f"#{len(len_str)}{len_str}".encode("ascii")
+
+        cmd = f"SOUR{channel}:DATA:ARB {name},".encode("ascii")
+        message = cmd + header + payload + b"\n"
+
+        visa_instr.write_raw(message)
+        self.write("*WAI")
+
+        # 3. Configure waveform
+        self.write(f"SOUR{channel}:FUNC:ARB {name}")
+        self.write("DISP:TEXT ''")
+
+    def set_sample_rate(self, sample_rate, channel):
+        """
+        Set the sample rate for a specified channel.
+
+        Args:
+            sample_rate (float): Sample rate in Sa/s.
+            channel (int, optional): Channel number. Default is 1.
+        """
+        self.write("*WAI")
+        self.write(f"SOUR{channel}:FUNC:ARB:SRAT {sample_rate}")
 
 
 
