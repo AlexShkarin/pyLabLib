@@ -1300,7 +1300,7 @@ class KinesisMotor(KinesisDevice):
         return 1,"step"
     def _calculate_scale(self, scale):
         if isinstance(scale,tuple):
-            return scale,"user"
+            return scale
         if scale=="stage":
             scale=self._stage
         if isinstance(scale,py3.textstring) or scale is None:
