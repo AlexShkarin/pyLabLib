@@ -46,11 +46,43 @@ The most recent version of the library is available on GitHub (https://github.co
 
 ## Installation
 
-You can install the library from PyPi:
+### Install this fork from GitHub
 
-    pip install pylablib
+Use the Python interpreter from the environment where you want the package installed. In an activated virtual environment, run:
 
-More options are described in the [documentation](https://pylablib.readthedocs.io/en/latest/install.html).
+```sh
+python -m pip install "git+https://github.com/bhathawayy/pyLabLib.git"
+```
+
+To clone the fork and work on its source code instead:
+
+```sh
+git clone https://github.com/bhathawayy/pyLabLib.git
+cd pyLabLib
+python -m pip install -e .
+```
+
+Check the interpreter before installing if you have multiple Python environments:
+
+```sh
+python -c "import sys; print(sys.executable)"
+```
+
+If Git reports `SEC_E_UNTRUSTED_ROOT` while cloning on Windows, the computer does not trust the HTTPS certificate it received. This happens before the package build starts. Check the computer's date and time and its trusted root certificates; on a managed network, ask your IT team about the network's certificate authority. Keep Git's certificate verification enabled.
+
+You can also test Git's OpenSSL certificate backend, which still verifies the server certificate:
+
+```sh
+git -c http.sslBackend=openssl ls-remote https://github.com/bhathawayy/pyLabLib.git HEAD
+```
+
+If that succeeds, set it for your Git user and retry the installation:
+
+```sh
+git config --global http.sslBackend openssl
+```
+
+The upstream release is available from [PyPI](https://pypi.org/project/pylablib/) as `pylablib`. Installing that name from PyPI does not install this fork. More upstream installation options are in the [documentation](https://pylablib.readthedocs.io/en/latest/install.html).
 
 
 ## Related projects
