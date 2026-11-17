@@ -488,8 +488,9 @@ class PicamCamera(camera.IBinROICamera, camera.IExposureCamera, camera.IAttribut
         wdet,hdet=self.get_detector_size()
         self.ca["ROIs"].update_limits()
         c=self.ca["ROIs"].cons_roi
-        hlim=camera.TAxisROILimit(c.wrng[0]*hbin,c.wrng[1],c.xrng[2],c.wrng[2]*hbin,(max(c.xbins) if c.xbins else wdet))
-        vlim=camera.TAxisROILimit(c.hrng[0]*vbin,c.hrng[1],c.yrng[2],c.hrng[2]*vbin,(max(c.ybins) if c.ybins else hdet))
+        # Fixed axes (e.g., a one-row sensor) can report zero pixel increments.
+        hlim=camera.TAxisROILimit(c.wrng[0]*hbin,c.wrng[1],max(1,c.xrng[2]),max(1,c.wrng[2])*hbin,(max(c.xbins) if c.xbins else wdet))
+        vlim=camera.TAxisROILimit(c.hrng[0]*vbin,c.hrng[1],max(1,c.yrng[2]),max(1,c.hrng[2])*vbin,(max(c.ybins) if c.ybins else hdet))
         return hlim,vlim
     
 
